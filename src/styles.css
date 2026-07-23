@@ -484,3 +484,17 @@ td button, .link {
   .page { padding: 20px 14px; }
   .mapbox { height: 490px; }
 }
+
+
+/* Chronicle cards — v1.1 structure fix */
+.chron { display: grid; gap: 14px; max-width: 1180px; }
+.event { background: rgba(9,22,27,.72); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; overflow: hidden; }
+.event.major { border-color: rgba(215,173,95,.62); background: linear-gradient(135deg, rgba(215,173,95,.09), rgba(9,22,27,.86) 42%); }
+.event > small { display: block; color: var(--gold); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 7px; }
+.event h3 { margin: 0 0 8px; font: 600 18px Cinzel, serif; color: var(--paper); }
+.event p { margin: 0 0 13px; color: #c7d0d1; line-height: 1.55; }
+.event > .chips { margin-bottom: 13px; }
+.event > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
+.event > div:last-child button { width: auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 11px; border-radius: 9px; border: 1px solid rgba(215,173,95,.25); background: rgba(255,255,255,.025); color: #d8cfae; }
+.event > div:last-child button:hover { border-color: var(--gold); background: rgba(215,173,95,.08); }
+.event > div:last-child svg { width: 14px; height: 14px; }

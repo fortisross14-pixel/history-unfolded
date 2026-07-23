@@ -1,21 +1,8 @@
-# History Unfolded
+# History Unfolded v0.3
 
-A narrative-first alternate history simulator built with Vite, React and TypeScript.
+A Vite + React + TypeScript alternate-history simulator.
 
-## Current prototype
-
-- Procedural 22 × 13 hex world with terrain and 30 starting tribes
-- Civilizations evolve through Tribe → Settlement → City-State → Duchy → Kingdom → Empire
-- Advance history by 1, 5, 10 or 25 years, or use continuous play
-- Population, economy, military, technology, stability and prestige simulation
-- Expansion, conquest, extinction, alliances, rivalries and succession
-- Procedural religions, prophets, rulers, famines, golden ages, trade booms and world disasters
-- Political, population and technology map overlays
-- Ranked world powers list
-- Clickable country encyclopedia with ruler, statistics and historical record
-- Decade-grouped world chronicle and almanac
-
-## Run locally
+## Run
 
 ```bash
 npm install
@@ -26,18 +13,18 @@ npm run dev
 
 ```bash
 npm run build
-npm run preview
 ```
 
-## GitHub Pages
+## v0.3 highlights
 
-The included workflow deploys the `main` branch automatically. In GitHub, open **Settings → Pages** and set **Source** to **GitHub Actions**.
+- Three local save slots with create, continue, and delete actions.
+- New-world setup with small, medium, and large fixed continental layouts.
+- Configurable starting tribe count.
+- Continuous staggered hex maps with geography, political, culture, and religion modes.
+- Sortable Almanac subtabs for realms, religions, cultures, people, and rulers.
+- Notable people with role, five-star potential, contextual impact, life status, and 1–100 historical relevance.
+- Rulers with administration, military, and diplomacy skills plus reign deltas for provinces, technology, and GDP.
+- Technology expanded to a 0–1000 scale.
+- Clickable detail drawers and narrative Chronicle events for people, rulers, religions, and realms.
 
-## Design direction
-
-This is the foundation rather than the final 5,000-year simulation. The next major systems should be persistent wars and battles, dynasties and marriages, technology unlocks, named cities, cultural/religious schisms, save slots, and documentary-style century recaps.
-
-
-## v0.2 — Civilizational identities
-
-Civilizations now begin as named tribes and evolve through changing political identities. A single lineage can become a settlement, city-state, duchy, kingdom and empire while preserving its origin tribe and every former name. Allied realms may unite through dynastic compacts; conquered cultures survive within the victor; unstable empires can split into successor states that inherit and reinterpret the old imperial identity. The naming engine intentionally mixes procedural names with familiar civilization-style names such as Athens, Rome, Persia, Rus and regional historical names.
+Save data is stored in browser localStorage under `history-unfolded-saves-v3`.

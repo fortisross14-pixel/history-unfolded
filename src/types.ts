@@ -1,69 +1,39 @@
-export type Rank = 'Tribe' | 'Settlement' | 'City-State' | 'Duchy' | 'Kingdom' | 'Empire';
-export type Terrain = 'ocean' | 'plains' | 'forest' | 'desert' | 'mountain' | 'tundra';
-export type EventCategory = 'military' | 'economy' | 'diplomacy' | 'religion' | 'culture' | 'technology' | 'great-person' | 'society' | 'world';
-export type PersonRole = 'Scientist' | 'Engineer' | 'Merchant' | 'Religious Figure' | 'General' | 'Artist';
-export type MapSize = 'small' | 'medium' | 'large';
-export type GovernmentType = 'Tribal Council' | 'Chiefdom' | 'Open Monarchy' | 'Authoritarian Monarchy' | 'Oligarchy' | 'Duchy' | 'Monarchy' | 'Imperial Court' | 'Republic' | 'Democracy' | 'Theocracy' | 'Military Junta';
-export type ArtworkType = 'Oral Tradition' | 'Book / Writing' | 'Painting' | 'Building' | 'Sculpture' | 'Artifact' | 'Song';
-export type ArtworkRarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
-export type TechnologyId = 'agriculture' | 'writing' | 'money' | 'bronze' | 'iron' | 'deep_sailing' | 'printing' | 'gunpowder' | 'steam_power' | 'flight';
+export type Rank='Tribe'|'Settlement'|'City-State'|'Duchy'|'Kingdom'|'Empire';
+export type Terrain='ocean'|'plains'|'forest'|'desert'|'mountain'|'tundra';
+export type MapSize='small'|'medium'|'large'|'huge';
+export type EventCategory='military'|'economy'|'diplomacy'|'religion'|'culture'|'technology'|'great-person'|'society'|'world'|'exploration'|'city'|'politics'|'wonder';
+export type PersonRole='Scientist'|'Engineer'|'Merchant'|'Religious Figure'|'General'|'Artist'|'Politician';
+export type GovernmentType='Tribal Council'|'Chiefdom'|'Clan Confederation'|'Sacred Kingship'|'Open Monarchy'|'Feudal Monarchy'|'Absolute Monarchy'|'Constitutional Monarchy'|'Imperial Court'|'Oligarchy'|'Merchant Republic'|'Republic'|'Democracy'|'Federation'|'Military Junta'|'Dictatorship'|'Theocracy'|'Religious Monarchy';
+export type TechnologyId='agriculture'|'writing'|'bronze'|'money'|'iron'|'deep_sailing'|'gunpowder'|'printing'|'steam_power'|'flight';
+export type BuildingType='Granary'|'Trading Post'|'Market'|'Harbor'|'Barracks'|'Fortifications'|'Library'|'University'|'Merchant Guild'|'Bank'|'Stock Exchange'|'Military Academy'|'Printing House'|'Hospital';
+export type CityLevel='Village'|'Settlement'|'Town'|'City'|'Metropolis';
+export type ArtworkType='Oral Tradition'|'Book / Writing'|'Painting'|'Building'|'Sculpture'|'Artifact'|'Song';
+export type ArtworkRarity='Common'|'Uncommon'|'Rare'|'Epic'|'Legendary';
+export type WonderCategory='Military'|'Religious'|'Commercial'|'Scientific'|'Cultural'|'Engineering';
+export type DynastyStatus='ruling'|'deposed'|'extinct'|'exiled'|'restored';
 
-export interface Province {
-  id:number; x:number; y:number; terrain:Terrain; continent:number; fertility:number;
-  ownerId:number|null; population:number; cultureId:number|null; religionId:number|null;
-}
-export interface TechnologyDefinition {
-  id:TechnologyId; name:string; earliestYear:number; field:'economy'|'culture'|'military'|'exploration'|'technology';
-  description:string; effect:string;
-}
-export interface KnownTechnology { technologyId:TechnologyId; discoveredYear:number; source:'scientist'|'diffusion'|'founding'; sourcePersonId?:number; sourceRealmId?:number; }
-export interface TechnologyContact { technologyId:TechnologyId; realmId:number; years:number; }
-export interface Artwork { id:number; name:string; year:number; rating:number; rarity:ArtworkRarity; type:ArtworkType; artistId:number; cultureId:number; realmId:number; }
-export interface GreatPerson {
-  id:number; name:string; role:PersonRole; born:number; died?:number; realmId:number; cultureId:number|null; religionId:number|null;
-  stars:1|2|3|4|5; historicalRelevance:number; impact:number; trait:string; achievement:string; active:boolean;
-  technologyPoints:number; technologiesRevealed:TechnologyId[]; battlesWon:number; battlesLost:number; wealthCreated:number;
-  followersGained:number; artworks:number[];
-}
-export interface RulerRecord {
-  id:number; name:string; realmId:number; born:number; reignStart:number; reignEnd?:number; government:GovernmentType;
-  administration:number; military:number; diplomacy:number; trait:string;
-  startProvinces:number; endProvinces?:number; startTechnology:number; endTechnology?:number;
-  startGDP:number; endGDP?:number; startPopulation:number; endPopulation?:number; historicalRelevance:number;
-}
-export interface Religion {
-  id:number; name:string; founderPersonId:number|null; founder:string; founded:number; followers:number; color:string;
-  holySites:string[]; doctrine:string; expansion:number; loyalty:number; tolerance:number; parentReligionId?:number;
-  schisms:number[]; provinces:number;
-}
-export interface Culture {
-  id:number; name:string; founded:number; population:number; color:string; provinces:number; heritage:string[];
-  originRealmId:number; strength:number; artworks:number[]; peacefulViolent:number; economicCreative:number; unstableStable:number;
-}
-export interface BattleSide { realmIds:number[]; generalId:number|null; combatants:number; casualties:number; power:number; }
-export interface Battle { id:number; warId:number; name:string; year:number; provinceId:number; attacker:BattleSide; defender:BattleSide; winner:'attacker'|'defender'; significance:number; }
-export interface War {
-  id:number; name:string; startYear:number; endYear?:number; attackerIds:number[]; defenderIds:number[]; participantIds:number[];
-  winnerIds:number[]; loserIds:number[]; attackerLosses:number; defenderLosses:number; battles:number; battleIds:number[]; territoriesChanged:number; active:boolean;
-}
-export interface NameEra { name:string; rank:Rank; from:number; reason:string; }
-export interface Civilization {
-  id:number; name:string; adjective:string; color:string; rank:Rank; founded:number; government:GovernmentType;
-  originTribe:string; capital:string; cultureId:number; rulerId:number; population:number; gdp:number; military:number;
-  armySize:number; technology:number; stability:number; prestige:number; faithId:number|null; allies:number[]; rivals:number[];
-  provinces:number[]; history:number[]; nameHistory:NameEra[]; absorbedCultures:number[]; predecessorIds:number[]; parentEmpireId?:number;
-  peakPopulation:number; peakProvinces:number; warsWon:number; warsLost:number; knownTechnologies:KnownTechnology[];
-  technologyContacts:TechnologyContact[]; warIds:number[];
-}
-export interface HistoryEvent {
-  id:number; year:number; category:EventCategory; title:string; description:string; importance:number; civIds:number[];
-  personIds?:number[]; religionIds?:number[]; cultureIds?:number[]; warIds?:number[]; technologyIds?:TechnologyId[]; tags:string[];
-}
-export interface WorldConfig { mapSize:MapSize; mapVariant:number; tribeCount:number; name:string; }
-export interface WorldState {
-  seed:number; year:number; config:WorldConfig; width:number; height:number; provinces:Province[]; civilizations:Civilization[];
-  religions:Religion[]; cultures:Culture[]; people:GreatPerson[]; rulers:RulerRecord[]; wars:War[]; battles:Battle[]; artworks:Artwork[];
-  events:HistoryEvent[]; nextEventId:number; nextPersonId:number; nextReligionId:number; nextCultureId:number;
-  nextCivilizationId:number; nextRulerId:number; nextWarId:number; nextBattleId:number; nextArtworkId:number;
-}
-export interface SaveSlot { slot:number; updatedAt:number; world:WorldState|null; }
+export interface Province{id:number;x:number;y:number;terrain:Terrain;continentId:number|null;fertility:number;ownerId:number|null;population:number;cultureId:number|null;religionId:number|null;cityId:number|null;naturalWonderId:number|null;holySiteReligionIds:number[];}
+export interface Continent{id:number;name:string;provinceIds:number[];discoveredByRealmId?:number;discoveredByPersonId?:number;discoveredYear?:number;}
+export interface TechnologyDefinition{id:TechnologyId;name:string;earliestYear:number;field:string;effect:string;}
+export interface KnownTechnology{technologyId:TechnologyId;discoveredYear:number;source:'scientist'|'diffusion'|'founding';sourcePersonId?:number;}
+export interface Building{id:number;type:BuildingType;name:string;builtYear:number;builderPersonId?:number;realmIdAtConstruction:number;gdpBonus:number;armyBonus:number;scienceBonus:number;cultureBonus:number;}
+export interface CityOwnership{realmId:number;from:number;to?:number;}
+export interface City{id:number;name:string;provinceId:number;continentId:number;foundedYear:number;founderRealmId:number;currentRealmId:number;population:number;prosperity:number;infrastructure:number;defense:number;culturalImportance:number;scientificImportance:number;religiousImportance:number;isCapital:boolean;buildings:Building[];ownershipHistory:CityOwnership[];tradeRouteIds:number[];wonderIds:number[];artworkIds:number[];}
+export interface TradeRoute{id:number;name:string;originCityId:number;destinationCityId:number;founderPersonId:number;createdYear:number;gdpBonus:number;active:boolean;}
+export interface Artwork{id:number;name:string;year:number;rating:number;rarity:ArtworkRarity;type:ArtworkType;artistId:number;cultureId:number;realmId:number;cityId:number;}
+export interface GreatPerson{id:number;name:string;role:PersonRole;born:number;died?:number;realmId:number;cultureId:number|null;religionId:number|null;stars:1|2|3|4|5;active:boolean;impact:number;historicalRelevance:number;trait:string;achievement:string;technologyPoints:number;technologiesRevealed:TechnologyId[];battlesWon:number;battlesLost:number;wealthCreated:number;followersGained:number;artworkIds:number[];citiesImproved:number[];buildingsCreated:number[];tradeRoutesCreated:number[];wonderIds:number[];revolutionsLed:number;}
+export interface Culture{id:number;name:string;color:string;population:number;founded:number;originRealmId:number;peacefulViolent:number;economicCreative:number;unstableStable:number;strength:number;heritage:string[];artworkIds:number[];provinces:number;}
+export interface Religion{id:number;name:string;color:string;followers:number;founded:number;founderPersonId:number|null;holyProvinceIds:number[];doctrine:string;expansion:number;loyalty:number;tolerance:number;parentReligionId?:number;schismIds:number[];provinces:number;}
+export interface Dynasty{id:number;name:string;founderPersonId:number|null;foundedYear:number;endedYear?:number;originCultureId:number;originRealmId:number;rulerIds:number[];realmIds:number[];totalYearsInPower:number;peakTerritory:number;peakGDP:number;warsWon:number;wonderIds:number[];status:DynastyStatus;historicalRelevance:number;}
+export interface RulerRecord{id:number;name:string;realmId:number;dynastyId:number|null;born:number;reignStart:number;reignEnd?:number;government:GovernmentType;administration:number;military:number;diplomacy:number;trait:string;startProvinces:number;endProvinces?:number;startTechnology:number;endTechnology?:number;startGDP:number;endGDP?:number;startPopulation:number;endPopulation?:number;historicalRelevance:number;}
+export interface BattleSide{realmIds:number[];generalId:number|null;combatants:number;casualties:number;power:number;}
+export interface Battle{id:number;warId:number;name:string;year:number;provinceId:number;attacker:BattleSide;defender:BattleSide;winner:'attacker'|'defender';significance:number;}
+export interface War{id:number;name:string;startYear:number;endYear?:number;attackerIds:number[];defenderIds:number[];participantIds:number[];winnerIds:number[];loserIds:number[];attackerLosses:number;defenderLosses:number;battles:number;battleIds:number[];territoriesChanged:number;active:boolean;}
+export interface Wonder{id:number;name:string;category:WonderCategory;cityId:number;provinceId:number;realmId:number;builderPersonId:number;startedYear:number;completedYear:number;status:'standing'|'damaged'|'destroyed';effect:string;gdpBonus:number;armyBonus:number;scienceBonus:number;cultureBonus:number;religionBonus:number;historicalRelevance:number;}
+export interface NaturalWonder{id:number;name:string;provinceId:number;effect:string;gdpBonus:number;armyBonus:number;cultureBonus:number;prestigeBonus:number;}
+export interface Rivalry{id:number;realmIds:[number,number];startedYear:number;endedYear?:number;cause:'border'|'religion'|'dynasty'|'trade'|'colonial'|'cultural'|'historical';warIds:number[];battleIds:number[];totalCasualties:number;provincesExchanged:number;intensity:number;status:'active'|'dormant'|'resolved';}
+export interface HistoryEvent{id:number;year:number;category:EventCategory;title:string;description:string;importance:number;civIds:number[];personIds:number[];cityIds:number[];continentIds:number[];technologyIds:TechnologyId[];warIds:number[];battleIds:number[];religionIds:number[];cultureIds:number[];wonderIds:number[];dynastyIds:number[];tags:string[];worldChronicle:boolean;}
+export interface Civilization{id:number;name:string;originTribe:string;color:string;rank:Rank;founded:number;government:GovernmentType;capitalCityId:number;cultureId:number;faithId:number|null;population:number;gdp:number;armySize:number;technology:number;stability:number;prestige:number;provinces:number[];cityIds:number[];knownTechnologies:KnownTechnology[];knownContinentIds:number[];knownRealmIds:number[];continentExposure:Record<string,number>;rulerId:number;dynastyId:number|null;historyEventIds:number[];warIds:number[];rivalryIds:number[];historicalScore:number;legacyScore:number;governmentHistory:{government:GovernmentType;from:number;to?:number;reason:string}[];nameHistory:{name:string;rank:Rank;from:number;reason:string}[];}
+export interface WorldConfig{mapSize:MapSize;mapVariant:number;tribeCount:number;name:string;}
+export interface WorldState{seed:number;year:number;config:WorldConfig;width:number;height:number;provinces:Province[];continents:Continent[];civilizations:Civilization[];cities:City[];tradeRoutes:TradeRoute[];people:GreatPerson[];cultures:Culture[];religions:Religion[];rulers:RulerRecord[];dynasties:Dynasty[];wars:War[];battles:Battle[];artworks:Artwork[];wonders:Wonder[];naturalWonders:NaturalWonder[];rivalries:Rivalry[];events:HistoryEvent[];usedHistoricalNames:string[];nextIds:{civ:number;city:number;person:number;culture:number;religion:number;event:number;building:number;route:number;ruler:number;dynasty:number;war:number;battle:number;artwork:number;wonder:number;naturalWonder:number;rivalry:number;};}
+export interface SaveSlot{slot:number;updatedAt:number;world:WorldState|null;}

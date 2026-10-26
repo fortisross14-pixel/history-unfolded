@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import type { WorldState } from '../types.ts';
+import { eraName, populationOf } from '../engine/index.ts';
 import { type MapMode, type Sel, fmt, MiniEvent } from './shared.tsx';
 import { MomentHeadlines } from './MomentPage.tsx';
 
@@ -28,11 +29,13 @@ export function World({
             <h1>{world.config.name}</h1>
           </div>
           <div className="segmented">
-            {(['geography', 'political', 'culture', 'religion'] as MapMode[]).map(m => (
-              <button className={mode === m ? 'active' : ''} onClick={() => setMode(m)} key={m}>
-                {m}
-              </button>
-            ))}
+            {(['political', 'development', 'culture', 'religion', 'geography'] as MapMode[]).map(
+              m => (
+                <button className={mode === m ? 'active' : ''} onClick={() => setMode(m)} key={m}>
+                  {m}
+                </button>
+              ),
+            )}
           </div>
         </div>
         <HexMap world={world} mode={mode} open={open} />
@@ -47,7 +50,7 @@ export function World({
               <span>
                 <strong>{c.name}</strong>
                 <small>
-                  {c.rank} · {fmt(c.population)} people
+                  {c.rank} · {eraName(c.era)} · {fmt(populationOf(c.development, c.era))} people
                 </small>
               </span>
               <em title="Share of the world's land, wealth and armed forces">
@@ -87,6 +90,7 @@ export function HexMap({
     mountain: '#747779',
     tundra: '#b9c4c5',
   };
+  const maxDev = Math.max(1, ...world.provinces.map(p => p.development));
   const fill = (p: WorldState['provinces'][0]) => {
     if (mode === 'geography') return terrain[p.terrain];
     if (p.terrain === 'ocean') return '#092838';
@@ -94,6 +98,11 @@ export function HexMap({
       return world.civilizations.find(c => c.id === p.ownerId)?.color ?? '#535b5f';
     if (mode === 'culture')
       return world.cultures.find(c => c.id === p.cultureId)?.color ?? '#535b5f';
+    if (mode === 'development') {
+      // Darker to brighter gold as development rises.
+      const t = Math.min(1, p.development / maxDev);
+      return `hsl(40 ${Math.round(25 + t * 55)}% ${Math.round(16 + t * 50)}%)`;
+    }
     return world.religions.find(r => r.id === p.religionId)?.color ?? '#535b5f';
   };
   const size = 18,
@@ -161,21 +170,6 @@ export function HexMap({
                         : undefined
                   }
                 />
-                {p.naturalWonderId && (
-                  <text
-                    x={cx}
-                    y={cy + 3}
-                    className="mapicon"
-                    onClick={() => open({ type: 'natural', id: p.naturalWonderId! })}
-                  >
-                    ◆
-                  </text>
-                )}
-                {p.holySiteReligionIds.length > 0 && (
-                  <text x={cx + 7} y={cy - 5} className="holy">
-                    ✦
-                  </text>
-                )}
                 {city && (
                   <circle
                     cx={cx}

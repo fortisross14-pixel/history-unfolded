@@ -142,11 +142,11 @@ export interface RarityDef {
 }
 
 export const RARITIES: RarityDef[] = [
-  { id: 'Common', chance: 0.56, skill: [15, 45], weight: 0.6, fame: 0.6 },
+  { id: 'Common', chance: 0.556, skill: [15, 45], weight: 0.6, fame: 0.6 },
   { id: 'Rare', chance: 0.28, skill: [35, 60], weight: 0.8, fame: 0.8 },
   { id: 'Epic', chance: 0.115, skill: [50, 75], weight: 1, fame: 1 },
   { id: 'Legend', chance: 0.039, skill: [68, 90], weight: 1.3, fame: 1.4 },
-  { id: 'Generational', chance: 0.006, skill: [88, 100], weight: 1.8, fame: 2 },
+  { id: 'Generational', chance: 0.01, skill: [88, 100], weight: 1.8, fame: 2 },
 ];
 
 export const rarityDef = (r: Rarity) => RARITIES.find(x => x.id === r)!;

@@ -22,7 +22,6 @@ export function pruneCharacters(s: WorldState) {
   for (const d of s.dynasties) if (d.founderId) keep.add(d.founderId);
   for (const h of s.hallOfFame) if (h.category === 'character') keep.add(h.entityId);
   for (const id of Object.keys(s.overrides.character)) keep.add(Number(id));
-  s.realmEvents = s.realmEvents.filter(e => e.active || s.year - e.endYear < 200);
   const before = s.characters.length;
   s.characters = s.characters.filter(
     ch =>

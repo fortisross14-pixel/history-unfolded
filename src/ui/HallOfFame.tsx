@@ -17,7 +17,7 @@ export function HallOfFame({ world, open }: { world: WorldState; open: (s: Sel) 
     else open({ type: 'war', id: e.entityId });
   };
   return (
-    <main className="page hall-page">
+    <section className="hall-page">
       <div className="page-title-row">
         <div>
           <span className="eyebrow">The immortal record</span>
@@ -62,6 +62,6 @@ export function HallOfFame({ world, open }: { world: WorldState; open: (s: Sel) 
           );
         })}
       </div>
-    </main>
+    </section>
   );
 }

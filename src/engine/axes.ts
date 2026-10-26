@@ -90,9 +90,11 @@ const pullOf = (ch: Character) => 0.06 * rarityDef(ch.rarity).weight ** 2;
 export function driftAxes(s: WorldState, c: Civilization, tradeRoutes: number) {
   const a = c.axes;
   a.horizon += (coastalShare(s, c) * 100 - a.horizon) * 0.004;
-  a.economy += Math.min(0.05, tradeRoutes * 0.008);
+  a.economy += Math.min(0.03, tradeRoutes * 0.004);
+  // Lands with few cities stay farming country.
+  if (c.cityIds.length * 6 < c.provinces.length) a.economy -= 0.02;
   // A long-dominant power loses its drive and its grip.
-  if (yearsOnTop(s, c) > 150) {
+  if (yearsOnTop(s, c) > 120) {
     a.ambition -= 0.05;
     a.order += 0.05;
   }

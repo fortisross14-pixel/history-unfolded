@@ -1,6 +1,7 @@
 import type { Province, Character, War, Civilization, WorldState } from '../types.ts';
 import { RNG } from './rng.ts';
-import { neigh, has, recalcRealmFromProvinces } from './util.ts';
+import { neigh } from './util.ts';
+import { buildingTotal } from './buildings.ts';
 import { addEvent } from './events.ts';
 import { addDeed, earnNickname, killCharacter, notifyAmbition } from './characters.ts';
 import { deposeRuler, newRuler } from './dynasty.ts';
@@ -73,15 +74,9 @@ export function commanderFate(
 
 // ---- Strength -------------------------------------------------------------------
 
+/** Fighting edge from the era; breakthroughs like bronze or gunpowder add war power via modifiers. */
 export function techFactor(c: Civilization) {
-  return Math.min(
-    2.15,
-    0.85 +
-      c.technology / 1500 +
-      (has(c, 'bronze') ? 0.07 : 0) +
-      (has(c, 'iron') ? 0.12 : 0) +
-      (has(c, 'gunpowder') ? 0.22 : 0),
-  );
+  return 0.9 + c.era * 0.08;
 }
 
 const TERRAIN_DEFENSE: Record<string, number> = {
@@ -99,10 +94,10 @@ export function defenseFactor(s: WorldState, defender: Civilization, attacker: C
   const ground = front.length
     ? front.reduce((n, p) => n + (TERRAIN_DEFENSE[p.terrain] ?? 1), 0) / front.length
     : 1.05;
-  const forts = defender.cityIds
-    .flatMap(id => idx(s).city.get(id)?.buildings ?? [])
-    .filter(b => b.type === 'Fortifications')
-    .reduce((n, b) => n + b.level * 0.03, 0);
+  const forts = defender.cityIds.reduce(
+    (n, id) => n + buildingTotal(idx(s).city.get(id)?.buildings ?? [], 'defense'),
+    0,
+  );
   return ground * (1 + Math.min(0.3, forts));
 }
 
@@ -184,7 +179,7 @@ export function chooseWarType(
       rationale: `${a.name} and ${d.name} follow rival religions, and the border has become a center of religious tension.`,
       goal: `Force ${d.name} to adopt the attacker’s majority religion after a decisive victory.`,
     });
-  if (a.gdp < d.gdp * 0.72 && a.armyCapacity > d.armyCapacity * 1.2)
+  if (a.wealth < d.wealth * 0.72 && a.armyCapacity > d.armyCapacity * 1.2)
     options.push({
       weight: 18 * (0.5 + a.axes.economy / 100),
       type: 'Commercial War',
@@ -198,7 +193,7 @@ export function chooseWarType(
       rationale: `${a.name} claims culturally related borderlands currently governed by ${d.name}.`,
       goal: 'Transfer provinces dominated by the attacker’s culture.',
     });
-  if (a.dynastyId && a.prestige > d.prestige * 1.15)
+  if (a.dynastyId && a.influence > d.influence * 1.15)
     options.push({
       weight: 8,
       type: 'Dynastic Claim',
@@ -210,7 +205,7 @@ export function chooseWarType(
       weight: 10 + Math.min(15, (rivalry.wars ?? 0) * 5),
       type: 'Punitive War',
       rationale: `A long rivalry and unresolved grievances have driven ${a.name} to punish ${d.name}.`,
-      goal: 'Damage the enemy’s prestige, stability and treasury.',
+      goal: 'Damage the enemy’s stability and treasury.',
     });
   let roll = r.next() * options.reduce((n, o) => n + o.weight, 0);
   for (const o of options) {
@@ -242,7 +237,7 @@ export function newWar(
     attackerLosses: 0,
     defenderLosses: 0,
     territoriesChanged: 0,
-    gdpTransferred: 0,
+    goldTransferred: 0,
     religionChanged: false,
     decisiveVictory: false,
     active: true,
@@ -373,8 +368,8 @@ export function transferProvince(
     from.cityIds = from.cityIds.filter(id => id !== city.id);
     if (!to.cityIds.includes(city.id)) to.cityIds.push(city.id);
   }
-  recalcRealmFromProvinces(s, from);
-  recalcRealmFromProvinces(s, to);
+  // Conquest is destructive: the province loses a tenth of its development.
+  province.development = Math.max(1, province.development * 0.9);
 }
 
 /** Takes every province of the loser, front or not. */
@@ -390,7 +385,7 @@ export function cedeFront(s: WorldState, loser: Civilization, winner: Civilizati
   const front = loser.provinces
     .map(id => s.provinces[id])
     .filter(p => neigh(p, s).some(n => n.ownerId === winner.id))
-    .sort((x, y) => y.fertility - x.fertility);
+    .sort((x, y) => y.development - x.development);
   for (const p of front) {
     if (moved >= count) break;
     transferProvince(s, loser, winner, p);
@@ -418,7 +413,6 @@ export function applyWarOutcome(
   }
   if (winner.id !== a.id) {
     w.outcome = `${d.name} repelled the attack and preserved its independence.`;
-    d.prestige += 8;
     a.stability = Math.max(5, a.stability - 6);
     return;
   }
@@ -473,8 +467,8 @@ export function applyWarOutcome(
       w.outcome = `${faith} gained ${border.length} contested border province${border.length === 1 ? '' : 's'}, but ${d.name} kept its state religion.`;
     }
   } else if (w.type === 'Commercial War') {
-    w.gdpTransferred = payReparations(d, a, decisive ? 0.15 : 0.07);
-    w.outcome = `${d.name} paid reparations worth ${w.gdpTransferred.toFixed(1)}.`;
+    w.goldTransferred = payReparations(s, d, a, decisive ? 0.15 : 0.07);
+    w.outcome = `${d.name} paid ${w.goldTransferred.toFixed(0)} gold in reparations.`;
   } else if (w.type === 'Dynastic Claim' && a.dynastyId) {
     takeThrone(s, a, d, r);
     w.outcome = `The ${idx(s).dynasty.get(a.dynastyId)?.name ?? 'attacker’s dynasty'} took the throne of ${d.name}.`;
@@ -491,18 +485,26 @@ export function applyWarOutcome(
     }
     w.outcome = `${a.name} incorporated ${w.territoriesChanged} culturally related province${w.territoriesChanged === 1 ? '' : 's'}.`;
   } else {
-    w.gdpTransferred = payReparations(d, a, decisive ? 0.08 : 0.04);
+    w.goldTransferred = payReparations(s, d, a, decisive ? 0.08 : 0.04);
     d.stability = Math.max(5, d.stability - (decisive ? 15 : 8));
-    d.prestige = Math.max(0, d.prestige - (decisive ? 18 : 9));
-    w.outcome = `${d.name} lost prestige, stability and ${w.gdpTransferred.toFixed(1)} in reparations.`;
+    w.outcome = `${d.name} lost stability and paid ${w.goldTransferred.toFixed(0)} gold.`;
   }
 }
 
-export function payReparations(from: Civilization, to: Civilization, share: number) {
-  const amount = Math.max(0, from.gdp * share);
-  from.gdp = Math.max(0.1, from.gdp - amount);
-  to.gdp += amount;
-  return amount;
+/**
+ * Gold paid is real: it comes out of the loser's richest provinces and is
+ * spent building up the winner's capital. Returns the gold paid.
+ */
+export function payReparations(s: WorldState, from: Civilization, to: Civilization, share: number) {
+  const gold = from.wealth * share * 5;
+  const richest = from.provinces
+    .map(id => s.provinces[id])
+    .sort((a, b) => b.development - a.development)
+    .slice(0, 3);
+  for (const p of richest) p.development = Math.max(1, p.development * (1 - share * 0.6));
+  const capital = idx(s).city.get(to.capitalCityId);
+  if (capital) s.provinces[capital.provinceId].development += Math.min(5, gold / 40);
+  return gold;
 }
 
 export function convertRealm(s: WorldState, c: Civilization, faithId: number) {
@@ -569,7 +571,6 @@ export function finishWar(
     w.loserIds = winner.id === a.id ? [...w.defenderIds] : [...w.attackerIds];
     if (!w.great) applyWarOutcome(s, w, a, d, winner, decisive, r);
     w.decisiveVictory = decisive;
-    winner.prestige += decisive ? 14 : 8;
     loser.stability = Math.max(5, loser.stability - (decisive ? 12 : 5));
     warDeeds(s, w, winner, loser, decisive);
     warShapesAxes(winner, true, decisive);

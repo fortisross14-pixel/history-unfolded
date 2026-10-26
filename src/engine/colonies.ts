@@ -2,7 +2,8 @@ import type { Civilization, WorldState } from '../types.ts';
 import { RNG } from './rng.ts';
 import { addEvent } from './events.ts';
 import { idx } from './lookup.ts';
-import { has, neigh } from './util.ts';
+import { neigh } from './util.ts';
+import { knows } from './eras.ts';
 import type { ModTotals } from './modifiers.ts';
 import { addDeed, fullName } from './characters.ts';
 
@@ -11,7 +12,7 @@ import { addDeed, fullName } from './characters.ts';
  * colonies on empty coasts of continents they know about.
  */
 export function colonize(s: WorldState, c: Civilization, mods: ModTotals, r: RNG) {
-  if (!has(c, 'deep_sailing') || c.navy <= 0 || c.axes.horizon < 55) return;
+  if (!knows(c, 'deep_sailing') || c.navy <= 0 || c.axes.horizon < 55) return;
   const drive =
     (c.axes.horizon / 100) * (c.axes.ambition / 100) * Math.max(0.2, 1 + mods.exploration);
   if (!r.chance(0.012 * drive)) return;

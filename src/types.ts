@@ -1,3 +1,5 @@
+// ---- Basics --------------------------------------------------------------------
+
 export type Rank = 'Tribe' | 'Settlement' | 'City-State' | 'Duchy' | 'Kingdom' | 'Empire';
 export type Terrain = 'ocean' | 'plains' | 'forest' | 'desert' | 'mountain' | 'tundra';
 export type MapSize = 'small' | 'medium' | 'large' | 'huge';
@@ -16,82 +18,44 @@ export type EventCategory =
   | 'city'
   | 'politics'
   | 'wonder';
-export type RealmEventType =
-  | 'Famine'
-  | 'Volcanic Eruption'
-  | 'Flooding'
-  | 'Pandemic'
-  | 'Baby Boom'
-  | 'National Sentiment'
-  | 'Cultural Golden Age'
-  | 'Commercial Renaissance'
-  | 'Scientific Awakening';
-export type EventSeverity = 'Mild' | 'Large' | 'Historical';
+
+/** Seven governments, each with clear effects (see engine/government.ts). */
 export type GovernmentType =
-  | 'Tribal Council'
-  | 'Chiefdom'
-  | 'Clan Confederation'
-  | 'Sacred Kingship'
-  | 'Open Monarchy'
-  | 'Feudal Monarchy'
-  | 'Absolute Monarchy'
-  | 'Constitutional Monarchy'
-  | 'Imperial Court'
-  | 'Oligarchy'
-  | 'Merchant Republic'
-  | 'Republic'
-  | 'Democracy'
-  | 'Federation'
-  | 'Military Junta'
-  | 'Dictatorship'
-  | 'Theocracy'
-  | 'Religious Monarchy';
-export type TechnologyId =
+  'Chiefdom' | 'Monarchy' | 'Theocracy' | 'Merchant Republic' | 'Empire' | 'Republic' | 'Democracy';
+
+/** Fifteen breakthroughs in six eras (see engine/eras.ts). */
+export type BreakthroughId =
   | 'agriculture'
   | 'writing'
   | 'bronze'
-  | 'money'
   | 'iron'
+  | 'money'
+  | 'philosophy'
+  | 'astronomy'
   | 'deep_sailing'
   | 'gunpowder'
   | 'printing'
+  | 'banking'
   | 'steam_power'
+  | 'railways'
+  | 'electricity'
   | 'flight';
+
+/** Ten buildings (see engine/buildings.ts). */
 export type BuildingType =
   | 'Granary'
-  | 'Road Network'
-  | 'Workshop'
-  | 'Forge'
-  | 'Aqueduct'
-  | 'Observatory'
-  | 'Shipyard'
-  | 'Courthouse'
-  | 'Shrine'
-  | 'Temple'
-  | 'Monastery'
-  | 'Cathedral'
-  | 'Trading Post'
   | 'Market'
-  | 'Harbor'
   | 'Barracks'
-  | 'Fortifications'
+  | 'Temple'
+  | 'Harbor'
+  | 'Fortress'
   | 'Library'
+  | 'Guild Hall'
   | 'University'
-  | 'Merchant Guild'
-  | 'Bank'
-  | 'Stock Exchange'
-  | 'Military Academy'
-  | 'Printing House'
-  | 'Hospital'
-  | 'Artist Workshop'
-  | 'Theater';
-export type CityLevel = 'Village' | 'Settlement' | 'Town' | 'City' | 'Metropolis';
-export type ArtworkType =
-  'Oral Tradition' | 'Book / Writing' | 'Painting' | 'Building' | 'Sculpture' | 'Artifact' | 'Song';
-export type ArtworkRarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
-export type BuildingRarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
-export type WonderCategory =
-  'Military' | 'Religious' | 'Commercial' | 'Scientific' | 'Cultural' | 'Engineering';
+  | 'Factory';
+
+/** Building quality, set by the rarity of whoever built it. */
+export type BuildingQuality = 'Common' | 'Rare' | 'Epic' | 'Legend' | 'Generational';
 export type DynastyStatus = 'ruling' | 'deposed' | 'extinct' | 'exiled' | 'restored';
 export type WarType =
   | 'Expansion War'
@@ -103,6 +67,9 @@ export type WarType =
   | 'Civil War'
   | 'Annexation War';
 
+// ---- Land ------------------------------------------------------------------------
+
+/** A hex of land or sea. Development is the one number that measures it. */
 export interface Province {
   id: number;
   name: string;
@@ -110,74 +77,48 @@ export interface Province {
   y: number;
   terrain: Terrain;
   continentId: number | null;
-  fertility: number;
   ownerId: number | null;
-  population: number;
-  gdp: number;
+  /** How built-up and populous the province is. Grows over time; war and disaster cut it. */
+  development: number;
   cultureId: number | null;
   religionId: number | null;
   cityId: number | null;
-  naturalWonderId: number | null;
-  holySiteReligionIds: number[];
 }
+
 export interface Continent {
   id: number;
   name: string;
   provinceIds: number[];
-  traitName: string;
-  traitDescription: string;
-  populationBonus: number;
-  gdpBonus: number;
-  technologyBonus: number;
-  armyBonus: number;
-  cultureBonus: number;
   discoveredByRealmId?: number;
   discoveredByCharacterId?: number;
   /** Name before an explorer renamed it, if any. */
   originalName?: string;
   discoveredYear?: number;
 }
-export interface TechnologyDefinition {
-  id: TechnologyId;
-  name: string;
-  earliestYear: number;
-  field: string;
-  effect: string;
+
+export interface KnownBreakthrough {
+  id: BreakthroughId;
+  year: number;
+  source: 'invented' | 'spread' | 'founding';
+  characterId?: number;
 }
-export interface KnownTechnology {
-  technologyId: TechnologyId;
-  discoveredYear: number;
-  source: 'scholar' | 'diffusion' | 'founding';
-  sourceCharacterId?: number;
-}
+
 export interface Building {
   id: number;
   type: BuildingType;
-  name: string;
   builtYear: number;
-  lastUpgradedYear: number;
   builderId?: number;
-  lastBuilderId?: number;
-  realmIdAtConstruction: number;
-  rarity: BuildingRarity;
+  /** 1 (Common) to 5 (Generational): scales the building's effect. */
   level: 1 | 2 | 3 | 4 | 5;
-  impact: number;
-  gdpBonus: number;
-  armyBonus: number;
-  scienceBonus: number;
-  cultureBonus: number;
-  upgradeHistory: {
-    year: number;
-    characterId?: number;
-    from?: BuildingRarity;
-    to: BuildingRarity;
-  }[];
 }
+
 export interface CityOwnership {
   realmId: number;
   from: number;
   to?: number;
 }
+
+/** A city turns its province's development into wealth, manpower and influence. */
 export interface City {
   id: number;
   name: string;
@@ -186,13 +127,6 @@ export interface City {
   foundedYear: number;
   founderRealmId: number;
   currentRealmId: number;
-  population: number;
-  prosperity: number;
-  infrastructure: number;
-  defense: number;
-  culturalImportance: number;
-  scientificImportance: number;
-  religiousImportance: number;
   isCapital: boolean;
   /** Character the city is named after, if any. */
   namedAfterId?: number;
@@ -200,8 +134,12 @@ export interface City {
   ownershipHistory: CityOwnership[];
   tradeRouteIds: number[];
   wonderIds: number[];
-  artworkIds: number[];
+  /** Yearly output, recomputed every year from development, buildings and routes. */
+  wealth: number;
+  manpower: number;
+  influence: number;
 }
+
 export interface TradeRoute {
   id: number;
   name: string;
@@ -209,22 +147,11 @@ export interface TradeRoute {
   destinationCityId: number;
   founderId: number;
   createdYear: number;
-  gdpBonus: number;
+  /** Extra share of each end city's wealth. */
+  bonus: number;
   active: boolean;
 }
-export interface Artwork {
-  id: number;
-  name: string;
-  year: number;
-  rating: number;
-  rarity: ArtworkRarity;
-  type: ArtworkType;
-  /** The patron character who commissioned the work. */
-  patronId: number;
-  cultureId: number;
-  realmId: number;
-  cityId: number;
-}
+
 // ---- Characters -------------------------------------------------------------
 
 export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legend' | 'Generational';
@@ -340,12 +267,12 @@ export interface Reign {
   government: GovernmentType;
   startProvinces: number;
   endProvinces?: number;
-  startTechnology: number;
-  endTechnology?: number;
-  startGDP: number;
-  endGDP?: number;
-  startPopulation: number;
-  endPopulation?: number;
+  startBreakthroughs: number;
+  endBreakthroughs?: number;
+  startWealth: number;
+  endWealth?: number;
+  startDevelopment: number;
+  endDevelopment?: number;
   /** 0–100 summary of how much the realm grew under this reign. */
   score: number;
 }
@@ -380,34 +307,36 @@ export interface Legacy {
 export type RenameKind = 'realm' | 'city' | 'character' | 'dynasty' | 'continent' | 'war';
 export type NameOverrides = Record<RenameKind, Record<number, string>>;
 
+// ---- Peoples and faiths ------------------------------------------------------
+
 export interface Culture {
   id: number;
   name: string;
   color: string;
-  population: number;
   founded: number;
   originRealmId: number;
+  /** Share of the world's influence held by realms of this culture, 0–100. */
   strength: number;
-  heritage: string[];
-  artworkIds: number[];
   provinces: number;
 }
+
 export interface Religion {
   id: number;
   name: string;
   color: string;
-  followers: number;
   founded: number;
   founderId: number | null;
   holyProvinceIds: number[];
   doctrine: string;
+  /** How fast the faith spreads from a state that follows it. */
   expansion: number;
-  loyalty: number;
+  /** Low tolerance makes religious civil wars possible. */
   tolerance: number;
   parentReligionId?: number;
   schismIds: number[];
   provinces: number;
 }
+
 export interface Dynasty {
   id: number;
   name: string;
@@ -423,13 +352,12 @@ export interface Dynasty {
   marriedIntoIds: number[];
   totalYearsInPower: number;
   peakTerritory: number;
-  peakGDP: number;
-  peakPopulation: number;
-  warsWon: number;
-  wonderIds: number[];
+  peakWealth: number;
   status: DynastyStatus;
-  historicalRelevance: number;
 }
+
+// ---- Wars and wonders --------------------------------------------------------------
+
 /** A named battle that swung a Great War. Ordinary battles are not stored. */
 export interface KeyBattle {
   /** Year with season as a fraction (1450.25 = spring 1450). */
@@ -443,6 +371,7 @@ export interface KeyBattle {
   text: string;
   characterIds: number[];
 }
+
 export interface War {
   id: number;
   name: string;
@@ -460,7 +389,7 @@ export interface War {
   attackerLosses: number;
   defenderLosses: number;
   territoriesChanged: number;
-  gdpTransferred: number;
+  goldTransferred: number;
   religionChanged: boolean;
   decisiveVictory: boolean;
   active: boolean;
@@ -471,35 +400,20 @@ export interface War {
   /** Peace terms the loser accepted. */
   terms: string[];
 }
+
+/** One of a handful of wonders; each gives its owner a clear, lasting bonus. */
 export interface Wonder {
   id: number;
+  /** Key into engine/wonders.ts. */
+  kind: string;
   name: string;
-  category: WonderCategory;
   cityId: number;
-  provinceId: number;
-  realmId: number;
   builderId: number;
-  startedYear: number;
   completedYear: number;
-  status: 'standing' | 'damaged' | 'destroyed';
-  effect: string;
-  gdpBonus: number;
-  armyBonus: number;
-  scienceBonus: number;
-  cultureBonus: number;
-  religionBonus: number;
-  historicalRelevance: number;
 }
-export interface NaturalWonder {
-  id: number;
-  name: string;
-  provinceId: number;
-  effect: string;
-  gdpBonus: number;
-  armyBonus: number;
-  cultureBonus: number;
-  prestigeBonus: number;
-}
+
+// ---- Diplomacy -----------------------------------------------------------------
+
 /** The five diplomatic relations between two realms. */
 export type RelationType = 'Alliance' | 'Marriage' | 'Vassal' | 'Rival' | 'Truce';
 
@@ -519,28 +433,8 @@ export interface Relation {
   reason: string;
 }
 
-export interface RealmEventEffects {
-  populationAnnualPct: number;
-  gdpAnnualPct: number;
-  technologyAnnual: number;
-  armyAnnualPct: number;
-  stabilityAnnual: number;
-  cultureAnnual: number;
-}
-export interface RealmEvent {
-  id: number;
-  realmId: number;
-  type: RealmEventType;
-  severity: EventSeverity;
-  startYear: number;
-  endYear: number;
-  duration: number;
-  title: string;
-  description: string;
-  effects: RealmEventEffects;
-  destroyedBuildings: string[];
-  active: boolean;
-}
+// ---- History -------------------------------------------------------------------
+
 export interface HistoryEvent {
   id: number;
   year: number;
@@ -552,7 +446,7 @@ export interface HistoryEvent {
   personIds: number[];
   cityIds: number[];
   continentIds: number[];
-  technologyIds: TechnologyId[];
+  breakthroughIds: BreakthroughId[];
   warIds: number[];
   momentIds: number[];
   religionIds: number[];
@@ -562,6 +456,18 @@ export interface HistoryEvent {
   tags: string[];
   worldChronicle: boolean;
 }
+
+// ---- Realms --------------------------------------------------------------------
+
+export interface NationalAxes {
+  ambition: number;
+  horizon: number;
+  economy: number;
+  faith: number;
+  order: number;
+}
+export type AxisKey = keyof NationalAxes;
+
 export interface Civilization {
   id: number;
   name: string;
@@ -574,23 +480,25 @@ export interface Civilization {
   capitalCityId: number;
   cultureId: number;
   faithId: number | null;
-  population: number;
-  urbanPopulation: number;
-  ruralPopulation: number;
-  gdp: number;
-  armySize: number;
-  armyCapacity: number;
-  technology: number;
-  stability: number;
-  prestige: number;
   provinces: number[];
   cityIds: number[];
-  knownTechnologies: KnownTechnology[];
-  technologyProgress: Record<string, number>;
+  /** Totals recomputed every year; the realm page shows where each comes from. */
+  development: number;
+  wealth: number;
+  manpower: number;
+  influence: number;
+  armySize: number;
+  armyCapacity: number;
+  navy: number;
+  navyCapacity: number;
+  stability: number;
+  /** Progress toward the next breakthrough nobody has made yet. */
+  research: number;
+  era: number;
+  breakthroughs: KnownBreakthrough[];
   knownContinentIds: number[];
   knownRealmIds: number[];
   continentExposure: Record<string, number>;
-  technologyExposure: Record<string, number>;
   /** Character ids of the ruler, heir and regent (0 when none). */
   rulerId: number;
   heirId: number;
@@ -604,25 +512,15 @@ export interface Civilization {
    * tolerant), Order (centralised → fractious).
    */
   axes: NationalAxes;
-  navy: number;
-  navyCapacity: number;
   /** Current strength relative to the world (land, wealth, armed forces). */
   power: number;
   /** Year this realm became the world's top power, while it stays on top. */
   topSince?: number;
-  historicalScore: number;
-  legacyScore: number;
   governmentHistory: { government: GovernmentType; from: number; to?: number; reason: string }[];
   nameHistory: { name: string; rank: Rank; from: number; reason: string }[];
 }
-export interface NationalAxes {
-  ambition: number;
-  horizon: number;
-  economy: number;
-  faith: number;
-  order: number;
-}
-export type AxisKey = keyof NationalAxes;
+
+// ---- World Moments -------------------------------------------------------------
 
 export type MomentKind = 'war' | 'discovery' | 'revolution';
 
@@ -643,7 +541,7 @@ export interface Moment {
   id: number;
   kind: MomentKind;
   title: string;
-  /** Technology id for discoveries, ideology id for revolutions. */
+  /** Breakthrough id for discoveries, ideology id for revolutions. */
   subject: string;
   startYear: number;
   endYear?: number;
@@ -663,6 +561,8 @@ export interface Moment {
   streak?: number;
 }
 
+// ---- World ---------------------------------------------------------------------
+
 export interface WorldConfig {
   mapSize: MapSize;
   mapVariant: number;
@@ -670,6 +570,7 @@ export interface WorldConfig {
   name: string;
   nameMode: NameMode;
 }
+
 export interface HallOfFameEntry {
   id: number;
   category: 'realm' | 'city' | 'character' | 'war';
@@ -680,6 +581,27 @@ export interface HallOfFameEntry {
   subtitle: string;
   periodKey: string;
 }
+
+export interface EvolutionRealmSnapshot {
+  realmId: number;
+  name: string;
+  color: string;
+  rank: Rank;
+  continentId: number;
+  greatPower: number;
+  development: number;
+  wealth: number;
+  breakthroughs: number;
+  military: number;
+}
+
+export interface EvolutionSnapshot {
+  year: number;
+  realms: EvolutionRealmSnapshot[];
+  worldDevelopment: number;
+  worldWealth: number;
+}
+
 export interface WorldState {
   /** Save schema version, see engine/save.ts. */
   version: number;
@@ -704,15 +626,11 @@ export interface WorldState {
   wars: War[];
   /** Great Wars, Great Discoveries and World Revolutions. */
   moments: Moment[];
-  artworks: Artwork[];
   wonders: Wonder[];
-  naturalWonders: NaturalWonder[];
   relations: Relation[];
   events: HistoryEvent[];
-  realmEvents: RealmEvent[];
   evolutionSnapshots: EvolutionSnapshot[];
   hallOfFame: HallOfFameEntry[];
-  usedHistoricalNames: string[];
   nextIds: {
     civ: number;
     city: number;
@@ -727,33 +645,12 @@ export interface WorldState {
     dynasty: number;
     war: number;
     moment: number;
-    artwork: number;
     wonder: number;
-    naturalWonder: number;
     relation: number;
-    realmEvent: number;
     hallOfFame: number;
   };
 }
-export interface EvolutionRealmSnapshot {
-  realmId: number;
-  name: string;
-  color: string;
-  rank: Rank;
-  continentId: number;
-  greatPower: number;
-  population: number;
-  gdp: number;
-  technology: number;
-  military: number;
-}
-export interface EvolutionSnapshot {
-  year: number;
-  realms: EvolutionRealmSnapshot[];
-  worldPopulation: number;
-  worldGDP: number;
-  averageTechnology: number;
-}
+
 export interface SaveSlot {
   slot: number;
   updatedAt: number;

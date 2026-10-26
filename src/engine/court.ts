@@ -2,23 +2,24 @@ import type { Character, CharacterRole, Civilization, Rank, WorldState } from '.
 import { RNG } from './rng.ts';
 import { addEvent } from './events.ts';
 import { courtOf, idx } from './lookup.ts';
-import { TECHNOLOGIES } from './data.ts';
-import { has, neigh } from './util.ts';
+import { neigh } from './util.ts';
+import { knows } from './eras.ts';
 import {
   addDeed,
   createCharacter,
   earnNickname,
   fullName,
+  level,
   notifyAmbition,
   surnameOf,
 } from './characters.ts';
-import { BUILDINGS, build, createRoute } from './economy.ts';
-import { createArtwork, level } from './culture.ts';
+import { createRoute } from './economy.ts';
+import { buildable, build } from './buildings.ts';
+import type { BuildingType } from '../types.ts';
 import { foundReligion } from './religion.ts';
-import { discover } from './technology.ts';
+import { frontier, invent } from './research.ts';
 import { revolution } from './realms.ts';
 import type { ModTotals } from './modifiers.ts';
-import { rarityDef } from './traits.ts';
 
 const NOTABLE_ROLES: CharacterRole[] = [
   'General',
@@ -51,7 +52,7 @@ const isCoastal = (s: WorldState, c: Civilization) =>
  */
 function roleWeights(s: WorldState, c: Civilization, atWar: boolean): [CharacterRole, number][] {
   const coastal = isCoastal(s, c);
-  const sailing = has(c, 'deep_sailing');
+  const sailing = knows(c, 'deep_sailing');
   const unknown = s.continents.some(x => !c.knownContinentIds.includes(x.id));
   const a = c.axes;
   const sea = a.horizon / 50;
@@ -83,20 +84,13 @@ export function spawnNotables(s: WorldState, c: Civilization, atWar: boolean, r:
 const cityOf = (s: WorldState, c: Civilization, r: RNG) =>
   idx(s).city.get(r.pick(c.cityIds)) ?? idx(s).city.get(c.capitalCityId);
 
-/** Builds one building of the given kinds in a random city, if any is possible. */
-function buildOneOf(s: WorldState, c: Civilization, ch: Character, kinds: string[], r: RNG) {
+/** Builds or improves one building of the given kinds in a random city, if any is possible. */
+function buildOneOf(s: WorldState, c: Civilization, ch: Character, kinds: BuildingType[], r: RNG) {
   if (!c.cityIds.length) return;
   const city = cityOf(s, c, r);
   if (!city) return;
   const coastal = neigh(s.provinces[city.provinceId], s).some(n => n.terrain === 'ocean');
-  const defs = BUILDINGS.filter(
-    b =>
-      kinds.includes(b.type) &&
-      c.technology >= b.tech &&
-      (!b.requires || has(c, b.requires)) &&
-      (!b.coastal || coastal) &&
-      !city.buildings.some(x => x.type === b.type),
-  );
+  const defs = buildable(c, city, coastal).filter(d => kinds.includes(d.type));
   if (defs.length) build(s, c, city, r.pick(defs), ch);
 }
 
@@ -109,51 +103,28 @@ export function notableActs(
   r: RNG,
 ) {
   const lvl = level(ch);
-  const power = (ch.skill / 50) * rarityDef(ch.rarity).weight;
   const career = s.year - ch.born - 18;
   switch (ch.role) {
     case 'Scholar': {
-      c.technology = Math.min(1000, c.technology + power * 0.05 * (1 + mods.research));
-      const open = TECHNOLOGIES.filter(
-        t => t.id !== 'agriculture' && s.year >= t.earliestYear && !has(c, t.id),
-      );
-      if (open.length && lvl >= 3 && r.chance(0.004 * lvl * (1 + mods.research)))
-        discover(s, c, r.pick(open).id, ch);
+      // A great scholar may be first in the world to a breakthrough whose time has come.
+      const open = frontier(s, c);
+      if (open.length && lvl >= 3 && r.chance(0.002 * lvl * (1 + mods.research)))
+        invent(s, c, r.pick(open).id, r, ch);
       if (lvl >= 3 && career > 5 && r.chance(0.012 * (1 + mods.build)))
-        buildOneOf(
-          s,
-          c,
-          ch,
-          [
-            'Library',
-            'University',
-            'Printing House',
-            'Observatory',
-            'Workshop',
-            'Aqueduct',
-            'Hospital',
-          ],
-          r,
-        );
+        buildOneOf(s, c, ch, ['Library', 'University', 'Granary'], r);
       break;
     }
     case 'Merchant': {
       const routes = s.tradeRoutes.filter(t => t.founderId === ch.id).length;
       if (routes < lvl - 1 && r.chance(0.02 + lvl * 0.004)) createRoute(s, c, ch, r);
       if (lvl >= 2 && r.chance(0.012 * (1 + mods.build)))
-        buildOneOf(
-          s,
-          c,
-          ch,
-          ['Trading Post', 'Market', 'Harbor', 'Merchant Guild', 'Bank', 'Stock Exchange'],
-          r,
-        );
+        buildOneOf(s, c, ch, ['Market', 'Harbor', 'Guild Hall', 'Factory'], r);
       break;
     }
     case 'General': {
       c.armySize = Math.min(c.armyCapacity, c.armySize + Math.round(c.armyCapacity * lvl * 0.0015));
       if (lvl >= 3 && r.chance(0.008 * (1 + mods.build)))
-        buildOneOf(s, c, ch, ['Barracks', 'Fortifications', 'Military Academy', 'Forge'], r);
+        buildOneOf(s, c, ch, ['Barracks', 'Fortress'], r);
       break;
     }
     case 'Prophet': {
@@ -166,8 +137,7 @@ export function notableActs(
         r.chance(lvl === 5 ? 0.03 : 0.012)
       )
         foundReligion(s, c, ch, r);
-      if (lvl >= 3 && c.faithId && r.chance(0.01))
-        buildOneOf(s, c, ch, ['Shrine', 'Temple', 'Monastery', 'Cathedral'], r);
+      if (lvl >= 3 && c.faithId && r.chance(0.01)) buildOneOf(s, c, ch, ['Temple'], r);
       break;
     }
     case 'Statesman': {
@@ -205,9 +175,9 @@ export function notableActs(
       explore(s, c, ch, mods, r);
       break;
   }
-  // Patrons commission art in any role.
-  if (ch.traits.includes('Patron') && c.cityIds.length && r.chance(0.01 + lvl * 0.003))
-    createArtwork(s, c, ch, r);
+  // Patrons sponsor the arts in any role: fame for them, influence for the realm (see modifiers).
+  if (ch.traits.includes('Patron') && c.cityIds.length && r.chance(0.006 + lvl * 0.002) && lvl >= 3)
+    addDeed(s, ch, `Sponsored a flowering of the arts in ${cityOf(s, c, r)?.name ?? c.name}`, lvl);
 }
 
 /**
@@ -219,7 +189,7 @@ function explore(s: WorldState, c: Civilization, ch: Character, mods: ModTotals,
   const base = ch.role === 'Explorer' ? 0.012 : 0.004;
   if (!r.chance(base * (ch.skill / 50) * (1 + mods.exploration))) return;
   const unknown = s.continents.filter(x => !c.knownContinentIds.includes(x.id));
-  if (has(c, 'deep_sailing') && unknown.length)
+  if (knows(c, 'deep_sailing') && unknown.length)
     return discoverContinent(s, c, ch, r.pick(unknown), r);
   chartCoast(s, c, ch, r);
 }
@@ -278,7 +248,7 @@ export function discoverContinent(
     {
       personIds: [ch.id],
       continentIds: [con.id],
-      technologyIds: ['deep_sailing'],
+      breakthroughIds: ['deep_sailing'],
       tags: ['first contact', 'continent discovery'],
       worldChronicle: first,
     },

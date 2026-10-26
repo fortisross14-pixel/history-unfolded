@@ -5,28 +5,20 @@ import type {
   Province,
   Continent,
   Culture,
-  NaturalWonder,
   Civilization,
   WorldConfig,
   WorldState,
 } from '../types.ts';
-import {
-  ROOTS,
-  REAL_ROOTS,
-  REAL_CONTINENTS,
-  CONTINENT_NAMES,
-  NATURAL_POOL,
-  REALM_COLORS,
-  CONTINENT_TRAITS,
-} from './data.ts';
+import { ROOTS, REAL_ROOTS, REAL_CONTINENTS, CONTINENT_NAMES, REALM_COLORS } from './data.ts';
 import { chooseDatabase, uniqueProvinceName } from './naming.ts';
 import { RNG } from './rng.ts';
 import { neigh } from './util.ts';
 import { newRuler } from './dynasty.ts';
 import { rebuildIndex } from './lookup.ts';
 import { initialAxes } from './axes.ts';
-import { discover } from './technology.ts';
-import { historicalScore, captureEvolutionSnapshot } from './records.ts';
+import { captureEvolutionSnapshot } from './records.ts';
+import { startingDevelopment } from './economy.ts';
+import { learn } from './research.ts';
 
 export const dims = (s: MapSize) =>
   s === 'small'
@@ -101,72 +93,61 @@ export function terrainAt(
   };
 }
 
-export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
-  const r = new RNG(seed),
-    { w, h } = dims(cfg.mapSize),
-    provinces: Province[] = [],
-    usedProvinceNames = new Set<string>();
+/** Procedural continents on a hex grid: the "Fantasy world" map. */
+export function proceduralMap(cfg: WorldConfig, r: RNG) {
+  const { w, h } = dims(cfg.mapSize);
+  const provinces: Province[] = [];
+  const usedNames = new Set<string>();
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
-      const g = terrainAt(x, y, w, h, cfg.mapVariant, cfg.mapSize, r),
-        id = y * w + x;
+      const g = terrainAt(x, y, w, h, cfg.mapVariant, cfg.mapSize, r);
+      const id = y * w + x;
       provinces.push({
         id,
         name:
           g.terrain === 'ocean'
             ? `Ocean ${id + 1}`
-            : uniqueProvinceName(cfg.nameMode, id, r, usedProvinceNames),
+            : uniqueProvinceName(cfg.nameMode, id, r, usedNames),
         x,
         y,
         terrain: g.terrain,
         continentId: g.continent,
-        fertility:
-          g.terrain === 'plains'
-            ? r.int(60, 95)
-            : g.terrain === 'forest'
-              ? r.int(40, 75)
-              : g.terrain === 'ocean'
-                ? 0
-                : r.int(10, 45),
         ownerId: null,
-        population: g.terrain === 'ocean' ? 0 : r.int(120, 650),
-        gdp: g.terrain === 'ocean' ? 0 : r.int(1, 5),
+        development: startingDevelopment(g.terrain, r),
         cultureId: null,
         religionId: null,
         cityId: null,
-        naturalWonderId: null,
-        holySiteReligionIds: [],
       });
     }
   const ids = [
-      ...new Set(provinces.map(p => p.continentId).filter((x): x is number => x !== null)),
-    ],
-    continents: Continent[] = ids.map((id, i) => {
-      const trait = CONTINENT_TRAITS[i % CONTINENT_TRAITS.length];
-      return {
-        id,
-        name:
-          (chooseDatabase(cfg.nameMode, r) ? REAL_CONTINENTS : CONTINENT_NAMES)[id] ??
-          `Continent ${id + 1}`,
-        provinceIds: provinces.filter(p => p.continentId === id).map(p => p.id),
-        traitName: trait.name,
-        traitDescription: trait.description,
-        populationBonus: trait.populationBonus,
-        gdpBonus: trait.gdpBonus,
-        technologyBonus: trait.technologyBonus,
-        armyBonus: trait.armyBonus,
-        cultureBonus: trait.cultureBonus,
-      };
-    });
-  const s: WorldState = {
+    ...new Set(provinces.map(p => p.continentId).filter((x): x is number => x !== null)),
+  ];
+  const continents: Continent[] = ids.map(id => ({
+    id,
+    name:
+      (chooseDatabase(cfg.nameMode, r) ? REAL_CONTINENTS : CONTINENT_NAMES)[id] ??
+      `Continent ${id + 1}`,
+    provinceIds: provinces.filter(p => p.continentId === id).map(p => p.id),
+  }));
+  return { width: w, height: h, provinces, continents };
+}
+
+/** An empty world around a map: no realms yet. */
+export function emptyWorld(
+  cfg: WorldConfig,
+  seed: number,
+  year: number,
+  map: { width: number; height: number; provinces: Province[]; continents: Continent[] },
+): WorldState {
+  return {
     version: SAVE_VERSION,
     seed,
-    year: -3000,
+    year,
     config: cfg,
-    width: w,
-    height: h,
-    provinces,
-    continents,
+    width: map.width,
+    height: map.height,
+    provinces: map.provinces,
+    continents: map.continents,
     civilizations: [],
     cities: [],
     tradeRoutes: [],
@@ -179,15 +160,11 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
     dynasties: [],
     wars: [],
     moments: [],
-    artworks: [],
     wonders: [],
-    naturalWonders: [],
     relations: [],
     events: [],
-    realmEvents: [],
     evolutionSnapshots: [],
     hallOfFame: [],
-    usedHistoricalNames: [],
     nextIds: {
       civ: 1,
       city: 1,
@@ -202,120 +179,132 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
       dynasty: 1,
       war: 1,
       moment: 1,
-      artwork: 1,
       wonder: 1,
-      naturalWonder: 1,
       relation: 1,
-      realmEvent: 1,
       hallOfFame: 1,
     },
   };
-  const land = provinces.filter(p => p.terrain !== 'ocean');
-  for (const def of NATURAL_POOL.slice(
-    0,
-    Math.min(NATURAL_POOL.length, Math.max(3, continents.length * 2)),
-  )) {
-    const free = land.filter(p => p.naturalWonderId === null);
-    if (!free.length) break;
-    const p = r.pick(free),
-      nw: NaturalWonder = {
-        id: s.nextIds.naturalWonder++,
-        name: def[0],
-        provinceId: p.id,
-        effect: def[1],
-        gdpBonus: def[2],
-        armyBonus: def[3],
-        cultureBonus: def[4],
-        prestigeBonus: def[5],
-      };
-    s.naturalWonders.push(nw);
-    p.naturalWonderId = nw.id;
+}
+
+export interface NewRealm {
+  name: string;
+  root: string;
+  color: string;
+  provinceIds: number[];
+  cultureId?: number;
+  cultureName?: string;
+  axes?: Civilization['axes'];
+}
+
+/** Adds a realm (and, if needed, its culture) with a founding ruler. */
+export function foundRealm(s: WorldState, o: NewRealm, r: RNG): Civilization {
+  let cultureId = o.cultureId;
+  if (cultureId === undefined) {
+    const culture: Culture = {
+      id: s.nextIds.culture++,
+      name: o.cultureName ?? `${o.root} Culture`,
+      color: o.color,
+      founded: s.year,
+      originRealmId: s.nextIds.civ,
+      strength: 0,
+      provinces: o.provinceIds.length,
+    };
+    s.cultures.push(culture);
+    cultureId = culture.id;
   }
+  const home = s.provinces[o.provinceIds[0]];
+  const civ: Civilization = {
+    id: s.nextIds.civ++,
+    name: o.name,
+    originTribe: o.root,
+    color: o.color,
+    rank: 'Tribe',
+    founded: s.year,
+    government: 'Chiefdom',
+    capitalCityId: 0,
+    cultureId,
+    faithId: null,
+    provinces: [...o.provinceIds],
+    cityIds: [],
+    development: 0,
+    wealth: 0,
+    manpower: 0,
+    influence: 0,
+    armySize: r.int(15, 55),
+    armyCapacity: 0,
+    navy: 0,
+    navyCapacity: 0,
+    stability: r.int(45, 80),
+    research: 0,
+    era: 1,
+    breakthroughs: [],
+    knownContinentIds: home.continentId !== null ? [home.continentId] : [],
+    knownRealmIds: [],
+    continentExposure: {},
+    rulerId: 0,
+    heirId: 0,
+    regentId: 0,
+    dynastyId: null,
+    historyEventIds: [],
+    warIds: [],
+    axes:
+      o.axes ??
+      initialAxes(
+        r,
+        neigh(home, s).some(n => n.terrain === 'ocean'),
+      ),
+    power: 0,
+    governmentHistory: [{ government: 'Chiefdom', from: s.year, reason: 'Founding' }],
+    nameHistory: [{ name: o.name, rank: 'Tribe', from: s.year, reason: 'Founding' }],
+  };
+  for (const id of o.provinceIds) {
+    s.provinces[id].ownerId = civ.id;
+    s.provinces[id].cultureId = cultureId;
+  }
+  s.civilizations.push(civ);
+  rebuildIndex(s);
+  newRuler(s, civ, r, 'the founding of the realm', true);
+  return civ;
+}
+
+/** Realms on the same continent know each other from the start. */
+export function introduceNeighbours(s: WorldState) {
+  for (const c of s.civilizations) {
+    const home = s.provinces[c.provinces[0]].continentId;
+    c.knownRealmIds = s.civilizations
+      .filter(x => x.id !== c.id && s.provinces[x.provinces[0]].continentId === home)
+      .map(x => x.id);
+  }
+}
+
+/** A new procedural world in 3000 BCE: scattered tribes, one with farming per continent. */
+export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
+  const r = new RNG(seed);
+  const s = emptyWorld(cfg, seed, -3000, proceduralMap(cfg, r));
+  const land = s.provinces.filter(p => p.terrain !== 'ocean');
   for (let i = 0; i < Math.min(cfg.tribeCount, land.length); i++) {
     const free = land.filter(p => p.ownerId === null && neigh(p, s).every(n => n.ownerId === null));
     const home = r.pick(free.length ? free : land.filter(p => p.ownerId === null));
     if (!home) break;
     const rootPool = chooseDatabase(cfg.nameMode, r) ? REAL_ROOTS : ROOTS;
     const root = rootPool[i % rootPool.length] + (i >= rootPool.length ? i : '');
-    const culture = {
-      id: s.nextIds.culture++,
-      name: `${root} Culture`,
-      color: REALM_COLORS[i % REALM_COLORS.length],
-      population: home.population,
-      founded: s.year,
-      originRealmId: s.nextIds.civ,
-      strength: r.int(25, 55),
-      heritage: [],
-      artworkIds: [],
-      provinces: 1,
-    };
-    s.cultures.push(culture);
-    const civ: Civilization = {
-      id: s.nextIds.civ++,
-      name: `${root} Tribe`,
-      originTribe: root,
-      color: culture.color,
-      rank: 'Tribe',
-      founded: s.year,
-      government: 'Tribal Council',
-      capitalCityId: 0,
-      cultureId: culture.id,
-      faithId: null,
-      population: home.population,
-      urbanPopulation: 0,
-      ruralPopulation: home.population,
-      gdp: Math.max(0.1, home.gdp),
-      armySize: r.int(15, 55),
-      armyCapacity: 0,
-      technology: r.int(2, 8),
-      stability: r.int(45, 80),
-      prestige: r.int(2, 12),
-      provinces: [home.id],
-      cityIds: [],
-      knownTechnologies: [],
-      technologyProgress: {},
-      knownContinentIds: [home.continentId!],
-      knownRealmIds: [],
-      continentExposure: {},
-      technologyExposure: {},
-      rulerId: 0,
-      heirId: 0,
-      regentId: 0,
-      dynastyId: null,
-      historyEventIds: [],
-      warIds: [],
-      axes: initialAxes(
-        r,
-        neigh(home, s).some(n => n.terrain === 'ocean'),
-      ),
-      navy: 0,
-      navyCapacity: 0,
-      power: 0,
-      historicalScore: 0,
-      legacyScore: 0,
-      governmentHistory: [{ government: 'Tribal Council', from: s.year, reason: 'Founding' }],
-      nameHistory: [{ name: `${root} Tribe`, rank: 'Tribe', from: s.year, reason: 'Founding' }],
-    };
-    civ.armyCapacity = civ.armySize;
-    home.ownerId = civ.id;
-    home.cultureId = culture.id;
-    s.civilizations.push(civ);
-    rebuildIndex(s);
-    newRuler(s, civ, r, 'the founding of the tribe', true);
+    foundRealm(
+      s,
+      {
+        name: `${root} Tribe`,
+        root,
+        color: REALM_COLORS[i % REALM_COLORS.length],
+        provinceIds: [home.id],
+      },
+      r,
+    );
   }
-  for (const c of s.civilizations)
-    c.knownRealmIds = s.civilizations
-      .filter(
-        x =>
-          x.id !== c.id &&
-          s.provinces[x.provinces[0]].continentId === s.provinces[c.provinces[0]].continentId,
-      )
-      .map(x => x.id);
+  introduceNeighbours(s);
   for (const con of s.continents) {
     const candidates = s.civilizations.filter(
       c => s.provinces[c.provinces[0]].continentId === con.id,
     );
-    if (candidates.length) discover(s, r.pick(candidates), 'agriculture');
+    if (candidates.length) learn(s, r.pick(candidates), 'agriculture', 'founding');
   }
   captureEvolutionSnapshot(s);
   return s;

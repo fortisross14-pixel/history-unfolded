@@ -1,5 +1,5 @@
 import type { NameMode, Province, Dynasty, Civilization, WorldState } from '../types.ts';
-import { ROOTS, REAL_CITIES, CITY_SUFFIX, REAL_PROVINCES, FICTIONAL_PROVINCES } from './data.ts';
+import { REAL_CITIES, CITY_SUFFIX, REAL_PROVINCES, FICTIONAL_PROVINCES } from './data.ts';
 import { RNG } from './rng.ts';
 
 export const chooseDatabase = (mode: NameMode, r: RNG) =>

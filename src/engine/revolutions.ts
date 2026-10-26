@@ -1,6 +1,6 @@
-import type { AxisKey, Civilization, Moment, TechnologyId, WorldState } from '../types.ts';
+import type { AxisKey, BreakthroughId, Civilization, Moment, WorldState } from '../types.ts';
 import { RNG } from './rng.ts';
-import { has } from './util.ts';
+import { knows } from './eras.ts';
 import { idx, courtOf } from './lookup.ts';
 import { endMoment, momentEvent, momentSlotFree, startMoment } from './moments.ts';
 import { isGreatPower } from './power.ts';
@@ -18,7 +18,7 @@ interface WaveDef {
   title: string;
   from: number;
   to: number;
-  requires?: TechnologyId;
+  requires?: BreakthroughId;
   years: number;
   /** How suitable a realm is as the starting point (0 = never). */
   origin: (c: Civilization) => number;
@@ -127,7 +127,7 @@ export function maybeStartRevolution(s: WorldState, r: RNG) {
     const late = s.year > (def.from + def.to) / 2;
     if (!momentSlotFree(s) || !r.chance(late ? 0.05 : 0.01)) continue;
     const candidates = s.civilizations
-      .filter(c => c.provinces.length && (!def.requires || has(c, def.requires)))
+      .filter(c => c.provinces.length && (!def.requires || knows(c, def.requires)))
       .map(c => ({ c, score: def.origin(c) }))
       .filter(x => x.score > 0)
       .sort((a, b) => b.score - a.score);
@@ -158,7 +158,7 @@ export function tickRevolution(
   const def = waveOf(m);
   if (!def) return endMoment(s, m, 'The movement faded.');
   const reached = new Set(m.realmIds);
-  const printing = (c: Civilization) => (has(c, 'printing') ? 1.5 : 1);
+  const printing = (c: Civilization) => (knows(c, 'printing') ? 1.5 : 1);
   for (const c of s.civilizations) {
     if (!c.provinces.length || reached.has(c.id)) continue;
     const touching = (neighborsOf.get(c.id) ?? []).some(n => reached.has(n.id));

@@ -3,13 +3,12 @@ import { createPortal } from 'react-dom';
 import {
   BookOpen,
   Clock3,
+  Crown,
   Globe2,
-  Landmark,
   Pause,
   Play,
   Radio,
   RotateCcw,
-  TrendingUp,
   Trophy,
   Users,
   X,
@@ -21,15 +20,14 @@ import {
   displayYear,
   eraName,
 } from './engine/index.ts';
-import type { Moment, WorldState } from './types.ts';
+import type { Moment, RenameKind, WorldState } from './types.ts';
 import { type View, type MapMode, type Sel } from './ui/shared.tsx';
 import { loadSlots, persist } from './ui/storage.ts';
 import { Title } from './ui/TitleScreen.tsx';
 import { World } from './ui/WorldView.tsx';
-import { Evolution } from './ui/Evolution.tsx';
-import { HallOfFame } from './ui/HallOfFame.tsx';
 import { Chronicle } from './ui/Chronicle.tsx';
-import { Almanac } from './ui/Almanac.tsx';
+import { Records } from './ui/Records.tsx';
+import { RealmPage } from './ui/RealmPage.tsx';
 import { Drawer } from './ui/Drawer.tsx';
 import { Characters } from './ui/Characters.tsx';
 import { renameEntity } from './engine/rename.ts';
@@ -85,7 +83,8 @@ export function Game({
   save: (w: WorldState) => void;
   exit: () => void;
 }) {
-  const [view, setView] = useState<View>('world'),
+  const [view, setView] = useState<View>('map'),
+    [realmId, setRealmId] = useState<number | null>(null),
     [mode, setMode] = useState<MapMode>('political'),
     [sel, setSel] = useState<Sel>(null);
   const [pauseOnMoments, setPauseOnMoments] = useState(readPausePref);
@@ -115,17 +114,26 @@ export function Game({
     return () => clearTimeout(t);
   }, [live, world]);
   const navItems: [View, typeof Globe2, string][] = [
-    ['world', Globe2, 'World'],
+    ['map', Globe2, 'Map'],
+    ['realm', Crown, 'Realm'],
     ['characters', Users, 'Characters'],
     ['chronicle', BookOpen, 'Chronicle'],
-    ['almanac', Landmark, 'Almanac'],
-    ['evolution', TrendingUp, 'Evolution'],
-    ['hall', Trophy, 'Hall of Fame'],
+    ['records', Trophy, 'Records'],
   ];
+  // Realms open as a full page; everything else opens in the side panel.
+  const open = (s: Sel) => {
+    if (s?.type === 'realm') {
+      setRealmId(s.id);
+      setView('realm');
+      setSel(null);
+    } else setSel(s);
+  };
+  const rename = (kind: RenameKind, id: number, name: string) =>
+    save(renameEntity(world, kind, id, name));
   return (
     <div className="app">
       <header>
-        <button className="logo" onClick={() => setView('world')}>
+        <button className="logo" onClick={() => setView('map')}>
           <Globe2 />
           <span>HISTORY UNFOLDED</span>
         </button>
@@ -147,7 +155,11 @@ export function Game({
           <Clock3 />
           <span>
             <strong>{displayYear(world.year)}</strong>
-            <small>{eraName(world.year)}</small>
+            <small>
+              {eraName(
+                Math.max(1, ...world.civilizations.filter(c => c.provinces.length).map(c => c.era)),
+              )}
+            </small>
           </span>
         </div>
         {live && watched ? (
@@ -201,12 +213,19 @@ export function Game({
           </div>
         </div>
       )}
-      {view === 'world' && <World world={world} mode={mode} setMode={setMode} open={setSel} />}{' '}
-      {view === 'characters' && <Characters world={world} open={setSel} />}
-      {view === 'chronicle' && <Chronicle world={world} open={setSel} />}{' '}
-      {view === 'almanac' && <Almanac world={world} open={setSel} />}{' '}
-      {view === 'evolution' && <Evolution world={world} open={setSel} />}{' '}
-      {view === 'hall' && <HallOfFame world={world} open={setSel} />}{' '}
+      {view === 'map' && <World world={world} mode={mode} setMode={setMode} open={open} />}
+      {view === 'realm' && (
+        <RealmPage
+          world={world}
+          realmId={realmId}
+          setRealm={setRealmId}
+          open={open}
+          rename={rename}
+        />
+      )}
+      {view === 'characters' && <Characters world={world} open={open} />}
+      {view === 'chronicle' && <Chronicle world={world} open={open} />}
+      {view === 'records' && <Records world={world} open={open} />}
       {sel &&
         createPortal(
           <Drawer
@@ -214,8 +233,8 @@ export function Game({
             world={world}
             sel={sel}
             close={() => setSel(null)}
-            open={setSel}
-            rename={(kind, id, name) => save(renameEntity(world, kind, id, name))}
+            open={open}
+            rename={rename}
           />,
           document.body,
         )}

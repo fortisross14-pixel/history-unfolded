@@ -1,10 +1,11 @@
-import type { Character, Rarity, Reign, TraitId, WorldState } from '../types.ts';
+import type { Character, Rarity, TraitId, WorldState } from '../types.ts';
+import { economyFromV4 } from './migrate-v5.ts';
 
 /**
  * Save schema version. Bump it whenever WorldState changes shape and add a
  * migration below that upgrades a world from the previous version.
  */
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 type Migration = (world: any) => any;
 
@@ -89,7 +90,8 @@ function charactersFromV1(w: any) {
   // Ruler records get fresh ids after the great people.
   const rulerIdMap = new Map<number, number>();
   let nextId = w.nextIds.person ?? characters.length + 1;
-  const reigns: Reign[] = [];
+  // Old reign records; the v4 → v5 migration renames their fields.
+  const reigns: any[] = [];
   const currentRulers = new Set((w.civilizations ?? []).map((c: any) => c.rulerId));
   for (const r of w.rulers ?? []) {
     const id = nextId++;
@@ -314,6 +316,7 @@ const migrations: Record<number, Migration> = {
   1: charactersFromV1,
   2: personalityFromV2,
   3: momentsFromV3,
+  4: economyFromV4,
 };
 
 /**

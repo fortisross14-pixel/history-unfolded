@@ -1,203 +1,185 @@
-import type {
-  TechnologyId,
-  BuildingType,
-  BuildingRarity,
-  City,
-  TradeRoute,
-  Character,
-  Civilization,
-  WorldState,
-} from '../types.ts';
+import type { Character, City, Civilization, Province, TradeRoute, WorldState } from '../types.ts';
 import { RNG } from './rng.ts';
 import { addEvent } from './events.ts';
-import { addDeed } from './characters.ts';
-import { level } from './culture.ts';
+import { addDeed, level } from './characters.ts';
+import { idx } from './lookup.ts';
+import { neigh } from './util.ts';
+import { buildingTotal } from './buildings.ts';
+import type { ModTotals } from './modifiers.ts';
 
-export const BUILDINGS: {
-  type: BuildingType;
-  tech: number;
-  requires?: TechnologyId;
-  coastal?: boolean;
-  g: number;
-  a: number;
-  s: number;
-  c: number;
-}[] = [
-  { type: 'Granary', tech: 20, g: 0.01, a: 0, s: 0, c: 0 },
-  { type: 'Road Network', tech: 25, g: 0.015, a: 0.01, s: 0, c: 0 },
-  { type: 'Workshop', tech: 35, g: 0.015, a: 0, s: 0.01, c: 0 },
-  { type: 'Forge', tech: 70, requires: 'bronze', g: 0.01, a: 0.025, s: 0.01, c: 0 },
-  { type: 'Aqueduct', tech: 130, g: 0.015, a: 0, s: 0.01, c: 0.01 },
-  { type: 'Observatory', tech: 260, g: 0, a: 0, s: 0.06, c: 0.02 },
-  {
-    type: 'Shipyard',
-    tech: 180,
-    requires: 'deep_sailing',
-    coastal: true,
-    g: 0.025,
-    a: 0.035,
-    s: 0.01,
-    c: 0,
-  },
-  { type: 'Courthouse', tech: 160, g: 0.02, a: 0.005, s: 0, c: 0.01 },
-  { type: 'Shrine', tech: 15, g: 0, a: 0, s: 0, c: 0.02 },
-  { type: 'Temple', tech: 70, g: 0.005, a: 0, s: 0.005, c: 0.04 },
-  { type: 'Monastery', tech: 170, requires: 'writing', g: 0.005, a: 0, s: 0.025, c: 0.05 },
-  { type: 'Cathedral', tech: 320, g: 0.01, a: 0, s: 0.01, c: 0.08 },
-  { type: 'Trading Post', tech: 30, g: 0.02, a: 0, s: 0, c: 0 },
-  { type: 'Market', tech: 80, requires: 'money', g: 0.04, a: 0, s: 0, c: 0 },
-  {
-    type: 'Harbor',
-    tech: 100,
-    requires: 'deep_sailing',
-    coastal: true,
-    g: 0.05,
-    a: 0.01,
-    s: 0,
-    c: 0,
-  },
-  { type: 'Barracks', tech: 60, g: 0, a: 0.05, s: 0, c: 0 },
-  { type: 'Fortifications', tech: 120, g: 0, a: 0.04, s: 0, c: 0 },
-  { type: 'Library', tech: 100, requires: 'writing', g: 0, a: 0, s: 0.04, c: 0.03 },
-  { type: 'University', tech: 300, g: 0, a: 0, s: 0.08, c: 0.04 },
-  { type: 'Merchant Guild', tech: 180, requires: 'money', g: 0.06, a: 0, s: 0, c: 0 },
-  { type: 'Bank', tech: 420, requires: 'money', g: 0.08, a: 0, s: 0, c: 0 },
-  { type: 'Stock Exchange', tech: 600, requires: 'money', g: 0.12, a: 0, s: 0, c: 0 },
-  { type: 'Military Academy', tech: 350, g: 0, a: 0.09, s: 0.02, c: 0 },
-  { type: 'Printing House', tech: 450, requires: 'printing', g: 0.01, a: 0, s: 0.05, c: 0.08 },
-  { type: 'Hospital', tech: 600, g: 0.02, a: 0, s: 0.02, c: 0 },
-  { type: 'Artist Workshop', tech: 80, g: 0.01, a: 0, s: 0, c: 0.04 },
-  { type: 'Theater', tech: 250, g: 0.02, a: 0, s: 0, c: 0.08 },
-];
+// ---- Development -----------------------------------------------------------------
 
-export const BUILDING_RARITIES: BuildingRarity[] = [
-  'Common',
-  'Uncommon',
-  'Rare',
-  'Epic',
-  'Legendary',
-];
-
-/** Builder rarity sets the starting quality; Patron characters build one tier finer. */
-export const buildingLevel = (p?: Character): 1 | 2 | 3 | 4 | 5 =>
-  p ? (Math.min(5, level(p) + (p.traits.includes('Patron') ? 1 : 0)) as 1 | 2 | 3 | 4 | 5) : 1;
-
-export const buildingMultiplier = (level: number, seed: number) => {
-  const ranges = [
-    [0.7, 0.95],
-    [1.1, 1.5],
-    [1.7, 2.2],
-    [2.8, 3.5],
-    [5.5, 7.0],
-  ];
-  const [lo, hi] = ranges[level - 1];
-  const noise = ((seed * 9301 + 49297) % 233280) / 233280;
-  return lo + (hi - lo) * noise;
+/** How developed each kind of land can become in the first era. */
+const TERRAIN_DEV: Record<string, number> = {
+  plains: 6,
+  forest: 4,
+  desert: 2,
+  mountain: 2,
+  tundra: 1.5,
+  ocean: 0,
 };
 
-export function applyBuildingStats(
-  b: any,
-  def = BUILDINGS.find(x => x.type === b.type) ?? BUILDINGS[0],
-) {
-  const m = buildingMultiplier(b.level, b.id + b.lastUpgradedYear);
-  b.rarity = BUILDING_RARITIES[b.level - 1];
-  b.gdpBonus = def.g * m;
-  b.armyBonus = def.a * m;
-  b.scienceBonus = def.s * m;
-  b.cultureBonus = def.c * m;
-  b.impact = Math.round((b.gdpBonus + b.armyBonus + b.scienceBonus + b.cultureBonus) * 1000);
+export const startingDevelopment = (terrain: string, r: RNG) =>
+  terrain === 'ocean'
+    ? 0
+    : Math.max(1, Math.round((TERRAIN_DEV[terrain] ?? 2) * (0.35 + r.next() * 0.3)));
+
+/** The most development a province can reach in this era; cities and granaries raise it. */
+export function developmentCap(s: WorldState, p: Province, era: number) {
+  const city = p.cityId ? idx(s).city.get(p.cityId) : undefined;
+  const base = (TERRAIN_DEV[p.terrain] ?? 2) * (1 + 0.5 * (era - 1));
+  const urban = city ? 3 + era * 1.5 + buildingTotal(city.buildings, 'devCap') : 0;
+  return base + urban;
 }
 
-export function build(
-  s: WorldState,
-  c: Civilization,
-  city: City,
-  def = BUILDINGS[0],
-  p?: Character,
-) {
-  const existing = city.buildings.find(x => x.type === def.type);
-  if (existing) {
-    const from = existing.rarity;
-    const next = Math.min(5, existing.level + buildingLevel(p)) as 1 | 2 | 3 | 4 | 5;
-    if (next === existing.level) return;
-    existing.level = next;
-    existing.lastUpgradedYear = s.year;
-    existing.lastBuilderId = p?.id;
-    existing.upgradeHistory.push({
-      year: s.year,
-      characterId: p?.id,
-      from,
-      to: BUILDING_RARITIES[next - 1],
-    });
-    applyBuildingStats(existing, def);
-    if (p) {
-      if (next >= 3) addDeed(s, p, `Raised ${existing.name} to ${existing.rarity}`, next);
-    }
-    addEvent(
-      s,
-      'city',
-      `${existing.name} reaches ${existing.rarity}`,
-      `${p?.name ?? c.name} upgraded ${existing.name} in ${city.name} from ${from} to ${existing.rarity}.`,
-      6,
-      [c.id],
-      {
-        personIds: p ? [p.id] : [],
-        cityIds: [city.id],
-        tags: ['building upgrade', def.type, existing.rarity],
-      },
-    );
-    return;
+/** Owned provinces grow toward their cap; stable, growing realms grow faster. */
+export function growDevelopment(s: WorldState, c: Civilization, mods: ModTotals) {
+  const pace = 0.006 * (0.5 + c.stability / 100) * Math.max(0.2, 1 + mods.growth);
+  for (const id of c.provinces) {
+    const p = s.provinces[id];
+    const cap = developmentCap(s, p, c.era);
+    if (p.development < cap) p.development += (cap - p.development) * pace;
+    else p.development -= (p.development - cap) * 0.02;
   }
-  const level = buildingLevel(p),
-    b: any = {
-      id: s.nextIds.building++,
-      type: def.type,
-      name: `${city.name} ${def.type}`,
-      builtYear: s.year,
-      lastUpgradedYear: s.year,
-      builderId: p?.id,
-      lastBuilderId: p?.id,
-      realmIdAtConstruction: c.id,
-      rarity: BUILDING_RARITIES[level - 1],
-      level,
-      impact: 0,
-      gdpBonus: 0,
-      armyBonus: 0,
-      scienceBonus: 0,
-      cultureBonus: 0,
-      upgradeHistory: [{ year: s.year, characterId: p?.id, to: BUILDING_RARITIES[level - 1] }],
-    };
-  applyBuildingStats(b, def);
-  city.buildings.push(b);
-  if (p) {
-    if (level >= 3) addDeed(s, p, `Built the ${b.name}`, level);
+}
+
+/** Takes a share of development from a province (war, plague, disaster). */
+export function damageProvince(p: Province, share: number) {
+  p.development = Math.max(1, p.development * (1 - share));
+}
+
+// ---- Output -------------------------------------------------------------------------
+
+export interface Part {
+  label: string;
+  value: number;
+}
+
+/** Where a realm total comes from: base parts, then percentage modifiers. */
+export interface Breakdown {
+  base: Part[];
+  /** Percentage multiplier from modifiers (0.18 = +18%). */
+  bonus: number;
+  total: number;
+}
+
+export interface RealmOutput {
+  development: number;
+  wealth: Breakdown;
+  manpower: Breakdown;
+  influence: Breakdown;
+  research: Breakdown;
+}
+
+const isCoastal = (s: WorldState, p: Province) => neigh(p, s).some(n => n.terrain === 'ocean');
+
+/** One city's yearly wealth, manpower and influence from its development, buildings and trade. */
+export function cityOutput(s: WorldState, city: City) {
+  const p = s.provinces[city.provinceId];
+  const capital = city.isCapital ? 1.5 : 1;
+  const trade = city.tradeRouteIds.reduce(
+    (n, id) => n + (s.tradeRoutes.find(t => t.id === id && t.active)?.bonus ?? 0),
+    0,
+  );
+  city.wealth =
+    p.development * 0.8 * capital * (1 + buildingTotal(city.buildings, 'wealth') + trade);
+  city.manpower = p.development * 0.5 * (1 + buildingTotal(city.buildings, 'manpower'));
+  city.influence = p.development * 0.3 * capital * (1 + buildingTotal(city.buildings, 'influence'));
+}
+
+const sum = (parts: Part[]) => parts.reduce((n, x) => n + x.value, 0);
+
+function breakdown(base: Part[], bonus: number): Breakdown {
+  const kept = base.filter(x => Math.abs(x.value) >= 0.05);
+  return { base: kept, bonus, total: Math.max(0, sum(base) * Math.max(0.1, 1 + bonus)) };
+}
+
+/**
+ * Realm totals with their sources: cities (and their buildings), the
+ * countryside, then percentage modifiers from rulers, laws, breakthroughs.
+ */
+export function realmOutput(s: WorldState, c: Civilization, mods: ModTotals): RealmOutput {
+  const cities = c.cityIds.map(id => idx(s).city.get(id)).filter((x): x is City => !!x);
+  let ruralDev = 0;
+  let development = 0;
+  for (const id of c.provinces) {
+    const p = s.provinces[id];
+    development += p.development;
+    if (!p.cityId) ruralDev += p.development;
   }
-  addEvent(
-    s,
-    'city',
-    `${b.name} opens`,
-    `${p?.name ?? c.name} established a ${b.rarity.toLowerCase()} ${def.type.toLowerCase()} in ${city.name}.`,
-    5 + level,
-    [c.id],
-    { personIds: p ? [p.id] : [], cityIds: [city.id], tags: ['building', def.type, b.rarity] },
+  for (const city of cities) cityOutput(s, city);
+  const cityParts = (key: 'wealth' | 'manpower' | 'influence') =>
+    cities.map(x => ({ label: x.name, value: x[key] }));
+  const research =
+    1 + development / 40 + cities.reduce((n, x) => n + buildingTotal(x.buildings, 'research'), 0);
+  return {
+    development,
+    wealth: breakdown(
+      [...cityParts('wealth'), { label: 'Countryside', value: ruralDev * 0.25 }],
+      mods.wealth,
+    ),
+    manpower: breakdown(
+      [...cityParts('manpower'), { label: 'Countryside', value: ruralDev * 0.5 }],
+      mods.army,
+    ),
+    influence: breakdown(
+      [...cityParts('influence'), { label: 'Countryside', value: ruralDev * 0.05 }],
+      mods.influence,
+    ),
+    research: breakdown([{ label: 'Scholars of the realm', value: research }], mods.research),
+  };
+}
+
+/** Soldiers per point of manpower grow with the era; sea powers keep smaller armies. */
+export function armyCapacity(c: Civilization, manpower: number) {
+  return Math.round(manpower * 50 * (1 + c.era * 0.5) * (1.1 - c.axes.horizon / 500));
+}
+
+/** Ships come from coastal development, seafaring spirit and harbours. */
+export function navyCapacity(s: WorldState, c: Civilization, mods: ModTotals) {
+  let coastalDev = 0;
+  for (const id of c.provinces)
+    if (isCoastal(s, s.provinces[id])) coastalDev += s.provinces[id].development;
+  if (!coastalDev) return 0;
+  const harbors = c.cityIds.reduce(
+    (n, id) => n + buildingTotal(idx(s).city.get(id)?.buildings ?? [], 'navy'),
+    0,
+  );
+  return Math.round(
+    coastalDev * 6 * c.era * (c.axes.horizon / 100) ** 2 * Math.max(0.1, 1 + mods.navy + harbors),
   );
 }
 
+// ---- Trade ----------------------------------------------------------------------------
+
+/**
+ * A merchant links two cities, at home or in a friendly known realm. Each end
+ * city earns a share more wealth while the route lasts.
+ */
 export function createRoute(s: WorldState, c: Civilization, p: Character, r: RNG) {
-  if (c.cityIds.length < 2) return;
-  const cities = c.cityIds.map(id => s.cities.find(x => x.id === id)!).filter(Boolean);
-  const a = r.pick(cities),
-    b = r.pick(cities.filter(x => x.id !== a.id));
-  if (
-    !b ||
-    s.tradeRoutes.some(
+  const home = c.cityIds.map(id => idx(s).city.get(id)).filter((x): x is City => !!x);
+  if (!home.length) return;
+  const partners = c.knownRealmIds
+    .map(id => idx(s).civ.get(id))
+    .filter((x): x is Civilization => !!x && x.provinces.length > 0)
+    .filter(
       x =>
-        x.active &&
-        ((x.originCityId === a.id && x.destinationCityId === b.id) ||
-          (x.originCityId === b.id && x.destinationCityId === a.id)),
+        !s.wars.some(
+          w => w.active && w.participantIds.includes(x.id) && w.participantIds.includes(c.id),
+        ),
     )
-  )
-    return;
+    .flatMap(x => x.cityIds.map(id => idx(s).city.get(id)).filter((y): y is City => !!y));
+  const a = r.pick(home);
+  const pool = [...home.filter(x => x.id !== a.id), ...partners];
+  const b = pool.length ? r.pick(pool) : undefined;
+  if (!b) return;
+  const exists = s.tradeRoutes.some(
+    x =>
+      x.active &&
+      ((x.originCityId === a.id && x.destinationCityId === b.id) ||
+        (x.originCityId === b.id && x.destinationCityId === a.id)),
+  );
+  if (exists) return;
   const route: TradeRoute = {
     id: s.nextIds.route++,
     name: `${a.name}–${b.name} Route`,
@@ -205,7 +187,7 @@ export function createRoute(s: WorldState, c: Civilization, p: Character, r: RNG
     destinationCityId: b.id,
     founderId: p.id,
     createdYear: s.year,
-    gdpBonus: 0.04 + level(p) * 0.012,
+    bonus: 0.04 + level(p) * 0.02,
     active: true,
   };
   s.tradeRoutes.push(route);
@@ -216,9 +198,34 @@ export function createRoute(s: WorldState, c: Civilization, p: Character, r: RNG
     s,
     'economy',
     `${route.name} opens`,
-    `${p.name} linked ${a.name} and ${b.name}, increasing commerce across ${c.name}.`,
-    7,
+    `${p.name} linked ${a.name} and ${b.name}: both cities earn ${Math.round(route.bonus * 100)}% more wealth.`,
+    6,
     [c.id],
-    { personIds: [p.id], cityIds: [a.id, b.id], tags: ['trade route'] },
+    {
+      personIds: [p.id],
+      cityIds: [a.id, b.id],
+      tags: ['trade route'],
+    },
   );
+}
+
+/** Routes close when a city is lost to war between the two ends' owners. */
+export function closeBrokenRoutes(s: WorldState) {
+  const wars = s.wars.filter(w => w.active);
+  for (const t of s.tradeRoutes) {
+    if (!t.active) continue;
+    const a = idx(s).city.get(t.originCityId);
+    const b = idx(s).city.get(t.destinationCityId);
+    if (!a || !b) {
+      t.active = false;
+      continue;
+    }
+    const war = wars.some(
+      w =>
+        w.participantIds.includes(a.currentRealmId) &&
+        w.participantIds.includes(b.currentRealmId) &&
+        a.currentRealmId !== b.currentRealmId,
+    );
+    if (war) t.active = false;
+  }
 }

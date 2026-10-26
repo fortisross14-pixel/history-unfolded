@@ -13,7 +13,7 @@ export function updatePower(s: WorldState) {
   const forceOf = (c: Civilization) => c.armySize + c.navy * 0.6;
   for (const c of living) {
     land += c.provinces.length;
-    wealth += c.gdp;
+    wealth += c.wealth;
     force += forceOf(c);
   }
   for (const c of s.civilizations) {
@@ -23,7 +23,7 @@ export function updatePower(s: WorldState) {
     }
     const share =
       0.35 * (c.provinces.length / Math.max(1, land)) +
-      0.35 * (c.gdp / Math.max(1, wealth)) +
+      0.35 * (c.wealth / Math.max(1, wealth)) +
       0.3 * (forceOf(c) / Math.max(1, force));
     c.power = Math.round(share * 1000);
   }

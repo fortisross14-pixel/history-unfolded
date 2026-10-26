@@ -27,7 +27,6 @@ export function foundReligion(s: WorldState, c: Civilization, p: Character, r: R
     id: s.nextIds.religion++,
     name,
     color: `hsl(${r.int(0, 359)} 60% 58%)`,
-    followers: Math.max(40, Math.round(c.population * 0.35)),
     founded: s.year,
     founderId: p.id,
     holyProvinceIds: [holyProvince],
@@ -39,20 +38,17 @@ export function foundReligion(s: WorldState, c: Civilization, p: Character, r: R
       'Universal salvation',
     ]),
     expansion: r.int(35, 90),
-    loyalty: r.int(40, 95),
     tolerance: r.int(20, 85),
     schismIds: [],
     provinces: 1,
   };
   s.religions.push(rel);
-  s.provinces[holyProvince].holySiteReligionIds.push(rel.id);
   s.provinces[holyProvince].religionId = rel.id;
   c.faithId = rel.id;
   p.religionId = rel.id;
   addDeed(s, p, `Founded the faith of ${rel.name}`, 30);
   notifyAmbition(s, c.id, 'found-religion', `founded ${rel.name}`, undefined, p.id);
   earnNickname(s, p);
-  if (city) city.religiousImportance += 30;
   addEvent(
     s,
     'religion',
@@ -76,14 +72,13 @@ export function processOfficialConversion(s: WorldState, c: Civilization, r: RNG
   const totals = new Map<number, number>();
   let pagan = 0;
   for (const p of owned) {
-    if (p.religionId === null) pagan += p.population;
-    else totals.set(p.religionId, (totals.get(p.religionId) ?? 0) + p.population);
+    if (p.religionId === null) pagan += p.development;
+    else totals.set(p.religionId, (totals.get(p.religionId) ?? 0) + p.development);
   }
   const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1]);
   const candidate = ranked[0];
   if (candidate) {
-    const share = candidate[1] / Math.max(1, c.population),
-      currentShare = c.faithId ? (totals.get(c.faithId) ?? 0) / Math.max(1, c.population) : 0;
+    const share = candidate[1] / Math.max(1, c.development);
     const eraBonus = s.year >= 0 && s.year <= 1600 ? 0.1 : s.year > 1600 ? 0.025 : 0;
     if (
       candidate[0] !== c.faithId &&
@@ -110,7 +105,11 @@ export function processOfficialConversion(s: WorldState, c: Civilization, r: RNG
       );
     }
   }
-  if (s.year > 1600 && pagan / c.population < 0.35 && r.chance(0.0012 + (s.year - 1600) / 200000)) {
+  if (
+    s.year > 1600 &&
+    pagan / Math.max(1, c.development) < 0.35 &&
+    r.chance(0.0012 + (s.year - 1600) / 200000)
+  ) {
     const count = Math.max(1, Math.ceil(owned.length * 0.08));
     for (const p of [...owned].sort(() => r.next() - 0.5).slice(0, count)) p.religionId = null;
     addEvent(
@@ -139,13 +138,11 @@ export function schism(s: WorldState, c: Civilization, r: RNG): number | null {
     id: s.nextIds.religion++,
     name: `Reformed ${parent.name.replace(/^The /, '')}`,
     color: `hsl(${r.int(0, 359)} 55% 62%)`,
-    followers: 0,
     founded: s.year,
     founderId: prophet.id,
     holyProvinceIds: city ? [city.provinceId] : [],
     doctrine: 'Scripture for all, in the common tongue',
     expansion: Math.min(95, parent.expansion + 10),
-    loyalty: r.int(55, 90),
     tolerance: Math.max(10, parent.tolerance - 15),
     parentReligionId: parent.id,
     schismIds: [],

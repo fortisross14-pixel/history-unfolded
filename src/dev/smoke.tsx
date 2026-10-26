@@ -3,47 +3,47 @@ import type { ReactElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { advanceWorld, createWorld } from '../engine/index.ts';
 import type { WorldState } from '../types.ts';
-import type { Sel } from '../ui/shared.tsx';
+import type { MapMode, Sel } from '../ui/shared.tsx';
 import { World } from '../ui/WorldView.tsx';
 import { Characters } from '../ui/Characters.tsx';
 import { Chronicle } from '../ui/Chronicle.tsx';
-import { Almanac, AlmanacTable, type AlmanacTab } from '../ui/Almanac.tsx';
+import { Records } from '../ui/Records.tsx';
+import { ALMANAC_TABS, AlmanacTable } from '../ui/Almanac.tsx';
 import { Evolution } from '../ui/Evolution.tsx';
 import { HallOfFame } from '../ui/HallOfFame.tsx';
-import { Drawer, RealmDetail } from '../ui/Drawer.tsx';
+import { Drawer } from '../ui/Drawer.tsx';
+import { RealmPage } from '../ui/RealmPage.tsx';
+import { RealmCourt } from '../ui/RealmCourt.tsx';
+import { Diplomacy } from '../ui/NationalCharacter.tsx';
 
 const noop = () => {};
 
 function selections(w: WorldState): NonNullable<Sel>[] {
-  const firstIds = <T extends { id: number }>(list: T[], n = 3) => list.slice(-n).map(x => x.id);
+  const lastIds = <T extends { id: number }>(list: T[], n = 3) => list.slice(-n).map(x => x.id);
   const out: NonNullable<Sel>[] = [];
   const add = (type: NonNullable<Sel>['type'], ids: number[]) =>
     ids.forEach(id => out.push({ type, id }));
-  add('realm', firstIds(w.civilizations.filter(c => c.provinces.length)));
-  add('city', firstIds(w.cities));
-  add('continent', firstIds(w.continents));
+  add('city', lastIds(w.cities));
+  add('continent', lastIds(w.continents));
   add('character', [
-    ...firstIds(w.characters, 6),
+    ...lastIds(w.characters, 6),
     ...w.characters
       .filter(c => c.rarity === 'Generational')
       .map(c => c.id)
       .slice(0, 3),
   ]);
-  add('religion', firstIds(w.religions));
-  add('culture', firstIds(w.cultures));
-  add('dynasty', firstIds(w.dynasties));
-  add('war', firstIds(w.wars));
-  add('moment', firstIds(w.moments, 6));
-  add(
-    'war',
-    w.wars
+  add('religion', lastIds(w.religions));
+  add('culture', lastIds(w.cultures));
+  add('dynasty', lastIds(w.dynasties));
+  add('war', [
+    ...lastIds(w.wars),
+    ...w.wars
       .filter(x => x.great)
       .slice(-3)
       .map(x => x.id),
-  );
-  add('artwork', firstIds(w.artworks));
-  add('wonder', firstIds(w.wonders));
-  add('natural', firstIds(w.naturalWonders));
+  ]);
+  add('moment', lastIds(w.moments, 6));
+  add('wonder', lastIds(w.wonders));
   return out;
 }
 
@@ -56,55 +56,29 @@ export async function renderAll(years: number): Promise<string[]> {
     years,
   );
   const pages: [string, ReactElement][] = [
-    ['World', <World world={world} mode="political" setMode={noop} open={noop} />],
     ['Characters', <Characters world={world} open={noop} />],
     ['Chronicle', <Chronicle world={world} open={noop} />],
-    ['Almanac', <Almanac world={world} open={noop} />],
+    ['Records', <Records world={world} open={noop} />],
     ['Evolution', <Evolution world={world} open={noop} />],
     ['Hall of Fame', <HallOfFame world={world} open={noop} />],
   ];
-  const tabs: AlmanacTab[] = [
-    'realms',
-    'cities',
-    'buildings',
-    'continents',
-    'religions',
-    'cultures',
-    'reigns',
-    'dynasties',
-    'wars',
-    'technology',
-    'artworks',
-    'wonders',
-    'natural',
-    'routes',
-    'diplomacy',
-  ];
-  for (const tab of tabs)
-    pages.push([
-      `Almanac/${tab}`,
-      <AlmanacTable tab={tab} world={world} open={noop} realmFilter="all" />,
-    ]);
+  for (const mode of ['political', 'development', 'culture', 'religion', 'geography'] as MapMode[])
+    pages.push([`Map ${mode}`, <World world={world} mode={mode} setMode={noop} open={noop} />]);
+  for (const tab of ALMANAC_TABS)
+    pages.push([`Almanac/${tab}`, <AlmanacTable tab={tab} world={world} open={noop} />]);
   for (const sel of selections(world))
     pages.push([
       `Drawer ${sel.type} #${sel.id}`,
       <Drawer world={world} sel={sel} close={noop} open={noop} rename={noop} />,
     ]);
-  const realm = world.civilizations.find(c => c.provinces.length)!;
-  for (const tab of [
-    'summary',
-    'history',
-    'cities',
-    'court',
-    'diplomacy',
-    'military',
-    'culture',
-    'religion',
-    'economy',
-    'events',
-    'exploration',
-  ])
-    pages.push([`Realm tab ${tab}`, <RealmDetail c={realm} world={world} tab={tab} open={noop} />]);
+  for (const realm of world.civilizations.filter(c => c.provinces.length).slice(0, 4)) {
+    pages.push([
+      `Realm ${realm.id}`,
+      <RealmPage world={world} realmId={realm.id} setRealm={noop} open={noop} rename={noop} />,
+    ]);
+    pages.push([`Realm ${realm.id} court`, <RealmCourt c={realm} world={world} open={noop} />]);
+    pages.push([`Realm ${realm.id} diplomacy`, <Diplomacy c={realm} world={world} open={noop} />]);
+  }
   const failures: string[] = [];
   for (const [label, el] of pages) {
     try {

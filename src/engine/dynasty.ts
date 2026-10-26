@@ -40,12 +40,8 @@ export function createDynasty(s: WorldState, c: Civilization, r: RNG, wanted?: s
     marriedIntoIds: [],
     totalYearsInPower: 0,
     peakTerritory: c.provinces.length,
-    peakGDP: c.gdp,
-    peakPopulation: c.population,
-    warsWon: 0,
-    wonderIds: [],
+    peakWealth: c.wealth,
     status: 'ruling',
-    historicalRelevance: 1,
   };
   s.dynasties.push(d);
   idx(s).dynasty.set(d.id, d);
@@ -66,8 +62,8 @@ function regnalName(s: WorldState, first: string, d: Dynasty) {
 function reignScore(c: Civilization, reign: Reign) {
   const growth =
     Math.max(0, c.provinces.length - reign.startProvinces) * 3 +
-    Math.max(0, c.technology - reign.startTechnology) / 5 +
-    Math.max(0, (c.gdp / Math.max(0.1, reign.startGDP) - 1) * 30);
+    Math.max(0, c.breakthroughs.length - reign.startBreakthroughs) * 6 +
+    Math.max(0, (c.wealth / Math.max(0.1, reign.startWealth) - 1) * 30);
   return Math.min(100, Math.round(20 + growth));
 }
 
@@ -78,9 +74,9 @@ export function endReign(s: WorldState, c: Civilization, reason: string) {
   reign.end = s.year;
   reign.endReason = reason;
   reign.endProvinces = c.provinces.length;
-  reign.endTechnology = c.technology;
-  reign.endGDP = c.gdp;
-  reign.endPopulation = c.population;
+  reign.endBreakthroughs = c.breakthroughs.length;
+  reign.endWealth = c.wealth;
+  reign.endDevelopment = c.development;
   reign.score = reignScore(c, reign);
   const ruler = idx(s).char.get(reign.characterId);
   if (ruler) {
@@ -124,9 +120,9 @@ export function crown(
     start: s.year,
     government: c.government,
     startProvinces: c.provinces.length,
-    startTechnology: c.technology,
-    startGDP: c.gdp,
-    startPopulation: c.population,
+    startBreakthroughs: c.breakthroughs.length,
+    startWealth: c.wealth,
+    startDevelopment: c.development,
     score: 1,
   };
   s.reigns.push(reign);

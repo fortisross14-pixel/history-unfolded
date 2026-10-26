@@ -218,8 +218,6 @@ function annexVassal(s: WorldState, lord: Civilization, vassal: Civilization) {
       }
     }
   }
-  lord.population += vassal.population;
-  lord.gdp += vassal.gdp;
   vassal.provinces = [];
   vassal.cityIds = [];
   s.relations = s.relations.filter(x => !involves(x, vassal.id));

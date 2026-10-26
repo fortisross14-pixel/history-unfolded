@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { Globe2, Trash2, X } from 'lucide-react';
 import { displayYear } from '../engine/index.ts';
 import type { MapSize, NameMode, WorldConfig, SaveSlot } from '../types.ts';
-import { World } from './WorldView.tsx';
-import { Chronicle } from './Chronicle.tsx';
 
 export function Title({
   slots,

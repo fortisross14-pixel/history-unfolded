@@ -2122,3 +2122,82 @@ td button,
 .terms li {
   margin: 3px 0;
 }
+
+/* ---- Realm page (Phase 5) ---------------------------------------------- */
+.realm-page .rename-title {
+  margin: 4px 0;
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+  margin: 12px 0 18px;
+}
+.stat {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 10px 12px;
+}
+.stat[open] {
+  border-color: var(--line-strong);
+  grid-column: span 2;
+}
+.stat summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat summary::-webkit-details-marker {
+  display: none;
+}
+.stat summary small {
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+.stat summary strong {
+  font-size: 1.35rem;
+}
+.stat summary em {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
+}
+.stat-detail {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+  font-size: 0.85rem;
+}
+.stat-detail > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 0;
+}
+.stat-detail span {
+  color: var(--muted);
+}
+.stat-detail .stat-bonus {
+  margin-top: 4px;
+  border-top: 1px dashed var(--line);
+  padding-top: 4px;
+}
+.stat-detail .stat-bonus span {
+  color: #e8e5dc;
+}
+.stat-detail .stat-mod span {
+  padding-left: 10px;
+}
+.chips span[title] {
+  cursor: help;
+}
+@media (max-width: 600px) {
+  .stat[open] {
+    grid-column: auto;
+  }
+}

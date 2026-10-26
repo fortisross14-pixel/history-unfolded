@@ -43,6 +43,9 @@ export function surnameOf(s: WorldState, ch: Character) {
 
 export const age = (s: WorldState, ch: Character) => s.year - ch.born;
 
+/** 1 (Common) to 5 (Generational). */
+export const level = (ch: Character) => rarityRank(ch.rarity) + 1;
+
 /** "Alaric II the Great" style display name. */
 export const fullName = (ch: Character) => (ch.nickname ? `${ch.name} ${ch.nickname}` : ch.name);
 
@@ -51,7 +54,7 @@ export const fullName = (ch: Character) => (ch.nickname ? `${ch.name} ${ch.nickn
 export function rollRarity(s: WorldState, r: RNG, min?: Rarity): Rarity {
   const alive = idx(s).generationalAlive;
   // Make sure the world is rarely without a Generational talent, but never crowded.
-  const boost = alive === 0 ? 2.5 : 1;
+  const boost = alive === 0 ? 3 : 1;
   let q = r.next();
   let rarity: Rarity = 'Common';
   for (let i = RARITIES.length - 1; i >= 0; i--) {
@@ -148,7 +151,7 @@ export function pickAmbition(s: WorldState, ch: Character, c: Civilization, r: R
     type === 'expand'
       ? c.provinces.length
       : type === 'grow-wealth'
-        ? c.gdp
+        ? c.wealth
         : type === 'win-battles'
           ? ch.battlesWon
           : undefined;
@@ -328,7 +331,7 @@ export function checkAmbition(s: WorldState, ch: Character, c: Civilization) {
   if (!a || a.status !== 'pending') return;
   if (a.type === 'expand' && c.provinces.length >= (a.baseline ?? 0) + 6)
     achieveAmbition(s, ch, `${c.name} grew to ${c.provinces.length} provinces`);
-  else if (a.type === 'grow-wealth' && c.gdp >= (a.baseline ?? Infinity) * 1.6)
+  else if (a.type === 'grow-wealth' && c.wealth >= (a.baseline ?? Infinity) * 1.6)
     achieveAmbition(s, ch, `the treasury of ${c.name} grew by 60%`);
   else if (a.type === 'win-battles' && ch.battlesWon >= (a.baseline ?? 0) + 5)
     achieveAmbition(s, ch, `${ch.battlesWon} battles won`);

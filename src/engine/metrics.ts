@@ -1,5 +1,6 @@
 import type { WorldState } from '../types.ts';
 import { displayYear } from './util.ts';
+import { populationOf } from './eras.ts';
 
 /** Collects numbers that are only visible while the run is in progress. */
 export class RunTracker {
@@ -88,7 +89,7 @@ export function summarize(world: WorldState, tracker?: RunTracker): WorldMetrics
   return {
     year: world.year,
     livingRealms: alive.length,
-    population: alive.reduce((n, c) => n + c.population, 0),
+    population: alive.reduce((n, c) => n + populationOf(c.development, c.era), 0),
     wars: world.wars.length,
     greatWars: world.wars.filter(w => w.great).length,
     keyBattles: world.wars.reduce((n, w) => n + w.keyBattles.length, 0),

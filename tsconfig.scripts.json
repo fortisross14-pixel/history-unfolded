@@ -21,7 +21,8 @@
     "erasableSyntaxOnly": true,
     "types": [
       "node"
-    ]
+    ],
+    "noUnusedLocals": true
   },
   "include": [
     "scripts"

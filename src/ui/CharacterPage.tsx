@@ -30,25 +30,32 @@ function ReignCard({ reign, world }: { reign: Reign; world: WorldState }) {
   const live = reign.end === undefined && realm;
   const end = {
     provinces: reign.endProvinces ?? (live ? realm.provinces.length : reign.startProvinces),
-    gdp: reign.endGDP ?? (live ? realm.gdp : reign.startGDP),
-    tech: reign.endTechnology ?? (live ? realm.technology : reign.startTechnology),
-    pop: reign.endPopulation ?? (live ? realm.population : reign.startPopulation),
+    wealth: reign.endWealth ?? (live ? realm.wealth : reign.startWealth),
+    breakthroughs:
+      reign.endBreakthroughs ?? (live ? realm.breakthroughs.length : reign.startBreakthroughs),
+    development: reign.endDevelopment ?? (live ? realm.development : reign.startDevelopment),
   };
+  const delta = (a: number, b: number) => `${b - a >= 0 ? '+' : ''}${fmt(b - a)}`;
   const rows: [string, string, string, string][] = [
     [
       'Territory',
       fmt(reign.startProvinces),
       fmt(end.provinces),
-      `${end.provinces - reign.startProvinces >= 0 ? '+' : ''}${end.provinces - reign.startProvinces}`,
+      delta(reign.startProvinces, end.provinces),
     ],
-    ['Wealth', fmt(reign.startGDP, 1), fmt(end.gdp, 1), pct(reign.startGDP, end.gdp)],
+    ['Wealth', fmt(reign.startWealth, 1), fmt(end.wealth, 1), pct(reign.startWealth, end.wealth)],
     [
-      'Technology',
-      fmt(reign.startTechnology),
-      fmt(end.tech),
-      `+${fmt(end.tech - reign.startTechnology)}`,
+      'Breakthroughs',
+      fmt(reign.startBreakthroughs),
+      fmt(end.breakthroughs),
+      delta(reign.startBreakthroughs, end.breakthroughs),
     ],
-    ['Population', fmt(reign.startPopulation), fmt(end.pop), pct(reign.startPopulation, end.pop)],
+    [
+      'Development',
+      fmt(reign.startDevelopment),
+      fmt(end.development),
+      pct(reign.startDevelopment, end.development),
+    ],
   ];
   return (
     <div className="reign-card">

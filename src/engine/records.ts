@@ -1,45 +1,22 @@
-import type { War, Civilization, WorldState } from '../types.ts';
+import type { Civilization, WorldState } from '../types.ts';
 import { idx } from './lookup.ts';
 import { fullName } from './characters.ts';
 
-/** Legacy score: everything a realm has achieved so far. It only grows. */
-export function historicalScore(s: WorldState, c: Civilization) {
-  const x = idx(s).legacy.get(c.id) ?? { arts: 0, wonders: 0, wins: 0, cities: 0, faiths: 0 };
-  const tech = c.knownTechnologies.length * 18;
-  const wonders = x.wonders * 30;
-  const wars = x.wins * 12;
-  const arts = x.arts;
-  const legacy = x.cities * 5 + x.faiths * 35;
-  return Math.round(
-    c.prestige +
-      c.provinces.length * 2 +
-      Math.log10(Math.max(10, c.population)) * 10 +
-      tech +
-      wonders +
-      wars +
-      arts +
-      legacy,
-  );
-}
-
-export function militaryEvolutionScore(s: WorldState, c: Civilization) {
+/** Military record: wars won and lost (Great Wars count double) plus armed forces. */
+export function militaryScore(s: WorldState, c: Civilization) {
   const wars = s.wars.filter(
     w => w.type !== 'Civil War' && w.participantIds.includes(c.id) && !w.active,
   );
-  const wins = wars.filter(w => w.winnerIds.includes(c.id)).length,
-    losses = wars.filter(w => w.loserIds.includes(c.id)).length;
-  // Great Wars count double: they are the wars history remembers.
-  const greatWins = wars.filter(w => w.great && w.winnerIds.includes(c.id)).length;
-  const greatLosses = wars.filter(w => w.great && w.loserIds.includes(c.id)).length;
-  return Math.round(
-    (wins - losses) * 45 +
-      (greatWins - greatLosses) * 45 +
-      Math.log10(Math.max(10, c.armySize + c.navy)) * 12,
-  );
+  let score = 0;
+  for (const w of wars) {
+    const weight = w.great ? 90 : 45;
+    if (w.winnerIds.includes(c.id)) score += weight;
+    else if (w.loserIds.includes(c.id)) score -= weight;
+  }
+  return Math.round(score + Math.log10(Math.max(10, c.armySize + c.navy)) * 12);
 }
 
 export function addHallEntry(s: WorldState, entry: Omit<WorldState['hallOfFame'][number], 'id'>) {
-  s.hallOfFame ??= [];
   const same = s.hallOfFame.find(
     e =>
       e.category === entry.category &&
@@ -54,31 +31,32 @@ export function addHallEntry(s: WorldState, entry: Omit<WorldState['hallOfFame']
   s.hallOfFame = s.hallOfFame.sort((a, b) => b.score - a.score).slice(0, 100);
 }
 
+/** Once a century: the dominant realm and city, the most famous people, the costliest wars. */
 export function updateHallOfFame(s: WorldState) {
-  const living = s.civilizations
-      .filter(c => c.provinces.length)
-      .sort((a, b) => b.historicalScore - a.historicalScore),
-    eraKey = `${Math.floor(s.year / 250) * 250}`;
-  if (living[0] && (!living[1] || living[0].historicalScore >= living[1].historicalScore * 1.12))
+  const living = s.civilizations.filter(c => c.provinces.length).sort((a, b) => b.power - a.power);
+  const eraKey = `${Math.floor(s.year / 250) * 250}`;
+  const [top, second] = living;
+  if (top && (!second || top.power >= second.power * 1.12))
     addHallEntry(s, {
       category: 'realm',
-      entityId: living[0].id,
-      name: living[0].name,
+      entityId: top.id,
+      name: top.name,
       year: s.year,
-      score: living[0].historicalScore,
-      subtitle: `Dominant realm · ${living[0].rank} · ${living[0].provinces.length} provinces`,
-      periodKey: `realm-${living[0].id}-${eraKey}`,
+      score: top.power,
+      subtitle: `Dominant power · ${(top.power / 10).toFixed(1)}% of the world · ${top.provinces.length} provinces`,
+      periodKey: `realm-${top.id}-${eraKey}`,
     });
-  const cities = [...s.cities].sort((a, b) => b.population - a.population);
-  if (cities[0] && (!cities[1] || cities[0].population >= cities[1].population * 1.12))
+  const cities = [...s.cities].filter(c => c.wealth > 0).sort((a, b) => b.wealth - a.wealth);
+  const [richest, runnerUp] = cities;
+  if (richest && (!runnerUp || richest.wealth >= runnerUp.wealth * 1.12))
     addHallEntry(s, {
       category: 'city',
-      entityId: cities[0].id,
-      name: cities[0].name,
+      entityId: richest.id,
+      name: richest.name,
       year: s.year,
-      score: cities[0].population,
-      subtitle: `World's leading city · ${cities[0].population.toLocaleString()} people`,
-      periodKey: `city-${cities[0].id}-${eraKey}`,
+      score: Math.round(richest.wealth),
+      subtitle: `The world's richest city · wealth ${Math.round(richest.wealth)}`,
+      periodKey: `city-${richest.id}-${eraKey}`,
     });
   const famous = s.characters
     .filter(ch => ch.fame >= 30)
@@ -94,8 +72,7 @@ export function updateHallOfFame(s: WorldState) {
       subtitle: `${ch.rarity} ${ch.role.toLowerCase()} of ${idx(s).civ.get(ch.realmId)?.name ?? 'a lost realm'}`,
       periodKey: `character-${ch.id}`,
     });
-  // The costliest Great Wars.
-  for (const w of s.wars.filter(x => x.great && !x.active && x.endYear === s.year))
+  for (const w of s.wars.filter(x => x.great && !x.active && (x.endYear ?? 0) > s.year - 100))
     addHallEntry(s, {
       category: 'war',
       entityId: w.id,
@@ -111,6 +88,7 @@ export function updateHallOfFame(s: WorldState) {
     });
 }
 
+/** Century snapshot of every living realm, for the evolution charts and records. */
 export function captureEvolutionSnapshot(s: WorldState) {
   const living = s.civilizations.filter(c => c.provinces.length);
   const realms = living.map(c => ({
@@ -120,21 +98,18 @@ export function captureEvolutionSnapshot(s: WorldState) {
     rank: c.rank,
     continentId: s.provinces[c.provinces[0]]?.continentId ?? 0,
     greatPower: c.power,
-    population: c.population,
-    gdp: c.gdp,
-    technology: c.technology,
-    military: militaryEvolutionScore(s, c),
+    development: c.development,
+    wealth: Math.round(c.wealth),
+    breakthroughs: c.breakthroughs.length,
+    military: militaryScore(s, c),
   }));
-  s.evolutionSnapshots ??= [];
   s.evolutionSnapshots.push({
     year: s.year,
     realms,
-    worldPopulation: living.reduce((n, c) => n + c.population, 0),
-    worldGDP: living.reduce((n, c) => n + c.gdp, 0),
-    averageTechnology: living.length
-      ? living.reduce((n, c) => n + c.technology, 0) / living.length
-      : 0,
+    worldDevelopment: living.reduce((n, c) => n + c.development, 0),
+    worldWealth: Math.round(living.reduce((n, c) => n + c.wealth, 0)),
   });
-  if (s.evolutionSnapshots.length > 80) s.evolutionSnapshots = s.evolutionSnapshots.slice(-80);
+  // Keep all fifty centuries of a full run.
+  if (s.evolutionSnapshots.length > 60) s.evolutionSnapshots = s.evolutionSnapshots.slice(-60);
   updateHallOfFame(s);
 }

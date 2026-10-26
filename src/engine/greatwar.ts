@@ -219,7 +219,7 @@ export function tickGreatWar(s: WorldState, m: Moment, r: RNG) {
     const supply = Math.max(0.55, 1 - distance(s, aCap, dCap) * 0.012);
     // Money: the richer side keeps its armies in the field longer.
     const money = (x: Civilization, y: Civilization) =>
-      0.9 + 0.2 * (x.gdp / Math.max(1, x.gdp + y.gdp));
+      0.9 + 0.2 * (x.wealth / Math.max(1, x.wealth + y.wealth));
     const wear = m.weariness ?? [0, 0];
     const sa = sideStrength(s, w, 'attacker') * supply * money(a, d) * (1 - wear[0] / 250);
     const sd = sideStrength(s, w, 'defender') * money(d, a) * (1 - wear[1] / 250);
@@ -301,9 +301,9 @@ function peace(s: WorldState, w: War, m: Moment, side: 'attacker' | 'defender' |
     label: 'gold',
     cost: 0.6,
     apply: () => {
-      const amount = payReparations(loser, winner, decisive ? 0.15 : 0.08);
-      w.gdpTransferred += amount;
-      return `${loser.name} paid ${amount.toFixed(1)} in gold`;
+      const amount = payReparations(s, loser, winner, decisive ? 0.15 : 0.08);
+      w.goldTransferred += amount;
+      return `${loser.name} paid ${amount.toFixed(0)} gold`;
     },
   };
   const vassal: Demand = {

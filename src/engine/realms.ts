@@ -1,14 +1,6 @@
-import type {
-  Rank,
-  GovernmentType,
-  Province,
-  City,
-  Character,
-  Civilization,
-  WorldState,
-} from '../types.ts';
+import type { Rank, Province, City, Character, Civilization, WorldState } from '../types.ts';
 import { RNG } from './rng.ts';
-import { neigh, cityLevel, recalcRealmFromProvinces } from './util.ts';
+import { neigh } from './util.ts';
 import { cityNameFor, politicalCoreName } from './naming.ts';
 import { addEvent } from './events.ts';
 import { createDynasty, crown, deposeRuler, newRuler } from './dynasty.ts';
@@ -16,52 +8,18 @@ import { addDeed, fullName } from './characters.ts';
 import { idx } from './lookup.ts';
 import { addRelation } from './diplomacy.ts';
 import { launchWar, newWar } from './war.ts';
-import { historicalScore } from './records.ts';
+import { changeGovernment } from './government.ts';
+import { knows } from './eras.ts';
 
+/** A realm's rank follows its size; only three empires may share a continent. */
 export const rankFor = (c: Civilization, continentLand: number, existingEmpires: number): Rank => {
   const share = c.provinces.length / Math.max(1, continentLand);
   if (c.provinces.length >= 28 && share >= 0.12 && existingEmpires < 3) return 'Empire';
   if (c.provinces.length >= 18) return 'Kingdom';
   if (c.provinces.length >= 8) return 'Duchy';
-  if (c.provinces.length >= 4 && c.population >= 2200) return 'City-State';
+  if (c.provinces.length >= 4 && c.development >= 15) return 'City-State';
   if (c.provinces.length >= 2) return 'Settlement';
   return 'Tribe';
-};
-
-/** The government a realm drifts toward, from its era, size and national character. */
-export const governmentFor = (c: Civilization, year: number): GovernmentType => {
-  const a = c.axes;
-  if (year >= 1800 && c.technology >= 650) {
-    if (a.order > 70) return 'Federation';
-    if (c.stability < 28) return 'Dictatorship';
-    if (c.stability > 72 && c.population > 250000)
-      return c.rank === 'Empire' ? 'Federation' : 'Democracy';
-    return 'Constitutional Monarchy';
-  }
-  if (year >= 1200 && c.technology >= 430) {
-    if (c.stability < 30) return 'Military Junta';
-    if (c.gdp > c.population / 350) return 'Merchant Republic';
-    return c.rank === 'Empire' ? 'Imperial Court' : 'Constitutional Monarchy';
-  }
-  // Strong national character overrides the usual path.
-  if (a.faith < 22 && c.faithId)
-    return c.rank === 'Kingdom' || c.rank === 'Empire' ? 'Religious Monarchy' : 'Theocracy';
-  if (a.economy > 72 && a.order > 50 && c.rank !== 'Empire') return 'Merchant Republic';
-  if (a.order > 78) return year < 0 ? 'Clan Confederation' : 'Oligarchy';
-  if (a.order < 22 && a.ambition > 60 && (c.rank === 'Kingdom' || c.rank === 'Empire'))
-    return c.rank === 'Empire' ? 'Imperial Court' : 'Absolute Monarchy';
-  if (c.rank === 'Tribe') return c.population > 20000 ? 'Chiefdom' : 'Tribal Council';
-  if (c.rank === 'Settlement') return c.stability > 60 ? 'Clan Confederation' : 'Chiefdom';
-  if (c.rank === 'City-State')
-    return c.gdp > c.population / 500
-      ? 'Merchant Republic'
-      : c.faithId
-        ? 'Sacred Kingship'
-        : 'Open Monarchy';
-  if (c.rank === 'Duchy')
-    return year < 500 ? 'Feudal Monarchy' : c.stability < 35 ? 'Military Junta' : 'Open Monarchy';
-  if (c.rank === 'Kingdom') return year < 1200 ? 'Feudal Monarchy' : 'Absolute Monarchy';
-  return c.stability < 28 ? 'Dictatorship' : 'Imperial Court';
 };
 
 export function createCity(s: WorldState, c: Civilization, p: Province, r: RNG, capital = false) {
@@ -76,24 +34,17 @@ export function createCity(s: WorldState, c: Civilization, p: Province, r: RNG, 
     foundedYear: s.year,
     founderRealmId: c.id,
     currentRealmId: c.id,
-    population: Math.max(
-      250,
-      Math.min(Math.round(c.population * 0.12), Math.round(p.population * 0.45)),
-    ),
-    prosperity: r.int(35, 65),
-    infrastructure: r.int(10, 25),
-    defense: r.int(5, 18),
-    culturalImportance: r.int(5, 20),
-    scientificImportance: r.int(2, 12),
-    religiousImportance: 0,
     isCapital: capital,
     buildings: [],
     ownershipHistory: [{ realmId: c.id, from: s.year }],
     tradeRouteIds: [],
     wonderIds: [],
-    artworkIds: [],
+    wealth: 0,
+    manpower: 0,
+    influence: 0,
   };
   s.cities.push(city);
+  idx(s).city.set(city.id, city);
   c.cityIds.push(city.id);
   p.cityId = city.id;
   if (capital) c.capitalCityId = city.id;
@@ -101,14 +52,19 @@ export function createCity(s: WorldState, c: Civilization, p: Province, r: RNG, 
     s,
     'city',
     `${city.name} is founded`,
-    `${c.name} founded ${city.name}, a new ${cityLevel(city.population).toLowerCase()} on ${s.continents[city.continentId].name}.`,
+    `${c.name} founded ${city.name} on ${s.continents[city.continentId]?.name ?? 'its lands'}.`,
     capital ? 7 : 4,
     [c.id],
-    { cityIds: [city.id], continentIds: [city.continentId], tags: ['city foundation'] },
+    {
+      cityIds: [city.id],
+      continentIds: [city.continentId],
+      tags: ['city foundation'],
+    },
   );
   return city;
 }
 
+/** Splits a realm in two along an east–west line and starts the war to reunite it. */
 export function triggerCivilWar(
   s: WorldState,
   c: Civilization,
@@ -117,26 +73,34 @@ export function triggerCivilWar(
 ) {
   if (c.provinces.length < 8 || s.wars.some(w => w.active && w.participantIds.includes(c.id)))
     return;
-  const core = politicalCoreName(c, s),
-    ordered = [...c.provinces].sort((a, b) => s.provinces[a].x - s.provinces[b].x);
+  const core = politicalCoreName(c, s);
+  const ordered = [...c.provinces].sort((a, b) => s.provinces[a].x - s.provinces[b].x);
   const rebelIds = ordered.slice(Math.floor(ordered.length * 0.52));
   if (rebelIds.length < 3) return;
-  const rebelPop = rebelIds.reduce((n, id) => n + s.provinces[id].population, 0),
-    share = rebelIds.length / c.provinces.length;
+  const share = rebelIds.length / c.provinces.length;
+  // The rebels take their name from their own chief city; the loyalists keep the old name.
+  const rebelSeat =
+    rebelIds.map(id => s.provinces[id]).find(p => p.cityId) ?? s.provinces[rebelIds[0]];
+  const seatName =
+    (rebelSeat.cityId ? idx(s).city.get(rebelSeat.cityId)?.name : undefined) ?? rebelSeat.name;
+  const taken = new Set(s.civilizations.filter(x => x.provinces.length).map(x => x.name));
+  const rebelName =
+    [
+      `Free ${seatName}`,
+      `Republic of ${seatName}`,
+      `Kingdom of ${seatName}`,
+      `${seatName} Rebels`,
+    ].find(n => !taken.has(n)) ?? `Free ${seatName}`;
   const rebel: Civilization = {
     ...structuredClone(c),
     id: s.nextIds.civ++,
-    name: share < 0.38 ? `Lesser ${core}` : `Eastern ${core}`,
-    successorIdentity: share < 0.38 ? `Lesser ${core}` : `Eastern ${core}`,
+    name: rebelName,
+    successorIdentity: rebelName,
     founded: s.year,
-    population: Math.max(1000, rebelPop),
-    urbanPopulation: 0,
-    ruralPopulation: Math.max(1000, rebelPop),
-    gdp: Math.max(0.5, c.gdp * share),
     armySize: Math.max(10, Math.round(c.armySize * share)),
-    armyCapacity: Math.max(10, Math.round(c.armyCapacity * share)),
+    navy: Math.round(c.navy * share),
     stability: 35,
-    prestige: Math.max(0, c.prestige * 0.35),
+    research: 0,
     provinces: rebelIds,
     cityIds: [],
     rulerId: 0,
@@ -145,52 +109,30 @@ export function triggerCivilWar(
     dynastyId: null,
     historyEventIds: [],
     warIds: [],
-    historicalScore: 0,
-    legacyScore: 0,
-    governmentHistory: [
-      {
-        government: r.pick<GovernmentType>([
-          'Republic',
-          'Military Junta',
-          'Open Monarchy',
-          'Dictatorship',
-        ]),
-        from: s.year,
-        reason: 'Civil war',
-      },
-    ],
-    nameHistory: [
-      {
-        name: share < 0.38 ? `Lesser ${core}` : `Eastern ${core}`,
-        rank: c.rank,
-        from: s.year,
-        reason: 'Civil war secession',
-      },
-    ],
+    power: 0,
+    topSince: undefined,
+    // Rebels are the restless half of the nation.
+    axes: { ...c.axes, order: Math.min(100, c.axes.order + 10) },
+    governmentHistory: [{ government: c.government, from: s.year, reason: 'Civil war' }],
+    nameHistory: [{ name: rebelName, rank: c.rank, from: s.year, reason: 'Civil war secession' }],
   };
-  rebel.government = rebel.governmentHistory[0].government;
-  c.name = share < 0.38 ? `Greater ${core}` : `Western ${core}`;
-  c.successorIdentity = c.name;
-  c.nameHistory.push({ name: c.name, rank: c.rank, from: s.year, reason: 'Civil war division' });
   c.provinces = c.provinces.filter(id => !rebelIds.includes(id));
-  c.population = Math.max(1000, c.population - rebel.population);
-  c.gdp = Math.max(0.5, c.gdp - rebel.gdp);
   c.armySize = Math.max(1, c.armySize - rebel.armySize);
-  c.armyCapacity = Math.max(10, c.armyCapacity - rebel.armyCapacity);
+  c.navy = Math.max(0, c.navy - rebel.navy);
   c.stability = 28;
   for (const id of rebelIds) {
-    const pr = s.provinces[id];
-    pr.ownerId = rebel.id;
-    if (pr.cityId) {
-      const city = s.cities.find(x => x.id === pr.cityId)!;
-      city.currentRealmId = rebel.id;
-      rebel.cityIds.push(city.id);
-      c.cityIds = c.cityIds.filter(x => x !== city.id);
-    }
+    const p = s.provinces[id];
+    p.ownerId = rebel.id;
+    if (!p.cityId) continue;
+    const city = idx(s).city.get(p.cityId)!;
+    city.currentRealmId = rebel.id;
+    city.isCapital = false;
+    rebel.cityIds.push(city.id);
+    c.cityIds = c.cityIds.filter(x => x !== city.id);
   }
   rebel.capitalCityId = rebel.cityIds[0] ?? 0;
-  recalcRealmFromProvinces(s, c);
-  recalcRealmFromProvinces(s, rebel);
+  const newCapital = idx(s).city.get(rebel.capitalCityId);
+  if (newCapital) newCapital.isCapital = true;
   s.civilizations.push(rebel);
   idx(s).civ.set(rebel.id, rebel);
   const neighborIds = [
@@ -198,51 +140,53 @@ export function triggerCivilWar(
       c.provinces
         .flatMap(id => neigh(s.provinces[id], s))
         .map(p => p.ownerId)
-        .filter((id): id is number => !!id && id !== c.id),
+        .filter((id): id is number => !!id && id !== c.id && id !== rebel.id),
     ),
   ];
   const sponsor = neighborIds
-    .map(id => s.civilizations.find(x => x.id === id))
+    .map(id => idx(s).civ.get(id))
     .filter((x): x is Civilization => !!x && !!x.dynastyId)
     .sort((a, b) => sponsorScore(s, b) - sponsorScore(s, a))[0];
   const foreignBacked = !!sponsor && r.chance(0.28);
   if (foreignBacked) {
     rebel.dynastyId = sponsor!.dynastyId;
-    const dynasty = s.dynasties.find(d => d.id === rebel.dynastyId);
+    const dynasty = idx(s).dynasty.get(rebel.dynastyId!);
     if (dynasty && !dynasty.realmIds.includes(rebel.id)) dynasty.realmIds.push(rebel.id);
   }
   newRuler(
     s,
     rebel,
     r,
-    foreignBacked ? `foreign-backed dynastic intervention by ${sponsor!.name}` : 'civil war',
+    foreignBacked ? `foreign-backed intervention by ${sponsor!.name}` : 'civil war',
     !foreignBacked,
   );
+  const backers = foreignBacked
+    ? `, with the ${idx(s).dynasty.get(rebel.dynastyId!)?.name} backed by ${sponsor!.name}`
+    : '';
   const war = newWar(
     s,
     c,
     rebel,
     {
       type: 'Civil War',
-      rationale: `${cause === 'religious polarization' ? 'Religious polarization and mutual intolerance' : 'Political collapse'} divided ${core} between rival governments and dynasties${foreignBacked ? `, with the ${s.dynasties.find(d => d.id === rebel.dynastyId)?.name} backed by ${sponsor!.name}` : ''}.`,
+      rationale: `${cause === 'religious polarization' ? 'Religious hatred' : 'Political collapse'} divided ${core} between rival governments${backers}.`,
       goal: 'Defeat and reunify the rival successor state.',
     },
     `${core} Civil War`,
   );
   addRelation(s, 'Rival', c.id, rebel.id, 'Civil war');
-  // Rebels are the restless half of the nation.
-  rebel.axes = { ...c.axes, order: Math.min(100, c.axes.order + 10) };
-  rebel.navy = Math.round(c.navy * share);
-  rebel.power = 0;
-  c.navy = Math.max(0, c.navy - rebel.navy);
   addEvent(
     s,
     'politics',
     `${core} fractures in civil war`,
-    `${c.name} and ${rebel.name} fractured over ${cause}. ${foreignBacked ? `${sponsor!.name} backed the rebel dynasty. ` : ''}They began a war for reunification.`,
+    `${c.name} and ${rebel.name} split over ${cause}.${foreignBacked ? ` ${sponsor!.name} backed the rebels.` : ''}`,
     10,
     [c.id, rebel.id],
-    { warIds: [war.id], tags: ['civil war', 'realm split', 'dynasty'], worldChronicle: true },
+    {
+      warIds: [war.id],
+      tags: ['civil war', 'realm split'],
+      worldChronicle: true,
+    },
   );
   launchWar(s, war, r);
 }
@@ -261,30 +205,22 @@ function sponsorScore(s: WorldState, c: Civilization) {
 /** A statesman overthrows the government and takes power personally. */
 export function revolution(s: WorldState, c: Civilization, p: Character, r: RNG) {
   const old = c.government;
-  const choices: GovernmentType[] = p.traits.includes('Reformer')
-    ? ['Republic', 'Democracy', 'Dictatorship', 'Military Junta']
-    : ['Constitutional Monarchy', 'Republic', 'Federation', 'Open Monarchy'];
-  c.government = r.pick(choices.filter(x => x !== old));
-  c.governmentHistory.at(-1)!.to = s.year;
-  c.governmentHistory.push({
-    government: c.government,
-    from: s.year,
-    reason: `Revolution led by ${p.name}`,
-  });
-  const d = s.dynasties.find(x => x.id === c.dynastyId);
+  const next = c.era >= 5 ? 'Democracy' : 'Republic';
+  const d = c.dynastyId ? idx(s).dynasty.get(c.dynastyId) : undefined;
   deposeRuler(s, c, r, `overthrown by ${p.name}`);
   if (d) {
     d.status = 'deposed';
     d.endedYear = s.year;
   }
   c.dynastyId = null;
+  changeGovernment(s, c, next === old ? 'Republic' : next, `revolution led by ${p.name}`);
   addDeed(s, p, `Led the revolution that founded the ${c.government} of ${c.name}`, 25);
   c.stability = Math.max(25, c.stability + 20);
   addEvent(
     s,
     'politics',
     `${c.name} undergoes revolution`,
-    `${fullName(p)} overthrew the ${old} and established a ${c.government}, taking power personally.`,
+    `${fullName(p)} overthrew the ${old} and took power at the head of a ${c.government}.`,
     10,
     [c.id],
     {
@@ -299,9 +235,10 @@ export function revolution(s: WorldState, c: Civilization, p: Character, r: RNG)
   crown(s, c, p, r, 'revolution');
 }
 
-export function ensureModernGlobalContact(s: WorldState) {
-  if (s.year < 1900) return;
+/** Once anyone has powered flight, every surviving realm knows every other. */
+export function ensureGlobalContact(s: WorldState) {
   const living = s.civilizations.filter(c => c.provinces.length);
+  if (!living.some(c => knows(c, 'flight'))) return;
   const continentIds = s.continents.map(c => c.id);
   const realmIds = living.map(c => c.id);
   const incomplete = living.some(c => continentIds.some(id => !c.knownContinentIds.includes(id)));
@@ -314,13 +251,13 @@ export function ensureModernGlobalContact(s: WorldState) {
     s,
     'exploration',
     'The world becomes fully connected',
-    'By 1900 CE, navigation, diplomacy and accumulated geographic knowledge connected every inhabited continent. All surviving realms now know of one another.',
+    'With powered flight, every inhabited continent is in reach. All surviving realms now know of one another.',
     10,
-    realmIds,
+    realmIds.slice(0, 6),
     {
       continentIds,
-      technologyIds: ['deep_sailing'],
-      tags: ['global contact', 'connected world'],
+      breakthroughIds: ['flight'],
+      tags: ['global contact'],
       worldChronicle: true,
     },
   );

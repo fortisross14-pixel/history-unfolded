@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { displayYear } from '../engine/index.ts';
-import type { Culture, HistoryEvent, WorldState } from '../types.ts';
+import type { HistoryEvent, WorldState } from '../types.ts';
 
-export type View = 'world' | 'characters' | 'chronicle' | 'almanac' | 'evolution' | 'hall';
+/** The five top-level sections. */
+export type View = 'map' | 'realm' | 'characters' | 'chronicle' | 'records';
 
-export type MapMode = 'geography' | 'political' | 'culture' | 'religion';
+export type MapMode = 'political' | 'development' | 'culture' | 'religion' | 'geography';
 
 export type Sel = {
   type:
@@ -17,9 +18,7 @@ export type Sel = {
     | 'dynasty'
     | 'war'
     | 'moment'
-    | 'artwork'
-    | 'wonder'
-    | 'natural';
+    | 'wonder';
   id: number;
 } | null;
 
@@ -32,23 +31,6 @@ export const pct = (start: number, end?: number) =>
   end === undefined
     ? '—'
     : `${Math.max(-99.9, Math.min(999.9, (end / Math.max(0.01, start) - 1) * 100)).toFixed(1)}%`;
-
-export const realmEventEffect = (e: WorldState['realmEvents'][number]) => {
-  const parts: string[] = [];
-  const sp = (n: number) => `${n >= 0 ? '+' : ''}${(n * 100).toFixed(1)}%`;
-  if (e.effects.populationAnnualPct)
-    parts.push(`Population ${sp(e.effects.populationAnnualPct)}/year`);
-  if (e.effects.gdpAnnualPct) parts.push(`GDP ${sp(e.effects.gdpAnnualPct)}/year`);
-  if (e.effects.technologyAnnual)
-    parts.push(`Technology +${e.effects.technologyAnnual.toFixed(1)}/year`);
-  if (e.effects.armyAnnualPct) parts.push(`Army ${sp(e.effects.armyAnnualPct)} capacity/year`);
-  if (e.effects.stabilityAnnual)
-    parts.push(
-      `Stability ${e.effects.stabilityAnnual >= 0 ? '+' : ''}${e.effects.stabilityAnnual.toFixed(1)}/year`,
-    );
-  if (e.effects.cultureAnnual) parts.push(`Culture +${e.effects.cultureAnnual.toFixed(1)}/year`);
-  return parts.join(' · ');
-};
 
 export function MiniEvent({
   e,

@@ -4,9 +4,13 @@ import { TRAITS, rarityDef } from './traits.ts';
 import { fullName } from './characters.ts';
 import { overlordOf, vassalsOf } from './diplomacy.ts';
 import { yearsOnTop } from './power.ts';
+import { governmentDef } from './government.ts';
+import { breakthroughDef } from './eras.ts';
+import { wonderDef, wondersOf } from './wonders.ts';
+import { buildingTotal } from './buildings.ts';
 
 /** Years a realm can lead the world before complacency sets in. */
-const COMPLACENCY_AFTER = 150;
+const COMPLACENCY_AFTER = 120;
 
 export interface ModSource {
   key: ModKey;
@@ -95,6 +99,20 @@ export function realmModifiers(s: WorldState, c: Civilization): RealmMods {
       for (const [k, v] of Object.entries(TRAITS[t].mods) as [ModKey, number][])
         if (k !== 'warAppetite') add(k, v * weight * 0.25, `${t} (${fullName(ch)})`);
   }
+  // Laws, knowledge and monuments.
+  for (const [k, v] of Object.entries(governmentDef(c.government).mods) as [ModKey, number][])
+    add(k, v, c.government);
+  for (const b of c.breakthroughs)
+    for (const [k, v] of Object.entries(breakthroughDef(b.id).mods) as [ModKey, number][])
+      add(k, v, breakthroughDef(b.id).name);
+  for (const w of wondersOf(s, c))
+    for (const [k, v] of Object.entries(wonderDef(w.kind).mods) as [ModKey, number][])
+      add(k, v, w.name);
+  const temples = c.cityIds.reduce(
+    (n, id) => n + buildingTotal(idx(s).city.get(id)?.buildings ?? [], 'faith'),
+    0,
+  );
+  add('faithSpread', temples, 'Temples');
   // National character: what kind of country this is.
   const a = c.axes;
   add(
@@ -121,8 +139,8 @@ export function realmModifiers(s: WorldState, c: Civilization): RealmMods {
   add('faithSpread', (50 - a.faith) / 100, a.faith >= 50 ? 'Tolerant faith' : 'Zealous faith');
   add('stability', (50 - a.order) * 0.3, a.order >= 50 ? 'Fractious nobles' : 'Centralised state');
   // Big realms are hard to hold together.
-  const sprawl = Math.max(0, c.provinces.length - 12);
-  if (sprawl) add('stability', -Math.min(40, sprawl * 0.45), 'Overextension');
+  const sprawl = Math.max(0, c.provinces.length - 20);
+  if (sprawl) add('stability', -Math.min(40, sprawl * 0.3), 'Overextension');
   // Long dominance breeds complacency: the world's top power slowly loses its edge.
   const reign = yearsOnTop(s, c) - COMPLACENCY_AFTER;
   if (reign > 0) {

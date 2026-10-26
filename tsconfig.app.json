@@ -22,7 +22,8 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
-    "types": []
+    "types": [],
+    "noUnusedLocals": true
   },
   "include": [
     "src"

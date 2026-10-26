@@ -6,24 +6,24 @@ import { type Sel, fmt } from './shared.tsx';
 
 export function Evolution({ world, open }: { world: WorldState; open: (s: Sel) => void }) {
   const [metric, setMetric] = useState<
-    'greatPower' | 'population' | 'gdp' | 'technology' | 'military'
+    'greatPower' | 'development' | 'wealth' | 'breakthroughs' | 'military'
   >('greatPower');
   const [scaleMode, setScaleMode] = useState<'balanced' | 'linear'>('balanced');
   const [custom, setCustom] = useState<(number | null)[]>([null, null, null, null]);
   const [hovered, setHovered] = useState<number | null>(null);
   const snapshots = (world.evolutionSnapshots ?? []).filter(s => s.realms.length),
     latest = snapshots.at(-1);
-  const populationLeaders = [...(latest?.realms ?? [])]
-    .sort((a, b) => b.population - a.population)
+  const powerLeaders = [...(latest?.realms ?? [])]
+    .sort((a, b) => b.greatPower - a.greatPower)
     .slice(0, 4);
   const defaults = [...(latest?.realms ?? [])]
-    .sort((a, b) => a.population - b.population)
+    .sort((a, b) => a.greatPower - b.greatPower)
     .slice(0, 4)
     .map(r => r.realmId);
   const customIds = custom
     .map((id, i) => id ?? defaults[i])
-    .filter((id): id is number => !!id && !populationLeaders.some(r => r.realmId === id));
-  const ids = [...new Set([...populationLeaders.map(r => r.realmId), ...customIds])].slice(0, 8);
+    .filter((id): id is number => !!id && !powerLeaders.some(r => r.realmId === id));
+  const ids = [...new Set([...powerLeaders.map(r => r.realmId), ...customIds])].slice(0, 8);
   const selected = ids
     .map(
       id =>
@@ -42,7 +42,7 @@ export function Evolution({ world, open }: { world: WorldState; open: (s: Sel) =
   const minValue = values.length ? Math.min(...values) : 0,
     maxValue = values.length ? Math.max(...values) : 1;
   const transform = (v: number) =>
-    scaleMode === 'linear' || ['technology', 'military'].includes(metric)
+    scaleMode === 'linear' || ['breakthroughs', 'military'].includes(metric)
       ? v
       : metric === 'greatPower'
         ? Math.sign(v) * Math.abs(v) ** 0.72
@@ -54,18 +54,18 @@ export function Evolution({ world, open }: { world: WorldState; open: (s: Sel) =
     scaleY = (v: number) =>
       height - pad.b - ((transform(v) - lo) / Math.max(0.0001, hi - lo)) * (height - pad.t - pad.b);
   const metricName = {
-      greatPower: 'Great power score',
-      population: 'Population',
-      gdp: 'GDP',
-      technology: 'Technology',
+      greatPower: 'Power (share of world)',
+      development: 'Development',
+      wealth: 'Wealth',
+      breakthroughs: 'Breakthroughs',
       military: 'Military power',
     }[metric],
-    formatValue = (v: number) => (metric === 'gdp' ? fmt(v, 1) : fmt(v));
+    formatValue = (v: number) => (metric === 'wealth' ? fmt(v, 1) : fmt(v));
   const ticks = Array.from({ length: 6 }, (_, i) => {
     const ratio = i / 5,
       transformed = hi - (hi - lo) * ratio;
     let raw = transformed;
-    if (scaleMode === 'balanced' && !['technology', 'military'].includes(metric)) {
+    if (scaleMode === 'balanced' && !['breakthroughs', 'military'].includes(metric)) {
       const power = metric === 'greatPower' ? 1 / 0.72 : 1 / 0.55;
       raw = Math.sign(transformed) * Math.abs(transformed) ** power;
     }
@@ -79,13 +79,13 @@ export function Evolution({ world, open }: { world: WorldState; open: (s: Sel) =
       })
       .filter((x): x is { year: number; value: number } => !!x);
   return (
-    <main className="page evolution-page">
+    <section className="evolution-page">
       <div className="page-title-row">
         <div>
           <span className="eyebrow">Century snapshots</span>
           <h1>Evolution</h1>
           <p className="page-intro">
-            The four most populous realms are always shown. Use the four comparison slots to follow
+            The four strongest realms are always shown. Use the four comparison slots to follow
             rivals, fallen powers or small states.
           </p>
         </div>
@@ -93,10 +93,10 @@ export function Evolution({ world, open }: { world: WorldState; open: (s: Sel) =
           <label>
             Measure
             <select value={metric} onChange={e => setMetric(e.target.value as typeof metric)}>
-              <option value="greatPower">Great power score</option>
-              <option value="population">Population</option>
-              <option value="gdp">GDP</option>
-              <option value="technology">Technology</option>
+              <option value="greatPower">Power (share of world)</option>
+              <option value="development">Development</option>
+              <option value="wealth">Wealth</option>
+              <option value="breakthroughs">Breakthroughs</option>
               <option value="military">Military power</option>
             </select>
           </label>
@@ -115,7 +115,7 @@ export function Evolution({ world, open }: { world: WorldState; open: (s: Sel) =
       <section className="comparison-slots">
         <div>
           <span className="slot-label fixed">Automatic</span>
-          {populationLeaders.map((r, i) => (
+          {powerLeaders.map((r, i) => (
             <span className="realm-slot" key={r.realmId}>
               <i style={{ background: r.color }} />
               {i + 1}. {r.name}
@@ -301,6 +301,6 @@ export function Evolution({ world, open }: { world: WorldState; open: (s: Sel) =
           </section>
         </>
       )}
-    </main>
+    </section>
   );
 }

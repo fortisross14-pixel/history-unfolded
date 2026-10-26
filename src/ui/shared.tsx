@@ -129,36 +129,6 @@ export function Table({ heads, rows }: { heads: string[]; rows: any[][] }) {
   );
 }
 
-export function CulturalSlider({
-  label,
-  value,
-  left,
-  right,
-}: {
-  label: string;
-  value: number;
-  left: string;
-  right: string;
-}) {
-  const pos = Math.max(0, Math.min(100, (value + 10) * 5));
-  return (
-    <div className="culture-slider">
-      <div>
-        <strong>{label}</strong>
-        <b>{value > 0 ? `+${value}` : value}</b>
-      </div>
-      <div className="slider-track">
-        <span style={{ width: `${pos}%` }} />
-        <i style={{ left: `${pos}%` }} />
-      </div>
-      <small>
-        <span>{left}</span>
-        <span>{right}</span>
-      </small>
-    </div>
-  );
-}
-
 export function Metrics({ vals }: { vals: [string, string][] }) {
   return (
     <div className="metrics">

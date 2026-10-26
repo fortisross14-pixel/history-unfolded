@@ -4,7 +4,7 @@ import type { Character, Rarity, Reign, TraitId, WorldState } from '../types.ts'
  * Save schema version. Bump it whenever WorldState changes shape and add a
  * migration below that upgrades a world from the previous version.
  */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 type Migration = (world: any) => any;
 
@@ -214,9 +214,77 @@ function charactersFromV1(w: any) {
   return w;
 }
 
+/** v2 → v3: culture's three axes become five national axes on each realm; rivalries become relations. */
+function personalityFromV2(w: any) {
+  const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+  const isOcean = (x: number, y: number) =>
+    x >= 0 &&
+    y >= 0 &&
+    x < w.width &&
+    y < w.height &&
+    w.provinces[y * w.width + x]?.terrain === 'ocean';
+  const coastal = (id: number) => {
+    const p = w.provinces[id];
+    const ds =
+      p.x % 2
+        ? [
+            [1, 0],
+            [-1, 0],
+            [0, -1],
+            [0, 1],
+            [1, 1],
+            [-1, 1],
+          ]
+        : [
+            [1, 0],
+            [-1, 0],
+            [0, -1],
+            [0, 1],
+            [1, -1],
+            [-1, -1],
+          ];
+    return ds.some(([dx, dy]) => isOcean(p.x + dx, p.y + dy));
+  };
+  for (const c of w.civilizations ?? []) {
+    const culture = (w.cultures ?? []).find((x: any) => x.id === c.cultureId) ?? {};
+    const share = c.provinces.length ? c.provinces.filter(coastal).length / c.provinces.length : 0;
+    c.axes = {
+      ambition: clamp(50 + (culture.peacefulViolent ?? 0) * 4),
+      horizon: clamp(20 + share * 60),
+      economy: clamp(50 - (culture.economicCreative ?? 0) * 4),
+      faith: 50,
+      order: clamp(50 - (culture.unstableStable ?? 0) * 4),
+    };
+    c.navy = 0;
+    c.navyCapacity = 0;
+    delete c.rivalryIds;
+  }
+  for (const culture of w.cultures ?? []) {
+    delete culture.peacefulViolent;
+    delete culture.economicCreative;
+    delete culture.unstableStable;
+  }
+  w.relations = (w.rivalries ?? [])
+    .filter((r: any) => r.status === 'active')
+    .map((r: any, i: number) => ({
+      id: i + 1,
+      type: 'Rival',
+      a: r.realmIds[0],
+      b: r.realmIds[1],
+      since: r.startedYear,
+      wars: r.warIds?.length ?? 0,
+      reason: `Old ${r.cause} rivalry`,
+    }));
+  w.nextIds.relation = w.relations.length + 1;
+  delete w.nextIds.rivalry;
+  delete w.rivalries;
+  return w;
+}
+
 /** migrations[n] upgrades a world from version n to version n + 1. */
 const migrations: Record<number, Migration> = {
   1: charactersFromV1,
+  2: personalityFromV2,
 };
 
 /**

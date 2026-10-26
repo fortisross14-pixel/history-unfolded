@@ -362,6 +362,7 @@ export type ModKey =
   | 'faithSpread'
   | 'diplomacy'
   | 'exploration'
+  | 'navy'
   | 'build';
 
 /** A lasting realm bonus named after the character who earned it. */
@@ -386,9 +387,6 @@ export interface Culture {
   population: number;
   founded: number;
   originRealmId: number;
-  peacefulViolent: number;
-  economicCreative: number;
-  unstableStable: number;
   strength: number;
   heritage: string[];
   artworkIds: number[];
@@ -503,18 +501,23 @@ export interface NaturalWonder {
   cultureBonus: number;
   prestigeBonus: number;
 }
-export interface Rivalry {
+/** The five diplomatic relations between two realms. */
+export type RelationType = 'Alliance' | 'Marriage' | 'Vassal' | 'Rival' | 'Truce';
+
+export interface Relation {
   id: number;
-  realmIds: [number, number];
-  startedYear: number;
-  endedYear?: number;
-  cause: 'border' | 'religion' | 'dynasty' | 'trade' | 'colonial' | 'cultural' | 'historical';
-  warIds: number[];
-  battleIds: number[];
-  totalCasualties: number;
-  provincesExchanged: number;
-  intensity: number;
-  status: 'active' | 'dormant' | 'resolved';
+  type: RelationType;
+  /** For a Vassal relation, a is the overlord and b the vassal. */
+  a: number;
+  b: number;
+  since: number;
+  /** Truces expire; other relations end when broken. */
+  until?: number;
+  /** Vassal relation created by inheriting a crown (personal union). */
+  union?: boolean;
+  /** Wars fought between rivals. */
+  wars?: number;
+  reason: string;
 }
 
 export interface RealmEventEffects {
@@ -596,12 +599,28 @@ export interface Civilization {
   dynastyId: number | null;
   historyEventIds: number[];
   warIds: number[];
-  rivalryIds: number[];
+  /**
+   * National personality, each 0–100: Ambition (inward → expansionist),
+   * Horizon (land → sea), Economy (agrarian → mercantile), Faith (zealous →
+   * tolerant), Order (centralised → fractious).
+   */
+  axes: NationalAxes;
+  navy: number;
+  navyCapacity: number;
   historicalScore: number;
   legacyScore: number;
   governmentHistory: { government: GovernmentType; from: number; to?: number; reason: string }[];
   nameHistory: { name: string; rank: Rank; from: number; reason: string }[];
 }
+export interface NationalAxes {
+  ambition: number;
+  horizon: number;
+  economy: number;
+  faith: number;
+  order: number;
+}
+export type AxisKey = keyof NationalAxes;
+
 export interface WorldConfig {
   mapSize: MapSize;
   mapVariant: number;
@@ -645,7 +664,7 @@ export interface WorldState {
   artworks: Artwork[];
   wonders: Wonder[];
   naturalWonders: NaturalWonder[];
-  rivalries: Rivalry[];
+  relations: Relation[];
   events: HistoryEvent[];
   realmEvents: RealmEvent[];
   evolutionSnapshots: EvolutionSnapshot[];
@@ -668,7 +687,7 @@ export interface WorldState {
     artwork: number;
     wonder: number;
     naturalWonder: number;
-    rivalry: number;
+    relation: number;
     realmEvent: number;
     hallOfFame: number;
   };

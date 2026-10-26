@@ -13,16 +13,8 @@ import type {
 import { CharacterPage } from './CharacterPage.tsx';
 import { RealmCourt } from './RealmCourt.tsx';
 import { RenameTitle } from './RenameTitle.tsx';
-import {
-  type Sel,
-  fmt,
-  pct,
-  realmEventEffect,
-  CulturalSlider,
-  Metrics,
-  Section,
-  List,
-} from './shared.tsx';
+import { Diplomacy, NationalCharacter } from './NationalCharacter.tsx';
+import { type Sel, fmt, pct, realmEventEffect, Metrics, Section, List } from './shared.tsx';
 
 /** Entities the player can rename from their page. */
 const RENAMEABLE: Partial<Record<NonNullable<Sel>['type'], RenameKind>> = {
@@ -60,6 +52,7 @@ export function Drawer({
       'history',
       'cities',
       'court',
+      'diplomacy',
       'military',
       'culture',
       'religion',
@@ -217,6 +210,7 @@ export function RealmDetail({
             ['Rural', fmt(c.ruralPopulation ?? c.population)],
             ['GDP', fmt(c.gdp, 1)],
             ['Army', `${fmt(c.armySize)} / ${fmt(c.armyCapacity ?? c.armySize)}`],
+            ['Navy', `${fmt(c.navy)} / ${fmt(c.navyCapacity)}`],
             ['Technology', `${fmt(c.technology)}/1000`],
           ]}
         />
@@ -230,6 +224,7 @@ export function RealmDetail({
             of {world.dynasties.find(d => d.id === c.dynastyId)?.name ?? 'no dynasty'}.
           </p>
         </Section>
+        <NationalCharacter c={c} />
         <Section title="Critical technologies">
           <div className="chips">
             {TECHNOLOGIES.map(t => (
@@ -314,44 +309,13 @@ export function RealmDetail({
             })}
           />
         </Section>
-        <Section title="Rivalries">
-          <List
-            items={c.rivalryIds.map(id => {
-              const r = world.rivalries.find(x => x.id === id)!;
-              const other = r.realmIds.find(x => x !== c.id)!;
-              return {
-                name: world.civilizations.find(x => x.id === other)?.name ?? 'Unknown',
-                sub: `Intensity ${r.intensity} · ${r.warIds.length} wars · ${r.cause}`,
-              };
-            })}
-          />
-        </Section>
       </>
     );
+  if (tab === 'diplomacy') return <Diplomacy c={c} world={world} open={open} />;
   if (tab === 'court') return <RealmCourt c={c} world={world} open={open} />;
   if (tab === 'culture')
     return (
       <>
-        <div className="culture-sliders">
-          <CulturalSlider
-            label="Peaceful ↔ Violent"
-            value={culture?.peacefulViolent ?? 0}
-            left="Peaceful"
-            right="Violent"
-          />
-          <CulturalSlider
-            label="Economic ↔ Creative"
-            value={culture?.economicCreative ?? 0}
-            left="Economic"
-            right="Creative"
-          />
-          <CulturalSlider
-            label="Unstable ↔ Stable"
-            value={culture?.unstableStable ?? 0}
-            left="Unstable"
-            right="Stable"
-          />
-        </div>
         <Metrics
           vals={[
             ['Strength', String(culture?.strength ?? 0)],
@@ -510,26 +474,6 @@ export function detailFor(
       title: c.name,
       body: (
         <>
-          <div className="culture-sliders">
-            <CulturalSlider
-              label="Peaceful ↔ Violent"
-              value={c.peacefulViolent}
-              left="Peaceful"
-              right="Violent"
-            />
-            <CulturalSlider
-              label="Economic ↔ Creative"
-              value={c.economicCreative}
-              left="Economic"
-              right="Creative"
-            />
-            <CulturalSlider
-              label="Unstable ↔ Stable"
-              value={c.unstableStable}
-              left="Unstable"
-              right="Stable"
-            />
-          </div>
           <Metrics
             vals={[
               ['Population', fmt(c.population)],

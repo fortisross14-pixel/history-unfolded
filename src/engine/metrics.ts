@@ -41,6 +41,12 @@ export interface WorldMetrics {
   reigns: number;
   religions: number;
   cities: number;
+  relations: Record<string, number>;
+  unions: number;
+  /** Average of each national axis over living realms. */
+  axes: Record<string, number>;
+  /** Realms that sit far from the middle on at least one axis. */
+  distinctRealms: number;
   centuries: CenturyLeaders[];
   longestLead: { name: string; years: number; from: number };
 }
@@ -89,6 +95,18 @@ export function summarize(world: WorldState, tracker?: RunTracker): WorldMetrics
     reigns: world.reigns.length,
     religions: world.religions.length,
     cities: world.cities.length,
+    relations: world.relations.reduce<Record<string, number>>(
+      (n, r) => ({ ...n, [r.type]: (n[r.type] ?? 0) + 1 }),
+      {},
+    ),
+    unions: world.relations.filter(r => r.union).length,
+    axes: Object.fromEntries(
+      (['ambition', 'horizon', 'economy', 'faith', 'order'] as const).map(k => [
+        k,
+        Math.round(alive.reduce((n, c) => n + c.axes[k], 0) / Math.max(1, alive.length)),
+      ]),
+    ),
+    distinctRealms: alive.filter(c => Object.values(c.axes).some(v => v < 30 || v > 70)).length,
     centuries,
     longestLead,
   };
@@ -106,6 +124,13 @@ export function formatMetrics(m: WorldMetrics, everyNthCentury = 5): string {
     `Reigns / legacies ........ ${m.reigns} / ${m.legacies}`,
     `Characters with nicknames  ${m.nicknames}`,
     `Religions / cities ....... ${m.religions} / ${m.cities}`,
+    `Relations now ............ ${Object.entries(m.relations)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(', ')} (personal unions ${m.unions})`,
+    `Average axes ............. ${Object.entries(m.axes)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(', ')}`,
+    `Realms with a strong trait ${m.distinctRealms}`,
     `Longest time on top ...... ${m.longestLead.name}: ${m.longestLead.years} years from ${displayYear(m.longestLead.from)}`,
     '',
     'Top powers by century:',

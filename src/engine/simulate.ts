@@ -1,4 +1,4 @@
-import type { Building, Civilization, Culture, MapSize, WorldState } from '../types.ts';
+import type { Building, Character, Civilization, Culture, MapSize, WorldState } from '../types.ts';
 import { TECHNOLOGIES } from './data.ts';
 import { RNG } from './rng.ts';
 import { has, neighborRealms, neigh, urbanTarget } from './util.ts';
@@ -25,6 +25,9 @@ import { checkAmbition, createCharacter, deathCheck } from './characters.ts';
 import { rulerLifeCycle, succession } from './dynasty.ts';
 import { isNotable, notableActs, spawnNotables } from './court.ts';
 import { pruneCharacters } from './prune.ts';
+import { coastalShare, driftAxes } from './axes.ts';
+import { canAttack, diplomacyUpkeep, diplomacyYear, findRelation } from './diplomacy.ts';
+import { colonize } from './colonies.ts';
 
 /** Everything one realm's yearly steps share. */
 interface RealmYear {
@@ -78,7 +81,7 @@ const VIABLE_PER_PROVINCE = (year: number) =>
   year < -1500 ? 350 : year < 0 ? 900 : year < 1200 ? 1800 : year < 1800 ? 3500 : 7000;
 
 function growPopulation(s: WorldState, y: RealmYear) {
-  const { c, culture, mods, buildings } = y;
+  const { c, mods, buildings } = y;
   const owned = c.provinces.map(id => s.provinces[id]);
   const continent = s.continents.find(ct => ct.id === (owned[0]?.continentId ?? -1));
   const avgFertility = owned.length
@@ -87,7 +90,7 @@ function growPopulation(s: WorldState, y: RealmYear) {
   const infrastructure = buildings
     .filter(b => ['Granary', 'Aqueduct', 'Hospital'].includes(b.type))
     .reduce((n, b) => n + b.level * 0.018, 0);
-  const stable = 0.82 + c.stability / 430 + Math.max(-10, culture.unstableStable) / 120;
+  const stable = 0.82 + c.stability / 430 + (50 - c.axes.order) / 600;
   const rate =
     ERA_POP_RATE(s.year) *
     stable *
@@ -102,7 +105,7 @@ function growPopulation(s: WorldState, y: RealmYear) {
 }
 
 function growEconomy(s: WorldState, y: RealmYear) {
-  const { c, culture, mods, gdpBoost, routeCount } = y;
+  const { c, mods, gdpBoost, routeCount } = y;
   const owned = c.provinces.map(id => s.provinces[id]);
   const continent = s.continents.find(ct => ct.id === (owned[0]?.continentId ?? -1));
   const prosperity = c.cityIds.length
@@ -117,8 +120,7 @@ function growEconomy(s: WorldState, y: RealmYear) {
       (0.72 + c.technology / 760) *
       commercial *
       (0.95 + mods.wealth) *
-      (0.82 + prosperity / 210) *
-      (1 + (culture.economicCreative < 0 ? -culture.economicCreative * 0.026 : 0)),
+      (0.82 + prosperity / 210),
   );
   const catchup =
     0.018 +
@@ -141,7 +143,7 @@ function growEconomy(s: WorldState, y: RealmYear) {
 }
 
 function researchAndArmy(s: WorldState, y: RealmYear) {
-  const { c, culture, mods, sciBoost, armyBoost } = y;
+  const { c, mods, sciBoost, armyBoost, buildings } = y;
   const continent = s.continents.find(ct => ct.id === s.provinces[c.provinces[0]]?.continentId);
   c.technology = Math.min(
     1000,
@@ -153,7 +155,9 @@ function researchAndArmy(s: WorldState, y: RealmYear) {
     10,
     Math.round(
       c.population *
-        (0.009 + Math.max(0, culture.peacefulViolent) * 0.0011) *
+        (0.009 + (Math.max(0, c.axes.ambition - 50) / 50) * 0.0055) *
+        // Sea powers keep smaller armies and larger fleets.
+        (1.1 - c.axes.horizon / 500) *
         (1 + Math.min(0.5, armyBoost)) *
         (1 + (continent?.armyBonus ?? 0)) *
         0.95 *
@@ -163,8 +167,27 @@ function researchAndArmy(s: WorldState, y: RealmYear) {
   if (c.armySize < c.armyCapacity)
     c.armySize = Math.min(c.armyCapacity, Math.round(c.armySize + c.armyCapacity * 0.05));
   else c.armySize = Math.min(c.armySize, c.armyCapacity);
-  // Stability drifts toward what the culture and the court can sustain.
-  const target = 52 + culture.unstableStable * 3 + mods.stability;
+  // The fleet: only coastal realms have one, and seafaring ones build far more.
+  const coast = coastalShare(s, c);
+  const docks = buildings
+    .filter(b => ['Harbor', 'Shipyard'].includes(b.type))
+    .reduce((n, b) => n + b.level * 0.06, 0);
+  c.navyCapacity = coast
+    ? Math.round(
+        c.population *
+          0.004 *
+          (c.axes.horizon / 100) ** 2 *
+          Math.min(1, coast * 2) *
+          (has(c, 'deep_sailing') ? 1.5 : 1) *
+          (1 + Math.min(0.6, docks)) *
+          Math.max(0.1, 1 + mods.navy),
+      )
+    : 0;
+  if (c.navy < c.navyCapacity)
+    c.navy = Math.min(c.navyCapacity, Math.round(c.navy + c.navyCapacity * 0.04 + 1));
+  else c.navy = c.navyCapacity;
+  // Stability drifts toward what the state and the court can sustain.
+  const target = 52 + mods.stability;
   c.stability = Math.max(5, Math.min(100, c.stability + (target - c.stability) * 0.015));
   c.prestige += s.wonders
     .filter(w => w.realmId === c.id && w.status === 'standing')
@@ -182,7 +205,7 @@ function citiesAndLand(s: WorldState, y: RealmYear, r: RNG) {
       b => c.technology >= b.tech && (!b.requires || has(c, b.requires)) && (!b.coastal || coastal),
     );
     if (!possible.length) continue;
-    const def = r.pick(possible);
+    const def = pickBuilding(c, possible, r);
     // The ruler sponsors projects unless a fitting notable is at court.
     const fits = (role: string, kinds: string[]) =>
       kinds.includes(def.type) && court.find(x => x.role === role);
@@ -196,16 +219,60 @@ function citiesAndLand(s: WorldState, y: RealmYear, r: RNG) {
   const free = c.provinces
     .flatMap(id => neigh(s.provinces[id], s))
     .filter(p => p.terrain !== 'ocean' && p.ownerId === null);
-  if (free.length && r.chance(0.012)) {
+  // Expansionist peoples settle empty land faster.
+  if (free.length && r.chance(0.012 * (0.5 + c.axes.ambition / 100))) {
     const p = r.pick(free);
     p.ownerId = c.id;
     p.cultureId = c.cultureId;
     c.provinces.push(p.id);
   }
+  colonize(s, c, mods, r);
+}
+
+/** What a realm builds depends on what kind of country it is. */
+const BUILDING_AXIS: Record<string, [keyof Civilization['axes'], 1 | -1]> = {
+  'Trading Post': ['economy', 1],
+  Market: ['economy', 1],
+  'Merchant Guild': ['economy', 1],
+  Bank: ['economy', 1],
+  'Stock Exchange': ['economy', 1],
+  Granary: ['economy', -1],
+  Aqueduct: ['economy', -1],
+  Harbor: ['horizon', 1],
+  Shipyard: ['horizon', 1],
+  Shrine: ['faith', -1],
+  Temple: ['faith', -1],
+  Monastery: ['faith', -1],
+  Cathedral: ['faith', -1],
+  Library: ['faith', 1],
+  University: ['faith', 1],
+  'Printing House': ['faith', 1],
+  Observatory: ['faith', 1],
+  Barracks: ['ambition', 1],
+  Fortifications: ['ambition', 1],
+  'Military Academy': ['ambition', 1],
+  Forge: ['ambition', 1],
+  Courthouse: ['order', -1],
+  'Road Network': ['order', -1],
+};
+
+function pickBuilding(c: Civilization, options: typeof BUILDINGS, r: RNG) {
+  const weight = (type: string) => {
+    const axis = BUILDING_AXIS[type];
+    if (!axis) return 1;
+    const lean = ((c.axes[axis[0]] - 50) / 50) * axis[1];
+    return 1 + Math.max(0, lean) * 3;
+  };
+  let roll = r.next() * options.reduce((n, b) => n + weight(b.type), 0);
+  for (const b of options) {
+    roll -= weight(b.type);
+    if (roll <= 0) return b;
+  }
+  return options[0];
 }
 
 function politics(s: WorldState, y: RealmYear, r: RNG) {
-  const { c, culture } = y;
+  const { c } = y;
   const homeCont = s.provinces[c.provinces[0]]?.continentId ?? 0;
   const land = s.continents.find(x => x.id === homeCont)?.provinceIds.length ?? 1;
   const empires = s.civilizations.filter(
@@ -292,12 +359,12 @@ function politics(s: WorldState, y: RealmYear, r: RNG) {
     .map(([id, pop]) => ({ pop, tolerance: idx(s).religion.get(id)?.tolerance ?? 100 }))
     .sort((a, b) => b.pop - a.pop);
   const polarized =
+    c.axes.faith < 60 &&
     shares.length >= 2 &&
     shares[1].pop >= c.population * 0.22 &&
     shares[0].tolerance < 42 &&
     shares[1].tolerance < 42;
-  const pressure =
-    (c.stability < 22 && culture.unstableStable <= -5) || (c.stability < 32 && polarized);
+  const pressure = (c.stability < 25 && c.axes.order > 60) || (c.stability < 32 && polarized);
   if (pressure && c.provinces.length >= 8 && r.chance(polarized ? 0.032 : 0.018))
     triggerCivilWar(s, c, r, polarized ? 'religious polarization' : 'political instability');
   // New cities when the realm is under-urbanised.
@@ -372,6 +439,8 @@ function courtYear(s: WorldState, y: RealmYear, r: RNG) {
   const { c, mods, atWar } = y;
   rulerLifeCycle(s, c, r);
   spawnNotables(s, c, atWar, r);
+  diplomacyYear(s, c, y.neighbors, mods, r);
+  driftAxes(s, c, y.routeCount);
   for (const ch of courtOf(s, c.id)) {
     if (isNotable(ch)) notableActs(s, c, ch, mods, r);
     // The greatest talents, and anyone who dreams of it, may raise a wonder.
@@ -387,23 +456,44 @@ function courtYear(s: WorldState, y: RealmYear, r: RNG) {
   }
 }
 
+/**
+ * Who to attack: a ruler's dream comes first, then the realm's character.
+ * Zealots look for infidels, merchants for rich prey, conquerors for the weak,
+ * and everyone remembers old rivals.
+ */
+function chooseTarget(
+  s: WorldState,
+  c: Civilization,
+  targets: Civilization[],
+  ruler: Character | undefined,
+  r: RNG,
+) {
+  const dream =
+    ruler?.ambition?.type === 'conquer'
+      ? targets.find(n => n.id === ruler.ambition?.targetId)
+      : undefined;
+  if (dream) return dream;
+  const a = c.axes;
+  const score = (n: Civilization) =>
+    1 +
+    (a.faith < 35 && n.faithId !== c.faithId ? 3 : 0) +
+    (a.economy > 65 ? Math.min(3, n.gdp / Math.max(1, c.gdp)) : 0) +
+    (a.ambition > 65 ? Math.min(3, c.armySize / Math.max(1, n.armySize)) : 0) +
+    (findRelation(s, c.id, n.id, 'Rival') ? 3 : 0);
+  let roll = r.next() * targets.reduce((n, t) => n + score(t), 0);
+  for (const t of targets) {
+    roll -= score(t);
+    if (roll <= 0) return t;
+  }
+  return targets[0];
+}
+
 function warAndInfluence(s: WorldState, y: RealmYear, r: RNG) {
   const { c, culture, mods, neighbors, atWar } = y;
   const ruler = idx(s).char.get(c.rulerId);
-  const aggression = culture.peacefulViolent + (ruler?.skill ?? 40) / 20;
-  if (
-    neighbors.length &&
-    !atWar &&
-    aggression > 5 &&
-    r.chance(0.0028 * Math.max(0.1, 1 + mods.warAppetite))
-  ) {
-    // A ruler who dreams of conquering a neighbour picks that neighbour.
-    const dream =
-      ruler?.ambition?.type === 'conquer'
-        ? neighbors.find(n => n.id === ruler.ambition?.targetId)
-        : undefined;
-    startWar(s, c, dream ?? r.pick(neighbors), r);
-  }
+  const targets = neighbors.filter(n => canAttack(s, c, n));
+  if (targets.length && !atWar && r.chance(0.0028 * Math.max(0.05, 1 + mods.warAppetite)))
+    startWar(s, c, chooseTarget(s, c, targets, ruler, r), r);
   processOfficialConversion(s, c, r);
   for (const n of neighbors) {
     const nc = idx(s).culture.get(n.cultureId);
@@ -647,6 +737,7 @@ export function simulateYear(s: WorldState, r: RNG) {
   charactersYear(s, r);
   catalysts(s, r);
   for (const w of s.wars.filter(x => x.active)) if (r.chance(0.35)) battle(s, w, r);
+  diplomacyUpkeep(s);
   worldTotals(s);
   ensureModernGlobalContact(s);
   if (s.year % 100 === 0) {

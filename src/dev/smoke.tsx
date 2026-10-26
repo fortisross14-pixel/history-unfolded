@@ -72,7 +72,7 @@ export async function renderAll(years: number): Promise<string[]> {
     'wonders',
     'natural',
     'routes',
-    'rivalries',
+    'diplomacy',
   ];
   for (const tab of tabs)
     pages.push([
@@ -90,6 +90,7 @@ export async function renderAll(years: number): Promise<string[]> {
     'history',
     'cities',
     'court',
+    'diplomacy',
     'military',
     'culture',
     'religion',

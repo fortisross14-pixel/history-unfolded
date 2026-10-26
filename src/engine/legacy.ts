@@ -75,6 +75,7 @@ const MOD_LABEL: Record<ModKey, string> = {
   faithSpread: 'faith spread',
   diplomacy: 'diplomacy',
   exploration: 'exploration',
+  navy: 'navy',
   build: 'building',
 };
 

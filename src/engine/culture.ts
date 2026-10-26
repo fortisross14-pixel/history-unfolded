@@ -33,16 +33,7 @@ export function createArtwork(s: WorldState, c: Civilization, p: Character, r: R
   ]);
   const rating = Math.max(
     20,
-    Math.min(
-      100,
-      Math.round(
-        25 +
-          level(p) * 11 +
-          Math.max(0, culture.economicCreative) * 1.5 +
-          r.int(-12, 14) +
-          c.technology / 100,
-      ),
-    ),
+    Math.min(100, Math.round(25 + level(p) * 11 + r.int(-12, 14) + c.technology / 100)),
   );
   const rarity: ArtworkRarity =
     rating >= 92

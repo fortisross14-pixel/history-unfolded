@@ -14,6 +14,7 @@ import {
   pickAmbition,
 } from './characters.ts';
 import { TRAITS, rarityRank } from './traits.ts';
+import { addRelation, endRelation, findRelation, relationsOf } from './diplomacy.ts';
 
 /** Age at which an heir may rule without a regent. */
 export const MAJORITY = 16;
@@ -90,10 +91,18 @@ export function endReign(s: WorldState, c: Civilization, reason: string) {
 }
 
 /** Puts a character on the throne and opens a reign record. */
-export function crown(s: WorldState, c: Civilization, ch: Character, r: RNG, reason: string) {
+export function crown(
+  s: WorldState,
+  c: Civilization,
+  ch: Character,
+  r: RNG,
+  reason: string,
+  union = false,
+) {
   endReign(s, c, reason);
   const dynasty = ch.dynastyId ? idx(s).dynasty.get(ch.dynastyId) : undefined;
-  if (ch.realmId !== c.id) moveCharacter(s, ch, c.id);
+  // In a personal union the ruler keeps living at their home court.
+  if (ch.realmId !== c.id && !union) moveCharacter(s, ch, c.id);
   ch.formerRole = ch.role === 'Ruler' ? ch.formerRole : ch.role;
   ch.role = 'Ruler';
   if (!ch.ambition || ch.ambition.status !== 'pending') ch.ambition = pickAmbition(s, ch, c, r);
@@ -122,7 +131,7 @@ export function crown(s: WorldState, c: Civilization, ch: Character, r: RNG, rea
   };
   s.reigns.push(reign);
   c.regentId = 0;
-  if (minor) startRegency(s, c, ch, reign, r);
+  if (minor && !union) startRegency(s, c, ch, reign, r);
   addEvent(
     s,
     'politics',
@@ -165,6 +174,15 @@ function startRegency(s: WorldState, c: Civilization, child: Character, reign: R
  */
 export function deposeRuler(s: WorldState, c: Civilization, r: RNG, reason: string) {
   endReign(s, c, reason);
+  // A realm in personal union simply leaves the union; the shared ruler is safe at home.
+  const union = unionOf(s, c);
+  if (union) {
+    endRelation(s, union);
+    c.rulerId = 0;
+    c.heirId = 0;
+    c.regentId = 0;
+    return;
+  }
   for (const id of [c.rulerId, c.heirId, c.regentId]) {
     const ch = idx(s).char.get(id);
     if (!isAlive(ch)) continue;
@@ -216,6 +234,7 @@ export function succession(s: WorldState, c: Civilization, r: RNG) {
     crown(s, c, heir, r, cause);
     return;
   }
+  if (inheritCrown(s, c, r, cause)) return;
   const dynasty = c.dynastyId ? idx(s).dynasty.get(c.dynastyId) : undefined;
   // A distant cousin may still be found. Older dynasties have fewer claimants left.
   const dynastyAge = dynasty ? s.year - dynasty.foundedYear : 999;
@@ -244,6 +263,53 @@ export function succession(s: WorldState, c: Civilization, r: RNG) {
   newRuler(s, c, r, 'a succession crisis', true);
 }
 
+/** The union relation that binds this realm to a senior realm, if any. */
+export const unionOf = (s: WorldState, c: Civilization) =>
+  s.relations.find(x => x.type === 'Vassal' && x.union && x.b === c.id);
+
+/**
+ * With no heir, a crown may pass to a realm linked by royal marriage: both
+ * realms then share one ruler (a personal union, junior partner as vassal).
+ */
+function inheritCrown(s: WorldState, c: Civilization, r: RNG, cause: string) {
+  for (const marriage of relationsOf(s, c.id, 'Marriage')) {
+    const otherId = marriage.a === c.id ? marriage.b : marriage.a;
+    const senior = idx(s).civ.get(otherId);
+    if (!senior || !senior.provinces.length || unionOf(s, senior) || !r.chance(0.35)) continue;
+    const heir = idx(s).char.get(senior.rulerId);
+    if (
+      !isAlive(heir) ||
+      s.wars.some(
+        w => w.active && w.participantIds.includes(c.id) && w.participantIds.includes(senior.id),
+      )
+    )
+      continue;
+    for (const rel of [
+      findRelation(s, c.id, senior.id, 'Rival'),
+      findRelation(s, c.id, senior.id, 'Alliance'),
+    ])
+      if (rel) endRelation(s, rel);
+    addRelation(s, 'Vassal', senior.id, c.id, `Personal union under ${heir.name}`, { union: true });
+    crown(s, c, heir, r, `${cause}, inheriting the crown through marriage`, true);
+    addDeed(s, heir, `Inherited the crown of ${c.name}`, 12);
+    addEvent(
+      s,
+      'diplomacy',
+      `${senior.name} inherits the crown of ${c.name}`,
+      `With no heir of its own, ${c.name} passed by marriage to ${fullName(heir)}, already ruler of ${senior.name}. The two realms now share one ruler.`,
+      9,
+      [senior.id, c.id],
+      {
+        personIds: [heir.id],
+        tags: ['personal union', 'diplomacy'],
+        worldChronicle: true,
+      },
+    );
+    return true;
+  }
+  return false;
+}
+
 /** Royal marriages link dynasties; a known foreign house is preferred. */
 function arrangeMarriage(s: WorldState, c: Civilization, ch: Character, r: RNG) {
   const own = ch.dynastyId;
@@ -270,6 +336,10 @@ function arrangeMarriage(s: WorldState, c: Civilization, ch: Character, r: RNG) 
     const b = idx(s).dynasty.get(partner.dynastyId!)!;
     if (!a.marriedIntoIds.includes(b.id)) a.marriedIntoIds.push(b.id);
     if (!b.marriedIntoIds.includes(a.id)) b.marriedIntoIds.push(a.id);
+    // The marriage binds the two realms for a generation.
+    addRelation(s, 'Marriage', c.id, partner.id, `${ch.name} married ${spouse.name}`, {
+      until: s.year + 30,
+    });
     addEvent(
       s,
       'diplomacy',
@@ -320,6 +390,27 @@ function mentorHeir(s: WorldState, c: Civilization, heir: Character, r: RNG) {
 /** Yearly ruler upkeep: marriage, children, mentoring, regency end, succession. */
 export function rulerLifeCycle(s: WorldState, c: Civilization, r: RNG) {
   let ruler = idx(s).char.get(c.rulerId);
+  const union = unionOf(s, c);
+  if (union) {
+    // The junior realm follows the senior crown, or breaks away when it changes hands.
+    if (isAlive(ruler)) return;
+    const senior = idx(s).civ.get(union.a);
+    const heir = senior ? idx(s).char.get(senior.rulerId) : undefined;
+    if (senior && isAlive(heir) && r.chance(0.6)) {
+      crown(s, c, heir, r, `the union with ${senior.name}`, true);
+      return;
+    }
+    endRelation(s, union);
+    addEvent(
+      s,
+      'diplomacy',
+      `${c.name} leaves its union`,
+      `On the death of the shared ruler, ${c.name} chose a crown of its own.`,
+      6,
+      [c.id],
+      { tags: ['personal union'] },
+    );
+  }
   if (!isAlive(ruler)) {
     succession(s, c, r);
     ruler = idx(s).char.get(c.rulerId)!;

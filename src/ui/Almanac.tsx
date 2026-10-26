@@ -20,7 +20,7 @@ export type AlmanacTab =
   | 'wonders'
   | 'natural'
   | 'routes'
-  | 'rivalries';
+  | 'diplomacy';
 
 export function Almanac({ world, open }: { world: WorldState; open: (s: Sel) => void }) {
   const [sub, setSub] = useState<AlmanacTab>('realms'),
@@ -41,7 +41,7 @@ export function Almanac({ world, open }: { world: WorldState; open: (s: Sel) => 
     'wonders',
     'natural',
     'routes',
-    'rivalries',
+    'diplomacy',
   ];
   return (
     <main className="page almanac-page">
@@ -244,23 +244,11 @@ export function AlmanacTable({
   if (tab === 'cultures')
     return (
       <Table
-        heads={[
-          'Culture',
-          'Population',
-          'Provinces',
-          'Peace/Violence',
-          'Economy/Creative',
-          'Unstable/Stable',
-          'Strength',
-          'Heritage',
-        ]}
+        heads={['Culture', 'Population', 'Provinces', 'Strength', 'Heritage']}
         rows={world.cultures.map(c => [
           link(c.name, () => open({ type: 'culture', id: c.id })),
           c.population,
           c.provinces,
-          c.peacefulViolent,
-          c.economicCreative,
-          c.unstableStable,
           c.strength,
           c.heritage.length,
         ])}
@@ -479,18 +467,17 @@ export function AlmanacTable({
         ])}
       />
     );
+  const name = (id: number) => world.civilizations.find(c => c.id === id)?.name ?? 'a lost realm';
   return (
     <Table
-      heads={['Rivals', 'Started', 'Cause', 'Wars', 'Battles', 'Casualties', 'Intensity', 'Status']}
-      rows={world.rivalries.map(r => [
-        `${world.civilizations.find(c => c.id === r.realmIds[0])?.name} vs ${world.civilizations.find(c => c.id === r.realmIds[1])?.name}`,
-        displayYear(r.startedYear),
-        r.cause,
-        r.warIds.length,
-        r.battleIds.length,
-        r.totalCasualties,
-        r.intensity,
-        r.status,
+      heads={['Relation', 'Between', 'Since', 'Until', 'Reason', 'Wars']}
+      rows={world.relations.map(r => [
+        r.union ? 'Personal union' : r.type,
+        r.type === 'Vassal' ? `${name(r.a)} over ${name(r.b)}` : `${name(r.a)} and ${name(r.b)}`,
+        displayYear(r.since),
+        r.until !== undefined ? displayYear(r.until) : '—',
+        r.reason,
+        r.wars ?? 0,
       ])}
     />
   );

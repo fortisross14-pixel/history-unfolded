@@ -44,19 +44,25 @@ export const isNotable = (ch: Character) => NOTABLE_ROLES.includes(ch.role);
 const isCoastal = (s: WorldState, c: Civilization) =>
   c.provinces.some(id => neigh(s.provinces[id], s).some(n => n.terrain === 'ocean'));
 
-/** Which kind of notable the realm is most likely to produce right now. */
+/**
+ * Which kind of notable the realm is most likely to produce right now. The
+ * national character matters: sea peoples produce explorers and admirals,
+ * merchants come from mercantile realms, prophets from zealous ones.
+ */
 function roleWeights(s: WorldState, c: Civilization, atWar: boolean): [CharacterRole, number][] {
   const coastal = isCoastal(s, c);
   const sailing = has(c, 'deep_sailing');
   const unknown = s.continents.some(x => !c.knownContinentIds.includes(x.id));
+  const a = c.axes;
+  const sea = a.horizon / 50;
   return [
-    ['General', atWar ? 5 : 2],
-    ['Admiral', coastal && sailing ? 1.5 : 0],
-    ['Explorer', coastal ? (sailing && unknown ? 4 : 0.6) : 0],
-    ['Merchant', c.cityIds.length ? 2 : 0.5],
-    ['Scholar', c.cityIds.length ? 2 : 0.5],
-    ['Prophet', c.faithId ? 0.8 : 1.6],
-    ['Statesman', c.stability < 40 ? 3 : 1.5],
+    ['General', (atWar ? 5 : 2) * (0.5 + a.ambition / 100)],
+    ['Admiral', coastal && sailing ? 1.5 * sea : 0],
+    ['Explorer', coastal ? (sailing && unknown ? 4 : 0.6) * sea : 0],
+    ['Merchant', (c.cityIds.length ? 2 : 0.5) * (a.economy / 50)],
+    ['Scholar', (c.cityIds.length ? 2 : 0.5) * (0.5 + a.faith / 100)],
+    ['Prophet', (c.faithId ? 0.8 : 1.6) * ((100 - a.faith) / 50)],
+    ['Statesman', (c.stability < 40 ? 3 : 1.5) * (0.5 + (100 - a.order) / 100)],
   ];
 }
 
@@ -165,9 +171,7 @@ export function notableActs(
       break;
     }
     case 'Statesman': {
-      const culture = idx(s).culture.get(c.cultureId);
-      const pressure =
-        Math.max(0, -(culture?.unstableStable ?? 0)) * 4 + Math.max(0, 45 - c.stability);
+      const pressure = Math.max(0, c.axes.order - 50) * 0.8 + Math.max(0, 45 - c.stability);
       const radical = ch.traits.includes('Reformer') || ch.traits.includes('Ambitious');
       if (
         radical &&

@@ -5,7 +5,6 @@ import type {
   City,
   Character,
   War,
-  Rivalry,
   Civilization,
   WorldState,
 } from '../types.ts';
@@ -16,6 +15,7 @@ import { addEvent } from './events.ts';
 import { createDynasty, crown, deposeRuler, newRuler } from './dynasty.ts';
 import { addDeed, fullName } from './characters.ts';
 import { idx } from './lookup.ts';
+import { addRelation } from './diplomacy.ts';
 import { historicalScore } from './records.ts';
 
 export const rankFor = (c: Civilization, continentLand: number, existingEmpires: number): Rank => {
@@ -28,8 +28,11 @@ export const rankFor = (c: Civilization, continentLand: number, existingEmpires:
   return 'Tribe';
 };
 
+/** The government a realm drifts toward, from its era, size and national character. */
 export const governmentFor = (c: Civilization, year: number): GovernmentType => {
+  const a = c.axes;
   if (year >= 1800 && c.technology >= 650) {
+    if (a.order > 70) return 'Federation';
     if (c.stability < 28) return 'Dictatorship';
     if (c.stability > 72 && c.population > 250000)
       return c.rank === 'Empire' ? 'Federation' : 'Democracy';
@@ -40,6 +43,13 @@ export const governmentFor = (c: Civilization, year: number): GovernmentType => 
     if (c.gdp > c.population / 350) return 'Merchant Republic';
     return c.rank === 'Empire' ? 'Imperial Court' : 'Constitutional Monarchy';
   }
+  // Strong national character overrides the usual path.
+  if (a.faith < 22 && c.faithId)
+    return c.rank === 'Kingdom' || c.rank === 'Empire' ? 'Religious Monarchy' : 'Theocracy';
+  if (a.economy > 72 && a.order > 50 && c.rank !== 'Empire') return 'Merchant Republic';
+  if (a.order > 78) return year < 0 ? 'Clan Confederation' : 'Oligarchy';
+  if (a.order < 22 && a.ambition > 60 && (c.rank === 'Kingdom' || c.rank === 'Empire'))
+    return c.rank === 'Empire' ? 'Imperial Court' : 'Absolute Monarchy';
   if (c.rank === 'Tribe') return c.population > 20000 ? 'Chiefdom' : 'Tribal Council';
   if (c.rank === 'Settlement') return c.stability > 60 ? 'Clan Confederation' : 'Chiefdom';
   if (c.rank === 'City-State')
@@ -135,7 +145,6 @@ export function triggerCivilWar(
     dynastyId: null,
     historyEventIds: [],
     warIds: [],
-    rivalryIds: [],
     historicalScore: 0,
     legacyScore: 0,
     governmentHistory: [
@@ -233,21 +242,11 @@ export function triggerCivilWar(
   s.wars.push(war);
   c.warIds.push(war.id);
   rebel.warIds.push(war.id);
-  const riv: Rivalry = {
-    id: s.nextIds.rivalry++,
-    realmIds: [c.id, rebel.id],
-    startedYear: s.year,
-    cause: 'historical',
-    warIds: [war.id],
-    battleIds: [],
-    totalCasualties: 0,
-    provincesExchanged: 0,
-    intensity: 100,
-    status: 'active',
-  };
-  s.rivalries.push(riv);
-  c.rivalryIds.push(riv.id);
-  rebel.rivalryIds.push(riv.id);
+  addRelation(s, 'Rival', c.id, rebel.id, 'Civil war');
+  // Rebels are the restless half of the nation.
+  rebel.axes = { ...c.axes, order: Math.min(100, c.axes.order + 10) };
+  rebel.navy = Math.round(c.navy * share);
+  c.navy = Math.max(0, c.navy - rebel.navy);
   addEvent(
     s,
     'politics',

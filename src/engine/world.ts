@@ -24,6 +24,7 @@ import { RNG } from './rng.ts';
 import { neigh } from './util.ts';
 import { newRuler } from './dynasty.ts';
 import { rebuildIndex } from './lookup.ts';
+import { initialAxes } from './axes.ts';
 import { discover } from './technology.ts';
 import { battle } from './war.ts';
 import { historicalScore, captureEvolutionSnapshot } from './records.ts';
@@ -182,7 +183,7 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
     artworks: [],
     wonders: [],
     naturalWonders: [],
-    rivalries: [],
+    relations: [],
     events: [],
     realmEvents: [],
     evolutionSnapshots: [],
@@ -205,7 +206,7 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
       artwork: 1,
       wonder: 1,
       naturalWonder: 1,
-      rivalry: 1,
+      relation: 1,
       realmEvent: 1,
       hallOfFame: 1,
     },
@@ -244,9 +245,6 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
       population: home.population,
       founded: s.year,
       originRealmId: s.nextIds.civ,
-      peacefulViolent: r.int(-5, 5),
-      economicCreative: r.int(-5, 5),
-      unstableStable: r.int(-5, 5),
       strength: r.int(25, 55),
       heritage: [],
       artworkIds: [],
@@ -287,7 +285,12 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
       dynastyId: null,
       historyEventIds: [],
       warIds: [],
-      rivalryIds: [],
+      axes: initialAxes(
+        r,
+        neigh(home, s).some(n => n.terrain === 'ocean'),
+      ),
+      navy: 0,
+      navyCapacity: 0,
       historicalScore: 0,
       legacyScore: 0,
       governmentHistory: [{ government: 'Tribal Council', from: s.year, reason: 'Founding' }],

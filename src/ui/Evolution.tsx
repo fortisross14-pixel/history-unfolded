@@ -225,9 +225,7 @@ export function Evolution({ world, open }: { world: WorldState; open: (s: Sel) =
                         strokeLinejoin="round"
                         strokeLinecap="round"
                       >
-                        <title>
-                          {realm.name}: {formatValue(last?.value ?? 0)}
-                        </title>
+                        <title>{`${realm.name}: ${formatValue(last?.value ?? 0)}`}</title>
                       </polyline>
                       {last && (
                         <>

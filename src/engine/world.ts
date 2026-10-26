@@ -22,7 +22,8 @@ import {
 import { chooseDatabase, uniqueProvinceName } from './naming.ts';
 import { RNG } from './rng.ts';
 import { neigh } from './util.ts';
-import { createDynasty, createRuler } from './characters.ts';
+import { newRuler } from './dynasty.ts';
+import { rebuildIndex } from './lookup.ts';
 import { discover } from './technology.ts';
 import { battle } from './war.ts';
 import { historicalScore, captureEvolutionSnapshot } from './records.ts';
@@ -169,10 +170,12 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
     civilizations: [],
     cities: [],
     tradeRoutes: [],
-    people: [],
+    characters: [],
     cultures: [],
     religions: [],
-    rulers: [],
+    reigns: [],
+    legacies: [],
+    overrides: { realm: {}, city: {}, character: {}, dynasty: {}, continent: {}, war: {} },
     dynasties: [],
     wars: [],
     battles: [],
@@ -188,13 +191,14 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
     nextIds: {
       civ: 1,
       city: 1,
-      person: 1,
+      character: 1,
       culture: 1,
       religion: 1,
       event: 1,
       building: 1,
       route: 1,
-      ruler: 1,
+      reign: 1,
+      legacy: 1,
       dynasty: 1,
       war: 1,
       battle: 1,
@@ -278,6 +282,8 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
       continentExposure: {},
       technologyExposure: {},
       rulerId: 0,
+      heirId: 0,
+      regentId: 0,
       dynastyId: null,
       historyEventIds: [],
       warIds: [],
@@ -291,8 +297,8 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
     home.ownerId = civ.id;
     home.cultureId = culture.id;
     s.civilizations.push(civ);
-    createDynasty(s, civ, r);
-    createRuler(s, civ, r, 'founding');
+    rebuildIndex(s);
+    newRuler(s, civ, r, 'the founding of the tribe', true);
   }
   for (const c of s.civilizations)
     c.knownRealmIds = s.civilizations

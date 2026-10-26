@@ -1,17 +1,74 @@
-import type {
-  Province,
-  GreatPerson,
-  RulerRecord,
-  Battle,
-  War,
-  Civilization,
-  WorldState,
-} from '../types.ts';
+import type { Province, Character, Battle, War, Civilization, WorldState } from '../types.ts';
 import { RNG } from './rng.ts';
 import { neigh, has, recalcRealmFromProvinces, distance } from './util.ts';
 import { addEvent } from './events.ts';
 import { numberedBattleName } from './naming.ts';
-import { createRuler, generalFor } from './characters.ts';
+import { addDeed, earnNickname, fullName, killCharacter, notifyAmbition } from './characters.ts';
+import { deposeRuler, newRuler } from './dynasty.ts';
+import { courtOf, idx, isAlive } from './lookup.ts';
+import { TRAITS } from './traits.ts';
+
+/** The realm's best general, or the ruler in person if there is none. */
+export function commanderFor(s: WorldState, c: Civilization): Character | null {
+  const general = courtOf(s, c.id)
+    .filter(x => x.role === 'General')
+    .sort((a, b) => b.skill - a.skill)[0];
+  if (general) return general;
+  const ruler = idx(s).char.get(c.rulerId);
+  return isAlive(ruler) && s.year - ruler.born >= 18 && !ruler.traits.includes('Craven')
+    ? ruler
+    : null;
+}
+
+/** Battle multiplier from a commander's skill and command traits. */
+export function commandOf(g: Character | null) {
+  if (!g) return 0.88;
+  const traits = g.traits.reduce((n, t) => n * (TRAITS[t].command ?? 1), 1);
+  const skill = g.role === 'General' ? g.skill : g.skill * 0.6;
+  return Math.min(1.75, (0.88 + skill * 0.0032) * traits);
+}
+
+/** Fame, wounds and death for the commanders of one battle. */
+function commanderFate(
+  s: WorldState,
+  g: Character | null,
+  won: boolean,
+  battle: string,
+  size: number,
+  r: RNG,
+) {
+  if (!g) return;
+  if (won) {
+    g.battlesWon++;
+    if (size >= 30) addDeed(s, g, `Victory at ${battle}`, 3);
+  } else g.battlesLost++;
+  const risk = (won ? 0.01 : 0.04) * (g.traits.includes('Brave') ? 2 : 1);
+  if (r.chance(risk)) {
+    addDeed(s, g, `Fell at ${battle}`, 4);
+    killCharacter(s, g, 'battle');
+  }
+}
+
+/** Deeds and ambitions when a war ends. */
+function warDeeds(
+  s: WorldState,
+  w: War,
+  winner: Civilization,
+  loser: Civilization,
+  decisive: boolean,
+) {
+  const wRuler = idx(s).char.get(winner.rulerId);
+  const lRuler = idx(s).char.get(loser.rulerId);
+  if (isAlive(wRuler)) {
+    addDeed(s, wRuler, `Won the ${w.name}`, decisive ? 12 : 7);
+    earnNickname(s, wRuler);
+  }
+  if (isAlive(lRuler)) addDeed(s, lRuler, `Lost the ${w.name}`, 2);
+  const general = commanderFor(s, winner);
+  if (general && general.role === 'General')
+    addDeed(s, general, `Won the ${w.name} in command`, decisive ? 8 : 5);
+  notifyAmbition(s, winner.id, 'conquer', `defeated ${loser.name} in the ${w.name}`, loser.id);
+}
 
 export function chooseWarType(
   s: WorldState,
@@ -255,7 +312,8 @@ export function applyWarOutcome(
     d.dynastyId = a.dynastyId;
     const dynasty = s.dynasties.find(x => x.id === a.dynastyId);
     if (dynasty && !dynasty.realmIds.includes(d.id)) dynasty.realmIds.push(d.id);
-    createRuler(s, d, r, `dynastic settlement imposed by ${a.name}`);
+    deposeRuler(s, d, r, `dynastic settlement imposed by ${a.name}`);
+    newRuler(s, d, r, `dynastic settlement imposed by ${a.name}`);
     w.outcome = `The ${dynasty?.name ?? 'attacker’s dynasty'} took the throne of ${d.name}.`;
   } else if (w.type === 'Cultural Reunification') {
     const claims = d.provinces
@@ -301,8 +359,8 @@ export function battle(s: WorldState, w: War, r: RNG) {
     dCap = s.cities.find(x => x.id === d.capitalCityId)?.provinceId ?? d.provinces[0];
   const aShare = Math.max(0.12, 0.72 - distance(s, aCap, target.id) * 0.035),
     dShare = Math.max(0.12, 0.72 - distance(s, dCap, target.id) * 0.035);
-  const ag = generalFor(s, a),
-    dg = generalFor(s, d);
+  const ag = commanderFor(s, a),
+    dg = commanderFor(s, d);
   const aN = Math.max(1, Math.round(a.armySize * aShare * (0.72 + r.next() * 0.28))),
     dN = Math.max(1, Math.round(d.armySize * dShare * (0.72 + r.next() * 0.28)));
   const tech = (c: Civilization) =>
@@ -314,16 +372,8 @@ export function battle(s: WorldState, w: War, r: RNG) {
         (has(c, 'iron') ? 0.12 : 0) +
         (has(c, 'gunpowder') ? 0.22 : 0),
     );
-  const command = (g: GreatPerson | null, rm: RulerRecord) =>
-    Math.min(1.75, 0.88 + (g?.stars ?? 0) * 0.075 + rm.military / 500);
-  const power = (n: number, c: Civilization, g: GreatPerson | null) =>
-    Math.pow(n, 0.96) *
-    tech(c) *
-    command(
-      g,
-      s.rulers.find(x => x.id === c.rulerId)!,
-    ) *
-    (0.91 + r.next() * 0.18);
+  const power = (n: number, c: Civilization, g: Character | null) =>
+    Math.pow(n, 0.96) * tech(c) * commandOf(g) * (0.91 + r.next() * 0.18);
   const ap = power(aN, a, ag),
     dp = power(dN, d, dg),
     winnerSide = ap > dp ? 'attacker' : 'defender';
@@ -367,19 +417,8 @@ export function battle(s: WorldState, w: War, r: RNG) {
   w.defenderLosses += dCas;
   a.armySize = Math.max(0, a.armySize - aCas);
   d.armySize = Math.max(0, d.armySize - dCas);
-  if (winnerSide === 'attacker') {
-    if (ag) {
-      ag.battlesWon++;
-      ag.impact += 10 + Math.min(15, dN / 1000);
-    }
-    if (dg) dg.battlesLost++;
-  } else {
-    if (dg) {
-      dg.battlesWon++;
-      dg.impact += 9 + Math.min(15, aN / 1000);
-    }
-    if (ag) ag.battlesLost++;
-  }
+  commanderFate(s, ag, winnerSide === 'attacker', b.name, b.significance, r);
+  commanderFate(s, dg, winnerSide === 'defender', b.name, b.significance, r);
   const riv = s.rivalries.find(
     x => x.status === 'active' && x.realmIds.includes(a.id) && x.realmIds.includes(d.id),
   );
@@ -393,7 +432,7 @@ export function battle(s: WorldState, w: War, r: RNG) {
     s,
     'military',
     b.name,
-    `${winnerSide === 'attacker' ? a.name : d.name} won. ${aN.toLocaleString()} attackers and ${dN.toLocaleString()} defenders fought; ${(aCas + dCas).toLocaleString()} were lost.`,
+    `${winnerSide === 'attacker' ? a.name : d.name} won${(winnerSide === 'attacker' ? ag : dg) ? ` under ${fullName((winnerSide === 'attacker' ? ag : dg)!)}` : ''}. ${aN.toLocaleString()} attackers and ${dN.toLocaleString()} defenders fought; ${(aCas + dCas).toLocaleString()} were lost.`,
     8,
     [a.id, d.id],
     {
@@ -453,6 +492,7 @@ export function battle(s: WorldState, w: War, r: RNG) {
         Math.abs(w.attackerLosses - w.defenderLosses) >
           Math.max(3, (w.attackerLosses + w.defenderLosses) * 0.3);
       applyWarOutcome(s, w, a, d, winner, loser, decisive, r);
+      warDeeds(s, w, winner, loser, decisive);
       winner.prestige += decisive ? 14 : 8;
       loser.stability = Math.max(5, loser.stability - (decisive ? 12 : 5));
       addEvent(

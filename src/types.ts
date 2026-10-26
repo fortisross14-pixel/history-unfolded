@@ -27,8 +27,6 @@ export type RealmEventType =
   | 'Commercial Renaissance'
   | 'Scientific Awakening';
 export type EventSeverity = 'Mild' | 'Large' | 'Historical';
-export type PersonRole =
-  'Scientist' | 'Engineer' | 'Merchant' | 'Religious Figure' | 'General' | 'Artist' | 'Politician';
 export type GovernmentType =
   | 'Tribal Council'
   | 'Chiefdom'
@@ -134,7 +132,9 @@ export interface Continent {
   armyBonus: number;
   cultureBonus: number;
   discoveredByRealmId?: number;
-  discoveredByPersonId?: number;
+  discoveredByCharacterId?: number;
+  /** Name before an explorer renamed it, if any. */
+  originalName?: string;
   discoveredYear?: number;
 }
 export interface TechnologyDefinition {
@@ -147,8 +147,8 @@ export interface TechnologyDefinition {
 export interface KnownTechnology {
   technologyId: TechnologyId;
   discoveredYear: number;
-  source: 'scientist' | 'diffusion' | 'founding';
-  sourcePersonId?: number;
+  source: 'scholar' | 'diffusion' | 'founding';
+  sourceCharacterId?: number;
 }
 export interface Building {
   id: number;
@@ -156,8 +156,8 @@ export interface Building {
   name: string;
   builtYear: number;
   lastUpgradedYear: number;
-  builderPersonId?: number;
-  lastBuilderPersonId?: number;
+  builderId?: number;
+  lastBuilderId?: number;
   realmIdAtConstruction: number;
   rarity: BuildingRarity;
   level: 1 | 2 | 3 | 4 | 5;
@@ -166,7 +166,12 @@ export interface Building {
   armyBonus: number;
   scienceBonus: number;
   cultureBonus: number;
-  upgradeHistory: { year: number; personId?: number; from?: BuildingRarity; to: BuildingRarity }[];
+  upgradeHistory: {
+    year: number;
+    characterId?: number;
+    from?: BuildingRarity;
+    to: BuildingRarity;
+  }[];
 }
 export interface CityOwnership {
   realmId: number;
@@ -189,6 +194,8 @@ export interface City {
   scientificImportance: number;
   religiousImportance: number;
   isCapital: boolean;
+  /** Character the city is named after, if any. */
+  namedAfterId?: number;
   buildings: Building[];
   ownershipHistory: CityOwnership[];
   tradeRouteIds: number[];
@@ -200,7 +207,7 @@ export interface TradeRoute {
   name: string;
   originCityId: number;
   destinationCityId: number;
-  founderPersonId: number;
+  founderId: number;
   createdYear: number;
   gdpBonus: number;
   active: boolean;
@@ -212,43 +219,166 @@ export interface Artwork {
   rating: number;
   rarity: ArtworkRarity;
   type: ArtworkType;
-  artistId: number;
+  /** The patron character who commissioned the work. */
+  patronId: number;
   cultureId: number;
   realmId: number;
   cityId: number;
 }
-export interface GreatPerson {
+// ---- Characters -------------------------------------------------------------
+
+export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legend' | 'Generational';
+export type CharacterRole =
+  | 'Ruler'
+  | 'Heir'
+  | 'Consort'
+  | 'General'
+  | 'Admiral'
+  | 'Explorer'
+  | 'Merchant'
+  | 'Scholar'
+  | 'Prophet'
+  | 'Statesman';
+export type TraitId =
+  | 'Ambitious'
+  | 'Cruel'
+  | 'Just'
+  | 'Patron'
+  | 'Brilliant'
+  | 'Greedy'
+  | 'Pious'
+  | 'Tolerant'
+  | 'Brave'
+  | 'Craven'
+  | 'Charismatic'
+  | 'Paranoid'
+  | 'Builder'
+  | 'Strategist'
+  | 'Seafarer'
+  | 'Frugal'
+  | 'Reformer'
+  | 'Sickly'
+  | 'Hale'
+  | 'Mad'
+  | 'Lucky';
+export type DeathCause = 'age' | 'battle' | 'illness' | 'assassination' | 'executed';
+export type AmbitionType =
+  | 'conquer'
+  | 'expand'
+  | 'found-religion'
+  | 'reach-continent'
+  | 'build-wonder'
+  | 'grow-wealth'
+  | 'great-discovery'
+  | 'win-battles'
+  | 'reform';
+
+/** A life goal. Achieving it grants a legacy; failing it can sour a reign. */
+export interface Ambition {
+  type: AmbitionType;
+  label: string;
+  targetId?: number;
+  /** Starting value for "grow" style goals (wealth, provinces, battles won). */
+  baseline?: number;
+  deadline: number;
+  status: 'pending' | 'achieved' | 'failed';
+  resolvedYear?: number;
+}
+
+/** Something a character did that history remembers. */
+export interface Deed {
+  year: number;
+  text: string;
+  /** How much this deed adds to the character's fame. */
+  fame: number;
+}
+
+export interface Character {
   id: number;
   name: string;
-  role: PersonRole;
-  born: number;
-  died?: number;
+  nickname?: string;
+  role: CharacterRole;
   realmId: number;
+  dynastyId: number | null;
   cultureId: number | null;
   religionId: number | null;
-  stars: 1 | 2 | 3 | 4 | 5;
-  active: boolean;
-  impact: number;
-  historicalRelevance: number;
-  trait: string;
-  achievement: string;
-  technologyPoints: number;
-  technologiesRevealed: TechnologyId[];
+  born: number;
+  died?: number;
+  deathCause?: DeathCause;
+  /** Planned natural lifespan in years; illness, battle or murder can cut it short. */
+  lifespan: number;
+  parentIds: number[];
+  spouseId?: number;
+  mentorId?: number;
+  rarity: Rarity;
+  /** 0–100 ability in the character's role. Rarity sets the range. */
+  skill: number;
+  traits: TraitId[];
+  ambition: Ambition | null;
+  deeds: Deed[];
+  fame: number;
+  legacyIds: number[];
   battlesWon: number;
   battlesLost: number;
-  wealthCreated: number;
-  followersGained: number;
-  artworkIds: number[];
-  citiesImproved: number[];
-  buildingsCreated: number[];
-  tradeRoutesCreated: number[];
-  wonderIds: number[];
-  revolutionsLed: number;
-  armyAdded: number;
-  stabilityAdded: number;
-  careerMilestones: string[];
-  technologyContributionApplied: number;
+  /** Role the character held before becoming ruler or consort, if any. */
+  formerRole?: CharacterRole;
 }
+
+/** One reign of one ruler over one realm: the ruler's report card. */
+export interface Reign {
+  id: number;
+  characterId: number;
+  /** Copy of the ruler's name so the record survives pruning. */
+  name: string;
+  realmId: number;
+  dynastyId: number | null;
+  start: number;
+  end?: number;
+  endReason?: string;
+  regentId?: number;
+  regencyEnd?: number;
+  government: GovernmentType;
+  startProvinces: number;
+  endProvinces?: number;
+  startTechnology: number;
+  endTechnology?: number;
+  startGDP: number;
+  endGDP?: number;
+  startPopulation: number;
+  endPopulation?: number;
+  /** 0–100 summary of how much the realm grew under this reign. */
+  score: number;
+}
+
+export type ModKey =
+  | 'wealth'
+  | 'growth'
+  | 'research'
+  | 'army'
+  | 'stability'
+  | 'influence'
+  | 'warAppetite'
+  | 'warPower'
+  | 'faithSpread'
+  | 'diplomacy'
+  | 'exploration'
+  | 'build';
+
+/** A lasting realm bonus named after the character who earned it. */
+export interface Legacy {
+  id: number;
+  name: string;
+  characterId: number;
+  realmId: number;
+  start: number;
+  end: number;
+  mods: Partial<Record<ModKey, number>>;
+  reason: string;
+}
+
+export type RenameKind = 'realm' | 'city' | 'character' | 'dynasty' | 'continent' | 'war';
+export type NameOverrides = Record<RenameKind, Record<number, string>>;
+
 export interface Culture {
   id: number;
   name: string;
@@ -270,7 +400,7 @@ export interface Religion {
   color: string;
   followers: number;
   founded: number;
-  founderPersonId: number | null;
+  founderId: number | null;
   holyProvinceIds: number[];
   doctrine: string;
   expansion: number;
@@ -283,13 +413,16 @@ export interface Religion {
 export interface Dynasty {
   id: number;
   name: string;
-  founderPersonId: number | null;
+  founderId: number | null;
   foundedYear: number;
   endedYear?: number;
   originCultureId: number;
   originRealmId: number;
+  /** Characters who ruled for this dynasty, in order. */
   rulerIds: number[];
   realmIds: number[];
+  /** Dynasties linked to this one by royal marriage. */
+  marriedIntoIds: number[];
   totalYearsInPower: number;
   peakTerritory: number;
   peakGDP: number;
@@ -297,30 +430,6 @@ export interface Dynasty {
   warsWon: number;
   wonderIds: number[];
   status: DynastyStatus;
-  historicalRelevance: number;
-}
-export interface RulerRecord {
-  id: number;
-  name: string;
-  realmId: number;
-  dynastyId: number | null;
-  born: number;
-  reignStart: number;
-  reignEnd?: number;
-  plannedReignEnd: number;
-  government: GovernmentType;
-  administration: number;
-  military: number;
-  diplomacy: number;
-  trait: string;
-  startProvinces: number;
-  endProvinces?: number;
-  startTechnology: number;
-  endTechnology?: number;
-  startGDP: number;
-  endGDP?: number;
-  startPopulation: number;
-  endPopulation?: number;
   historicalRelevance: number;
 }
 export interface BattleSide {
@@ -372,7 +481,7 @@ export interface Wonder {
   cityId: number;
   provinceId: number;
   realmId: number;
-  builderPersonId: number;
+  builderId: number;
   startedYear: number;
   completedYear: number;
   status: 'standing' | 'damaged' | 'destroyed';
@@ -480,7 +589,10 @@ export interface Civilization {
   knownRealmIds: number[];
   continentExposure: Record<string, number>;
   technologyExposure: Record<string, number>;
+  /** Character ids of the ruler, heir and regent (0 when none). */
   rulerId: number;
+  heirId: number;
+  regentId: number;
   dynastyId: number | null;
   historyEventIds: number[];
   warIds: number[];
@@ -499,7 +611,7 @@ export interface WorldConfig {
 }
 export interface HallOfFameEntry {
   id: number;
-  category: 'realm' | 'city' | 'person' | 'ruler' | 'battle';
+  category: 'realm' | 'city' | 'character' | 'battle';
   entityId: number;
   name: string;
   year: number;
@@ -520,10 +632,13 @@ export interface WorldState {
   civilizations: Civilization[];
   cities: City[];
   tradeRoutes: TradeRoute[];
-  people: GreatPerson[];
+  characters: Character[];
   cultures: Culture[];
   religions: Religion[];
-  rulers: RulerRecord[];
+  reigns: Reign[];
+  legacies: Legacy[];
+  /** Names the player set by hand. They survive engine renames. */
+  overrides: NameOverrides;
   dynasties: Dynasty[];
   wars: War[];
   battles: Battle[];
@@ -539,13 +654,14 @@ export interface WorldState {
   nextIds: {
     civ: number;
     city: number;
-    person: number;
+    character: number;
     culture: number;
     religion: number;
     event: number;
     building: number;
     route: number;
-    ruler: number;
+    reign: number;
+    legacy: number;
     dynasty: number;
     war: number;
     battle: number;

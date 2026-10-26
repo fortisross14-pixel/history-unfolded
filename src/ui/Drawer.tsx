@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { displayYear, TECHNOLOGIES } from '../engine/index.ts';
-import type { Culture, Battle, War, Wonder, Civilization, WorldState } from '../types.ts';
+import type {
+  Culture,
+  Battle,
+  War,
+  Wonder,
+  Civilization,
+  RenameKind,
+  WorldState,
+} from '../types.ts';
+import { CharacterPage } from './CharacterPage.tsx';
+import { RealmCourt } from './RealmCourt.tsx';
+import { RenameTitle } from './RenameTitle.tsx';
 import {
   type Sel,
   fmt,
@@ -13,16 +24,28 @@ import {
   List,
 } from './shared.tsx';
 
+/** Entities the player can rename from their page. */
+const RENAMEABLE: Partial<Record<NonNullable<Sel>['type'], RenameKind>> = {
+  realm: 'realm',
+  city: 'city',
+  character: 'character',
+  dynasty: 'dynasty',
+  continent: 'continent',
+  war: 'war',
+};
+
 export function Drawer({
   world,
   sel,
   close,
   open,
+  rename,
 }: {
   world: WorldState;
   sel: NonNullable<Sel>;
   close: () => void;
   open: (s: Sel) => void;
+  rename: (kind: RenameKind, id: number, name: string) => void;
 }) {
   const [tab, setTab] = useState('summary');
   useEffect(() => setTab('summary'), [sel.type, sel.id]);
@@ -36,8 +59,8 @@ export function Drawer({
       'summary',
       'history',
       'cities',
+      'court',
       'military',
-      'people',
       'culture',
       'religion',
       'economy',
@@ -142,7 +165,14 @@ export function Drawer({
       </button>
       <div className="drawerhero">
         <span className="eyebrow">{sel.type}</span>
-        <h1>{title}</h1>
+        {RENAMEABLE[sel.type] ? (
+          <RenameTitle
+            title={title}
+            onRename={name => rename(RENAMEABLE[sel.type]!, sel.id, name)}
+          />
+        ) : (
+          <h1>{title}</h1>
+        )}
       </div>
       {tabs.length > 0 && (
         <div className="subtabs drawer-tabs">
@@ -169,7 +199,7 @@ export function RealmDetail({
   tab: string;
   open: (s: Sel) => void;
 }) {
-  const ruler = world.rulers.find(r => r.id === c.rulerId),
+  const ruler = world.characters.find(r => r.id === c.rulerId),
     culture = world.cultures.find(x => x.id === c.cultureId),
     religion = world.religions.find(x => x.id === c.faithId);
   if (tab === 'summary')
@@ -235,11 +265,13 @@ export function RealmDetail({
         </Section>
         <Section title="Rulers">
           <List
-            items={world.rulers
+            items={world.reigns
               .filter(r => r.realmId === c.id)
+              .reverse()
               .map(r => ({
                 name: r.name,
-                sub: `${world.dynasties.find(d => d.id === r.dynastyId)?.name ?? 'No dynasty'} · ${displayYear(r.reignStart)}–${r.reignEnd ? displayYear(r.reignEnd) : 'present'} · Admin ${r.administration}, Mil ${r.military}, Dip ${r.diplomacy} · GDP ${pct(r.startGDP, r.endGDP ?? c.gdp)}`,
+                sub: `${world.dynasties.find(d => d.id === r.dynastyId)?.name ?? 'No dynasty'} · ${displayYear(r.start)}–${r.end !== undefined ? displayYear(r.end) : 'present'} · territory ${r.startProvinces} → ${r.endProvinces ?? c.provinces.length} · wealth ${pct(r.startGDP, r.endGDP ?? c.gdp)}`,
+                onClick: () => open({ type: 'character', id: r.characterId }),
               }))}
           />
         </Section>
@@ -296,20 +328,7 @@ export function RealmDetail({
         </Section>
       </>
     );
-  if (tab === 'people')
-    return (
-      <Section title="Great people">
-        <List
-          items={world.people
-            .filter(p => p.realmId === c.id)
-            .map(p => ({
-              name: p.name,
-              sub: `${p.role} · ${'★'.repeat(p.stars)} · relevance ${p.historicalRelevance}`,
-              onClick: () => open({ type: 'person', id: p.id }),
-            }))}
-        />
-      </Section>
-    );
+  if (tab === 'court') return <RealmCourt c={c} world={world} open={open} />;
   if (tab === 'culture')
     return (
       <>
@@ -394,7 +413,11 @@ export function RealmDetail({
             ],
             [
               'Merchants',
-              fmt(world.people.filter(p => p.realmId === c.id && p.role === 'Merchant').length),
+              fmt(
+                world.characters.filter(
+                  p => p.died === undefined && p.realmId === c.id && p.role === 'Merchant',
+                ).length,
+              ),
             ],
           ]}
         />
@@ -465,135 +488,16 @@ export function detailFor(
   world: WorldState,
   open: (s: Sel) => void,
 ) {
-  if (sel.type === 'person') {
-    const p = world.people.find(x => x.id === sel.id)!;
-    const buildings = world.cities
-      .flatMap(city => city.buildings.map(b => ({ city, b })))
-      .filter(x => p.buildingsCreated.includes(x.b.id));
-    const routes = world.tradeRoutes.filter(r => p.tradeRoutesCreated.includes(r.id));
-    const arts = world.artworks.filter(a => p.artworkIds.includes(a.id));
-    const wonders = world.wonders.filter(w => p.wonderIds.includes(w.id));
+  if (sel.type === 'character') {
+    const ch = world.characters.find(x => x.id === sel.id);
+    if (!ch)
+      return {
+        title: 'Forgotten',
+        body: <p className="empty">This person has faded from memory.</p>,
+      };
     return {
-      title: p.name,
-      body: (
-        <>
-          <Metrics
-            vals={[
-              ['Role', p.role],
-              ['Potential', '★'.repeat(p.stars)],
-              ['Relevance', `${p.historicalRelevance}/100`],
-              ['Status', p.active ? 'Alive' : `Died ${displayYear(p.died!)}`],
-            ]}
-          />
-          <Section title="Life">
-            <p>
-              Born {displayYear(p.born)} in{' '}
-              {world.civilizations.find(c => c.id === p.realmId)?.name}. {p.achievement}.
-            </p>
-          </Section>
-          <Section title="Career impact">
-            <p>
-              Technology points: {fmt(p.technologyPoints)} · technologies revealed:{' '}
-              {p.technologiesRevealed.length} · battles {p.battlesWon}–{p.battlesLost} · wealth
-              created {fmt(p.wealthCreated, 1)} · followers gained {fmt(p.followersGained)} · army
-              added {fmt(p.armyAdded)} · stability added {fmt(p.stabilityAdded, 1)} · revolutions{' '}
-              {p.revolutionsLed}.
-            </p>
-          </Section>
-          <Section title="Buildings founded">
-            <List
-              items={buildings.map(({ city, b }) => ({
-                name: b.name,
-                sub: `${city.name} · ${b.rarity} · impact ${b.impact} · built ${displayYear(b.builtYear)}`,
-                onClick: () => open({ type: 'city', id: city.id }),
-              }))}
-            />
-          </Section>
-          <Section title="Trade routes">
-            <List
-              items={routes.map(r => ({
-                name: r.name,
-                sub: `Founded ${displayYear(r.createdYear)} · GDP bonus ${(r.gdpBonus * 100).toFixed(1)}%`,
-              }))}
-            />
-          </Section>
-          <Section title="Artworks">
-            <List
-              items={arts.map(a => ({
-                name: a.name,
-                sub: `${a.rarity} ${a.type} · ${a.rating}/100`,
-                onClick: () => open({ type: 'artwork', id: a.id }),
-              }))}
-            />
-          </Section>
-          <Section title="Wonders">
-            <List
-              items={wonders.map(w => ({
-                name: w.name,
-                sub: `${w.category} · completed ${displayYear(w.completedYear)}`,
-                onClick: () => open({ type: 'wonder', id: w.id }),
-              }))}
-            />
-          </Section>
-        </>
-      ),
-    };
-  }
-  if (sel.type === 'ruler') {
-    const r = world.rulers.find(x => x.id === sel.id)!;
-    const realm = world.civilizations.find(c => c.id === r.realmId);
-    const dynasty = world.dynasties.find(d => d.id === r.dynastyId);
-    return {
-      title: r.name,
-      body: (
-        <>
-          <Metrics
-            vals={[
-              ['Realm', realm?.name ?? 'Lost realm'],
-              ['Dynasty', dynasty?.name ?? 'No dynasty'],
-              [
-                'Reign',
-                `${displayYear(r.reignStart)}–${r.reignEnd ? displayYear(r.reignEnd) : 'present'}`,
-              ],
-              ['Relevance', `${r.historicalRelevance}/100`],
-            ]}
-          />
-          <Section title="Skills">
-            <Metrics
-              vals={[
-                ['Administration', fmt(r.administration)],
-                ['Military', fmt(r.military)],
-                ['Diplomacy', fmt(r.diplomacy)],
-                ['Government', r.government],
-              ]}
-            />
-          </Section>
-          <Section title="Reign results">
-            <p>
-              Provinces: {r.startProvinces} →{' '}
-              {r.endProvinces ?? realm?.provinces.length ?? r.startProvinces} · Technology:{' '}
-              {fmt(r.startTechnology)} →{' '}
-              {fmt(r.endTechnology ?? realm?.technology ?? r.startTechnology)} · GDP:{' '}
-              {fmt(r.startGDP, 1)} → {fmt(r.endGDP ?? realm?.gdp ?? r.startGDP, 1)} · Population:{' '}
-              {fmt(r.startPopulation)} →{' '}
-              {fmt(r.endPopulation ?? realm?.population ?? r.startPopulation)}.
-            </p>
-          </Section>
-          {realm && (
-            <Section title="Realm">
-              <List
-                items={[
-                  {
-                    name: realm.name,
-                    sub: `${realm.rank} · ${realm.government}`,
-                    onClick: () => open({ type: 'realm', id: realm.id }),
-                  },
-                ]}
-              />
-            </Section>
-          )}
-        </>
-      ),
+      title: `${ch.name}${ch.nickname ? ` ${ch.nickname}` : ''}`,
+      body: <CharacterPage ch={ch} world={world} open={open} />,
     };
   }
   if (sel.type === 'religion') {
@@ -640,9 +544,7 @@ export function detailFor(
   }
   if (sel.type === 'dynasty') {
     const d = world.dynasties.find(x => x.id === sel.id)!;
-    const rulers = d.rulerIds
-      .map(id => world.rulers.find(r => r.id === id))
-      .filter((r): r is NonNullable<typeof r> => !!r);
+    const rulers = world.reigns.filter(r => r.dynastyId === d.id);
     const realms = d.realmIds
       .map(id => world.civilizations.find(c => c.id === id))
       .filter((c): c is NonNullable<typeof c> => !!c);
@@ -673,8 +575,8 @@ export function detailFor(
             <List
               items={rulers.map(r => ({
                 name: r.name,
-                sub: `${world.civilizations.find(c => c.id === r.realmId)?.name ?? 'Unknown realm'} · ${displayYear(r.reignStart)}–${r.reignEnd ? displayYear(r.reignEnd) : 'present'} · ${r.government} · relevance ${r.historicalRelevance}`,
-                onClick: () => open({ type: 'ruler', id: r.id }),
+                sub: `${world.civilizations.find(c => c.id === r.realmId)?.name ?? 'Unknown realm'} · ${displayYear(r.start)}–${r.end !== undefined ? displayYear(r.end) : 'present'} · ${r.government} · reign score ${r.score}`,
+                onClick: () => open({ type: 'character', id: r.characterId }),
               }))}
             />
           </Section>
@@ -782,8 +684,8 @@ export function detailFor(
           <span>{((data.casualties / Math.max(1, data.combatants)) * 100).toFixed(1)}% lost</span>
         </p>
         <em>
-          General: {world.people.find(p => p.id === data.generalId)?.name ?? 'None'} · Battle power{' '}
-          {fmt(data.power, 1)}
+          Commander: {world.characters.find(p => p.id === data.generalId)?.name ?? 'None'} · Battle
+          power {fmt(data.power, 1)}
         </em>
       </div>
     );
@@ -827,7 +729,7 @@ export function detailFor(
           />
           <Section title="Creator">
             <p>
-              {world.people.find(p => p.id === a.artistId)?.name} created this work in{' '}
+              {world.characters.find(p => p.id === a.patronId)?.name} commissioned this work in{' '}
               {world.cities.find(c => c.id === a.cityId)?.name} for{' '}
               {world.civilizations.find(c => c.id === a.realmId)?.name}.
             </p>
@@ -852,7 +754,7 @@ export function detailFor(
           />
           <Section title="Legacy">
             <p>
-              {w.effect}. Built by {world.people.find(p => p.id === w.builderPersonId)?.name} in{' '}
+              {w.effect}. Built by {world.characters.find(p => p.id === w.builderId)?.name} in{' '}
               {world.cities.find(c => c.id === w.cityId)?.name}.
             </p>
           </Section>
@@ -923,7 +825,7 @@ export function ReligionDetail({
           <Section title="Foundation">
             <p>
               Founded {displayYear(religion.founded)} by{' '}
-              {world.people.find(p => p.id === religion.founderPersonId)?.name ??
+              {world.characters.find(p => p.id === religion.founderId)?.name ??
                 'an unknown founder'}
               . Doctrine: {religion.doctrine}. Holy sites: {religion.holyProvinceIds.length}.
             </p>

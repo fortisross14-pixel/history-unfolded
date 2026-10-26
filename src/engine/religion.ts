@@ -1,11 +1,12 @@
-import type { GreatPerson, Religion, Civilization, WorldState } from '../types.ts';
+import type { Character, Religion, Civilization, WorldState } from '../types.ts';
 import { chooseDatabase } from './naming.ts';
 import { RNG } from './rng.ts';
 import { REAL_RELIGIONS, FICTIONAL_RELIGIONS } from './data.ts';
 import { addEvent } from './events.ts';
+import { addDeed, earnNickname, notifyAmbition } from './characters.ts';
 
-export function foundReligion(s: WorldState, c: Civilization, p: GreatPerson, r: RNG) {
-  if (s.religions.length >= 6 || p.religionId) return;
+export function foundReligion(s: WorldState, c: Civilization, p: Character, r: RNG) {
+  if (s.religions.length >= 6 || p.deeds.some(d => d.text.startsWith('Founded the faith'))) return;
   const city = s.cities.find(x => x.id === c.capitalCityId);
   const holyProvince = city?.provinceId ?? c.provinces[0];
   if (holyProvince === undefined) return;
@@ -27,7 +28,7 @@ export function foundReligion(s: WorldState, c: Civilization, p: GreatPerson, r:
     color: `hsl(${r.int(0, 359)} 60% 58%)`,
     followers: Math.max(40, Math.round(c.population * 0.35)),
     founded: s.year,
-    founderPersonId: p.id,
+    founderId: p.id,
     holyProvinceIds: [holyProvince],
     doctrine: r.pick([
       'Harmony and learning',
@@ -47,10 +48,9 @@ export function foundReligion(s: WorldState, c: Civilization, p: GreatPerson, r:
   s.provinces[holyProvince].religionId = rel.id;
   c.faithId = rel.id;
   p.religionId = rel.id;
-  p.followersGained += rel.followers;
-  p.impact += 30;
-  p.careerMilestones.push('founded-religion');
-  p.achievement = `Founded ${rel.name}`;
+  addDeed(s, p, `Founded the faith of ${rel.name}`, 30);
+  notifyAmbition(s, c.id, 'found-religion', `founded ${rel.name}`, undefined, p.id);
+  earnNickname(s, p);
   if (city) city.religiousImportance += 30;
   addEvent(
     s,

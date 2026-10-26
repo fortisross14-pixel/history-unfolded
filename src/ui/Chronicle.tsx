@@ -67,8 +67,8 @@ export function Chronicle({ world, open }: { world: WorldState; open: (s: Sel) =
                 </button>
               ))}
               {e.personIds.slice(0, 2).map(id => (
-                <button onClick={() => open({ type: 'person', id })} key={id}>
-                  {world.people.find(p => p.id === id)?.name}
+                <button onClick={() => open({ type: 'character', id })} key={id}>
+                  {world.characters.find(p => p.id === id)?.name ?? 'Someone forgotten'}
                   <ChevronRight />
                 </button>
               ))}

@@ -11,8 +11,7 @@ export type AlmanacTab =
   | 'continents'
   | 'religions'
   | 'cultures'
-  | 'people'
-  | 'rulers'
+  | 'reigns'
   | 'dynasties'
   | 'wars'
   | 'battles'
@@ -33,8 +32,7 @@ export function Almanac({ world, open }: { world: WorldState; open: (s: Sel) => 
     'continents',
     'religions',
     'cultures',
-    'people',
-    'rulers',
+    'reigns',
     'dynasties',
     'wars',
     'battles',
@@ -162,8 +160,8 @@ export function AlmanacTable({
         b.rarity,
         b.impact,
         displayYear(b.builtYear),
-        world.people.find(p => p.id === b.lastBuilderPersonId)?.name ??
-          world.people.find(p => p.id === b.builderPersonId)?.name ??
+        world.characters.find(p => p.id === b.lastBuilderId)?.name ??
+          world.characters.find(p => p.id === b.builderId)?.name ??
           'Realm project',
         `GDP +${(b.gdpBonus * 100).toFixed(1)}% · Army +${(b.armyBonus * 100).toFixed(1)}% · Science +${(b.scienceBonus * 100).toFixed(1)}% · Culture +${(b.cultureBonus * 100).toFixed(1)}%`,
       ]),
@@ -224,7 +222,7 @@ export function AlmanacTable({
             displayYear(r.founded),
             Math.round(r.followers),
             r.provinces,
-            world.people.find(p => p.id === r.founderPersonId)?.name ?? 'Unknown',
+            world.characters.find(p => p.id === r.founderId)?.name ?? 'Unknown',
             r.holyProvinceIds.length,
             r.expansion,
             r.loyalty,
@@ -268,23 +266,7 @@ export function AlmanacTable({
         ])}
       />
     );
-  if (tab === 'people')
-    return (
-      <Table
-        heads={['Person', 'Role', 'Born', 'Died', 'Realm', 'Stars', 'Relevance', 'Achievement']}
-        rows={world.people.map(p => [
-          link(p.name, () => open({ type: 'person', id: p.id })),
-          p.role,
-          displayYear(p.born),
-          p.died ? displayYear(p.died) : 'Alive',
-          world.civilizations.find(c => c.id === p.realmId)?.name,
-          '★'.repeat(p.stars),
-          p.historicalRelevance,
-          p.achievement,
-        ])}
-      />
-    );
-  if (tab === 'rulers')
+  if (tab === 'reigns')
     return (
       <Table
         heads={[
@@ -292,38 +274,31 @@ export function AlmanacTable({
           'Realm',
           'Dynasty',
           'Reign',
-          'Government',
-          'Admin',
-          'Military',
-          'Diplomacy',
+          'Years',
           'Province Δ',
           'Tech Δ',
-          'GDP Δ',
-          'Relevance',
+          'Wealth Δ',
+          'Score',
         ]}
-        rows={[...world.rulers]
-          .sort((a, b) => b.historicalRelevance - a.historicalRelevance)
-          .slice(0, 100)
-          .map(r => [
-            link(r.name, () => open({ type: 'ruler', id: r.id })),
-            world.civilizations.find(c => c.id === r.realmId)?.name,
-            world.dynasties.find(d => d.id === r.dynastyId)?.name ?? '—',
-            `${displayYear(r.reignStart)}–${r.reignEnd ? displayYear(r.reignEnd) : 'present'}`,
-            r.government,
-            r.administration,
-            r.military,
-            r.diplomacy,
-            (r.endProvinces ??
-              world.civilizations.find(c => c.id === r.realmId)?.provinces.length ??
-              r.startProvinces) - r.startProvinces,
-            Math.round(
-              (r.endTechnology ??
-                world.civilizations.find(c => c.id === r.realmId)?.technology ??
-                r.startTechnology) - r.startTechnology,
-            ),
-            pct(r.startGDP, r.endGDP ?? world.civilizations.find(c => c.id === r.realmId)?.gdp),
-            r.historicalRelevance,
-          ])}
+        rows={[...world.reigns]
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 150)
+          .map(r => {
+            const realm = world.civilizations.find(c => c.id === r.realmId);
+            return [
+              link(r.name, () => open({ type: 'character', id: r.characterId })),
+              realm?.name,
+              world.dynasties.find(d => d.id === r.dynastyId)?.name ?? '—',
+              `${displayYear(r.start)}–${r.end !== undefined ? displayYear(r.end) : 'present'}`,
+              (r.end ?? world.year) - r.start,
+              (r.endProvinces ?? realm?.provinces.length ?? r.startProvinces) - r.startProvinces,
+              Math.round(
+                (r.endTechnology ?? realm?.technology ?? r.startTechnology) - r.startTechnology,
+              ),
+              pct(r.startGDP, r.endGDP ?? realm?.gdp),
+              r.score,
+            ];
+          })}
       />
     );
   if (tab === 'dynasties')
@@ -429,14 +404,14 @@ export function AlmanacTable({
     const data = world.artworks.filter(a => realmFilter === 'all' || a.realmId === +realmFilter);
     return (
       <Table
-        heads={['Artwork', 'Type', 'Rarity', 'Rating', 'Year', 'Artist', 'Realm', 'Culture']}
+        heads={['Artwork', 'Type', 'Rarity', 'Rating', 'Year', 'Patron', 'Realm', 'Culture']}
         rows={data.map(a => [
           link(a.name, () => open({ type: 'artwork', id: a.id })),
           a.type,
           a.rarity,
           a.rating,
           displayYear(a.year),
-          world.people.find(p => p.id === a.artistId)?.name,
+          world.characters.find(p => p.id === a.patronId)?.name,
           world.civilizations.find(c => c.id === a.realmId)?.name,
           world.cultures.find(c => c.id === a.cultureId)?.name,
         ])}
@@ -461,7 +436,7 @@ export function AlmanacTable({
           w.category,
           world.cities.find(c => c.id === w.cityId)?.name,
           world.civilizations.find(c => c.id === w.realmId)?.name,
-          world.people.find(p => p.id === w.builderPersonId)?.name,
+          world.characters.find(p => p.id === w.builderId)?.name,
           displayYear(w.completedYear),
           w.status,
           w.historicalRelevance,
@@ -497,7 +472,7 @@ export function AlmanacTable({
           r.name,
           world.cities.find(c => c.id === r.originCityId)?.name,
           world.cities.find(c => c.id === r.destinationCityId)?.name,
-          world.people.find(p => p.id === r.founderPersonId)?.name,
+          world.characters.find(p => p.id === r.founderId)?.name,
           displayYear(r.createdYear),
           `${(r.gdpBonus * 100).toFixed(1)}%`,
           r.active ? 'Active' : 'Closed',

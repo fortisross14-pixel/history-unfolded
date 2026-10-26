@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, Clock3, Globe2, Landmark, RotateCcw, TrendingUp, Trophy } from 'lucide-react';
+import {
+  BookOpen,
+  Clock3,
+  Globe2,
+  Landmark,
+  RotateCcw,
+  TrendingUp,
+  Trophy,
+  Users,
+} from 'lucide-react';
 import { advanceWorld, createWorld, displayYear, eraName } from './engine/index.ts';
 import type { WorldState } from './types.ts';
 import { type View, type MapMode, type Sel } from './ui/shared.tsx';
@@ -12,6 +21,8 @@ import { HallOfFame } from './ui/HallOfFame.tsx';
 import { Chronicle } from './ui/Chronicle.tsx';
 import { Almanac } from './ui/Almanac.tsx';
 import { Drawer } from './ui/Drawer.tsx';
+import { Characters } from './ui/Characters.tsx';
+import { renameEntity } from './engine/rename.ts';
 
 export default function App() {
   const [slots, setSlots] = useState(loadSlots),
@@ -70,6 +81,7 @@ export function Game({
   const advance = (n: number) => save(advanceWorld(world, n));
   const navItems: [View, typeof Globe2, string][] = [
     ['world', Globe2, 'World'],
+    ['characters', Users, 'Characters'],
     ['chronicle', BookOpen, 'Chronicle'],
     ['almanac', Landmark, 'Almanac'],
     ['evolution', TrendingUp, 'Evolution'],
@@ -113,6 +125,7 @@ export function Game({
         </div>
       </div>
       {view === 'world' && <World world={world} mode={mode} setMode={setMode} open={setSel} />}{' '}
+      {view === 'characters' && <Characters world={world} open={setSel} />}
       {view === 'chronicle' && <Chronicle world={world} open={setSel} />}{' '}
       {view === 'almanac' && <Almanac world={world} open={setSel} />}{' '}
       {view === 'evolution' && <Evolution world={world} open={setSel} />}{' '}
@@ -125,6 +138,7 @@ export function Game({
             sel={sel}
             close={() => setSel(null)}
             open={setSel}
+            rename={(kind, id, name) => save(renameEntity(world, kind, id, name))}
           />,
           document.body,
         )}

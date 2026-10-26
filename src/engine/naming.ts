@@ -1,12 +1,5 @@
-import type { NameMode, PersonRole, Dynasty, Civilization, WorldState } from '../types.ts';
-import {
-  ROOTS,
-  REAL_CITIES,
-  CITY_SUFFIX,
-  HISTORICAL_NAMES,
-  REAL_PROVINCES,
-  FICTIONAL_PROVINCES,
-} from './data.ts';
+import type { NameMode, Province, Dynasty, Civilization, WorldState } from '../types.ts';
+import { ROOTS, REAL_CITIES, CITY_SUFFIX, REAL_PROVINCES, FICTIONAL_PROVINCES } from './data.ts';
 import { RNG } from './rng.ts';
 
 export const chooseDatabase = (mode: NameMode, r: RNG) =>
@@ -95,15 +88,6 @@ export const politicalCoreName = (c: Civilization, s: WorldState) => {
     .replace(/ean$/, 'ea');
 };
 
-export function uniqueName(s: WorldState, role: PersonRole, r: RNG) {
-  const pool = HISTORICAL_NAMES[role].filter(n => !s.usedHistoricalNames.includes(n));
-  const name = pool.length
-    ? r.pick(pool)
-    : `${r.pick(['Aurelia', 'Cassian', 'Elira', 'Marcus', 'Samira', 'Leontes', 'Nadia', 'Tariq', 'Mina', 'Darius'])} ${r.pick(ROOTS)}`;
-  s.usedHistoricalNames.push(name);
-  return name;
-}
-
 export function capitalName(root: string, r: RNG, s?: WorldState) {
   if (s && chooseDatabase(s.config.nameMode, r)) {
     const used = new Set(s.cities.map(c => c.name));
@@ -137,18 +121,37 @@ export function romanNumeral(n: number) {
   return out || 'I';
 }
 
-export function numberedRulerName(
-  s: WorldState,
-  first: string,
-  dynastyId: number,
-  surname: string,
-) {
-  const count =
-    s.rulers.filter(r => r.dynastyId === dynastyId && r.name.startsWith(`${first} `)).length + 1;
-  return `${first} ${romanNumeral(count)} ${surname}`;
-}
-
 export function numberedBattleName(s: WorldState, base: string) {
   const count = s.battles.filter(b => b.name === base || b.name.startsWith(`${base} (`)).length + 1;
   return `${base} (${count})`;
+}
+
+/**
+ * Name for a new city: usually the province name, but great rulers and saints
+ * sometimes give their name to a city ("Alaricopolis", "Port Alaric", "Saint Mina").
+ */
+export function cityNameFor(
+  s: WorldState,
+  c: Civilization,
+  p: Province,
+  coastal: boolean,
+  r: RNG,
+): { name: string; namedAfterId?: number } {
+  const used = new Set(s.cities.map(x => x.name));
+  const ruler = s.characters.find(x => x.id === c.rulerId);
+  const saint = c.faithId
+    ? s.characters.find(x => x.id === s.religions.find(rel => rel.id === c.faithId)?.founderId)
+    : undefined;
+  const options: { name: string; namedAfterId?: number }[] = [];
+  if (ruler && ['Epic', 'Legend', 'Generational'].includes(ruler.rarity) && r.chance(0.45)) {
+    const first = ruler.name.split(' ')[0];
+    const pattern = coastal
+      ? r.pick(['Port {n}', '{n}opolis', '{n}haven'])
+      : r.pick(['{n}opolis', '{n}grad', 'Fort {n}', '{n}burg']);
+    options.push({ name: pattern.replace('{n}', first), namedAfterId: ruler.id });
+  }
+  if (saint && saint.died !== undefined && r.chance(0.2))
+    options.push({ name: `Saint ${saint.name.split(' ')[0]}`, namedAfterId: saint.id });
+  const pick = options.find(o => !used.has(o.name));
+  return pick ?? { name: p.name };
 }

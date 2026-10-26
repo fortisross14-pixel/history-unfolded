@@ -1,6 +1,23 @@
 import type { WorldState } from '../types.ts';
 import { displayYear } from './util.ts';
 
+/** Collects numbers that are only visible while the run is in progress. */
+export class RunTracker {
+  generationalPeak = 0;
+  generationalYears = 0;
+  generationalSum = 0;
+  years = 0;
+  observe(s: WorldState) {
+    let alive = 0;
+    for (const ch of s.characters)
+      if (ch.died === undefined && ch.rarity === 'Generational') alive++;
+    this.generationalPeak = Math.max(this.generationalPeak, alive);
+    this.generationalSum += alive;
+    if (alive > 0) this.generationalYears++;
+    this.years++;
+  }
+}
+
 export interface CenturyLeaders {
   year: number;
   leaders: { name: string; score: number }[];
@@ -16,6 +33,12 @@ export interface WorldMetrics {
   people: number;
   livingPeople: number;
   generationalAlivePeak: number;
+  generationalAverage: number;
+  /** Share of years with at least one Generational character alive. */
+  generationalShare: number;
+  legacies: number;
+  nicknames: number;
+  reigns: number;
   religions: number;
   cities: number;
   centuries: CenturyLeaders[];
@@ -23,7 +46,7 @@ export interface WorldMetrics {
 }
 
 /** Key balance numbers for a finished (or in-progress) world. */
-export function summarize(world: WorldState): WorldMetrics {
+export function summarize(world: WorldState, tracker?: RunTracker): WorldMetrics {
   const alive = world.civilizations.filter(c => c.provinces.length);
   const snapshots = world.evolutionSnapshots ?? [];
   const centuries = snapshots.map(s => ({
@@ -56,9 +79,14 @@ export function summarize(world: WorldState): WorldMetrics {
     wars: world.wars.length,
     greatWars: 0,
     battles: world.battles.length,
-    people: world.people.length,
-    livingPeople: world.people.filter(p => p.active).length,
-    generationalAlivePeak: 0,
+    people: world.characters.length,
+    livingPeople: world.characters.filter(p => p.died === undefined).length,
+    generationalAlivePeak: tracker?.generationalPeak ?? 0,
+    generationalAverage: tracker ? tracker.generationalSum / Math.max(1, tracker.years) : 0,
+    generationalShare: tracker ? tracker.generationalYears / Math.max(1, tracker.years) : 0,
+    legacies: world.legacies.length,
+    nicknames: world.characters.filter(ch => ch.nickname).length,
+    reigns: world.reigns.length,
     religions: world.religions.length,
     cities: world.cities.length,
     centuries,
@@ -74,7 +102,9 @@ export function formatMetrics(m: WorldMetrics, everyNthCentury = 5): string {
     `Wars / great wars ........ ${m.wars} / ${m.greatWars}`,
     `Stored battles ........... ${m.battles}`,
     `Characters (alive) ....... ${m.people} (${m.livingPeople})`,
-    `Generational alive (peak)  ${m.generationalAlivePeak}`,
+    `Generational alive ....... peak ${m.generationalAlivePeak}, average ${m.generationalAverage.toFixed(1)}, present ${(m.generationalShare * 100).toFixed(0)}% of years`,
+    `Reigns / legacies ........ ${m.reigns} / ${m.legacies}`,
+    `Characters with nicknames  ${m.nicknames}`,
     `Religions / cities ....... ${m.religions} / ${m.cities}`,
     `Longest time on top ...... ${m.longestLead.name}: ${m.longestLead.years} years from ${displayYear(m.longestLead.from)}`,
     '',

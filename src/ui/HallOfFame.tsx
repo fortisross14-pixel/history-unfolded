@@ -7,16 +7,14 @@ export function HallOfFame({ world, open }: { world: WorldState; open: (s: Sel) 
   const cats: [WorldState['hallOfFame'][number]['category'], string, string][] = [
     ['realm', 'Realms', 'Periods of overwhelming world power'],
     ['city', 'Cities', 'Urban centers that towered over their age'],
-    ['person', 'Great People', 'Individuals with extraordinary lasting relevance'],
-    ['ruler', 'Rulers', 'Reigns that reshaped a civilization'],
+    ['character', 'Characters', 'The most famous people who ever lived'],
     ['battle', 'Battles', 'The most consequential clashes in recorded history'],
   ];
   const click = (e: WorldState['hallOfFame'][number]) => {
     if (e.category === 'realm') open({ type: 'realm', id: e.entityId });
     else if (e.category === 'city') open({ type: 'city', id: e.entityId });
-    else if (e.category === 'person') open({ type: 'person', id: e.entityId });
-    else if (e.category === 'battle') open({ type: 'battle', id: e.entityId });
-    else open({ type: 'ruler', id: e.entityId });
+    else if (e.category === 'character') open({ type: 'character', id: e.entityId });
+    else open({ type: 'battle', id: e.entityId });
   };
   return (
     <main className="page hall-page">

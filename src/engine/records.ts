@@ -1,5 +1,6 @@
 import type { War, Civilization, WorldState } from '../types.ts';
-import { battle } from './war.ts';
+import { idx } from './lookup.ts';
+import { fullName } from './characters.ts';
 
 export function historicalScore(s: WorldState, c: Civilization) {
   const arts = s.artworks.filter(a => a.realmId === c.id).reduce((n, a) => n + a.rating / 10, 0);
@@ -8,9 +9,7 @@ export function historicalScore(s: WorldState, c: Civilization) {
   const wars = s.wars.filter(w => w.winnerIds.includes(c.id)).length * 12;
   const legacy =
     s.cities.filter(x => x.founderRealmId === c.id).length * 5 +
-    s.religions.filter(
-      x => x.founderPersonId && s.people.find(p => p.id === x.founderPersonId)?.realmId === c.id,
-    ).length *
+    s.religions.filter(x => x.founderId && idx(s).char.get(x.founderId)?.realmId === c.id).length *
       35;
   return Math.round(
     c.prestige +
@@ -100,30 +99,19 @@ export function updateHallOfFame(s: WorldState) {
       subtitle: `World's leading city · ${cities[0].population.toLocaleString()} people`,
       periodKey: `city-${cities[0].id}-${eraKey}`,
     });
-  const people = [...s.people]
-    .sort((a, b) => b.historicalRelevance - a.historicalRelevance)
+  const famous = s.characters
+    .filter(ch => ch.fame >= 30)
+    .sort((a, b) => b.fame - a.fame)
     .slice(0, 5);
-  for (const person of people)
-    if (person.historicalRelevance >= 25)
-      addHallEntry(s, {
-        category: 'person',
-        entityId: person.id,
-        name: person.name,
-        year: s.year,
-        score: person.historicalRelevance,
-        subtitle: `${person.role} · ${person.achievement}`,
-        periodKey: `person-${person.id}`,
-      });
-  const rulers = [...s.rulers].sort((a, b) => b.historicalRelevance - a.historicalRelevance);
-  if (rulers[0] && rulers[0].historicalRelevance >= 45)
+  for (const ch of famous)
     addHallEntry(s, {
-      category: 'ruler',
-      entityId: rulers[0].id,
-      name: rulers[0].name,
+      category: 'character',
+      entityId: ch.id,
+      name: fullName(ch),
       year: s.year,
-      score: rulers[0].historicalRelevance,
-      subtitle: `Ruler of ${s.civilizations.find(c => c.id === rulers[0].realmId)?.name ?? 'a lost realm'}`,
-      periodKey: `ruler-${rulers[0].id}`,
+      score: ch.fame,
+      subtitle: `${ch.rarity} ${ch.role.toLowerCase()} of ${idx(s).civ.get(ch.realmId)?.name ?? 'a lost realm'}`,
+      periodKey: `character-${ch.id}`,
     });
   const battles = [...s.battles].sort(
     (a, b) =>

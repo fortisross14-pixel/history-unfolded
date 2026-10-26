@@ -1,0 +1,109 @@
+import type {
+  Character,
+  City,
+  Civilization,
+  Culture,
+  Dynasty,
+  Legacy,
+  Religion,
+  WorldState,
+} from '../types.ts';
+
+/**
+ * Fast id lookups for one world. Built once per simulated year and kept in a
+ * WeakMap, so it never ends up in saves. Code that creates entities during
+ * the year registers them here too.
+ */
+export interface Index {
+  civ: Map<number, Civilization>;
+  city: Map<number, City>;
+  char: Map<number, Character>;
+  dynasty: Map<number, Dynasty>;
+  religion: Map<number, Religion>;
+  culture: Map<number, Culture>;
+  /** Living characters by realm id. */
+  court: Map<number, Character[]>;
+  /** Active legacies by realm id. */
+  legacies: Map<number, Legacy[]>;
+  generationalAlive: number;
+}
+
+const cache = new WeakMap<WorldState, Index>();
+
+const byId = <T extends { id: number }>(list: T[]) => new Map(list.map(x => [x.id, x]));
+
+export function rebuildIndex(s: WorldState): Index {
+  const court = new Map<number, Character[]>();
+  let generationalAlive = 0;
+  for (const ch of s.characters) {
+    if (ch.died !== undefined) continue;
+    if (ch.rarity === 'Generational') generationalAlive++;
+    const list = court.get(ch.realmId);
+    if (list) list.push(ch);
+    else court.set(ch.realmId, [ch]);
+  }
+  const legacies = new Map<number, Legacy[]>();
+  for (const l of s.legacies) {
+    if (l.end < s.year) continue;
+    const list = legacies.get(l.realmId);
+    if (list) list.push(l);
+    else legacies.set(l.realmId, [l]);
+  }
+  const index: Index = {
+    civ: byId(s.civilizations),
+    city: byId(s.cities),
+    char: byId(s.characters),
+    dynasty: byId(s.dynasties),
+    religion: byId(s.religions),
+    culture: byId(s.cultures),
+    court,
+    legacies,
+    generationalAlive,
+  };
+  cache.set(s, index);
+  return index;
+}
+
+/** The current index for this world, building it on first use. */
+export function idx(s: WorldState): Index {
+  return cache.get(s) ?? rebuildIndex(s);
+}
+
+export const isAlive = (ch: Character | undefined): ch is Character =>
+  !!ch && ch.died === undefined;
+
+/** Living characters attached to a realm (ruler, heir, consort and notables). */
+export function courtOf(s: WorldState, realmId: number): Character[] {
+  return (idx(s).court.get(realmId) ?? []).filter(isAlive);
+}
+
+export function registerCharacter(s: WorldState, ch: Character) {
+  const index = idx(s);
+  index.char.set(ch.id, ch);
+  const list = index.court.get(ch.realmId);
+  if (list) list.push(ch);
+  else index.court.set(ch.realmId, [ch]);
+  if (ch.rarity === 'Generational') index.generationalAlive++;
+}
+
+/** Moves a living character to another realm's court. */
+export function moveCharacter(s: WorldState, ch: Character, realmId: number) {
+  const index = idx(s);
+  const old = index.court.get(ch.realmId);
+  if (old)
+    index.court.set(
+      ch.realmId,
+      old.filter(x => x.id !== ch.id),
+    );
+  ch.realmId = realmId;
+  const list = index.court.get(realmId);
+  if (list) list.push(ch);
+  else index.court.set(realmId, [ch]);
+}
+
+export function registerLegacy(s: WorldState, legacy: Legacy) {
+  const index = idx(s);
+  const list = index.legacies.get(legacy.realmId);
+  if (list) list.push(legacy);
+  else index.legacies.set(legacy.realmId, [legacy]);
+}

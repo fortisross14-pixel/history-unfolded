@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { displayYear } from '../engine/index.ts';
 import type { Culture, HistoryEvent, WorldState } from '../types.ts';
 
-export type View = 'world' | 'chronicle' | 'almanac' | 'evolution' | 'hall';
+export type View = 'world' | 'characters' | 'chronicle' | 'almanac' | 'evolution' | 'hall';
 
 export type MapMode = 'geography' | 'political' | 'culture' | 'religion';
 
@@ -11,8 +11,7 @@ export type Sel = {
     | 'realm'
     | 'city'
     | 'continent'
-    | 'person'
-    | 'ruler'
+    | 'character'
     | 'religion'
     | 'culture'
     | 'dynasty'

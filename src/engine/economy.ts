@@ -4,12 +4,14 @@ import type {
   BuildingRarity,
   City,
   TradeRoute,
-  GreatPerson,
+  Character,
   Civilization,
   WorldState,
 } from '../types.ts';
 import { RNG } from './rng.ts';
 import { addEvent } from './events.ts';
+import { addDeed } from './characters.ts';
+import { level } from './culture.ts';
 
 export const BUILDINGS: {
   type: BuildingType;
@@ -76,7 +78,9 @@ export const BUILDING_RARITIES: BuildingRarity[] = [
   'Legendary',
 ];
 
-export const buildingLevel = (p?: GreatPerson): 1 | 2 | 3 | 4 | 5 => p?.stars ?? 1;
+/** Builder rarity sets the starting quality; Patron characters build one tier finer. */
+export const buildingLevel = (p?: Character): 1 | 2 | 3 | 4 | 5 =>
+  p ? (Math.min(5, level(p) + (p.traits.includes('Patron') ? 1 : 0)) as 1 | 2 | 3 | 4 | 5) : 1;
 
 export const buildingMultiplier = (level: number, seed: number) => {
   const ranges = [
@@ -109,7 +113,7 @@ export function build(
   c: Civilization,
   city: City,
   def = BUILDINGS[0],
-  p?: GreatPerson,
+  p?: Character,
 ) {
   const existing = city.buildings.find(x => x.type === def.type);
   if (existing) {
@@ -118,18 +122,16 @@ export function build(
     if (next === existing.level) return;
     existing.level = next;
     existing.lastUpgradedYear = s.year;
-    existing.lastBuilderPersonId = p?.id;
+    existing.lastBuilderId = p?.id;
     existing.upgradeHistory.push({
       year: s.year,
-      personId: p?.id,
+      characterId: p?.id,
       from,
       to: BUILDING_RARITIES[next - 1],
     });
     applyBuildingStats(existing, def);
     if (p) {
-      if (!p.buildingsCreated.includes(existing.id)) p.buildingsCreated.push(existing.id);
-      if (!p.citiesImproved.includes(city.id)) p.citiesImproved.push(city.id);
-      p.impact += 6 * next;
+      if (next >= 3) addDeed(s, p, `Raised ${existing.name} to ${existing.rarity}`, next);
     }
     addEvent(
       s,
@@ -153,8 +155,8 @@ export function build(
       name: `${city.name} ${def.type}`,
       builtYear: s.year,
       lastUpgradedYear: s.year,
-      builderPersonId: p?.id,
-      lastBuilderPersonId: p?.id,
+      builderId: p?.id,
+      lastBuilderId: p?.id,
       realmIdAtConstruction: c.id,
       rarity: BUILDING_RARITIES[level - 1],
       level,
@@ -163,14 +165,12 @@ export function build(
       armyBonus: 0,
       scienceBonus: 0,
       cultureBonus: 0,
-      upgradeHistory: [{ year: s.year, personId: p?.id, to: BUILDING_RARITIES[level - 1] }],
+      upgradeHistory: [{ year: s.year, characterId: p?.id, to: BUILDING_RARITIES[level - 1] }],
     };
   applyBuildingStats(b, def);
   city.buildings.push(b);
   if (p) {
-    p.buildingsCreated.push(b.id);
-    p.citiesImproved.push(city.id);
-    p.impact += 8 * level;
+    if (level >= 3) addDeed(s, p, `Built the ${b.name}`, level);
   }
   addEvent(
     s,
@@ -183,7 +183,7 @@ export function build(
   );
 }
 
-export function createRoute(s: WorldState, c: Civilization, p: GreatPerson, r: RNG) {
+export function createRoute(s: WorldState, c: Civilization, p: Character, r: RNG) {
   if (c.cityIds.length < 2) return;
   const cities = c.cityIds.map(id => s.cities.find(x => x.id === id)!).filter(Boolean);
   const a = r.pick(cities),
@@ -203,17 +203,15 @@ export function createRoute(s: WorldState, c: Civilization, p: GreatPerson, r: R
     name: `${a.name}–${b.name} Route`,
     originCityId: a.id,
     destinationCityId: b.id,
-    founderPersonId: p.id,
+    founderId: p.id,
     createdYear: s.year,
-    gdpBonus: 0.04 + p.stars * 0.012,
+    gdpBonus: 0.04 + level(p) * 0.012,
     active: true,
   };
   s.tradeRoutes.push(route);
   a.tradeRouteIds.push(route.id);
   b.tradeRouteIds.push(route.id);
-  p.tradeRoutesCreated.push(route.id);
-  p.wealthCreated += c.gdp * 0.08;
-  p.impact += 12;
+  addDeed(s, p, `Opened the ${route.name}`, 4 + level(p));
   addEvent(
     s,
     'economy',

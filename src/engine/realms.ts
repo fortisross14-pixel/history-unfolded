@@ -3,7 +3,7 @@ import type {
   GovernmentType,
   Province,
   City,
-  GreatPerson,
+  Character,
   War,
   Rivalry,
   Civilization,
@@ -11,9 +11,11 @@ import type {
 } from '../types.ts';
 import { RNG } from './rng.ts';
 import { neigh, cityLevel, recalcRealmFromProvinces } from './util.ts';
-import { politicalCoreName } from './naming.ts';
+import { cityNameFor, politicalCoreName } from './naming.ts';
 import { addEvent } from './events.ts';
-import { createDynasty, createRuler } from './characters.ts';
+import { createDynasty, crown, deposeRuler, newRuler } from './dynasty.ts';
+import { addDeed, fullName } from './characters.ts';
+import { idx } from './lookup.ts';
 import { historicalScore } from './records.ts';
 
 export const rankFor = (c: Civilization, continentLand: number, existingEmpires: number): Rank => {
@@ -53,9 +55,12 @@ export const governmentFor = (c: Civilization, year: number): GovernmentType => 
 };
 
 export function createCity(s: WorldState, c: Civilization, p: Province, r: RNG, capital = false) {
+  const coastal = neigh(p, s).some(n => n.terrain === 'ocean');
+  const naming = capital ? { name: p.name } : cityNameFor(s, c, p, coastal, r);
   const city: City = {
     id: s.nextIds.city++,
-    name: p.name,
+    name: naming.name,
+    namedAfterId: naming.namedAfterId,
     provinceId: p.id,
     continentId: p.continentId!,
     foundedYear: s.year,
@@ -125,6 +130,8 @@ export function triggerCivilWar(
     provinces: rebelIds,
     cityIds: [],
     rulerId: 0,
+    heirId: 0,
+    regentId: 0,
     dynastyId: null,
     historyEventIds: [],
     warIds: [],
@@ -187,22 +194,19 @@ export function triggerCivilWar(
   const sponsor = neighborIds
     .map(id => s.civilizations.find(x => x.id === id))
     .filter((x): x is Civilization => !!x && !!x.dynastyId)
-    .sort(
-      (a, b) =>
-        (s.rulers.find(x => x.id === b.rulerId)?.diplomacy ?? 0) -
-        (s.rulers.find(x => x.id === a.rulerId)?.diplomacy ?? 0),
-    )[0];
+    .sort((a, b) => sponsorScore(s, b) - sponsorScore(s, a))[0];
   const foreignBacked = !!sponsor && r.chance(0.28);
   if (foreignBacked) {
     rebel.dynastyId = sponsor!.dynastyId;
     const dynasty = s.dynasties.find(d => d.id === rebel.dynastyId);
     if (dynasty && !dynasty.realmIds.includes(rebel.id)) dynasty.realmIds.push(rebel.id);
-  } else createDynasty(s, rebel, r);
-  createRuler(
+  }
+  newRuler(
     s,
     rebel,
     r,
     foreignBacked ? `foreign-backed dynastic intervention by ${sponsor!.name}` : 'civil war',
+    !foreignBacked,
   );
   const war: War = {
     id: s.nextIds.war++,
@@ -255,12 +259,23 @@ export function triggerCivilWar(
   );
 }
 
-export function revolution(s: WorldState, c: Civilization, p: GreatPerson, r: RNG) {
+/** How keen a neighbouring court is to back a rebel claimant. */
+function sponsorScore(s: WorldState, c: Civilization) {
+  const ruler = idx(s).char.get(c.rulerId);
+  if (!ruler) return 0;
+  return (
+    ruler.skill +
+    (ruler.traits.includes('Charismatic') ? 30 : 0) +
+    (ruler.traits.includes('Ambitious') ? 15 : 0)
+  );
+}
+
+/** A statesman overthrows the government and takes power personally. */
+export function revolution(s: WorldState, c: Civilization, p: Character, r: RNG) {
   const old = c.government;
-  const choices: GovernmentType[] =
-    p.trait === 'Radical'
-      ? ['Republic', 'Democracy', 'Dictatorship', 'Military Junta']
-      : ['Constitutional Monarchy', 'Republic', 'Federation', 'Open Monarchy'];
+  const choices: GovernmentType[] = p.traits.includes('Reformer')
+    ? ['Republic', 'Democracy', 'Dictatorship', 'Military Junta']
+    : ['Constitutional Monarchy', 'Republic', 'Federation', 'Open Monarchy'];
   c.government = r.pick(choices.filter(x => x !== old));
   c.governmentHistory.at(-1)!.to = s.year;
   c.governmentHistory.push({
@@ -269,19 +284,19 @@ export function revolution(s: WorldState, c: Civilization, p: GreatPerson, r: RN
     reason: `Revolution led by ${p.name}`,
   });
   const d = s.dynasties.find(x => x.id === c.dynastyId);
+  deposeRuler(s, c, r, `overthrown by ${p.name}`);
   if (d) {
     d.status = 'deposed';
     d.endedYear = s.year;
   }
   c.dynastyId = null;
-  p.revolutionsLed++;
-  p.impact += 30;
+  addDeed(s, p, `Led the revolution that founded the ${c.government} of ${c.name}`, 25);
   c.stability = Math.max(25, c.stability + 20);
   addEvent(
     s,
     'politics',
     `${c.name} undergoes revolution`,
-    `${p.name} overthrew the ${old} and established a ${c.government}.`,
+    `${fullName(p)} overthrew the ${old} and established a ${c.government}, taking power personally.`,
     10,
     [c.id],
     {
@@ -291,7 +306,9 @@ export function revolution(s: WorldState, c: Civilization, p: GreatPerson, r: RN
       worldChronicle: true,
     },
   );
-  createRuler(s, c, r, 'revolution');
+  const house = createDynasty(s, c, r, p.name.split(' ').at(-1));
+  p.dynastyId = house.id;
+  crown(s, c, p, r, 'revolution');
 }
 
 export function ensureModernGlobalContact(s: WorldState) {

@@ -1575,3 +1575,275 @@ td button,
     height: 44px;
   }
 }
+
+/* ---- Characters (Phase 2) ---------------------------------------------- */
+:root {
+  --rarity-common: #9aa5a8;
+  --rarity-rare: #5fa8e6;
+  --rarity-epic: #b07ce8;
+  --rarity-legend: #f0a64a;
+  --rarity-generational: #ff5f7e;
+}
+.rarity-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+.rarity-common {
+  color: var(--rarity-common);
+}
+.rarity-rare {
+  color: var(--rarity-rare);
+}
+.rarity-epic {
+  color: var(--rarity-epic);
+}
+.rarity-legend {
+  color: var(--rarity-legend);
+}
+.rarity-generational {
+  color: var(--rarity-generational);
+  box-shadow: 0 0 12px rgba(255, 95, 126, 0.35);
+}
+.career-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+.career-role {
+  color: var(--muted);
+}
+.career-nick {
+  font-family: Cinzel, serif;
+  color: var(--gold-soft);
+}
+.trait-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+.trait {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.trait strong {
+  display: block;
+}
+.trait small {
+  color: var(--muted);
+}
+.ambition.achieved b {
+  color: #7fd18b;
+}
+.ambition.failed b {
+  color: var(--danger);
+  text-decoration: line-through;
+}
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 14px;
+  border-left: 2px solid var(--line-strong);
+}
+.timeline li {
+  position: relative;
+  padding: 4px 0 8px 10px;
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 8px;
+}
+.timeline li::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--panel-3);
+  border: 2px solid var(--gold);
+}
+.timeline li.major span {
+  color: var(--gold-soft);
+  font-weight: 600;
+}
+.timeline time {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.reign-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: var(--panel-2);
+}
+.reign-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.reign-card-head span,
+.reign-card small {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.reign-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.reign-table th,
+.reign-table td {
+  padding: 3px 6px;
+  text-align: right;
+}
+.reign-table th:first-child,
+.reign-table td:first-child {
+  text-align: left;
+  color: var(--muted);
+}
+.reign-table .pos {
+  color: #7fd18b;
+}
+.reign-table .neg {
+  color: var(--danger);
+}
+.court-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.court-seat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.court-seat:hover {
+  border-color: var(--line-strong);
+}
+.court-seat small {
+  color: var(--gold);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+.court-seat span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.court-seat em {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.mod-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 170px) 1fr;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.mod-row strong {
+  text-transform: capitalize;
+}
+.mod-row span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.rename-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rename-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px;
+  opacity: 0.6;
+}
+.rename-button:hover {
+  opacity: 1;
+  color: var(--gold);
+}
+.rename-button svg {
+  width: 16px;
+  height: 16px;
+}
+.rename-form {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+}
+.rename-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel-2);
+  color: inherit;
+}
+.rename-form button {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+.spotlight {
+  margin: 10px 0 18px;
+}
+.spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+.spotlight-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid currentColor;
+  background: var(--panel);
+}
+.spotlight-card strong {
+  color: #e8e5dc;
+  font-size: 1.02rem;
+}
+.spotlight-card span,
+.spotlight-card small,
+.spotlight-card em {
+  color: var(--muted);
+}
+.spotlight-card em {
+  font-size: 0.82rem;
+}
+@media (max-width: 600px) {
+  .mod-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .timeline li {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

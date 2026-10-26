@@ -1,10 +1,10 @@
 import type {
-  PersonRole,
+  CharacterRole,
   ArtworkType,
   ArtworkRarity,
   WonderCategory,
   Artwork,
-  GreatPerson,
+  Character,
   Wonder,
   Civilization,
   WorldState,
@@ -12,8 +12,13 @@ import type {
 import { WONDER_POOL } from './data.ts';
 import { RNG } from './rng.ts';
 import { addEvent } from './events.ts';
+import { addDeed, earnNickname, notifyAmbition } from './characters.ts';
+import { rarityRank } from './traits.ts';
 
-export function createArtwork(s: WorldState, c: Civilization, p: GreatPerson, r: RNG) {
+/** 1 (Common) to 5 (Generational): replaces the old star rating. */
+export const level = (ch: Character) => rarityRank(ch.rarity) + 1;
+
+export function createArtwork(s: WorldState, c: Civilization, p: Character, r: RNG) {
   const city = s.cities.find(x => x.id === r.pick(c.cityIds));
   if (!city) return;
   const culture = s.cultures.find(x => x.id === c.cultureId)!;
@@ -32,7 +37,7 @@ export function createArtwork(s: WorldState, c: Civilization, p: GreatPerson, r:
       100,
       Math.round(
         25 +
-          p.stars * 11 +
+          level(p) * 11 +
           Math.max(0, culture.economicCreative) * 1.5 +
           r.int(-12, 14) +
           c.technology / 100,
@@ -64,23 +69,21 @@ export function createArtwork(s: WorldState, c: Civilization, p: GreatPerson, r:
     rating,
     rarity,
     type,
-    artistId: p.id,
+    patronId: p.id,
     cultureId: c.cultureId,
     realmId: c.id,
     cityId: city.id,
   };
   s.artworks.push(art);
-  p.artworkIds.push(art.id);
   city.artworkIds.push(art.id);
   culture.artworkIds.push(art.id);
   culture.heritage.push(art.name);
-  p.impact += rating / 4;
-  p.achievement = `Created ${art.name} (${rarity})`;
+  if (rating >= 65) addDeed(s, p, `Commissioned ${art.name}`, Math.round(rating / 20));
   addEvent(
     s,
     'culture',
     `${art.name} is created`,
-    `${p.name} created a ${rarity.toLowerCase()} ${type.toLowerCase()} in ${city.name}, rated ${rating}/100.`,
+    `${p.name} commissioned a ${rarity.toLowerCase()} ${type.toLowerCase()} in ${city.name}, rated ${rating}/100.`,
     rarity === 'Legendary' ? 10 : 7,
     [c.id],
     {
@@ -93,21 +96,21 @@ export function createArtwork(s: WorldState, c: Civilization, p: GreatPerson, r:
   );
 }
 
-export function createWonder(s: WorldState, c: Civilization, p: GreatPerson, r: RNG) {
+export function createWonder(s: WorldState, c: Civilization, p: Character, r: RNG) {
   const available = WONDER_POOL.filter(
     w => c.technology >= w.minTech && !s.wonders.some(x => x.name === w.name),
   );
   if (!available.length) return;
-  const roleMap: Record<PersonRole, WonderCategory[] | undefined> = {
-    Scientist: ['Scientific'],
-    Engineer: ['Engineering', 'Scientific'],
+  const roleMap: Partial<Record<CharacterRole, WonderCategory[]>> = {
+    Scholar: ['Scientific', 'Engineering'],
     Merchant: ['Commercial'],
     General: ['Military'],
-    Artist: ['Cultural'],
-    Politician: ['Engineering', 'Commercial'],
-    'Religious Figure': ['Religious'],
+    Statesman: ['Engineering', 'Commercial'],
+    Prophet: ['Religious'],
   };
-  const suited = available.filter(w => roleMap[p.role]?.includes(w.category));
+  // Patrons and rulers can sponsor any kind of wonder.
+  const any = p.role === 'Ruler' || p.traits.includes('Patron');
+  const suited = available.filter(w => any || roleMap[p.role]?.includes(w.category));
   if (!suited.length) return;
   const def = r.pick(suited);
   const city = s.cities.find(x => x.id === r.pick(c.cityIds));
@@ -131,7 +134,7 @@ export function createWonder(s: WorldState, c: Civilization, p: GreatPerson, r: 
     cityId: city.id,
     provinceId: city.provinceId,
     realmId: c.id,
-    builderPersonId: p.id,
+    builderId: p.id,
     startedYear: s.year - r.int(3, 18),
     completedYear: s.year,
     status: 'standing',
@@ -141,12 +144,13 @@ export function createWonder(s: WorldState, c: Civilization, p: GreatPerson, r: 
     scienceBonus: b.s,
     cultureBonus: b.cu,
     religionBonus: b.re,
-    historicalRelevance: 70 + p.stars * 6,
+    historicalRelevance: 70 + level(p) * 6,
   };
   s.wonders.push(w);
   city.wonderIds.push(w.id);
-  p.wonderIds.push(w.id);
-  p.impact += 35;
+  addDeed(s, p, `Completed ${w.name}`, 25);
+  notifyAmbition(s, c.id, 'build-wonder', `completed ${w.name}`, undefined, p.id);
+  earnNickname(s, p);
   const d = s.dynasties.find(x => x.id === c.dynastyId);
   if (d) d.wonderIds.push(w.id);
   addEvent(

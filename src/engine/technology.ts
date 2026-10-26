@@ -1,32 +1,33 @@
-import type { TechnologyId, GreatPerson, Civilization, WorldState } from '../types.ts';
+import type { TechnologyId, Character, Civilization, WorldState } from '../types.ts';
 import { TECHNOLOGIES } from './data.ts';
 import { has } from './util.ts';
 import { addEvent } from './events.ts';
+import { addDeed, earnNickname, notifyAmbition } from './characters.ts';
 
-export function discover(s: WorldState, c: Civilization, id: TechnologyId, p?: GreatPerson) {
+export function discover(s: WorldState, c: Civilization, id: TechnologyId, ch?: Character) {
   if (has(c, id)) return;
   const t = TECHNOLOGIES.find(x => x.id === id)!;
   c.knownTechnologies.push({
     technologyId: id,
     discoveredYear: s.year,
-    source: p ? 'scientist' : 'founding',
-    sourcePersonId: p?.id,
+    source: ch ? 'scholar' : 'founding',
+    sourceCharacterId: ch?.id,
   });
-  c.technology = Math.min(1000, c.technology + (p ? 32 : 18));
-  if (p) {
-    p.technologiesRevealed.push(id);
-    p.technologyPoints += 35;
-    p.achievement = `Revealed ${t.name}`;
+  c.technology = Math.min(1000, c.technology + (ch ? 32 : 18));
+  if (ch) {
+    addDeed(s, ch, `Revealed ${t.name}`, 15);
+    notifyAmbition(s, c.id, 'great-discovery', `revealed ${t.name}`, undefined, ch.id);
+    earnNickname(s, ch);
   }
   addEvent(
     s,
     'technology',
     `${t.name} discovered`,
-    `${c.name}${p ? ` under ${p.name}` : ''} discovered ${t.name}: ${t.effect}.`,
+    `${c.name}${ch ? ` under ${ch.name}` : ''} discovered ${t.name}: ${t.effect}.`,
     10,
     [c.id],
     {
-      personIds: p ? [p.id] : [],
+      personIds: ch ? [ch.id] : [],
       technologyIds: [id],
       tags: ['critical technology', t.name],
       worldChronicle: true,

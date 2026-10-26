@@ -1,67 +1,62 @@
-# History Unfolded v1.0
+# History Unfolded
 
-A Vite + React + TypeScript alternate-history simulation where civilizations, cities, people, religions, governments and institutions evolve without player micromanagement.
+A zero-player history sandbox: 5,000 years of realms, rulers and great people,
+played out like a sports universe. Most events resolve quickly in the
+background; only the biggest moments (Great Wars, Great Discoveries, World
+Revolutions) play out live.
 
 ## Run
 
 ```bash
 npm install
-npm run dev
+npm run dev        # play in the browser
+npm run build      # type-check and build
 ```
 
-Production:
+## Checks
 
 ```bash
-npm run build
-npm run preview
+npm run sim                                   # 5,000-year run, key metrics, time budget
+npm run sim -- --seeds 4                      # summary over several seeds
+npm run sim -- --map earth --start 1444       # Earth map from 1444 (or -3000, 1)
+npm run test:ui                               # renders every page against a simulated world
+npm run test:save -- <saves.json> [years]     # loads an old save, migrates it, keeps simulating
 ```
 
-## Save compatibility
+## How the world works
 
-This release uses the browser key `history-unfolded-saves-v10`. Older prototype saves are intentionally separated because the final model adds dynasties, governments, wars, battles, Wonders, Natural Wonders, rivalries and historical scores.
+- **Characters first.** Rulers, heirs, consorts and notables (generals,
+  admirals, explorers, merchants, scholars, prophets, statesmen) share one
+  model: rarity from Common to Generational (at most three Generational alive),
+  two or three traits, a life ambition, deeds, fame, an earned nickname and
+  named legacies ("Reforms of Alaric").
+- **National personality.** Five axes (Ambition, Horizon, Economy, Faith,
+  Order) decide what a realm does, and drift with geography, history and its
+  rulers.
+- **Every number explains itself.** Province development feeds city wealth,
+  manpower and influence; realm totals list each source and modifier.
+- **World Moments.** Great Wars run season by season on a momentum bar with
+  key battles and a peace conference. Breakthroughs spread as waves.
+  Ideological waves press on every connected country.
+- **Seasons and records.** Each century ends with a recap and awards; the
+  record book keeps the all-time bests.
 
-## Final feature set
+## Maps
 
-- Three persistent save slots
-- Small, medium, large and huge continuous hex maps
-- Separate continents and islands
-- Political, geography, culture and religion overlays
-- Zoom, scroll and drag-to-pan map
-- Persistent cities, buildings and ownership histories
-- Trade routes created by merchants
-- Ten critical technologies with discovery and diffusion
-- Limited continental knowledge, expeditions and first contact
-- Real-name great-person pool across seven roles
-- Rare 1–5 star great people with contextual impact
-- Religions, founders, traits and holy sites
-- Evolving cultures with three behavioral axes
-- Governments, rulers, dynasties and revolutions
-- Persistent wars and distance-sensitive battles
-- Artworks with type, rating and rarity
-- Artificial Wonders and Natural Wonders
-- Historical rivalries
-- Realm historical and legacy score
-- Filterable Events and World Chronicles
-- Expanded, sortable Almanac
-- Detailed realm, city, continent, person, religion, culture, dynasty, war, battle, artwork and Wonder panels
+- **Earth**: about 600 named regions with terrain, coasts and rivers, built
+  from [Natural Earth](https://www.naturalearthdata.com/) public-domain data by
+  `scripts/build-earth.ts` into `src/data/earth.json`. Start in 3000 BCE, 1 CE
+  or 1444 with real realms, cultures and faiths; rulers are invented.
+- **Fantasy world**: procedural continents, a new world every time.
 
-## Balance validation
+## Saves
 
-The simulation engine was compiled independently with strict TypeScript settings and run through full 5,000-year automated simulations.
+Three browser save slots under one key. Each world carries a schema version;
+`src/engine/save.ts` migrates older saves forward.
 
-Reference seed `424242`, medium map, 36 tribes:
+## Code
 
-- Final year: 2000 CE
-- World population: 484,396,842
-- Highest technology: 861 / 1000
-- Empires: 2
-- Great people generated: 285, with 5 alive simultaneously
-- Major religions: 5
-- Wars: 41
-- Battles: 154
-- Artificial Wonders: 8
-- Persistent cities: 68
-
-Additional completed seeds produced approximately 459–556 million inhabitants, 1–2 empires, 5–6 major religions and 4–5 Wonders. These are deliberately broad alternate-world values rather than exact Earth population targets.
-
-The dependency-backed Vite build must still be run locally after `npm install`; the execution environment used for generation could not download npm packages. The engine and application source were TypeScript-checked using local declarations, and the simulation engine was executed directly.
+- `src/engine/`: the simulation, one module per system (`simulate.ts` runs a year).
+- `src/ui/`: React pages for the five sections (Map, Realm, Characters,
+  Chronicle, Records) and the detail panels.
+- `scripts/`: the headless sim, the Earth map builder and test scripts.

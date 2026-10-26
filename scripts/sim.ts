@@ -18,13 +18,19 @@ function arg(name: string, fallback: string) {
 
 const seed = Number(arg('seed', '424242'));
 const seeds = Number(arg('seeds', '1'));
-const years = Number(arg('years', '5000'));
-const mapSize = arg('map', 'medium') as MapSize;
+// --map earth plays on real geography; --start picks its start year (-3000, 1 or 1444).
+const earth = arg('map', 'medium') === 'earth';
+const start = Number(arg('start', '-3000'));
+const years = Number(arg('years', String(earth ? 2000 - start : 5000)));
+const mapSize = (earth ? 'medium' : arg('map', 'medium')) as MapSize;
+const label = earth
+  ? `Earth map from ${start < 0 ? `${-start} BCE` : `${start} CE`}`
+  : `${mapSize} map`;
 const every = Number(arg('every', '5'));
 
 function run(runSeed: number) {
   const started = performance.now();
-  const { metrics } = runBalanceTest(runSeed, years, mapSize);
+  const { metrics } = runBalanceTest(runSeed, years, mapSize, earth ? 'earth' : 'fantasy', start);
   return { metrics, ms: performance.now() - started };
 }
 
@@ -34,7 +40,7 @@ const peakShare = (m: WorldMetrics) =>
 
 if (seeds <= 1) {
   const { metrics, ms } = run(seed);
-  console.log(`History Unfolded sim · seed ${seed} · ${years} years · ${mapSize} map`);
+  console.log(`History Unfolded sim · seed ${seed} · ${years} years · ${label}`);
   console.log(formatMetrics(metrics, every));
   console.log('');
   console.log(
@@ -46,7 +52,7 @@ if (seeds <= 1) {
     process.exit(1);
   }
 } else {
-  console.log(`History Unfolded sim · ${seeds} seeds · ${years} years · ${mapSize} map`);
+  console.log(`History Unfolded sim · ${seeds} seeds · ${years} years · ${label}`);
   console.log(
     'seed      realms  moments/c  great wars  longest on top          peak share  gen avg  time',
   );

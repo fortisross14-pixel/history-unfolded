@@ -80,6 +80,8 @@ export interface Province {
   ownerId: number | null;
   /** How built-up and populous the province is. Grows over time; war and disaster cut it. */
   development: number;
+  /** On a major river: the province can develop further. */
+  river?: boolean;
   cultureId: number | null;
   religionId: number | null;
   cityId: number | null;
@@ -592,7 +594,13 @@ export interface Season {
 
 // ---- World ---------------------------------------------------------------------
 
+/** "fantasy" is the procedural map; "earth" is real geography. */
+export type MapKind = 'fantasy' | 'earth';
+
 export interface WorldConfig {
+  map?: MapKind;
+  /** Start year on the Earth map: -3000, 1 or 1444. */
+  start?: number;
   mapSize: MapSize;
   mapVariant: number;
   tribeCount: number;

@@ -1,4 +1,4 @@
-import type { Character, Civilization, MapSize, Moment, WorldState } from '../types.ts';
+import type { Character, Civilization, MapKind, MapSize, Moment, WorldState } from '../types.ts';
 import { RNG } from './rng.ts';
 import { neighborRealms, neigh } from './util.ts';
 import { rankFor, createCity, triggerCivilWar, ensureGlobalContact } from './realms.ts';
@@ -547,9 +547,15 @@ export function advanceUntilMoment(w: WorldState, years: number) {
 }
 
 /** Headless reference run used by npm run sim. */
-export function runBalanceTest(seed = 424242, years = 5000, mapSize: MapSize = 'medium') {
+export function runBalanceTest(
+  seed = 424242,
+  years = 5000,
+  mapSize: MapSize = 'medium',
+  map: MapKind = 'fantasy',
+  start = -3000,
+) {
   const world = createWorld(
-    { name: 'Balance Test', mapSize, mapVariant: 1, tribeCount: 36, nameMode: 'mixed' },
+    { name: 'Balance Test', map, start, mapSize, mapVariant: 1, tribeCount: 36, nameMode: 'mixed' },
     seed,
   );
   const tracker = new RunTracker();

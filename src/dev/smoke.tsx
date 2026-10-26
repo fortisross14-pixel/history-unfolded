@@ -86,6 +86,33 @@ export async function renderAll(years: number): Promise<string[]> {
       <SeasonRecap world={world} season={season} open={noop} close={noop} />,
     ]);
   pages.push(['Season list', <SeasonList world={world} show={noop} />]);
+  // The Earth map, from the 1444 start.
+  const earth = advanceWorld(
+    createWorld(
+      {
+        name: 'Earth',
+        map: 'earth',
+        start: 1444,
+        mapSize: 'medium',
+        mapVariant: 0,
+        tribeCount: 0,
+        nameMode: 'real',
+      },
+      7,
+    ),
+    60,
+  );
+  pages.push(['Earth map', <World world={earth} mode="political" setMode={noop} open={noop} />]);
+  for (const realm of earth.civilizations.filter(c => c.provinces.length).slice(0, 3))
+    pages.push([
+      `Earth realm ${realm.name}`,
+      <RealmPage world={earth} realmId={realm.id} setRealm={noop} open={noop} rename={noop} />,
+    ]);
+  for (const sel of selections(earth))
+    pages.push([
+      `Earth drawer ${sel.type} #${sel.id}`,
+      <Drawer world={earth} sel={sel} close={noop} open={noop} rename={noop} />,
+    ]);
   const failures: string[] = [];
   for (const [label, el] of pages) {
     try {

@@ -13,12 +13,13 @@ import { ROOTS, REAL_ROOTS, REAL_CONTINENTS, CONTINENT_NAMES, REALM_COLORS } fro
 import { chooseDatabase, uniqueProvinceName } from './naming.ts';
 import { RNG } from './rng.ts';
 import { neigh } from './util.ts';
-import { newRuler } from './dynasty.ts';
+import { createDynasty, newRuler } from './dynasty.ts';
 import { rebuildIndex } from './lookup.ts';
 import { initialAxes } from './axes.ts';
 import { captureEvolutionSnapshot } from './records.ts';
 import { startingDevelopment } from './economy.ts';
 import { learn } from './research.ts';
+import { createEarthWorld } from './scenarios.ts';
 
 export const dims = (s: MapSize) =>
   s === 'small'
@@ -195,6 +196,8 @@ export interface NewRealm {
   cultureId?: number;
   cultureName?: string;
   axes?: Civilization['axes'];
+  /** House name for the founding dynasty; random when left out. */
+  dynasty?: string;
 }
 
 /** Adds a realm (and, if needed, its culture) with a founding ruler. */
@@ -266,7 +269,8 @@ export function foundRealm(s: WorldState, o: NewRealm, r: RNG): Civilization {
   }
   s.civilizations.push(civ);
   rebuildIndex(s);
-  newRuler(s, civ, r, 'the founding of the realm', true);
+  if (o.dynasty) createDynasty(s, civ, r, o.dynasty);
+  newRuler(s, civ, r, 'the founding of the realm', !o.dynasty);
   return civ;
 }
 
@@ -282,6 +286,7 @@ export function introduceNeighbours(s: WorldState) {
 
 /** A new procedural world in 3000 BCE: scattered tribes, one with farming per continent. */
 export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
+  if (cfg.map === 'earth') return createEarthWorld(cfg, seed);
   const r = new RNG(seed);
   const s = emptyWorld(cfg, seed, -3000, proceduralMap(cfg, r));
   const land = s.provinces.filter(p => p.terrain !== 'ocean');

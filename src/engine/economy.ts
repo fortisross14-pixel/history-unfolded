@@ -29,7 +29,9 @@ export function developmentCap(s: WorldState, p: Province, era: number) {
   const city = p.cityId ? idx(s).city.get(p.cityId) : undefined;
   const base = (TERRAIN_DEV[p.terrain] ?? 2) * (1 + 0.5 * (era - 1));
   const urban = city ? 3 + era * 1.5 + buildingTotal(city.buildings, 'devCap') : 0;
-  return base + urban;
+  // River valleys feed more people.
+  const river = p.river ? 2 + era * 0.5 : 0;
+  return base + urban + river;
 }
 
 /** Owned provinces grow toward their cap; stable, growing realms grow faster. */

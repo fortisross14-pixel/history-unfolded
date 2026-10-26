@@ -84,13 +84,16 @@ export function triggerCivilWar(
   const seatName =
     (rebelSeat.cityId ? idx(s).city.get(rebelSeat.cityId)?.name : undefined) ?? rebelSeat.name;
   const taken = new Set(s.civilizations.filter(x => x.provinces.length).map(x => x.name));
+  // Republics and merchant states name themselves as such; everyone else crowns a king.
+  const republican = ['Republic', 'Democracy', 'Merchant Republic'].includes(c.government);
+  const style = republican
+    ? `Republic of ${seatName}`
+    : c.rank === 'Duchy'
+      ? `Duchy of ${seatName}`
+      : `Kingdom of ${seatName}`;
   const rebelName =
-    [
-      `Free ${seatName}`,
-      `Republic of ${seatName}`,
-      `Kingdom of ${seatName}`,
-      `${seatName} Rebels`,
-    ].find(n => !taken.has(n)) ?? `Free ${seatName}`;
+    [style, seatName, `Free ${seatName}`, `${seatName} Rebels`].find(n => !taken.has(n)) ??
+    `Free ${seatName}`;
   const rebel: Civilization = {
     ...structuredClone(c),
     id: s.nextIds.civ++,

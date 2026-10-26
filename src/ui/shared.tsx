@@ -16,7 +16,7 @@ export type Sel = {
     | 'culture'
     | 'dynasty'
     | 'war'
-    | 'battle'
+    | 'moment'
     | 'artwork'
     | 'wonder'
     | 'natural';

@@ -33,7 +33,14 @@ function selections(w: WorldState): NonNullable<Sel>[] {
   add('culture', firstIds(w.cultures));
   add('dynasty', firstIds(w.dynasties));
   add('war', firstIds(w.wars));
-  add('battle', firstIds(w.battles));
+  add('moment', firstIds(w.moments, 6));
+  add(
+    'war',
+    w.wars
+      .filter(x => x.great)
+      .slice(-3)
+      .map(x => x.id),
+  );
   add('artwork', firstIds(w.artworks));
   add('wonder', firstIds(w.wonders));
   add('natural', firstIds(w.naturalWonders));
@@ -66,7 +73,6 @@ export async function renderAll(years: number): Promise<string[]> {
     'reigns',
     'dynasties',
     'wars',
-    'battles',
     'technology',
     'artworks',
     'wonders',

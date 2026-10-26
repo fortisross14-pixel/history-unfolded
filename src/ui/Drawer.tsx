@@ -1,19 +1,12 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { displayYear, TECHNOLOGIES } from '../engine/index.ts';
-import type {
-  Culture,
-  Battle,
-  War,
-  Wonder,
-  Civilization,
-  RenameKind,
-  WorldState,
-} from '../types.ts';
+import type { Culture, War, Wonder, Civilization, RenameKind, WorldState } from '../types.ts';
 import { CharacterPage } from './CharacterPage.tsx';
 import { RealmCourt } from './RealmCourt.tsx';
 import { RenameTitle } from './RenameTitle.tsx';
 import { Diplomacy, NationalCharacter } from './NationalCharacter.tsx';
+import { MomentPage, WarPage } from './MomentPage.tsx';
 import { type Sel, fmt, pct, realmEventEffect, Metrics, Section, List } from './shared.tsx';
 
 /** Entities the player can rename from their page. */
@@ -303,7 +296,7 @@ export function RealmDetail({
                     : 'STALEMATE';
               return {
                 name: `${result} · ${w.name}`,
-                sub: `${w.type} · ${displayYear(w.startYear)}${w.endYear ? `–${displayYear(w.endYear)}` : ''} · ${w.battles} battles · ${fmt(w.attackerLosses + w.defenderLosses)} casualties`,
+                sub: `${w.type} · ${displayYear(w.startYear)}${w.endYear ? `–${displayYear(w.endYear)}` : ''} · ${w.great ? `Great War, ${w.keyBattles.length} key battles` : 'quick war'} · ${fmt(w.attackerLosses + w.defenderLosses)} casualties`,
                 onClick: () => open({ type: 'war', id }),
               };
             })}
@@ -536,126 +529,11 @@ export function detailFor(
   }
   if (sel.type === 'war') {
     const w = world.wars.find(x => x.id === sel.id)!;
-    const result = w.active
-      ? 'WAR IN PROGRESS'
-      : w.winnerIds.length
-        ? `${w.winnerIds.map(id => world.civilizations.find(c => c.id === id)?.name).join(', ')} WON`
-        : 'STALEMATE';
-    return {
-      title: w.name,
-      body: (
-        <>
-          <div className={`outcome-banner ${w.winnerIds.length ? 'decisive' : 'stalemate'}`}>
-            <strong>{result}</strong>
-            <span>{w.endYear ? displayYear(w.endYear) : displayYear(world.year)}</span>
-          </div>
-          <Metrics
-            vals={[
-              ['Type', w.type],
-              ['Duration', `${(w.endYear ?? world.year) - w.startYear} years`],
-              ['Battles', fmt(w.battles)],
-              ['Losses', fmt(w.attackerLosses + w.defenderLosses)],
-            ]}
-          />
-          <Section title="Cause and objective">
-            <p>
-              <b>Rationale:</b> {w.rationale}
-            </p>
-            <p>
-              <b>War goal:</b> {w.goal}
-            </p>
-          </Section>
-          {w.outcome && (
-            <Section title="Outcome">
-              <p>{w.outcome}</p>
-              <p>
-                {w.winnerIds.length
-                  ? w.decisiveVictory
-                    ? 'Decisive victory'
-                    : 'Limited victory'
-                  : 'No victor'}{' '}
-                · Territories transferred: {w.territoriesChanged} · GDP transferred:{' '}
-                {fmt(w.gdpTransferred, 1)}
-                {w.religionChanged ? ' · Defender changed religion' : ''}.
-              </p>
-            </Section>
-          )}
-          <Section title="Battles">
-            <List
-              items={w.battleIds.map(id => {
-                const b = world.battles.find(x => x.id === id)!;
-                return {
-                  name: b.name,
-                  sub: `${displayYear(b.year)} · ${fmt(b.attacker.casualties + b.defender.casualties)} casualties`,
-                  onClick: () => open({ type: 'battle', id }),
-                };
-              })}
-            />
-          </Section>
-        </>
-      ),
-    };
+    return { title: w.name, body: <WarPage war={w} world={world} open={open} /> };
   }
-  if (sel.type === 'battle') {
-    const b = world.battles.find(x => x.id === sel.id)!;
-    const attackerNames = b.attacker.realmIds
-        .map(id => world.civilizations.find(c => c.id === id)?.name)
-        .join(', '),
-      defenderNames = b.defender.realmIds
-        .map(id => world.civilizations.find(c => c.id === id)?.name)
-        .join(', '),
-      winner = b.winner === 'attacker' ? attackerNames : defenderNames;
-    const Side = ({
-      label,
-      data,
-      won,
-    }: {
-      label: string;
-      data: Battle['attacker'];
-      won: boolean;
-    }) => (
-      <div className={`battle-side ${won ? 'winner' : 'loser'}`}>
-        <div>
-          <small>{label}</small>
-          <strong>
-            {data.realmIds.map(id => world.civilizations.find(c => c.id === id)?.name).join(', ')}
-          </strong>
-          {won && <b>VICTORY</b>}
-        </div>
-        <p>
-          <span>{fmt(data.combatants)} deployed</span>
-          <span>{fmt(data.casualties)} casualties</span>
-          <span>{((data.casualties / Math.max(1, data.combatants)) * 100).toFixed(1)}% lost</span>
-        </p>
-        <em>
-          Commander: {world.characters.find(p => p.id === data.generalId)?.name ?? 'None'} · Battle
-          power {fmt(data.power, 1)}
-        </em>
-      </div>
-    );
-    return {
-      title: b.name,
-      body: (
-        <>
-          <div className="outcome-banner decisive">
-            <strong>{winner} WON</strong>
-            <span>{displayYear(b.year)}</span>
-          </div>
-          <Metrics
-            vals={[
-              ['Combatants', fmt(b.attacker.combatants + b.defender.combatants)],
-              ['Casualties', fmt(b.attacker.casualties + b.defender.casualties)],
-              ['Significance', `${b.significance}/100`],
-              ['War', world.wars.find(w => w.id === b.warId)?.name ?? '—'],
-            ]}
-          />
-          <div className="battle-comparison">
-            <Side label="Attacker" data={b.attacker} won={b.winner === 'attacker'} />
-            <Side label="Defender" data={b.defender} won={b.winner === 'defender'} />
-          </div>
-        </>
-      ),
-    };
+  if (sel.type === 'moment') {
+    const m = world.moments.find(x => x.id === sel.id)!;
+    return { title: m.title, body: <MomentPage m={m} world={world} open={open} /> };
   }
   if (sel.type === 'artwork') {
     const a = world.artworks.find(x => x.id === sel.id)!;

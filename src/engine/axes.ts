@@ -10,6 +10,7 @@ import { RNG } from './rng.ts';
 import { courtOf, idx, isAlive } from './lookup.ts';
 import { neigh } from './util.ts';
 import { rarityDef } from './traits.ts';
+import { yearsOnTop } from './power.ts';
 
 export interface AxisDef {
   key: AxisKey;
@@ -90,6 +91,13 @@ export function driftAxes(s: WorldState, c: Civilization, tradeRoutes: number) {
   const a = c.axes;
   a.horizon += (coastalShare(s, c) * 100 - a.horizon) * 0.004;
   a.economy += Math.min(0.05, tradeRoutes * 0.008);
+  // A long-dominant power loses its drive and its grip.
+  if (yearsOnTop(s, c) > 150) {
+    a.ambition -= 0.05;
+    a.order += 0.05;
+  }
+  // Sprawling realms drift toward local lords and fractious nobles.
+  a.order += Math.max(0, c.provinces.length - 15) * 0.003;
   const ruler = idx(s).char.get(c.rulerId);
   if (isAlive(ruler))
     for (const t of ruler.traits) {

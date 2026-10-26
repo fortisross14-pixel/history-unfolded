@@ -9,6 +9,7 @@ import type {
   WorldState,
 } from '../types.ts';
 import { RNG } from './rng.ts';
+import { idx } from './lookup.ts';
 import { EVENT_SEVERITY_MULTIPLIER, EVENT_DEFINITIONS } from './data.ts';
 import { signedPct } from './util.ts';
 
@@ -34,7 +35,7 @@ export function addEvent(
     continentIds: [],
     technologyIds: [],
     warIds: [],
-    battleIds: [],
+    momentIds: [],
     religionIds: [],
     cultureIds: [],
     wonderIds: [],
@@ -80,7 +81,7 @@ export function startRealmEvent(
   culture: WorldState['cultures'][number],
   r: RNG,
 ) {
-  if (s.realmEvents.some(e => e.realmId === c.id && e.active)) return;
+  if ((idx(s).realmEvents.get(c.id) ?? []).some(e => e.active)) return;
   const roll = r.next();
   const severity: EventSeverity =
     roll < 1 / 600
@@ -162,6 +163,9 @@ export function startRealmEvent(
     active: true,
   };
   s.realmEvents.push(event);
+  const list = idx(s).realmEvents.get(c.id);
+  if (list) list.push(event);
+  else idx(s).realmEvents.set(c.id, [event]);
   const destruction = destroyedBuildings.length
     ? ` Buildings lost: ${destroyedBuildings.join(', ')}.`
     : '';
@@ -190,7 +194,8 @@ export function processRealmEvents(
   culture: WorldState['cultures'][number],
   r: RNG,
 ) {
-  for (const e of s.realmEvents.filter(x => x.realmId === c.id && x.active)) {
+  for (const e of idx(s).realmEvents.get(c.id) ?? []) {
+    if (!e.active) continue;
     if (s.year > e.endYear) {
       e.active = false;
       addEvent(

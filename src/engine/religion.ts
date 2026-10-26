@@ -3,7 +3,8 @@ import { chooseDatabase } from './naming.ts';
 import { RNG } from './rng.ts';
 import { REAL_RELIGIONS, FICTIONAL_RELIGIONS } from './data.ts';
 import { addEvent } from './events.ts';
-import { addDeed, earnNickname, notifyAmbition } from './characters.ts';
+import { addDeed, createCharacter, earnNickname, notifyAmbition } from './characters.ts';
+import { idx } from './lookup.ts';
 
 export function foundReligion(s: WorldState, c: Civilization, p: Character, r: RNG) {
   if (s.religions.length >= 6 || p.deeds.some(d => d.text.startsWith('Founded the faith'))) return;
@@ -122,4 +123,65 @@ export function processOfficialConversion(s: WorldState, c: Civilization, r: RNG
       { tags: ['agnosticism', 'secularization'] },
     );
   }
+}
+
+/**
+ * A reform movement splits a faith: a prophet in this realm founds a reformed
+ * branch, which the realm adopts and which then spreads with the movement.
+ * Returns the new religion's id.
+ */
+export function schism(s: WorldState, c: Civilization, r: RNG): number | null {
+  const parent = s.religions.find(x => x.id === c.faithId);
+  if (!parent) return null;
+  const prophet = createCharacter(s, r, { role: 'Prophet', realm: c, minRarity: 'Epic' });
+  const city = s.cities.find(x => x.id === c.capitalCityId);
+  const rel: Religion = {
+    id: s.nextIds.religion++,
+    name: `Reformed ${parent.name.replace(/^The /, '')}`,
+    color: `hsl(${r.int(0, 359)} 55% 62%)`,
+    followers: 0,
+    founded: s.year,
+    founderId: prophet.id,
+    holyProvinceIds: city ? [city.provinceId] : [],
+    doctrine: 'Scripture for all, in the common tongue',
+    expansion: Math.min(95, parent.expansion + 10),
+    loyalty: r.int(55, 90),
+    tolerance: Math.max(10, parent.tolerance - 15),
+    parentReligionId: parent.id,
+    schismIds: [],
+    provinces: 0,
+  };
+  s.religions.push(rel);
+  idx(s).religion.set(rel.id, rel);
+  parent.schismIds.push(rel.id);
+  prophet.religionId = rel.id;
+  addDeed(s, prophet, `Founded the faith of ${rel.name}`, 30);
+  // Half the realm follows the reformers at once.
+  const provinces = c.provinces.filter(id => s.provinces[id].religionId === parent.id);
+  for (const id of provinces.slice(0, Math.ceil(provinces.length / 2)))
+    s.provinces[id].religionId = rel.id;
+  c.faithId = rel.id;
+  addEvent(
+    s,
+    'religion',
+    `${rel.name} breaks away`,
+    `${prophet.name} led a reform of ${parent.name} in ${c.name}, founding ${rel.name}.`,
+    10,
+    [c.id],
+    {
+      personIds: [prophet.id],
+      religionIds: [rel.id, parent.id],
+      tags: ['schism', 'reformation'],
+      worldChronicle: true,
+    },
+  );
+  return rel.id;
+}
+
+/** Spreads a reformed faith into one more province of a realm that follows the parent faith. */
+export function reformProvince(s: WorldState, c: Civilization, reformedId: number) {
+  const reformed = s.religions.find(x => x.id === reformedId);
+  if (!reformed) return;
+  const target = c.provinces.find(id => s.provinces[id].religionId === reformed.parentReligionId);
+  if (target !== undefined) s.provinces[target].religionId = reformed.id;
 }

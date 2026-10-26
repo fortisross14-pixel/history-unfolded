@@ -3,9 +3,11 @@ import { TECHNOLOGIES } from './data.ts';
 import { has } from './util.ts';
 import { addEvent } from './events.ts';
 import { addDeed, earnNickname, notifyAmbition } from './characters.ts';
+import { beginDiscovery } from './discovery.ts';
 
 export function discover(s: WorldState, c: Civilization, id: TechnologyId, ch?: Character) {
   if (has(c, id)) return;
+  const first = !s.civilizations.some(x => x.provinces.length && has(x, id));
   const t = TECHNOLOGIES.find(x => x.id === id)!;
   c.knownTechnologies.push({
     technologyId: id,
@@ -33,4 +35,6 @@ export function discover(s: WorldState, c: Civilization, id: TechnologyId, ch?: 
       worldChronicle: true,
     },
   );
+  // A breakthrough nobody else has becomes a Great Discovery that spreads as a wave.
+  if (first && id !== 'agriculture') beginDiscovery(s, c, id, ch);
 }

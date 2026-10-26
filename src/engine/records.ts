@@ -2,15 +2,14 @@ import type { War, Civilization, WorldState } from '../types.ts';
 import { idx } from './lookup.ts';
 import { fullName } from './characters.ts';
 
+/** Legacy score: everything a realm has achieved so far. It only grows. */
 export function historicalScore(s: WorldState, c: Civilization) {
-  const arts = s.artworks.filter(a => a.realmId === c.id).reduce((n, a) => n + a.rating / 10, 0);
+  const x = idx(s).legacy.get(c.id) ?? { arts: 0, wonders: 0, wins: 0, cities: 0, faiths: 0 };
   const tech = c.knownTechnologies.length * 18;
-  const wonders = s.wonders.filter(w => w.realmId === c.id).length * 30;
-  const wars = s.wars.filter(w => w.winnerIds.includes(c.id)).length * 12;
-  const legacy =
-    s.cities.filter(x => x.founderRealmId === c.id).length * 5 +
-    s.religions.filter(x => x.founderId && idx(s).char.get(x.founderId)?.realmId === c.id).length *
-      35;
+  const wonders = x.wonders * 30;
+  const wars = x.wins * 12;
+  const arts = x.arts;
+  const legacy = x.cities * 5 + x.faiths * 35;
   return Math.round(
     c.prestige +
       c.provinces.length * 2 +
@@ -29,31 +28,13 @@ export function militaryEvolutionScore(s: WorldState, c: Civilization) {
   );
   const wins = wars.filter(w => w.winnerIds.includes(c.id)).length,
     losses = wars.filter(w => w.loserIds.includes(c.id)).length;
-  const battles = s.battles.filter(b => {
-    const w = s.wars.find(x => x.id === b.warId);
-    return (
-      w?.type !== 'Civil War' &&
-      (b.attacker.realmIds.includes(c.id) || b.defender.realmIds.includes(c.id))
-    );
-  });
-  let battleWins = 0,
-    battleLosses = 0,
-    caused = 0,
-    received = 0;
-  for (const b of battles) {
-    const atk = b.attacker.realmIds.includes(c.id),
-      won = (atk && b.winner === 'attacker') || (!atk && b.winner === 'defender');
-    if (won) battleWins++;
-    else battleLosses++;
-    caused += atk ? b.defender.casualties : b.attacker.casualties;
-    received += atk ? b.attacker.casualties : b.defender.casualties;
-  }
-  const casualtyEdge = ((caused - received) / Math.max(100, caused + received)) * 35;
+  // Great Wars count double: they are the wars history remembers.
+  const greatWins = wars.filter(w => w.great && w.winnerIds.includes(c.id)).length;
+  const greatLosses = wars.filter(w => w.great && w.loserIds.includes(c.id)).length;
   return Math.round(
     (wins - losses) * 45 +
-      (battleWins - battleLosses) * 8 +
-      casualtyEdge +
-      Math.log10(Math.max(10, c.armySize)) * 12,
+      (greatWins - greatLosses) * 45 +
+      Math.log10(Math.max(10, c.armySize + c.navy)) * 12,
   );
 }
 
@@ -113,24 +94,20 @@ export function updateHallOfFame(s: WorldState) {
       subtitle: `${ch.rarity} ${ch.role.toLowerCase()} of ${idx(s).civ.get(ch.realmId)?.name ?? 'a lost realm'}`,
       periodKey: `character-${ch.id}`,
     });
-  const battles = [...s.battles].sort(
-    (a, b) =>
-      b.significance +
-      b.attacker.casualties +
-      b.defender.casualties -
-      (a.significance + a.attacker.casualties + a.defender.casualties),
-  );
-  if (battles[0])
+  // The costliest Great Wars.
+  for (const w of s.wars.filter(x => x.great && !x.active && x.endYear === s.year))
     addHallEntry(s, {
-      category: 'battle',
-      entityId: battles[0].id,
-      name: battles[0].name,
-      year: battles[0].year,
-      score:
-        battles[0].significance +
-        (battles[0].attacker.casualties + battles[0].defender.casualties) / 1000,
-      subtitle: `${(battles[0].attacker.casualties + battles[0].defender.casualties).toLocaleString()} casualties · significance ${battles[0].significance}`,
-      periodKey: `battle-${battles[0].id}`,
+      category: 'war',
+      entityId: w.id,
+      name: w.name,
+      year: w.startYear,
+      score: Math.round(
+        (w.attackerLosses + w.defenderLosses) / 1000 +
+          w.keyBattles.length * 5 +
+          w.territoriesChanged * 3,
+      ),
+      subtitle: `${(w.attackerLosses + w.defenderLosses).toLocaleString()} fallen · ${w.keyBattles.length} key battles · ${w.territoriesChanged} provinces changed hands`,
+      periodKey: `war-${w.id}`,
     });
 }
 
@@ -142,7 +119,7 @@ export function captureEvolutionSnapshot(s: WorldState) {
     color: c.color,
     rank: c.rank,
     continentId: s.provinces[c.provinces[0]]?.continentId ?? 0,
-    greatPower: c.historicalScore,
+    greatPower: c.power,
     population: c.population,
     gdp: c.gdp,
     technology: c.technology,

@@ -3,6 +3,10 @@ import { courtOf, idx, isAlive } from './lookup.ts';
 import { TRAITS, rarityDef } from './traits.ts';
 import { fullName } from './characters.ts';
 import { overlordOf, vassalsOf } from './diplomacy.ts';
+import { yearsOnTop } from './power.ts';
+
+/** Years a realm can lead the world before complacency sets in. */
+const COMPLACENCY_AFTER = 150;
 
 export interface ModSource {
   key: ModKey;
@@ -116,6 +120,16 @@ export function realmModifiers(s: WorldState, c: Civilization): RealmMods {
   );
   add('faithSpread', (50 - a.faith) / 100, a.faith >= 50 ? 'Tolerant faith' : 'Zealous faith');
   add('stability', (50 - a.order) * 0.3, a.order >= 50 ? 'Fractious nobles' : 'Centralised state');
+  // Big realms are hard to hold together.
+  const sprawl = Math.max(0, c.provinces.length - 12);
+  if (sprawl) add('stability', -Math.min(40, sprawl * 0.45), 'Overextension');
+  // Long dominance breeds complacency: the world's top power slowly loses its edge.
+  const reign = yearsOnTop(s, c) - COMPLACENCY_AFTER;
+  if (reign > 0) {
+    const label = `Complacency after ${reign + COMPLACENCY_AFTER} years on top`;
+    add('stability', -Math.min(30, reign * 0.15), label);
+    add('warPower', -Math.min(0.2, reign * 0.001), label);
+  }
   // Tribute flows from vassals to overlords.
   const lord = overlordOf(s, c);
   if (lord) add('wealth', -0.08, `Tribute to ${lord.name}`);

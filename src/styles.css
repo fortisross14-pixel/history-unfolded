@@ -1924,3 +1924,201 @@ td button,
     width: 100%;
   }
 }
+
+/* ---- World Moments (Phase 4) ------------------------------------------- */
+.moment-chart {
+  margin: 0 0 14px;
+}
+.moment-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.moment-chart .chart-grid {
+  stroke: var(--line);
+}
+.moment-chart .chart-zero {
+  stroke: var(--line-strong);
+  stroke-dasharray: 4 4;
+}
+.moment-chart .zone {
+  opacity: 0.12;
+}
+.moment-line {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.battle-dot {
+  stroke: var(--bg);
+  stroke-width: 2;
+  cursor: help;
+}
+.battle-dot.attacker {
+  fill: #e8e5dc;
+}
+.battle-dot.defender {
+  fill: var(--danger);
+}
+.moment-chart figcaption {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+.momentum-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2fr minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+.momentum-bar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.momentum-bar span:last-child {
+  text-align: right;
+}
+.momentum-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(232, 229, 220, 0.45),
+    var(--panel-3) 50%,
+    rgba(212, 118, 118, 0.45)
+  );
+}
+.momentum-track i {
+  position: absolute;
+  top: -4px;
+  width: 4px;
+  height: 16px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--gold);
+  transition: left 0.6s ease;
+}
+.moment-headlines {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.moment-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(135deg, rgba(215, 173, 95, 0.12), var(--panel));
+}
+.moment-card small {
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+}
+.moment-card strong {
+  font-family: Cinzel, serif;
+  font-size: 1.02rem;
+}
+.moment-card span,
+.moment-card em {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.moment-alert {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 16px 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--gold);
+  background: var(--panel-2);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+.moment-alert strong {
+  font-family: Cinzel, serif;
+  font-size: 1.1rem;
+  flex: 1 1 200px;
+}
+.moment-alert div {
+  display: flex;
+  gap: 8px;
+}
+.moment-alert button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-3);
+}
+.moment-alert button svg {
+  width: 16px;
+  height: 16px;
+}
+.moment-alert button.primary {
+  background: var(--gold);
+  color: #1b1408;
+  border-color: var(--gold);
+}
+.live-controls,
+.pause-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.live-controls svg {
+  width: 16px;
+  height: 16px;
+  color: var(--danger);
+}
+.live-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+.box-score {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+  font-size: 0.88rem;
+}
+.box-score th,
+.box-score td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.box-score td:first-child {
+  color: var(--muted);
+}
+.terms {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.terms li {
+  margin: 3px 0;
+}

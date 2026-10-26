@@ -121,11 +121,6 @@ export function romanNumeral(n: number) {
   return out || 'I';
 }
 
-export function numberedBattleName(s: WorldState, base: string) {
-  const count = s.battles.filter(b => b.name === base || b.name.startsWith(`${base} (`)).length + 1;
-  return `${base} (${count})`;
-}
-
 /**
  * Name for a new city: usually the province name, but great rulers and saints
  * sometimes give their name to a city ("Alaricopolis", "Port Alaric", "Saint Mina").

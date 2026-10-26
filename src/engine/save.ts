@@ -4,7 +4,7 @@ import type { Character, Rarity, Reign, TraitId, WorldState } from '../types.ts'
  * Save schema version. Bump it whenever WorldState changes shape and add a
  * migration below that upgrades a world from the previous version.
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 type Migration = (world: any) => any;
 
@@ -281,10 +281,39 @@ function personalityFromV2(w: any) {
   return w;
 }
 
+/** v3 → v4: battles are no longer stored; wars gain Great War fields; World Moments appear. */
+function momentsFromV3(w: any) {
+  for (const war of w.wars ?? []) {
+    delete war.battles;
+    delete war.battleIds;
+    war.great = false;
+    war.keyBattles = [];
+    war.terms = [];
+    if (war.active) {
+      // Old-style wars in progress end where they stand.
+      war.active = false;
+      war.endYear = w.year;
+      war.outcome = 'The war petered out without a decision.';
+    }
+  }
+  for (const e of w.events ?? []) {
+    delete e.battleIds;
+    e.momentIds = [];
+  }
+  w.hallOfFame = (w.hallOfFame ?? []).filter((h: any) => h.category !== 'battle');
+  for (const c of w.civilizations ?? []) c.power = 0;
+  w.moments = [];
+  w.nextIds.moment = 1;
+  delete w.nextIds.battle;
+  delete w.battles;
+  return w;
+}
+
 /** migrations[n] upgrades a world from version n to version n + 1. */
 const migrations: Record<number, Migration> = {
   1: charactersFromV1,
   2: personalityFromV2,
+  3: momentsFromV3,
 };
 
 /**

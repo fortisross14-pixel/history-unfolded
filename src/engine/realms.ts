@@ -4,7 +4,6 @@ import type {
   Province,
   City,
   Character,
-  War,
   Civilization,
   WorldState,
 } from '../types.ts';
@@ -16,6 +15,7 @@ import { createDynasty, crown, deposeRuler, newRuler } from './dynasty.ts';
 import { addDeed, fullName } from './characters.ts';
 import { idx } from './lookup.ts';
 import { addRelation } from './diplomacy.ts';
+import { launchWar, newWar } from './war.ts';
 import { historicalScore } from './records.ts';
 
 export const rankFor = (c: Civilization, continentLand: number, existingEmpires: number): Rank => {
@@ -192,6 +192,7 @@ export function triggerCivilWar(
   recalcRealmFromProvinces(s, c);
   recalcRealmFromProvinces(s, rebel);
   s.civilizations.push(rebel);
+  idx(s).civ.set(rebel.id, rebel);
   const neighborIds = [
     ...new Set(
       c.provinces
@@ -217,35 +218,22 @@ export function triggerCivilWar(
     foreignBacked ? `foreign-backed dynastic intervention by ${sponsor!.name}` : 'civil war',
     !foreignBacked,
   );
-  const war: War = {
-    id: s.nextIds.war++,
-    name: `${core} Civil War`,
-    type: 'Civil War',
-    rationale: `${cause === 'religious polarization' ? 'Religious polarization and mutual intolerance' : 'Political collapse'} divided ${core} between rival governments and dynasties${foreignBacked ? `, with the ${s.dynasties.find(d => d.id === rebel.dynastyId)?.name} backed by ${sponsor!.name}` : ''}.`,
-    goal: 'Defeat and reunify the rival successor state.',
-    startYear: s.year,
-    attackerIds: [c.id],
-    defenderIds: [rebel.id],
-    participantIds: [c.id, rebel.id],
-    winnerIds: [],
-    loserIds: [],
-    attackerLosses: 0,
-    defenderLosses: 0,
-    battles: 0,
-    battleIds: [],
-    territoriesChanged: 0,
-    gdpTransferred: 0,
-    religionChanged: false,
-    decisiveVictory: false,
-    active: true,
-  };
-  s.wars.push(war);
-  c.warIds.push(war.id);
-  rebel.warIds.push(war.id);
+  const war = newWar(
+    s,
+    c,
+    rebel,
+    {
+      type: 'Civil War',
+      rationale: `${cause === 'religious polarization' ? 'Religious polarization and mutual intolerance' : 'Political collapse'} divided ${core} between rival governments and dynasties${foreignBacked ? `, with the ${s.dynasties.find(d => d.id === rebel.dynastyId)?.name} backed by ${sponsor!.name}` : ''}.`,
+      goal: 'Defeat and reunify the rival successor state.',
+    },
+    `${core} Civil War`,
+  );
   addRelation(s, 'Rival', c.id, rebel.id, 'Civil war');
   // Rebels are the restless half of the nation.
   rebel.axes = { ...c.axes, order: Math.min(100, c.axes.order + 10) };
   rebel.navy = Math.round(c.navy * share);
+  rebel.power = 0;
   c.navy = Math.max(0, c.navy - rebel.navy);
   addEvent(
     s,
@@ -256,6 +244,7 @@ export function triggerCivilWar(
     [c.id, rebel.id],
     { warIds: [war.id], tags: ['civil war', 'realm split', 'dynasty'], worldChronicle: true },
   );
+  launchWar(s, war, r);
 }
 
 /** How keen a neighbouring court is to back a rebel claimant. */

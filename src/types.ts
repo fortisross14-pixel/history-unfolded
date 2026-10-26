@@ -430,23 +430,18 @@ export interface Dynasty {
   status: DynastyStatus;
   historicalRelevance: number;
 }
-export interface BattleSide {
-  realmIds: number[];
-  generalId: number | null;
-  combatants: number;
-  casualties: number;
-  power: number;
-}
-export interface Battle {
-  id: number;
-  warId: number;
+/** A named battle that swung a Great War. Ordinary battles are not stored. */
+export interface KeyBattle {
+  /** Year with season as a fraction (1450.25 = spring 1450). */
+  t: number;
   name: string;
-  year: number;
   provinceId: number;
-  attacker: BattleSide;
-  defender: BattleSide;
+  naval: boolean;
   winner: 'attacker' | 'defender';
-  significance: number;
+  /** Momentum change, positive toward the attacker. */
+  swing: number;
+  text: string;
+  characterIds: number[];
 }
 export interface War {
   id: number;
@@ -464,13 +459,17 @@ export interface War {
   loserIds: number[];
   attackerLosses: number;
   defenderLosses: number;
-  battles: number;
-  battleIds: number[];
   territoriesChanged: number;
   gdpTransferred: number;
   religionChanged: boolean;
   decisiveVictory: boolean;
   active: boolean;
+  /** Great Wars are played out season by season as a World Moment. */
+  great: boolean;
+  momentId?: number;
+  keyBattles: KeyBattle[];
+  /** Peace terms the loser accepted. */
+  terms: string[];
 }
 export interface Wonder {
   id: number;
@@ -555,7 +554,7 @@ export interface HistoryEvent {
   continentIds: number[];
   technologyIds: TechnologyId[];
   warIds: number[];
-  battleIds: number[];
+  momentIds: number[];
   religionIds: number[];
   cultureIds: number[];
   wonderIds: number[];
@@ -607,6 +606,10 @@ export interface Civilization {
   axes: NationalAxes;
   navy: number;
   navyCapacity: number;
+  /** Current strength relative to the world (land, wealth, armed forces). */
+  power: number;
+  /** Year this realm became the world's top power, while it stays on top. */
+  topSince?: number;
   historicalScore: number;
   legacyScore: number;
   governmentHistory: { government: GovernmentType; from: number; to?: number; reason: string }[];
@@ -621,6 +624,45 @@ export interface NationalAxes {
 }
 export type AxisKey = keyof NationalAxes;
 
+export type MomentKind = 'war' | 'discovery' | 'revolution';
+
+export interface MomentEvent {
+  t: number;
+  title: string;
+  text: string;
+  swing?: number;
+  realmIds: number[];
+  characterIds: number[];
+}
+
+/**
+ * A World Moment: an event big enough to be played out live. Every kind
+ * shares one shape: start, ticks that move a value, key events, resolution.
+ */
+export interface Moment {
+  id: number;
+  kind: MomentKind;
+  title: string;
+  /** Technology id for discoveries, ideology id for revolutions. */
+  subject: string;
+  startYear: number;
+  endYear?: number;
+  active: boolean;
+  originRealmId: number;
+  originCharacterId?: number;
+  realmIds: number[];
+  /** [time, value]: momentum for wars, realms reached for waves. */
+  series: [number, number][];
+  events: MomentEvent[];
+  summary?: string;
+  warId?: number;
+  /** War state: momentum −100..100 (positive favours the attacker). */
+  momentum?: number;
+  weariness?: [number, number];
+  /** Consecutive ticks past the victory threshold. */
+  streak?: number;
+}
+
 export interface WorldConfig {
   mapSize: MapSize;
   mapVariant: number;
@@ -630,7 +672,7 @@ export interface WorldConfig {
 }
 export interface HallOfFameEntry {
   id: number;
-  category: 'realm' | 'city' | 'character' | 'battle';
+  category: 'realm' | 'city' | 'character' | 'war';
   entityId: number;
   name: string;
   year: number;
@@ -660,7 +702,8 @@ export interface WorldState {
   overrides: NameOverrides;
   dynasties: Dynasty[];
   wars: War[];
-  battles: Battle[];
+  /** Great Wars, Great Discoveries and World Revolutions. */
+  moments: Moment[];
   artworks: Artwork[];
   wonders: Wonder[];
   naturalWonders: NaturalWonder[];
@@ -683,7 +726,7 @@ export interface WorldState {
     legacy: number;
     dynasty: number;
     war: number;
-    battle: number;
+    moment: number;
     artwork: number;
     wonder: number;
     naturalWonder: number;

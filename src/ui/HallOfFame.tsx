@@ -8,13 +8,13 @@ export function HallOfFame({ world, open }: { world: WorldState; open: (s: Sel) 
     ['realm', 'Realms', 'Periods of overwhelming world power'],
     ['city', 'Cities', 'Urban centers that towered over their age'],
     ['character', 'Characters', 'The most famous people who ever lived'],
-    ['battle', 'Battles', 'The most consequential clashes in recorded history'],
+    ['war', 'Great Wars', 'The costliest wars in recorded history'],
   ];
   const click = (e: WorldState['hallOfFame'][number]) => {
     if (e.category === 'realm') open({ type: 'realm', id: e.entityId });
     else if (e.category === 'city') open({ type: 'city', id: e.entityId });
     else if (e.category === 'character') open({ type: 'character', id: e.entityId });
-    else open({ type: 'battle', id: e.entityId });
+    else open({ type: 'war', id: e.entityId });
   };
   return (
     <main className="page hall-page">
@@ -52,7 +52,7 @@ export function HallOfFame({ world, open }: { world: WorldState; open: (s: Sel) 
                         {displayYear(e.year)} · {e.subtitle}
                       </small>
                     </span>
-                    <em>{fmt(e.score, cat === 'battle' ? 1 : 0)}</em>
+                    <em>{fmt(e.score, 0)}</em>
                   </button>
                 ))
               ) : (

@@ -3,6 +3,7 @@ import { RNG } from './rng.ts';
 import { addEvent } from './events.ts';
 import { idx } from './lookup.ts';
 import type { ModTotals } from './modifiers.ts';
+import { topPowers } from './power.ts';
 
 /** Years of peace forced after a war ends. */
 export const TRUCE_YEARS = 20;
@@ -137,6 +138,26 @@ export function diplomacyYear(
     }
   }
   for (const rel of allies) if (r.chance(0.003)) endRelation(s, rel);
+  // A dominant power frightens its neighbours into rivalry (and so into coalitions).
+  const [top, second] = topPowers(s, 2);
+  if (
+    top &&
+    top.id !== c.id &&
+    second &&
+    top.power > second.power * 1.5 &&
+    neighbors.includes(top) &&
+    r.chance(0.02)
+  )
+    if (!findRelation(s, c.id, top.id, 'Rival') && !findRelation(s, c.id, top.id, 'Vassal')) {
+      addRelation(s, 'Rival', c.id, top.id, `Fear of ${top.name}`);
+      announce(
+        s,
+        `${c.name} fears ${top.name}`,
+        `The rise of ${top.name} has turned ${c.name} into a wary rival, looking for allies.`,
+        [c.id, top.id],
+        5,
+      );
+    }
   // Ambitious neighbours of similar size become rivals.
   if (c.axes.ambition > 60 && r.chance(0.002)) {
     const peer = neighbors.find(

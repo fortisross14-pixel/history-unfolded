@@ -14,7 +14,6 @@ export type AlmanacTab =
   | 'reigns'
   | 'dynasties'
   | 'wars'
-  | 'battles'
   | 'technology'
   | 'artworks'
   | 'wonders'
@@ -35,7 +34,6 @@ export function Almanac({ world, open }: { world: WorldState; open: (s: Sel) => 
     'reigns',
     'dynasties',
     'wars',
-    'battles',
     'technology',
     'artworks',
     'wonders',
@@ -61,7 +59,7 @@ export function Almanac({ world, open }: { world: WorldState; open: (s: Sel) => 
           </select>
         </label>
       </div>
-      {['battles', 'artworks'].includes(sub) && (
+      {sub === 'artworks' && (
         <div className="filters">
           <select value={realmFilter} onChange={e => setRealmFilter(e.target.value)}>
             <option value="all">All realms</option>
@@ -333,7 +331,7 @@ export function AlmanacTable({
           'Duration',
           'Participants',
           'Losses',
-          'Battles',
+          'Kind',
           'Winner',
         ]}
         rows={world.wars.map(w => [
@@ -344,7 +342,7 @@ export function AlmanacTable({
           (w.endYear ?? world.year) - w.startYear,
           w.participantIds.map(id => world.civilizations.find(c => c.id === id)?.name).join(', '),
           w.attackerLosses + w.defenderLosses,
-          w.battles,
+          w.great ? `Great War (${w.keyBattles.length} key battles)` : 'Quick',
           w.active
             ? 'Active'
             : w.winnerIds.length
@@ -353,27 +351,6 @@ export function AlmanacTable({
         ])}
       />
     );
-  if (tab === 'battles') {
-    const data = world.battles.filter(
-      b =>
-        realmFilter === 'all' ||
-        [...b.attacker.realmIds, ...b.defender.realmIds].includes(+realmFilter),
-    );
-    return (
-      <Table
-        heads={['Battle', 'Year', 'War', 'Combatants', 'Casualties', 'Winner', 'Significance']}
-        rows={data.map(b => [
-          link(b.name, () => open({ type: 'battle', id: b.id })),
-          displayYear(b.year),
-          world.wars.find(w => w.id === b.warId)?.name,
-          b.attacker.combatants + b.defender.combatants,
-          b.attacker.casualties + b.defender.casualties,
-          b.winner,
-          b.significance,
-        ])}
-      />
-    );
-  }
   if (tab === 'technology')
     return (
       <Table

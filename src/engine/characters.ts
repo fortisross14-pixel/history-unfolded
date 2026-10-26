@@ -248,7 +248,7 @@ const deedCount = (ch: Character, prefix: string) =>
 export function earnNickname(s: WorldState, ch: Character) {
   if (ch.nickname) return;
   const has = (t: TraitId) => ch.traits.includes(t);
-  const reign = s.reigns.filter(x => x.characterId === ch.id);
+  const reign = idx(s).reigns.get(ch.id) ?? [];
   const gained = reign.reduce(
     (n, x) =>
       n + ((x.endProvinces ?? idx(s).civ.get(x.realmId)?.provinces.length ?? 0) - x.startProvinces),

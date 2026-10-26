@@ -1,14 +1,19 @@
-import type { Province, Character, Battle, War, Civilization, WorldState } from '../types.ts';
+import type { Province, Character, War, Civilization, WorldState } from '../types.ts';
 import { RNG } from './rng.ts';
-import { neigh, has, recalcRealmFromProvinces, distance } from './util.ts';
+import { neigh, has, recalcRealmFromProvinces } from './util.ts';
 import { addEvent } from './events.ts';
-import { numberedBattleName } from './naming.ts';
-import { addDeed, earnNickname, fullName, killCharacter, notifyAmbition } from './characters.ts';
+import { addDeed, earnNickname, killCharacter, notifyAmbition } from './characters.ts';
 import { deposeRuler, newRuler } from './dynasty.ts';
 import { courtOf, idx, isAlive } from './lookup.ts';
 import { TRAITS } from './traits.ts';
 import { warShapesAxes } from './axes.ts';
 import { addRelation, afterWar, alliesOf, findRelation } from './diplomacy.ts';
+import { realmModifiers } from './modifiers.ts';
+import { isGreatPower, topPowers } from './power.ts';
+import { momentSlotFree } from './moments.ts';
+import { startGreatWar } from './greatwar.ts';
+
+// ---- Commanders ---------------------------------------------------------------
 
 /** The realm's best general, or the ruler in person if there is none. */
 export function commanderFor(s: WorldState, c: Civilization): Character | null {
@@ -22,55 +27,133 @@ export function commanderFor(s: WorldState, c: Civilization): Character | null {
     : null;
 }
 
+/** The realm's best admiral, falling back to its land commander. */
+export function admiralFor(s: WorldState, c: Civilization): Character | null {
+  const admiral = courtOf(s, c.id)
+    .filter(x => x.role === 'Admiral')
+    .sort((a, b) => b.skill - a.skill)[0];
+  return admiral ?? commanderFor(s, c);
+}
+
 /** Battle multiplier from a commander's skill and command traits. */
 export function commandOf(g: Character | null) {
   if (!g) return 0.88;
   const traits = g.traits.reduce((n, t) => n * (TRAITS[t].command ?? 1), 1);
-  const skill = g.role === 'General' ? g.skill : g.skill * 0.6;
+  const skill = g.role === 'General' || g.role === 'Admiral' ? g.skill : g.skill * 0.6;
   return Math.min(1.75, (0.88 + skill * 0.0032) * traits);
 }
 
-/** Fame, wounds and death for the commanders of one battle. */
-function commanderFate(
+/** Fame, capture or death for a commander after a fight. */
+export function commanderFate(
   s: WorldState,
   g: Character | null,
   won: boolean,
   battle: string,
-  size: number,
   r: RNG,
 ) {
-  if (!g) return;
+  if (!g) return '';
   if (won) {
     g.battlesWon++;
-    if (size >= 30) addDeed(s, g, `Victory at ${battle}`, 3);
-  } else g.battlesLost++;
-  const risk = (won ? 0.01 : 0.04) * (g.traits.includes('Brave') ? 2 : 1);
+    addDeed(s, g, `Victory at ${battle}`, 3);
+    return '';
+  }
+  g.battlesLost++;
+  const risk = 0.08 * (g.traits.includes('Brave') ? 2 : 1);
   if (r.chance(risk)) {
     addDeed(s, g, `Fell at ${battle}`, 4);
     killCharacter(s, g, 'battle');
+    return `${g.name} falls`;
   }
+  if (r.chance(0.12)) {
+    addDeed(s, g, `Captured at ${battle} and later ransomed`, 1);
+    return `${g.name} is captured`;
+  }
+  return '';
 }
 
-/** Deeds and ambitions when a war ends. */
-function warDeeds(
-  s: WorldState,
-  w: War,
-  winner: Civilization,
-  loser: Civilization,
-  decisive: boolean,
-) {
-  const wRuler = idx(s).char.get(winner.rulerId);
-  const lRuler = idx(s).char.get(loser.rulerId);
-  if (isAlive(wRuler)) {
-    addDeed(s, wRuler, `Won the ${w.name}`, decisive ? 12 : 7);
-    earnNickname(s, wRuler);
-  }
-  if (isAlive(lRuler)) addDeed(s, lRuler, `Lost the ${w.name}`, 2);
-  const general = commanderFor(s, winner);
-  if (general && general.role === 'General')
-    addDeed(s, general, `Won the ${w.name} in command`, decisive ? 8 : 5);
-  notifyAmbition(s, winner.id, 'conquer', `defeated ${loser.name} in the ${w.name}`, loser.id);
+// ---- Strength -------------------------------------------------------------------
+
+export function techFactor(c: Civilization) {
+  return Math.min(
+    2.15,
+    0.85 +
+      c.technology / 1500 +
+      (has(c, 'bronze') ? 0.07 : 0) +
+      (has(c, 'iron') ? 0.12 : 0) +
+      (has(c, 'gunpowder') ? 0.22 : 0),
+  );
 }
+
+const TERRAIN_DEFENSE: Record<string, number> = {
+  mountain: 1.3,
+  forest: 1.15,
+  desert: 1.05,
+  tundra: 1.1,
+};
+
+/** Defender's bonus from the ground along the front and its fortresses. */
+export function defenseFactor(s: WorldState, defender: Civilization, attacker: Civilization) {
+  const front = defender.provinces
+    .map(id => s.provinces[id])
+    .filter(p => neigh(p, s).some(n => n.ownerId === attacker.id));
+  const ground = front.length
+    ? front.reduce((n, p) => n + (TERRAIN_DEFENSE[p.terrain] ?? 1), 0) / front.length
+    : 1.05;
+  const forts = defender.cityIds
+    .flatMap(id => idx(s).city.get(id)?.buildings ?? [])
+    .filter(b => b.type === 'Fortifications')
+    .reduce((n, b) => n + b.level * 0.03, 0);
+  return ground * (1 + Math.min(0.3, forts));
+}
+
+/** Whether the realms' border touches the sea, so fleets can join in. */
+export function coastalFront(s: WorldState, a: Civilization, d: Civilization) {
+  return d.provinces.some(id => {
+    const p = s.provinces[id];
+    const ns = neigh(p, s);
+    return ns.some(n => n.ownerId === a.id) && ns.some(n => n.terrain === 'ocean');
+  });
+}
+
+/**
+ * Fighting strength of one side's leader: army, technology, commander,
+ * war-power modifiers and national character. Allies add a share of theirs.
+ */
+export function sideStrength(s: WorldState, w: War, side: 'attacker' | 'defender') {
+  const ids = side === 'attacker' ? w.attackerIds : w.defenderIds;
+  const enemyIds = side === 'attacker' ? w.defenderIds : w.attackerIds;
+  const lead = idx(s).civ.get(ids[0]);
+  const enemy = idx(s).civ.get(enemyIds[0]);
+  if (!lead || !enemy || !lead.provinces.length) return 0;
+  const mods = realmModifiers(s, lead).total;
+  const zeal = w.type === 'Religious War' && lead.axes.faith < 35 ? 1.1 : 1;
+  const drive = 1 + (lead.axes.ambition - 50) / 500;
+  const ground = side === 'defender' ? defenseFactor(s, lead, enemy) : 1;
+  let troops = lead.armySize;
+  for (const id of ids.slice(1)) {
+    const ally = idx(s).civ.get(id);
+    if (ally && ally.provinces.length) troops += ally.armySize * 0.3;
+  }
+  const fleet = coastalFront(
+    s,
+    side === 'attacker' ? lead : enemy,
+    side === 'attacker' ? enemy : lead,
+  )
+    ? 1 + 0.3 * (lead.navy / Math.max(1, lead.navy + enemy.navy) - 0.5)
+    : 1;
+  return (
+    Math.pow(Math.max(1, troops), 0.96) *
+    techFactor(lead) *
+    commandOf(commanderFor(s, lead)) *
+    (1 + mods.warPower) *
+    zeal *
+    drive *
+    ground *
+    fleet
+  );
+}
+
+// ---- Declaring war ------------------------------------------------------------
 
 export function chooseWarType(
   s: WorldState,
@@ -137,16 +220,16 @@ export function chooseWarType(
   return options[0];
 }
 
-export function startWar(s: WorldState, a: Civilization, d: Civilization, r: RNG) {
-  if (
-    s.wars.some(w => w.active && w.participantIds.includes(a.id) && w.participantIds.includes(d.id))
-  )
-    return;
-  const plan = chooseWarType(s, a, d, r);
-  const focus = s.cities.find(x => x.id === d.capitalCityId)?.name ?? d.originTribe;
-  const war: War = {
+export function newWar(
+  s: WorldState,
+  a: Civilization,
+  d: Civilization,
+  plan: { type: War['type']; rationale: string; goal: string },
+  name: string,
+): War {
+  return {
     id: s.nextIds.war++,
-    name: `${plan.type} of ${focus}`,
+    name,
     type: plan.type,
     rationale: plan.rationale,
     goal: plan.goal,
@@ -158,37 +241,119 @@ export function startWar(s: WorldState, a: Civilization, d: Civilization, r: RNG
     loserIds: [],
     attackerLosses: 0,
     defenderLosses: 0,
-    battles: 0,
-    battleIds: [],
     territoriesChanged: 0,
     gdpTransferred: 0,
     religionChanged: false,
     decisiveVictory: false,
     active: true,
+    great: false,
+    keyBattles: [],
+    terms: [],
   };
-  s.wars.push(war);
-  a.warIds.push(war.id);
-  d.warIds.push(war.id);
+}
+
+/** Provinces held by every realm on both sides. */
+const combinedSize = (s: WorldState, w: War) =>
+  w.participantIds.reduce((n, id) => n + (idx(s).civ.get(id)?.provinces.length ?? 0), 0);
+
+/**
+ * A war becomes a Great War (a World Moment) when a great power fights, or
+ * when the alliances involved are huge, and a moment slot is free. Every
+ * other war is settled at once by a single roll.
+ */
+export function launchWar(s: WorldState, w: War, r: RNG) {
+  s.wars.push(w);
+  for (const id of w.participantIds) idx(s).civ.get(id)?.warIds.push(w.id);
+  const a = idx(s).civ.get(w.attackerIds[0])!;
+  const d = idx(s).civ.get(w.defenderIds[0])!;
+  const land = s.provinces.filter(p => p.ownerId !== null).length;
+  const big = combinedSize(s, w) >= land * 0.3;
+  // Only a real contest is a Great War: the weaker side needs a quarter of the stronger's power.
+  const sidePower = (ids: number[]) =>
+    ids.reduce((n, id) => n + (idx(s).civ.get(id)?.power ?? 0), 0);
+  const [pa, pd] = [sidePower(w.attackerIds), sidePower(w.defenderIds)];
+  const contest = Math.min(pa, pd) >= Math.max(pa, pd) * 0.25;
+  const great = ((isGreatPower(s, a) || isGreatPower(s, d)) && contest) || (big && contest);
+  if (great && momentSlotFree(s)) startGreatWar(s, w, r);
+  else resolveQuickWar(s, w, a, d, r);
+}
+
+export function startWar(s: WorldState, a: Civilization, d: Civilization, r: RNG) {
+  if (
+    s.wars.some(w => w.active && w.participantIds.includes(a.id) && w.participantIds.includes(d.id))
+  )
+    return;
+  const plan = chooseWarType(s, a, d, r);
+  const focus = idx(s).city.get(d.capitalCityId)?.name ?? d.originTribe;
+  const w = newWar(s, a, d, plan, `${plan.type} of ${focus}`);
   addRelation(s, 'Rival', a.id, d.id, plan.type);
   // Defensive allies answer the call.
   const allies = alliesOf(s, d).filter(
     x => x.id !== a.id && !findRelation(s, x.id, a.id, 'Alliance'),
   );
   for (const ally of allies) {
-    war.defenderIds.push(ally.id);
-    war.participantIds.push(ally.id);
-    ally.warIds.push(war.id);
+    w.defenderIds.push(ally.id);
+    w.participantIds.push(ally.id);
   }
+  // Against the strongest power, allies who also fear it form a coalition.
+  const top = topPowers(s, 1)[0];
+  if (top && top.id === d.id)
+    for (const ally of alliesOf(s, a))
+      if (!w.participantIds.includes(ally.id) && findRelation(s, ally.id, d.id, 'Rival')) {
+        w.attackerIds.push(ally.id);
+        w.participantIds.push(ally.id);
+      }
   addEvent(
     s,
     'military',
-    `${war.name} begins`,
+    `${w.name} begins`,
     `${a.name} declared a ${plan.type.toLowerCase()} against ${d.name}. ${plan.rationale} Goal: ${plan.goal}${allies.length ? ` ${allies.map(x => x.name).join(', ')} joined in defence of their ally.` : ''}`,
-    8,
+    7,
     [a.id, d.id],
-    { warIds: [war.id], tags: ['war', plan.type] },
+    { warIds: [w.id], tags: ['war', plan.type] },
   );
+  launchWar(s, w, r);
 }
+
+// ---- Quick wars ---------------------------------------------------------------
+
+/**
+ * One roll settles an ordinary war: army, technology, commander, terrain and
+ * national character on each side. No battles are stored.
+ */
+function resolveQuickWar(s: WorldState, w: War, a: Civilization, d: Civilization, r: RNG) {
+  const sa = sideStrength(s, w, 'attacker') * (0.8 + r.next() * 0.4);
+  const sd = sideStrength(s, w, 'defender') * (0.8 + r.next() * 0.4);
+  const p = sa ** 1.6 / Math.max(1, sa ** 1.6 + sd ** 1.6);
+  const roll = r.next();
+  const close = Math.abs(p - 0.5) < 0.1;
+  const civil = w.type === 'Civil War';
+  const years = r.int(1, 5);
+  // Both sides bleed; the loser far more.
+  const attackerWon = roll < p;
+  const loss = (c: Civilization, lost: boolean) =>
+    Math.round(c.armySize * (lost ? 0.25 + r.next() * 0.2 : 0.08 + r.next() * 0.1));
+  w.attackerLosses = loss(a, !attackerWon);
+  w.defenderLosses = loss(d, attackerWon);
+  a.armySize = Math.max(0, a.armySize - w.attackerLosses);
+  d.armySize = Math.max(0, d.armySize - w.defenderLosses);
+  // Close wars can end in stalemate; a stalemated civil war leaves two states.
+  if (close && r.chance(civil ? 0.25 : 0.35)) {
+    finishWar(s, w, null, false, r, years);
+    return;
+  }
+  const winner = attackerWon ? a : d;
+  // Civil wars tend to end with one side crushed; small realms are swallowed whole.
+  const edge = civil ? 0.58 : 0.72;
+  const decisive = attackerWon
+    ? p > edge && roll < p * 0.75
+    : p < 1 - edge && roll > p + (1 - p) * 0.3;
+  const g = commanderFor(s, winner);
+  if (g && g.role === 'General') g.battlesWon += r.int(1, 3);
+  finishWar(s, w, winner, decisive, r, years);
+}
+
+// ---- Ending wars --------------------------------------------------------------
 
 export function transferProvince(
   s: WorldState,
@@ -199,7 +364,7 @@ export function transferProvince(
   province.ownerId = to.id;
   from.provinces = from.provinces.filter(id => id !== province.id);
   if (!to.provinces.includes(province.id)) to.provinces.push(province.id);
-  const city = province.cityId ? s.cities.find(x => x.id === province.cityId) : null;
+  const city = province.cityId ? idx(s).city.get(province.cityId) : null;
   if (city) {
     city.currentRealmId = to.id;
     const last = city.ownershipHistory.at(-1);
@@ -212,37 +377,66 @@ export function transferProvince(
   recalcRealmFromProvinces(s, to);
 }
 
+/** Takes every province of the loser, front or not. */
+export function annexAll(s: WorldState, loser: Civilization, winner: Civilization) {
+  const all = loser.provinces.map(id => s.provinces[id]);
+  for (const p of all) transferProvince(s, loser, winner, p);
+  return all.length;
+}
+
+/** Moves up to `count` of the loser's provinces that border the winner. */
+export function cedeFront(s: WorldState, loser: Civilization, winner: Civilization, count: number) {
+  let moved = 0;
+  const front = loser.provinces
+    .map(id => s.provinces[id])
+    .filter(p => neigh(p, s).some(n => n.ownerId === winner.id))
+    .sort((x, y) => y.fertility - x.fertility);
+  for (const p of front) {
+    if (moved >= count) break;
+    transferProvince(s, loser, winner, p);
+    moved++;
+  }
+  return moved;
+}
+
+/** What the winner takes after a quick war, by war goal. */
 export function applyWarOutcome(
   s: WorldState,
   w: War,
   a: Civilization,
   d: Civilization,
   winner: Civilization,
-  loser: Civilization,
   decisive: boolean,
   r: RNG,
 ) {
   w.decisiveVictory = decisive;
+  // A civil war ends with one government for the whole country.
+  if (w.type === 'Civil War' && winner.id !== a.id) {
+    w.territoriesChanged += annexAll(s, a, d);
+    w.outcome = `The rebels of ${d.name} won and took over all of ${a.name}.`;
+    return;
+  }
   if (winner.id !== a.id) {
-    w.outcome = `${d.name} repelled the attack and preserved its political independence.`;
+    w.outcome = `${d.name} repelled the attack and preserved its independence.`;
     d.prestige += 8;
     a.stability = Math.max(5, a.stability - 6);
     return;
   }
   if (w.type === 'Civil War' || w.type === 'Annexation War') {
-    const transferCount = decisive
-      ? d.provinces.length
-      : Math.max(1, Math.ceil(d.provinces.length * 0.3));
+    const count =
+      decisive || w.type === 'Civil War'
+        ? d.provinces.length
+        : Math.max(1, Math.ceil(d.provinces.length * 0.3));
     const candidates = [...d.provinces]
       .map(id => s.provinces[id])
       .filter(p => decisive || neigh(p, s).some(n => n.ownerId === a.id));
-    for (const p of candidates.slice(0, transferCount)) {
+    for (const p of candidates.slice(0, count)) {
       transferProvince(s, d, a, p);
       w.territoriesChanged++;
     }
     w.outcome = decisive
       ? `${a.name} destroyed ${d.name} and reunited all of its territory.`
-      : `${a.name} won a limited victory and annexed ${w.territoriesChanged} provinces; both successor states survived.`;
+      : `${a.name} won a limited victory and annexed ${w.territoriesChanged} provinces; both states survived.`;
   } else if (
     w.type === 'Expansion War' &&
     decisive &&
@@ -253,28 +447,21 @@ export function applyWarOutcome(
     addRelation(s, 'Vassal', a.id, d.id, `Defeated in the ${w.name}`);
     w.outcome = `${d.name} submitted to ${a.name} and became its tributary vassal.`;
   } else if (w.type === 'Expansion War') {
-    const limit =
-      decisive && d.provinces.length <= 6
-        ? d.provinces.length
-        : decisive
-          ? Math.max(1, Math.ceil(d.provinces.length * 0.22))
-          : 1;
-    let moved = 0;
-    for (const p of d.provinces
-      .map(id => s.provinces[id])
-      .filter(p => neigh(p, s).some(n => n.ownerId === a.id))
-      .sort((x, y) => y.fertility - x.fertility)) {
-      if (moved >= limit) break;
-      transferProvince(s, d, a, p);
-      moved++;
-      w.territoriesChanged++;
-    }
+    // A realm much smaller than its conqueror is swallowed whole.
+    const swallow =
+      d.provinces.length <= Math.max(4, Math.min(8, a.provinces.length * 0.25)) ||
+      (decisive && d.provinces.length <= 8);
+    const limit = swallow
+      ? d.provinces.length
+      : decisive
+        ? Math.max(1, Math.ceil(d.provinces.length * 0.3))
+        : Math.max(1, Math.ceil(d.provinces.length * 0.12));
+    w.territoriesChanged += swallow ? annexAll(s, d, a) : cedeFront(s, d, a, limit);
     w.outcome = `${a.name} annexed ${w.territoriesChanged} neighboring province${w.territoriesChanged === 1 ? '' : 's'} from ${d.name}.`;
   } else if (w.type === 'Religious War' && a.faithId) {
-    const faith = s.religions.find(x => x.id === a.faithId)?.name ?? 'the attacker’s religion';
+    const faith = idx(s).religion.get(a.faithId)?.name ?? 'the attacker’s religion';
     if (decisive) {
-      d.faithId = a.faithId;
-      for (const id of d.provinces) s.provinces[id].religionId = a.faithId;
+      convertRealm(s, d, a.faithId);
       w.religionChanged = true;
       w.outcome = `After its decisive defeat, ${d.name} adopted ${faith} as its majority religion.`;
     } else {
@@ -283,27 +470,14 @@ export function applyWarOutcome(
         .filter(p => neigh(p, s).some(n => n.ownerId === a.id))
         .slice(0, Math.max(1, Math.ceil(d.provinces.length * 0.12)));
       border.forEach(p => (p.religionId = a.faithId));
-      w.outcome = `${faith} gained control of ${border.length} contested border province${border.length === 1 ? '' : 's'}, but ${d.name} retained its state religion.`;
+      w.outcome = `${faith} gained ${border.length} contested border province${border.length === 1 ? '' : 's'}, but ${d.name} kept its state religion.`;
     }
   } else if (w.type === 'Commercial War') {
-    const share = decisive ? 0.15 : 0.07,
-      amount = Math.max(0, d.gdp * share);
-    d.gdp = Math.max(0.1, d.gdp - amount);
-    a.gdp += amount;
-    w.gdpTransferred = amount;
-    w.outcome = `${d.name} paid reparations worth ${amount.toFixed(1)}, equal to ${(share * 100).toFixed(0)}% of its annual GDP.`;
+    w.gdpTransferred = payReparations(d, a, decisive ? 0.15 : 0.07);
+    w.outcome = `${d.name} paid reparations worth ${w.gdpTransferred.toFixed(1)}.`;
   } else if (w.type === 'Dynastic Claim' && a.dynastyId) {
-    const old = s.dynasties.find(x => x.id === d.dynastyId);
-    if (old) {
-      old.status = 'deposed';
-      old.endedYear = s.year;
-    }
-    d.dynastyId = a.dynastyId;
-    const dynasty = s.dynasties.find(x => x.id === a.dynastyId);
-    if (dynasty && !dynasty.realmIds.includes(d.id)) dynasty.realmIds.push(d.id);
-    deposeRuler(s, d, r, `dynastic settlement imposed by ${a.name}`);
-    newRuler(s, d, r, `dynastic settlement imposed by ${a.name}`);
-    w.outcome = `The ${dynasty?.name ?? 'attacker’s dynasty'} took the throne of ${d.name}.`;
+    takeThrone(s, a, d, r);
+    w.outcome = `The ${idx(s).dynasty.get(a.dynastyId)?.name ?? 'attacker’s dynasty'} took the throne of ${d.name}.`;
   } else if (w.type === 'Cultural Reunification') {
     const claims = d.provinces
       .map(id => s.provinces[id])
@@ -317,193 +491,107 @@ export function applyWarOutcome(
     }
     w.outcome = `${a.name} incorporated ${w.territoriesChanged} culturally related province${w.territoriesChanged === 1 ? '' : 's'}.`;
   } else {
-    const amount = d.gdp * (decisive ? 0.08 : 0.04);
-    d.gdp = Math.max(0.1, d.gdp - amount);
-    a.gdp += amount;
-    w.gdpTransferred = amount;
+    w.gdpTransferred = payReparations(d, a, decisive ? 0.08 : 0.04);
     d.stability = Math.max(5, d.stability - (decisive ? 15 : 8));
     d.prestige = Math.max(0, d.prestige - (decisive ? 18 : 9));
-    w.outcome = `${d.name} lost prestige, stability and ${amount.toFixed(1)} in punitive reparations.`;
+    w.outcome = `${d.name} lost prestige, stability and ${w.gdpTransferred.toFixed(1)} in reparations.`;
   }
 }
 
-export function battle(s: WorldState, w: War, r: RNG) {
-  const a = s.civilizations.find(x => x.id === w.attackerIds[0]),
-    d = s.civilizations.find(x => x.id === w.defenderIds[0]);
-  if (!a || !d || !a.provinces.length || !d.provinces.length) {
-    w.active = false;
-    return;
+export function payReparations(from: Civilization, to: Civilization, share: number) {
+  const amount = Math.max(0, from.gdp * share);
+  from.gdp = Math.max(0.1, from.gdp - amount);
+  to.gdp += amount;
+  return amount;
+}
+
+export function convertRealm(s: WorldState, c: Civilization, faithId: number) {
+  c.faithId = faithId;
+  for (const id of c.provinces) s.provinces[id].religionId = faithId;
+}
+
+export function takeThrone(s: WorldState, a: Civilization, d: Civilization, r: RNG) {
+  const old = d.dynastyId ? idx(s).dynasty.get(d.dynastyId) : undefined;
+  if (old) {
+    old.status = 'deposed';
+    old.endedYear = s.year;
   }
-  const borderA = a.provinces
-    .flatMap(id => neigh(s.provinces[id], s))
-    .filter(p => p.ownerId === d.id);
-  if (!borderA.length) {
-    w.active = false;
-    w.endYear = s.year;
-    w.outcome = 'The war ended because the opposing realms no longer shared an accessible front.';
-    return;
+  d.dynastyId = a.dynastyId;
+  const dynasty = a.dynastyId ? idx(s).dynasty.get(a.dynastyId) : undefined;
+  if (dynasty && !dynasty.realmIds.includes(d.id)) dynasty.realmIds.push(d.id);
+  deposeRuler(s, d, r, `dynastic settlement imposed by ${a.name}`);
+  newRuler(s, d, r, `dynastic settlement imposed by ${a.name}`);
+}
+
+/** Deeds and ambitions when a war ends. */
+function warDeeds(
+  s: WorldState,
+  w: War,
+  winner: Civilization,
+  loser: Civilization,
+  decisive: boolean,
+) {
+  const wRuler = idx(s).char.get(winner.rulerId);
+  const lRuler = idx(s).char.get(loser.rulerId);
+  const weight = w.great ? 2 : 1;
+  if (isAlive(wRuler)) {
+    addDeed(s, wRuler, `Won the ${w.name}`, (decisive ? 12 : 7) * weight);
+    earnNickname(s, wRuler);
   }
-  const target = r.pick(borderA),
-    aCap = s.cities.find(x => x.id === a.capitalCityId)?.provinceId ?? a.provinces[0],
-    dCap = s.cities.find(x => x.id === d.capitalCityId)?.provinceId ?? d.provinces[0];
-  const aShare = Math.max(0.12, 0.72 - distance(s, aCap, target.id) * 0.035),
-    dShare = Math.max(0.12, 0.72 - distance(s, dCap, target.id) * 0.035);
-  const ag = commanderFor(s, a),
-    dg = commanderFor(s, d);
-  const aN = Math.max(1, Math.round(a.armySize * aShare * (0.72 + r.next() * 0.28))),
-    dN = Math.max(1, Math.round(d.armySize * dShare * (0.72 + r.next() * 0.28)));
-  const tech = (c: Civilization) =>
-    Math.min(
-      2.15,
-      0.85 +
-        c.technology / 1500 +
-        (has(c, 'bronze') ? 0.07 : 0) +
-        (has(c, 'iron') ? 0.12 : 0) +
-        (has(c, 'gunpowder') ? 0.22 : 0),
-    );
-  const allyTroops = (ids: number[]) =>
-    ids
-      .slice(1)
-      .map(id => s.civilizations.find(x => x.id === id))
-      // Allies fight far from home: about a tenth of their army reaches each battle.
-      .reduce((n, x) => n + (x && x.provinces.length ? x.armySize * 0.1 : 0), 0);
-  const aAll = aN + Math.round(allyTroops(w.attackerIds)),
-    dAll = dN + Math.round(allyTroops(w.defenderIds));
-  // On a coast, the stronger fleet adds up to 30% to its side.
-  const coastal = neigh(target, s).some(n => n.terrain === 'ocean');
-  const fleet = (mine: number, theirs: number) =>
-    coastal ? 1 + 0.3 * (mine / Math.max(1, mine + theirs) - 0.5) : 1;
-  const power = (n: number, c: Civilization, g: Character | null, sea: number) =>
-    Math.pow(n, 0.96) * tech(c) * commandOf(g) * sea * (0.91 + r.next() * 0.18);
-  const ap = power(aAll, a, ag, fleet(a.navy, d.navy)),
-    dp = power(dAll, d, dg, fleet(d.navy, a.navy)),
-    winnerSide = ap > dp ? 'attacker' : 'defender';
-  const ratio = Math.max(ap, dp) / Math.max(1, Math.min(ap, dp));
-  const winnerRate = Math.max(0.1, 0.3 - Math.min(0.2, (ratio - 1) * 0.09) + r.next() * 0.1);
-  const loserRate = Math.min(0.7, 0.44 + Math.min(0.22, (ratio - 1) * 0.1) + r.next() * 0.05);
-  const aRate = winnerSide === 'attacker' ? winnerRate : loserRate,
-    dRate = winnerSide === 'defender' ? winnerRate : loserRate;
-  const aCas = Math.min(aN, Math.max(1, Math.round(aN * aRate))),
-    dCas = Math.min(dN, Math.max(1, Math.round(dN * dRate)));
-  const b: Battle = {
-    id: s.nextIds.battle++,
-    warId: w.id,
-    name: numberedBattleName(s, `Battle of ${target.name}`),
-    year: s.year,
-    provinceId: target.id,
-    attacker: {
-      realmIds: [a.id],
-      generalId: ag?.id ?? null,
-      combatants: aN,
-      casualties: aCas,
-      power: ap,
-    },
-    defender: {
-      realmIds: [d.id],
-      generalId: dg?.id ?? null,
-      combatants: dN,
-      casualties: dCas,
-      power: dp,
-    },
-    winner: winnerSide,
-    significance: Math.min(
-      100,
-      Math.round((aN + dN) / 700 + (Math.abs(ap - dp) / Math.max(ap, dp)) * 40),
-    ),
-  };
-  s.battles.push(b);
-  w.battleIds.push(b.id);
-  w.battles++;
-  w.attackerLosses += aCas;
-  w.defenderLosses += dCas;
-  a.armySize = Math.max(0, a.armySize - aCas);
-  d.armySize = Math.max(0, d.armySize - dCas);
-  commanderFate(s, ag, winnerSide === 'attacker', b.name, b.significance, r);
-  commanderFate(s, dg, winnerSide === 'defender', b.name, b.significance, r);
+  if (isAlive(lRuler)) addDeed(s, lRuler, `Lost the ${w.name}`, 2);
+  const general = commanderFor(s, winner);
+  if (general && general.role === 'General')
+    addDeed(s, general, `Won the ${w.name} in command`, (decisive ? 8 : 5) * weight);
+  notifyAmbition(s, winner.id, 'conquer', `defeated ${loser.name} in the ${w.name}`, loser.id);
+}
+
+/**
+ * Shared ending for every war: outcome (for quick wars), deeds, national
+ * character, truce and chronicle entry. Great Wars pass their own terms.
+ */
+export function finishWar(
+  s: WorldState,
+  w: War,
+  winner: Civilization | null,
+  decisive: boolean,
+  r: RNG,
+  years = 0,
+) {
+  const a = idx(s).civ.get(w.attackerIds[0])!;
+  const d = idx(s).civ.get(w.defenderIds[0])!;
+  w.active = false;
+  w.endYear = s.year + years;
+  if (!winner) {
+    w.outcome ??= `${a.name} and ${d.name} exhausted one another without reaching the war goal.`;
+  } else {
+    const loser = winner.id === a.id ? d : a;
+    w.winnerIds = winner.id === a.id ? [...w.attackerIds] : [...w.defenderIds];
+    w.loserIds = winner.id === a.id ? [...w.defenderIds] : [...w.attackerIds];
+    if (!w.great) applyWarOutcome(s, w, a, d, winner, decisive, r);
+    w.decisiveVictory = decisive;
+    winner.prestige += decisive ? 14 : 8;
+    loser.stability = Math.max(5, loser.stability - (decisive ? 12 : 5));
+    warDeeds(s, w, winner, loser, decisive);
+    warShapesAxes(winner, true, decisive);
+    warShapesAxes(loser, false, decisive);
+  }
+  afterWar(s, a, d);
+  const verdict = winner ? `${winner.name} won. ${w.outcome}` : w.outcome!;
   addEvent(
     s,
     'military',
-    b.name,
-    `${winnerSide === 'attacker' ? a.name : d.name} won${(winnerSide === 'attacker' ? ag : dg) ? ` under ${fullName((winnerSide === 'attacker' ? ag : dg)!)}` : ''}. ${aN.toLocaleString()} attackers and ${dN.toLocaleString()} defenders fought; ${(aCas + dCas).toLocaleString()} were lost.`,
-    8,
+    `${w.name} ends`,
+    verdict,
+    w.great ? 10 : decisive ? 8 : 6,
     [a.id, d.id],
     {
-      personIds: [ag?.id, dg?.id].filter((x): x is number => !!x),
       warIds: [w.id],
-      battleIds: [b.id],
-      tags: ['battle', w.type],
+      tags: [
+        'war ended',
+        w.type,
+        winner ? (decisive ? 'decisive victory' : 'victory') : 'stalemate',
+      ],
+      worldChronicle: w.great || decisive,
     },
   );
-  const aRatio = a.armySize / Math.max(1, a.armyCapacity),
-    dRatio = d.armySize / Math.max(1, d.armyCapacity);
-  let capitulator: Civilization | null = null,
-    victor: Civilization | null = null;
-  if (aRatio < 0.2 || dRatio < 0.2) {
-    if (aRatio < 0.2 && dRatio < 0.2) {
-      capitulator = a.armySize <= d.armySize ? a : d;
-      victor = capitulator.id === a.id ? d : a;
-    } else if (aRatio < 0.2) {
-      capitulator = a;
-      victor = d;
-    } else {
-      capitulator = d;
-      victor = a;
-    }
-  }
-  const normalEnd = w.battles >= r.int(2, 6) || !d.provinces.length;
-  if (capitulator || normalEnd) {
-    w.active = false;
-    w.endYear = s.year;
-    const casualtyBalance =
-      Math.abs(w.attackerLosses - w.defenderLosses) /
-      Math.max(1, w.attackerLosses + w.defenderLosses);
-    const armyBalance = Math.abs(
-      a.armySize / Math.max(1, a.armyCapacity) - d.armySize / Math.max(1, d.armyCapacity),
-    );
-    const stalemate =
-      !capitulator && casualtyBalance < 0.12 && armyBalance < 0.12 && w.battles >= 3;
-    if (stalemate) {
-      w.winnerIds = [];
-      w.loserIds = [];
-      w.decisiveVictory = false;
-      w.outcome = `${a.name} and ${d.name} exhausted one another without achieving the war goal. The conflict ended in stalemate.`;
-      afterWar(s, a, d);
-      addEvent(s, 'military', `${w.name} ends in stalemate`, w.outcome, 7, [a.id, d.id], {
-        warIds: [w.id],
-        tags: ['war ended', w.type, 'stalemate'],
-      });
-    } else {
-      const winner = capitulator ? victor! : winnerSide === 'attacker' ? a : d,
-        loser = winner.id === a.id ? d : a;
-      w.winnerIds = [winner.id];
-      w.loserIds = [loser.id];
-      const winnerRatio = winner.armySize / Math.max(1, winner.armyCapacity),
-        loserRatio = loser.armySize / Math.max(1, loser.armyCapacity);
-      const decisive =
-        !!capitulator ||
-        winnerRatio > loserRatio * 1.8 ||
-        Math.abs(w.attackerLosses - w.defenderLosses) >
-          Math.max(3, (w.attackerLosses + w.defenderLosses) * 0.3);
-      applyWarOutcome(s, w, a, d, winner, loser, decisive, r);
-      warDeeds(s, w, winner, loser, decisive);
-      warShapesAxes(winner, true, decisive);
-      warShapesAxes(loser, false, decisive);
-      afterWar(s, a, d);
-      winner.prestige += decisive ? 14 : 8;
-      loser.stability = Math.max(5, loser.stability - (decisive ? 12 : 5));
-      addEvent(
-        s,
-        'military',
-        `${w.name} ends`,
-        `${winner.name} defeated ${loser.name}. ${w.outcome}`,
-        decisive ? 10 : 8,
-        [a.id, d.id],
-        {
-          warIds: [w.id],
-          tags: ['war ended', w.type, decisive ? 'decisive victory' : 'limited victory'],
-          worldChronicle: decisive,
-        },
-      );
-    }
-  }
 }

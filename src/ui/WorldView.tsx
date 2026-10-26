@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import type { WorldState } from '../types.ts';
 import { type MapMode, type Sel, fmt, MiniEvent } from './shared.tsx';
+import { MomentHeadlines } from './MomentPage.tsx';
 
 export function World({
   world,
@@ -16,9 +17,10 @@ export function World({
 }) {
   const living = world.civilizations
     .filter(c => c.provinces.length)
-    .sort((a, b) => b.historicalScore - a.historicalScore);
+    .sort((a, b) => b.power - a.power);
   return (
     <main className="dashboard">
+      <MomentHeadlines world={world} open={open} />
       <section className="map-panel">
         <div className="panel-head">
           <div>
@@ -38,7 +40,7 @@ export function World({
       <aside className="side">
         <section>
           <span className="eyebrow">World leaders</span>
-          <h2>Historical score</h2>
+          <h2>Power</h2>
           {living.slice(0, 8).map((c, i) => (
             <button className="rank" onClick={() => open({ type: 'realm', id: c.id })} key={c.id}>
               <b>{i + 1}</b>
@@ -48,7 +50,9 @@ export function World({
                   {c.rank} · {fmt(c.population)} people
                 </small>
               </span>
-              <em>{c.historicalScore}</em>
+              <em title="Share of the world's land, wealth and armed forces">
+                {(c.power / 10).toFixed(1)}%
+              </em>
             </button>
           ))}
         </section>

@@ -130,6 +130,9 @@ export function crown(
     score: 1,
   };
   s.reigns.push(reign);
+  const known = idx(s).reigns.get(ch.id);
+  if (known) known.push(reign);
+  else idx(s).reigns.set(ch.id, [reign]);
   c.regentId = 0;
   if (minor && !union) startRegency(s, c, ch, reign, r);
   addEvent(

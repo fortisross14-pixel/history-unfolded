@@ -1,4 +1,12 @@
-import type { Building, Character, Civilization, Culture, MapSize, WorldState } from '../types.ts';
+import type {
+  Building,
+  Character,
+  Civilization,
+  Culture,
+  MapSize,
+  Moment,
+  WorldState,
+} from '../types.ts';
 import { TECHNOLOGIES } from './data.ts';
 import { RNG } from './rng.ts';
 import { has, neighborRealms, neigh, urbanTarget } from './util.ts';
@@ -15,7 +23,12 @@ import { discover } from './technology.ts';
 import { BUILDINGS, build } from './economy.ts';
 import { createWonder, level } from './culture.ts';
 import { foundReligion, processOfficialConversion } from './religion.ts';
-import { startWar, battle } from './war.ts';
+import { startWar } from './war.ts';
+import { tickGreatWar } from './greatwar.ts';
+import { spreadDiscoveries, tickDiscovery } from './discovery.ts';
+import { maybeStartRevolution, tickRevolution } from './revolutions.ts';
+import { activeMoments } from './moments.ts';
+import { updatePower, yearsOnTop } from './power.ts';
 import { RunTracker, summarize } from './metrics.ts';
 import { historicalScore, captureEvolutionSnapshot } from './records.ts';
 import { createWorld } from './world.ts';
@@ -43,7 +56,11 @@ interface RealmYear {
   atWar: boolean;
 }
 
-function prepare(s: WorldState, c: Civilization): RealmYear {
+function prepare(
+  s: WorldState,
+  c: Civilization,
+  neighborsOf: Map<number, Civilization[]>,
+): RealmYear {
   const culture = idx(s).culture.get(c.cultureId)!;
   const buildings = c.cityIds.flatMap(id => idx(s).city.get(id)?.buildings ?? []);
   const wonders = s.wonders.filter(w => w.realmId === c.id && w.status === 'standing');
@@ -58,7 +75,7 @@ function prepare(s: WorldState, c: Civilization): RealmYear {
     culture,
     mods: realmModifiers(s, c).total,
     buildings,
-    neighbors: neighborRealms(s, c),
+    neighbors: neighborsOf.get(c.id) ?? [],
     gdpBoost: sum('gdpBonus') + routes.reduce((n, t) => n + t.gdpBonus, 0),
     armyBoost: sum('armyBonus'),
     sciBoost: sum('scienceBonus'),
@@ -364,7 +381,13 @@ function politics(s: WorldState, y: RealmYear, r: RNG) {
     shares[1].pop >= c.population * 0.22 &&
     shares[0].tolerance < 42 &&
     shares[1].tolerance < 42;
-  const pressure = (c.stability < 25 && c.axes.order > 60) || (c.stability < 32 && polarized);
+  const pressure =
+    (c.stability < 25 && c.axes.order > 60) ||
+    (c.stability < 32 && polarized) ||
+    // Giant empires split more easily the bigger they get.
+    (c.provinces.length > 30 && c.stability < 25 + c.provinces.length / 5) ||
+    // A long-dominant power eventually fractures once its grip slips.
+    (yearsOnTop(s, c) > 250 && c.stability < 35);
   if (pressure && c.provinces.length >= 8 && r.chance(polarized ? 0.032 : 0.018))
     triggerCivilWar(s, c, r, polarized ? 'religious polarization' : 'political instability');
   // New cities when the realm is under-urbanised.
@@ -385,30 +408,9 @@ function politics(s: WorldState, y: RealmYear, r: RNG) {
   }
 }
 
+/** Word of distant continents travels slowly through known realms. */
 function diffuseKnowledge(s: WorldState, y: RealmYear) {
-  const { c, neighbors } = y;
-  for (const t of TECHNOLOGIES) {
-    if (s.year < t.earliestYear || has(c, t.id)) continue;
-    const knowing = neighbors.filter(n => has(n, t.id)).length;
-    if (!knowing) continue;
-    c.technologyExposure[t.id] = (c.technologyExposure[t.id] ?? 0) + (knowing >= 2 ? 2 : 1);
-    if (c.technologyExposure[t.id] < 36) continue;
-    c.knownTechnologies.push({ technologyId: t.id, discoveredYear: s.year, source: 'diffusion' });
-    c.technology = Math.min(1000, c.technology + 14);
-    delete c.technologyExposure[t.id];
-    addEvent(
-      s,
-      'technology',
-      `${t.name} reaches ${c.name}`,
-      `${t.name} spread into ${c.name} after sustained border contact with ${knowing >= 2 ? 'multiple neighboring civilizations' : 'a neighboring civilization'}.`,
-      5,
-      [c.id],
-      {
-        technologyIds: [t.id],
-        tags: ['technology diffusion'],
-      },
-    );
-  }
+  const { c } = y;
   for (const con of s.continents) {
     if (c.knownContinentIds.includes(con.id)) continue;
     const informed = c.knownRealmIds.some(id =>
@@ -478,7 +480,8 @@ function chooseTarget(
     1 +
     (a.faith < 35 && n.faithId !== c.faithId ? 3 : 0) +
     (a.economy > 65 ? Math.min(3, n.gdp / Math.max(1, c.gdp)) : 0) +
-    (a.ambition > 65 ? Math.min(3, c.armySize / Math.max(1, n.armySize)) : 0) +
+    // Everyone preys on the weak; conquerors most of all.
+    Math.min(3, c.armySize / Math.max(1, n.armySize)) * (a.ambition > 65 ? 1 : 0.4) +
     (findRelation(s, c.id, n.id, 'Rival') ? 3 : 0);
   let roll = r.next() * targets.reduce((n, t) => n + score(t), 0);
   for (const t of targets) {
@@ -492,7 +495,7 @@ function warAndInfluence(s: WorldState, y: RealmYear, r: RNG) {
   const { c, culture, mods, neighbors, atWar } = y;
   const ruler = idx(s).char.get(c.rulerId);
   const targets = neighbors.filter(n => canAttack(s, c, n));
-  if (targets.length && !atWar && r.chance(0.0028 * Math.max(0.05, 1 + mods.warAppetite)))
+  if (targets.length && !atWar && r.chance(0.004 * Math.max(0.05, 1 + mods.warAppetite)))
     startWar(s, c, chooseTarget(s, c, targets, ruler, r), r);
   processOfficialConversion(s, c, r);
   for (const n of neighbors) {
@@ -720,9 +723,12 @@ function worldTotals(s: WorldState) {
 export function simulateYear(s: WorldState, r: RNG) {
   s.year++;
   rebuildIndex(s);
+  const neighborsOf = new Map<number, Civilization[]>();
+  for (const c of s.civilizations)
+    if (c.provinces.length) neighborsOf.set(c.id, neighborRealms(s, c));
   for (const c of s.civilizations) {
     if (!c.provinces.length) continue;
-    const y = prepare(s, c);
+    const y = prepare(s, c, neighborsOf);
     processRealmEvents(s, c, y.culture, r);
     growPopulation(s, y);
     growEconomy(s, y);
@@ -736,8 +742,16 @@ export function simulateYear(s: WorldState, r: RNG) {
   }
   charactersYear(s, r);
   catalysts(s, r);
-  for (const w of s.wars.filter(x => x.active)) if (r.chance(0.35)) battle(s, w, r);
+  // World Moments: Great Wars, Great Discoveries and World Revolutions.
+  for (const m of activeMoments(s)) {
+    if (m.kind === 'war') tickGreatWar(s, m, r);
+    else if (m.kind === 'discovery') tickDiscovery(s, m);
+    else tickRevolution(s, m, neighborsOf, r);
+  }
+  spreadDiscoveries(s, neighborsOf, r);
+  maybeStartRevolution(s, r);
   diplomacyUpkeep(s);
+  updatePower(s);
   worldTotals(s);
   ensureModernGlobalContact(s);
   if (s.year % 100 === 0) {
@@ -746,12 +760,19 @@ export function simulateYear(s: WorldState, r: RNG) {
   }
 }
 
-/** Runs the world forward in place. onYear is called after every year. */
-export function simulateYears(s: WorldState, years: number, onYear?: (s: WorldState) => void) {
+/**
+ * Runs the world forward in place. onYear is called after every year and may
+ * return true to stop early.
+ */
+export function simulateYears(
+  s: WorldState,
+  years: number,
+  onYear?: (s: WorldState) => boolean | void,
+) {
   const r = new RNG((s.seed + s.year * 31 + years * 911) >>> 0);
   for (let i = 0; i < years; i++) {
     simulateYear(s, r);
-    onYear?.(s);
+    if (onYear?.(s)) break;
     for (const c of s.civilizations) {
       if (
         Number.isFinite(c.population) &&
@@ -777,6 +798,20 @@ export function simulateYears(s: WorldState, years: number, onYear?: (s: WorldSt
 /** Returns a new world, years later. The original is left untouched. */
 export function advanceWorld(w: WorldState, years: number) {
   return simulateYears(structuredClone(w), years);
+}
+
+/**
+ * Like advanceWorld, but stops at the end of the first year in which a new
+ * World Moment begins, so the player can watch it live.
+ */
+export function advanceUntilMoment(w: WorldState, years: number) {
+  const known = new Set(w.moments.map(m => m.id));
+  let started: Moment | undefined;
+  const world = simulateYears(structuredClone(w), years, s => {
+    started = s.moments.find(m => !known.has(m.id));
+    return !!started;
+  });
+  return { world, started };
 }
 
 /** Headless reference run used by npm run sim. */

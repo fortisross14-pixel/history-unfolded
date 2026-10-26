@@ -26,7 +26,6 @@ import { newRuler } from './dynasty.ts';
 import { rebuildIndex } from './lookup.ts';
 import { initialAxes } from './axes.ts';
 import { discover } from './technology.ts';
-import { battle } from './war.ts';
 import { historicalScore, captureEvolutionSnapshot } from './records.ts';
 
 export const dims = (s: MapSize) =>
@@ -179,7 +178,7 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
     overrides: { realm: {}, city: {}, character: {}, dynasty: {}, continent: {}, war: {} },
     dynasties: [],
     wars: [],
-    battles: [],
+    moments: [],
     artworks: [],
     wonders: [],
     naturalWonders: [],
@@ -202,7 +201,7 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
       legacy: 1,
       dynasty: 1,
       war: 1,
-      battle: 1,
+      moment: 1,
       artwork: 1,
       wonder: 1,
       naturalWonder: 1,
@@ -291,6 +290,7 @@ export function createWorld(cfg: WorldConfig, seed = Date.now()): WorldState {
       ),
       navy: 0,
       navyCapacity: 0,
+      power: 0,
       historicalScore: 0,
       legacyScore: 0,
       governmentHistory: [{ government: 'Tribal Council', from: s.year, reason: 'Founding' }],

@@ -7,7 +7,9 @@ export class RunTracker {
   generationalYears = 0;
   generationalSum = 0;
   years = 0;
+  momentPeak = 0;
   observe(s: WorldState) {
+    this.momentPeak = Math.max(this.momentPeak, s.moments.filter(m => m.active).length);
     let alive = 0;
     for (const ch of s.characters)
       if (ch.died === undefined && ch.rarity === 'Generational') alive++;
@@ -21,6 +23,7 @@ export class RunTracker {
 export interface CenturyLeaders {
   year: number;
   leaders: { name: string; score: number }[];
+  realms: number;
 }
 
 export interface WorldMetrics {
@@ -29,7 +32,10 @@ export interface WorldMetrics {
   population: number;
   wars: number;
   greatWars: number;
-  battles: number;
+  keyBattles: number;
+  moments: number;
+  momentsByKind: Record<string, number>;
+  maxConcurrentMoments: number;
   people: number;
   livingPeople: number;
   generationalAlivePeak: number;
@@ -61,6 +67,7 @@ export function summarize(world: WorldState, tracker?: RunTracker): WorldMetrics
       .sort((a, b) => b.greatPower - a.greatPower)
       .slice(0, 3)
       .map(r => ({ name: r.name, score: Math.round(r.greatPower) })),
+    realms: s.realms.length,
   }));
 
   // Longest unbroken run as the number-one power, by century snapshot.
@@ -83,8 +90,14 @@ export function summarize(world: WorldState, tracker?: RunTracker): WorldMetrics
     livingRealms: alive.length,
     population: alive.reduce((n, c) => n + c.population, 0),
     wars: world.wars.length,
-    greatWars: 0,
-    battles: world.battles.length,
+    greatWars: world.wars.filter(w => w.great).length,
+    keyBattles: world.wars.reduce((n, w) => n + w.keyBattles.length, 0),
+    moments: world.moments.length,
+    momentsByKind: world.moments.reduce<Record<string, number>>(
+      (n, x) => ({ ...n, [x.kind]: (n[x.kind] ?? 0) + 1 }),
+      {},
+    ),
+    maxConcurrentMoments: tracker?.momentPeak ?? 0,
     people: world.characters.length,
     livingPeople: world.characters.filter(p => p.died === undefined).length,
     generationalAlivePeak: tracker?.generationalPeak ?? 0,
@@ -118,7 +131,12 @@ export function formatMetrics(m: WorldMetrics, everyNthCentury = 5): string {
     `Living realms ............ ${m.livingRealms}`,
     `World population ......... ${m.population.toLocaleString('en-US')}`,
     `Wars / great wars ........ ${m.wars} / ${m.greatWars}`,
-    `Stored battles ........... ${m.battles}`,
+    `Key battles stored ....... ${m.keyBattles}`,
+    `World Moments ............ ${m.moments} (${(m.moments / Math.max(1, m.centuries.length - 1)).toFixed(1)} per century; ${Object.entries(
+      m.momentsByKind,
+    )
+      .map(([k, v]) => `${k} ${v}`)
+      .join(', ')}; at most ${m.maxConcurrentMoments} at once)`,
     `Characters (alive) ....... ${m.people} (${m.livingPeople})`,
     `Generational alive ....... peak ${m.generationalAlivePeak}, average ${m.generationalAverage.toFixed(1)}, present ${(m.generationalShare * 100).toFixed(0)}% of years`,
     `Reigns / legacies ........ ${m.reigns} / ${m.legacies}`,
@@ -138,7 +156,9 @@ export function formatMetrics(m: WorldMetrics, everyNthCentury = 5): string {
   m.centuries.forEach((c, i) => {
     if (i % everyNthCentury !== 0 && i !== m.centuries.length - 1) return;
     const names = c.leaders.map(l => `${l.name} (${l.score})`).join(', ');
-    lines.push(`  ${displayYear(c.year).padEnd(9)} ${names}`);
+    lines.push(
+      `  ${displayYear(c.year).padEnd(9)} [${String(c.realms).padStart(2)} realms] ${names}`,
+    );
   });
   return lines.join('\n');
 }

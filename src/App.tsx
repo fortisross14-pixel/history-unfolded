@@ -1,17 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BookOpen,
   Clock3,
   Globe2,
   Landmark,
+  Pause,
+  Play,
+  Radio,
   RotateCcw,
   TrendingUp,
   Trophy,
   Users,
+  X,
 } from 'lucide-react';
-import { advanceWorld, createWorld, displayYear, eraName } from './engine/index.ts';
-import type { WorldState } from './types.ts';
+import {
+  advanceUntilMoment,
+  advanceWorld,
+  createWorld,
+  displayYear,
+  eraName,
+} from './engine/index.ts';
+import type { Moment, WorldState } from './types.ts';
 import { type View, type MapMode, type Sel } from './ui/shared.tsx';
 import { loadSlots, persist } from './ui/storage.ts';
 import { Title } from './ui/TitleScreen.tsx';
@@ -78,7 +88,32 @@ export function Game({
   const [view, setView] = useState<View>('world'),
     [mode, setMode] = useState<MapMode>('political'),
     [sel, setSel] = useState<Sel>(null);
-  const advance = (n: number) => save(advanceWorld(world, n));
+  const [pauseOnMoments, setPauseOnMoments] = useState(readPausePref);
+  const [headline, setHeadline] = useState<Moment | null>(null);
+  const [live, setLive] = useState<number | null>(null);
+  const advance = (n: number) => {
+    setHeadline(null);
+    if (!pauseOnMoments) return save(advanceWorld(world, n));
+    const { world: next, started } = advanceUntilMoment(world, n);
+    save(next);
+    if (started) setHeadline(started);
+  };
+  const watch = (m: Moment) => {
+    setHeadline(null);
+    setSel({ type: 'moment', id: m.id });
+    setLive(m.id);
+  };
+  // Live mode: one year per beat while the watched moment is still running.
+  const watched = live ? world.moments.find(m => m.id === live) : undefined;
+  useEffect(() => {
+    if (!live) return;
+    if (!watched?.active) {
+      setLive(null);
+      return;
+    }
+    const t = setTimeout(() => save(advanceWorld(world, 1)), 900);
+    return () => clearTimeout(t);
+  }, [live, world]);
   const navItems: [View, typeof Globe2, string][] = [
     ['world', Globe2, 'World'],
     ['characters', Users, 'Characters'],
@@ -115,6 +150,29 @@ export function Game({
             <small>{eraName(world.year)}</small>
           </span>
         </div>
+        {live && watched ? (
+          <div className="live-controls">
+            <Radio />
+            <span>
+              Watching <b>{watched.title}</b> live
+            </span>
+            <button onClick={() => setLive(null)}>
+              <Pause /> Stop
+            </button>
+          </div>
+        ) : (
+          <label className="pause-toggle" title="Stop advancing when a World Moment begins">
+            <input
+              type="checkbox"
+              checked={pauseOnMoments}
+              onChange={e => {
+                setPauseOnMoments(e.target.checked);
+                writePausePref(e.target.checked);
+              }}
+            />
+            Pause on World Moments
+          </label>
+        )}
         <div className="advance-controls">
           {[1, 5, 10, 25].map(n => (
             <button onClick={() => advance(n)} key={n}>
@@ -124,6 +182,25 @@ export function Game({
           ))}
         </div>
       </div>
+      {headline && (
+        <div className="moment-alert" role="status">
+          <span className="eyebrow">A World Moment begins · {displayYear(headline.startYear)}</span>
+          <strong>{headline.title}</strong>
+          <div>
+            <button className="primary" onClick={() => watch(headline)}>
+              <Play /> Watch live
+            </button>
+            <button
+              onClick={() => (setSel({ type: 'moment', id: headline.id }), setHeadline(null))}
+            >
+              Open
+            </button>
+            <button aria-label="Dismiss" onClick={() => setHeadline(null)}>
+              <X />
+            </button>
+          </div>
+        </div>
+      )}
       {view === 'world' && <World world={world} mode={mode} setMode={setMode} open={setSel} />}{' '}
       {view === 'characters' && <Characters world={world} open={setSel} />}
       {view === 'chronicle' && <Chronicle world={world} open={setSel} />}{' '}
@@ -144,4 +221,21 @@ export function Game({
         )}
     </div>
   );
+}
+
+// Per-viewer preference; storage may be unavailable, so it falls back to "on".
+const PAUSE_KEY = 'history-unfolded-pause-on-moments';
+function readPausePref() {
+  try {
+    return localStorage.getItem(PAUSE_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+function writePausePref(on: boolean) {
+  try {
+    localStorage.setItem(PAUSE_KEY, on ? 'on' : 'off');
+  } catch {
+    // Not saved; the toggle still works for this session.
+  }
 }

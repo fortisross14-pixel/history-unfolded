@@ -5,7 +5,7 @@ import { economyFromV4 } from './migrate-v5.ts';
  * Save schema version. Bump it whenever WorldState changes shape and add a
  * migration below that upgrades a world from the previous version.
  */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 type Migration = (world: any) => any;
 
@@ -311,12 +311,23 @@ function momentsFromV3(w: any) {
   return w;
 }
 
+/** v5 → v6: century seasons and each realm's peak size. */
+function seasonsFromV5(w: any) {
+  w.seasons = [];
+  for (const c of w.civilizations ?? []) {
+    c.peakProvinces = c.provinces?.length ?? 0;
+    c.peakYear = w.year;
+  }
+  return w;
+}
+
 /** migrations[n] upgrades a world from version n to version n + 1. */
 const migrations: Record<number, Migration> = {
   1: charactersFromV1,
   2: personalityFromV2,
   3: momentsFromV3,
   4: economyFromV4,
+  5: seasonsFromV5,
 };
 
 /**

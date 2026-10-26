@@ -165,6 +165,7 @@ export function emptyWorld(
     events: [],
     evolutionSnapshots: [],
     hallOfFame: [],
+    seasons: [],
     nextIds: {
       civ: 1,
       city: 1,
@@ -254,6 +255,8 @@ export function foundRealm(s: WorldState, o: NewRealm, r: RNG): Civilization {
         neigh(home, s).some(n => n.terrain === 'ocean'),
       ),
     power: 0,
+    peakProvinces: o.provinceIds.length,
+    peakYear: s.year,
     governmentHistory: [{ government: 'Chiefdom', from: s.year, reason: 'Founding' }],
     nameHistory: [{ name: o.name, rank: 'Tribe', from: s.year, reason: 'Founding' }],
   };

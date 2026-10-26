@@ -247,6 +247,20 @@ export function newWar(
   };
 }
 
+const ORDINALS = ['Second', 'Third'];
+
+/**
+ * War names stay unique: a repeat becomes "Second …" and "Third …", and after
+ * that carries its year ("Expansion War of Tarsus (1394)").
+ */
+export function uniqueWarName(s: WorldState, base: string) {
+  const count = s.wars.filter(
+    w => w.name === base || w.name.endsWith(` ${base}`) || w.name.startsWith(`${base} (`),
+  ).length;
+  if (!count) return base;
+  return ORDINALS[count - 1] ? `${ORDINALS[count - 1]} ${base}` : `${base} (${s.year})`;
+}
+
 /** Provinces held by every realm on both sides. */
 const combinedSize = (s: WorldState, w: War) =>
   w.participantIds.reduce((n, id) => n + (idx(s).civ.get(id)?.provinces.length ?? 0), 0);
@@ -280,7 +294,7 @@ export function startWar(s: WorldState, a: Civilization, d: Civilization, r: RNG
     return;
   const plan = chooseWarType(s, a, d, r);
   const focus = idx(s).city.get(d.capitalCityId)?.name ?? d.originTribe;
-  const w = newWar(s, a, d, plan, `${plan.type} of ${focus}`);
+  const w = newWar(s, a, d, plan, uniqueWarName(s, `${plan.type} of ${focus}`));
   addRelation(s, 'Rival', a.id, d.id, plan.type);
   // Defensive allies answer the call.
   const allies = alliesOf(s, d).filter(
@@ -592,7 +606,7 @@ export function finishWar(
         w.type,
         winner ? (decisive ? 'decisive victory' : 'victory') : 'stalemate',
       ],
-      worldChronicle: w.great || decisive,
+      worldChronicle: !w.great && decisive,
     },
   );
 }

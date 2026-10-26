@@ -111,6 +111,8 @@ export function triggerCivilWar(
     warIds: [],
     power: 0,
     topSince: undefined,
+    peakProvinces: rebelIds.length,
+    peakYear: s.year,
     // Rebels are the restless half of the nation.
     axes: { ...c.axes, order: Math.min(100, c.axes.order + 10) },
     governmentHistory: [{ government: c.government, from: s.year, reason: 'Civil war' }],

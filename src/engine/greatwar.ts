@@ -6,6 +6,7 @@ import { endMoment, momentEvent, startMoment } from './moments.ts';
 import {
   admiralFor,
   annexAll,
+  uniqueWarName,
   cedeFront,
   commandOf,
   commanderFate,
@@ -28,6 +29,12 @@ const EXHAUSTION = 100;
 const MAX_YEARS = 25;
 
 const civ = (s: WorldState, id: number) => idx(s).civ.get(id);
+
+/** "Kingdom of Faron" → "Faron", for war names. */
+const core = (name: string) =>
+  name
+    .replace(/^(Kingdom of |Duchy of |Republic of |Free )/, '')
+    .replace(/ (Empire|Tribe|Settlements|Rebels)$/, '');
 const living = (s: WorldState, ids: number[]) =>
   ids.map(id => civ(s, id)).filter((c): c is Civilization => !!c && c.provinces.length > 0);
 
@@ -38,7 +45,7 @@ export function startGreatWar(s: WorldState, w: War, r: RNG) {
   const m = startMoment(
     s,
     'war',
-    w.name.replace(/^(\w+ )?War of /, 'The Great War of '),
+    `The ${uniqueWarName(s, w.type === 'Civil War' ? `Great ${w.name}` : `Great War of ${core(a.name)} and ${core(d.name)}`)}`,
     w.type,
     a.id,
     [...w.participantIds],

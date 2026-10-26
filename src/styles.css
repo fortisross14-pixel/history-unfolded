@@ -2201,3 +2201,128 @@ td button,
     grid-column: auto;
   }
 }
+
+/* ---- Seasons and records (Phase 6) ------------------------------------- */
+.recap-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  padding: 24px 16px;
+  background: rgba(4, 10, 13, 0.82);
+  backdrop-filter: blur(3px);
+}
+.recap {
+  position: relative;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-soft);
+}
+.recap h1 {
+  font-family: Cinzel, serif;
+  margin: 4px 0 16px;
+}
+.recap > .close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.recap-maps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.recap-maps figure {
+  margin: 0;
+}
+.recap-maps figcaption {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+.mini-map {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 10px;
+  background: #0b2532;
+}
+.awards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+.award,
+.record-card,
+.season-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(135deg, rgba(215, 173, 95, 0.14), var(--panel));
+}
+.award small,
+.record-card small,
+.season-card small {
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+}
+.award strong,
+.record-card strong,
+.season-card strong {
+  font-family: Cinzel, serif;
+  font-size: 1.02rem;
+}
+.award span,
+.record-card span,
+.season-card span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.record-card b {
+  color: var(--gold-soft);
+}
+.record-card:disabled {
+  cursor: default;
+}
+.record-grid,
+.season-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.recap-headlines article {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.recap-headlines time {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-right: 8px;
+}
+.recap-headlines p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+@media (max-width: 700px) {
+  .recap-maps {
+    grid-template-columns: 1fr;
+  }
+  .recap {
+    padding: 16px;
+  }
+}

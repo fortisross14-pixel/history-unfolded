@@ -516,6 +516,9 @@ export interface Civilization {
   power: number;
   /** Year this realm became the world's top power, while it stays on top. */
   topSince?: number;
+  /** The most provinces the realm ever held, and when. */
+  peakProvinces: number;
+  peakYear: number;
   governmentHistory: { government: GovernmentType; from: number; to?: number; reason: string }[];
   nameHistory: { name: string; rank: Rank; from: number; reason: string }[];
 }
@@ -559,6 +562,32 @@ export interface Moment {
   weariness?: [number, number];
   /** Consecutive ticks past the victory threshold. */
   streak?: number;
+}
+
+// ---- Seasons -------------------------------------------------------------------
+
+/** An award at the end of a century, like a sports season's MVP. */
+export interface SeasonAward {
+  title: string;
+  kind: 'character' | 'war' | 'realm';
+  id: number;
+  name: string;
+  reason: string;
+}
+
+/** A century treated as a season: headlines, the map before and after, and awards. */
+export interface Season {
+  /** Last year of the century (1500 = the years 1401–1500). */
+  year: number;
+  headlines: { year: number; title: string; text: string }[];
+  /** Owner of each province at the start and end, comma separated (empty = nobody). */
+  mapBefore: string;
+  mapAfter: string;
+  /** Names and colours of every realm on either map. */
+  palette: { id: number; name: string; color: string }[];
+  awards: SeasonAward[];
+  realmsBefore: number;
+  realmsAfter: number;
 }
 
 // ---- World ---------------------------------------------------------------------
@@ -631,6 +660,7 @@ export interface WorldState {
   events: HistoryEvent[];
   evolutionSnapshots: EvolutionSnapshot[];
   hallOfFame: HallOfFameEntry[];
+  seasons: Season[];
   nextIds: {
     civ: number;
     city: number;

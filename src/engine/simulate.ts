@@ -12,7 +12,7 @@ import { createWorld } from './world.ts';
 import { courtOf, idx, rebuildIndex } from './lookup.ts';
 import { realmModifiers, type ModTotals } from './modifiers.ts';
 import { checkAmbition, createCharacter, deathCheck, level } from './characters.ts';
-import { rulerLifeCycle, succession } from './dynasty.ts';
+import { endReign, rulerLifeCycle, succession } from './dynasty.ts';
 import { isNotable, notableActs, spawnNotables } from './court.ts';
 import { pruneCharacters } from './prune.ts';
 import { driftAxes } from './axes.ts';
@@ -35,6 +35,7 @@ import { changeGovernment, governmentFor } from './government.ts';
 import { createWonder } from './wonders.ts';
 import { overdueBreakthroughs, researchYear } from './research.ts';
 import { courtEvents, disasters } from './disasters.ts';
+import { closeSeason } from './seasons.ts';
 
 /** Everything one realm's yearly steps share. */
 interface RealmYear {
@@ -351,6 +352,10 @@ function warAndInfluence(s: WorldState, y: RealmYear, r: RNG) {
 }
 
 function dynastyYear(s: WorldState, c: Civilization) {
+  if (c.provinces.length > c.peakProvinces) {
+    c.peakProvinces = c.provinces.length;
+    c.peakYear = s.year;
+  }
   const d = c.dynastyId ? idx(s).dynasty.get(c.dynastyId) : undefined;
   if (!d) return;
   d.totalYearsInPower++;
@@ -460,7 +465,15 @@ export function simulateYear(s: WorldState, r: RNG) {
   for (const c of s.civilizations)
     if (c.provinces.length) neighborsOf.set(c.id, neighborRealms(s, c));
   for (const c of s.civilizations) {
-    if (!c.provinces.length) continue;
+    if (!c.provinces.length) {
+      if (c.rulerId) {
+        endReign(s, c, 'the fall of the realm');
+        c.rulerId = 0;
+        c.heirId = 0;
+        c.regentId = 0;
+      }
+      continue;
+    }
     const y: RealmYear = {
       c,
       mods: realmModifiers(s, c).total,
@@ -492,6 +505,7 @@ export function simulateYear(s: WorldState, r: RNG) {
   ensureGlobalContact(s);
   if (s.year % 100 === 0) {
     captureEvolutionSnapshot(s);
+    closeSeason(s);
     pruneCharacters(s);
   }
 }

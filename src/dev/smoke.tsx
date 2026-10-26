@@ -15,6 +15,7 @@ import { Drawer } from '../ui/Drawer.tsx';
 import { RealmPage } from '../ui/RealmPage.tsx';
 import { RealmCourt } from '../ui/RealmCourt.tsx';
 import { Diplomacy } from '../ui/NationalCharacter.tsx';
+import { SeasonList, SeasonRecap } from '../ui/SeasonRecap.tsx';
 
 const noop = () => {};
 
@@ -79,6 +80,12 @@ export async function renderAll(years: number): Promise<string[]> {
     pages.push([`Realm ${realm.id} court`, <RealmCourt c={realm} world={world} open={noop} />]);
     pages.push([`Realm ${realm.id} diplomacy`, <Diplomacy c={realm} world={world} open={noop} />]);
   }
+  for (const season of world.seasons.slice(-3))
+    pages.push([
+      `Season ${season.year}`,
+      <SeasonRecap world={world} season={season} open={noop} close={noop} />,
+    ]);
+  pages.push(['Season list', <SeasonList world={world} show={noop} />]);
   const failures: string[] = [];
   for (const [label, el] of pages) {
     try {

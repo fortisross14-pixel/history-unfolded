@@ -28,6 +28,8 @@ import { World } from './ui/WorldView.tsx';
 import { Chronicle } from './ui/Chronicle.tsx';
 import { Records } from './ui/Records.tsx';
 import { RealmPage } from './ui/RealmPage.tsx';
+import { SeasonRecap } from './ui/SeasonRecap.tsx';
+import { seasonTitle } from './engine/seasons.ts';
 import { Drawer } from './ui/Drawer.tsx';
 import { Characters } from './ui/Characters.tsx';
 import { renameEntity } from './engine/rename.ts';
@@ -90,12 +92,19 @@ export function Game({
   const [pauseOnMoments, setPauseOnMoments] = useState(readPausePref);
   const [headline, setHeadline] = useState<Moment | null>(null);
   const [live, setLive] = useState<number | null>(null);
+  // A century that just ended (offered as a recap) and the recap being shown.
+  const [seasonDone, setSeasonDone] = useState<number | null>(null);
+  const [recap, setRecap] = useState<number | null>(null);
   const advance = (n: number) => {
     setHeadline(null);
-    if (!pauseOnMoments) return save(advanceWorld(world, n));
-    const { world: next, started } = advanceUntilMoment(world, n);
-    save(next);
-    if (started) setHeadline(started);
+    const seasonsBefore = world.seasons.length;
+    const result = pauseOnMoments
+      ? advanceUntilMoment(world, n)
+      : { world: advanceWorld(world, n), started: undefined };
+    save(result.world);
+    if (result.started) setHeadline(result.started);
+    if (result.world.seasons.length > seasonsBefore)
+      setSeasonDone(result.world.seasons.at(-1)!.year);
   };
   const watch = (m: Moment) => {
     setHeadline(null);
@@ -213,6 +222,20 @@ export function Game({
           </div>
         </div>
       )}
+      {seasonDone !== null && !headline && (
+        <div className="moment-alert season-alert" role="status">
+          <span className="eyebrow">Season over</span>
+          <strong>The {seasonTitle(seasonDone)} has ended</strong>
+          <div>
+            <button className="primary" onClick={() => (setRecap(seasonDone), setSeasonDone(null))}>
+              <Trophy /> See the recap
+            </button>
+            <button aria-label="Dismiss" onClick={() => setSeasonDone(null)}>
+              <X />
+            </button>
+          </div>
+        </div>
+      )}
       {view === 'map' && <World world={world} mode={mode} setMode={setMode} open={open} />}
       {view === 'realm' && (
         <RealmPage
@@ -225,7 +248,15 @@ export function Game({
       )}
       {view === 'characters' && <Characters world={world} open={open} />}
       {view === 'chronicle' && <Chronicle world={world} open={open} />}
-      {view === 'records' && <Records world={world} open={open} />}
+      {view === 'records' && <Records world={world} open={open} showSeason={setRecap} />}
+      {recap !== null && world.seasons.find(x => x.year === recap) && (
+        <SeasonRecap
+          world={world}
+          season={world.seasons.find(x => x.year === recap)!}
+          open={open}
+          close={() => setRecap(null)}
+        />
+      )}
       {sel &&
         createPortal(
           <Drawer

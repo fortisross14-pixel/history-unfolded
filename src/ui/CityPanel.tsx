@@ -10,6 +10,9 @@ import {
   hasSlot,
   SHIP_CREW,
   cityGuard,
+  siegeBreached,
+  SIEGE_BREACH,
+  SIEGE_COHORTS,
   cityYield,
   LEVY_PEOPLE,
   MIN_CITY_POP,
@@ -29,6 +32,7 @@ export function CityPanel({
   onGovernor,
   onRename,
   onCrew,
+  onAuto,
 }: {
   game: GameState;
   c: City;
@@ -40,6 +44,7 @@ export function CityPanel({
   onGovernor?: (dynastyId: number) => void;
   onRename?: (name: string) => void;
   onCrew?: (kind: 'workers' | 'engineers') => void;
+  onAuto?: (on: boolean) => void;
 }) {
   const y = cityYield(game, c);
   const civ = game.civs[c.civId];
@@ -159,6 +164,19 @@ export function CityPanel({
                   ready
                 </td>
               </tr>
+              {c.siege && (
+                <tr className="bad">
+                  <td>Siege</td>
+                  <td>
+                    Besieged by the {game.civs[c.siege.by].name} for {game.turn - c.siege.since}{' '}
+                    turns: no growth, the guard starves
+                    {siegeBreached(game, c)
+                      ? '; the walls are breached'
+                      : `; the walls fall in ${SIEGE_BREACH - (game.turn - c.siege.since)} turns`}
+                    . Drive off the troops around it to lift it.
+                  </td>
+                </tr>
+              )}
               <tr>
                 <td>Goods</td>
                 <td>
@@ -197,6 +215,19 @@ export function CityPanel({
             >
               <Icon name="people" /> Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
             </button>
+            {onAuto && (
+              <label
+                className="auto-toggle"
+                title="The governor lays out districts and chooses buildings each turn, as the AI would"
+              >
+                <input
+                  type="checkbox"
+                  checked={!!c.auto}
+                  onChange={e => onAuto(e.target.checked)}
+                />{' '}
+                Governor plans this settlement
+              </label>
+            )}
             <button
               disabled={c.pop - CREW.workers.people < MIN_CITY_POP || civ.gold < CREW.workers.gold}
               onClick={() => onCrew?.('workers')}
@@ -256,6 +287,9 @@ export function CityPanel({
         <p className="muted">
           Guard {Math.round(c.guard * 100)}% ready. A foreign city of about{' '}
           {(Math.round(c.pop / 500) * 500).toLocaleString()} people.
+          {c.siege
+            ? ` Besieged ${game.turn - c.siege.since} turns${siegeBreached(game, c) ? ': its walls are breached.' : `: its walls fall in ${SIEGE_BREACH - (game.turn - c.siege.since)} turns.`}`
+            : ` Ring it with ${SIEGE_COHORTS} or more cohorts to besiege it.`}
         </p>
       )}
     </div>

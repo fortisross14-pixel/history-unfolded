@@ -32,6 +32,8 @@ import {
   merge,
   offerPeace,
   orderMove,
+  automate,
+  automateCity,
   planPath,
   player,
   previewBattle,
@@ -235,7 +237,9 @@ export function Game({
   const selCity = sel?.kind === 'city' ? game.cities.find(c => c.id === sel.id) : undefined;
 
   const idle = () =>
-    game.formations.filter(f => f.civId === me.id && f.moves > 0 && !f.fortified && !f.path.length);
+    game.formations.filter(
+      f => f.civId === me.id && f.moves > 0 && !f.fortified && !f.path.length && !f.auto,
+    );
   const focus = (hex: number) => setCenter({ hex, n: Date.now() });
   /** The next unit waiting for orders, after the one selected. */
   const selectNext = () => {
@@ -286,8 +290,22 @@ export function Game({
         label: `Give out ${me.trinkets.length} trinket${me.trinkets.length > 1 ? 's' : ''}`,
         go: () => setDialog({ kind: 'dynasties' }),
       });
+    // settlements with nothing to build: one item hands them all to their governors
+    const unplanned = mine.filter(c => !c.auto && !constructionQueue(game, c).length);
+    if (unplanned.length >= 2)
+      out.push({
+        key: 'governors',
+        label: `Let governors plan ${unplanned.length} settlements`,
+        go: () => {
+          for (const c of unplanned) automateCity(game, c.id, true);
+          toast(
+            `Governors now plan ${unplanned.length} settlements. Untick it in a settlement's panel to plan it yourself.`,
+          );
+          bump();
+        },
+      });
     for (const c of mine)
-      if (!constructionQueue(game, c).length)
+      if (!c.auto && !constructionQueue(game, c).length)
         out.push({
           key: `city:${c.id}`,
           label: `Plan ${c.name}`,
@@ -915,6 +933,7 @@ export function Game({
               bump();
             }}
             onRoad={() => report(buildRoad(game, selF.id))}
+            onAuto={mode => report(automate(game, selF.id, mode))}
           />
         )}
         {selCity && (
@@ -935,6 +954,7 @@ export function Game({
             onShip={designId => report(buildShip(game, selCity.id, designId))}
             onGovernor={id => report(assignGovernor(game, me.id, selCity.id, id) as Result)}
             onRename={n => report(renameCity(game, selCity.id, n))}
+            onAuto={on => report(automateCity(game, selCity.id, on))}
             onCrew={kind => {
               const r = report(trainCrew(game, selCity.id, kind));
               const f = r.ok

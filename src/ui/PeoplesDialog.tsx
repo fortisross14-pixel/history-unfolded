@@ -28,28 +28,21 @@ import { identity, tagCounts } from '../engine/mods.ts';
 import type { Bundle, GameState, Offer } from '../engine/types.ts';
 import { TagChip } from './CultureDialog.tsx';
 import { GoodIcon } from './bits.tsx';
+import { PeaceTerms } from './PeaceTerms.tsx';
 
 interface Props {
   game: GameState;
   civId: number;
   onWar: (other: number) => void;
-  onPeace: (other: number) => void;
+  /** kept for callers; peace now goes through onDeal with its terms */
+  onPeace?: (other: number) => void;
   onDeal: (other: number, o: Offer) => void;
   onGift: (other: number, gold: number) => void;
   onAbsorb: (other: number) => void;
   onClose: () => void;
 }
 
-export function PeoplesDialog({
-  game,
-  civId,
-  onWar,
-  onPeace,
-  onDeal,
-  onGift,
-  onAbsorb,
-  onClose,
-}: Props) {
+export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, onClose }: Props) {
   const me = game.civs[civId];
   const mine = militaryPower(game, civId);
   // great peoples first, then the free peoples
@@ -174,7 +167,12 @@ export function PeoplesDialog({
                     </div>
                     <div className="row">
                       {war ? (
-                        <button onClick={() => onPeace(c.id)}>Offer peace</button>
+                        <PeaceTerms
+                          game={game}
+                          me={civId}
+                          them={c.id}
+                          onOffer={o => onDeal(c.id, o)}
+                        />
                       ) : (
                         <>
                           <button onClick={() => setDealWith(c.id)}>Propose a deal…</button>

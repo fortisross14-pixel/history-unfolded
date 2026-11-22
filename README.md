@@ -84,6 +84,10 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   Renaissance; Diplomatic and Scientific in the Industrial age. Progress on the Victory screen (V).
 - **National directions**: on entering the Classical age and the Renaissance, choose a lasting
   direction with an edict (Nation screen, O); some are alternate developments earned by history.
+- **Peace terms and sieges**: peace with tribute or a ceded settlement; three cohorts around a
+  settlement besiege it, starving its guard and breaching its walls in 5 turns.
+- **Automation**: crews build roads and rails on their own, scouts explore, governors plan
+  settlements (one click for all idle ones).
 - **Railways**: engineers lay rails over roads (Railways tech); rail-to-rail moves cost a fifth of
   a move and rail-linked settlements make 15% more production.
 - **Coalitions**: a people running away with the game (holding a victory goal, or 1.5× the next

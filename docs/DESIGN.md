@@ -834,6 +834,33 @@ The Victory screen names the coalition and its reason. In 400-turn AI games coal
 against peoples holding the Cultural goal and fought four wars in one game; the leader still won
 there, so a coalition is counterplay, not a guaranteed stop.
 
+## 12f. Peace terms and sieges (as built)
+
+**Peace terms.** Offering peace (Peoples screen) now has terms: a plain peace, tribute either way
+(3, 5, 10 or 20 gold a turn for 20 turns), or a settlement either way. Their answer shows before
+the offer is sent. Settlements change hands only in a peace treaty, and never a people's last
+one. A side losing badly wants out: its dead and the settlements it has lost make it readier to
+pay or cede. A ceded settlement keeps its districts; the old owner's troops withdraw to their
+nearest settlement. An AI winning a war against the player offers peace on terms every 6 turns:
+the player's nearest small settlement, or a quarter of the player's income as tribute.
+
+**Sieges.** Three or more enemy cohorts standing next to a settlement besiege it: it stops
+growing, its guard stops recovering and, from the second turn, falls 10% a turn (to 20% at
+least); after 5 turns its walls are breached and stop counting in battle. Driving the troops
+off lifts the siege. A besieged settlement has a dashed red ring on the map (solid once
+breached) and says so in its panel. Supply lines and war weariness were left out on purpose.
+
+## 12g. Less micromanagement (as built)
+
+- **Automate** a crew of workers or engineers: it builds the roads between your settlements, and
+  railways once it can, on its own (the AI's own crew orders).
+- **Explore** with a small band (one or two cohorts): it heads for the nearest unknown land and
+  hands itself back when nothing is left nearby.
+- **Governor plans this settlement** (settlement panel): the governor lays out districts and
+  chooses buildings each turn, as the AI does. When two or more settlements have nothing to
+  build, one to-do item hands them all to their governors.
+- Automated units and settlements leave the to-do list; any direct order takes a unit back.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

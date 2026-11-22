@@ -2377,3 +2377,20 @@ input.rename {
     min-height: 48px;
   }
 }
+
+/* peace terms inside a people's row */
+.peace-terms {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+.peace-terms .good {
+  color: var(--iv-good);
+}
+.auto-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  font-size: 14px;
+}

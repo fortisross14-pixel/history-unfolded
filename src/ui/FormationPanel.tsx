@@ -5,6 +5,7 @@ import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
 import {
   canFoundCity,
   roadBuilderProblem,
+  autoProblem,
   railProblem,
   RAIL_GOLD,
   cargoOf,
@@ -47,6 +48,7 @@ interface Props {
   onRename: (name: string) => void;
   onClearOrders: () => void;
   onRoad: () => void;
+  onAuto?: (mode: 'crew' | 'explore' | null) => void;
 }
 
 export function FormationPanel(p: Props) {
@@ -364,6 +366,27 @@ export function FormationPanel(p: Props) {
                 <Icon name="road" /> Build road
               </button>
             )}
+          {p.onAuto && f.auto && (
+            <button onClick={() => p.onAuto!(null)} title="Take it back under your orders">
+              Stop {f.auto === 'crew' ? 'building' : 'exploring'}
+            </button>
+          )}
+          {p.onAuto && !f.auto && !autoProblem(f, 'crew') && (
+            <button
+              onClick={() => p.onAuto!('crew')}
+              title="Builds roads between your settlements, and railways once engineers can, on its own"
+            >
+              Automate
+            </button>
+          )}
+          {p.onAuto && !f.auto && !autoProblem(f, 'explore') && (
+            <button
+              onClick={() => p.onAuto!('explore')}
+              title="Explores the nearest unknown land on its own"
+            >
+              Explore
+            </button>
+          )}
           <button onClick={p.onFortify} title="F">
             <Icon name="fortify" /> {f.fortified ? 'Wake' : 'Fortify'}
           </button>

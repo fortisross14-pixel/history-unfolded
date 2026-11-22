@@ -14,7 +14,7 @@ import { generateMap, isPassableLand, MAP_SIZES } from './mapgen.ts';
 import { findPath } from './path.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
 import type { City, Civ, Cohort, Design, Formation, GameSettings, GameState } from './types.ts';
-import { aiTurn, planDistricts } from './ai.ts';
+import { aiTurn, planDistricts, playerAutomation } from './ai.ts';
 import {
   alliesOf,
   breakTreaties,
@@ -23,6 +23,7 @@ import {
   proposeDeal,
   remember,
   setEndWarFn,
+  setCedeFn,
   setPowerFn,
 } from './diplomacy.ts';
 import { civMods, pct } from './mods.ts';
@@ -545,6 +546,8 @@ export function planPath(s: GameState, f: Formation, target: number): number[] |
 export function orderMove(s: GameState, fid: number, target: number): Result {
   const f = formation(s, fid);
   if (!f) return fail('No such formation.');
+  // a direct order takes the unit back from automation
+  f.auto = undefined;
   if (target === f.hex) {
     f.path = [];
     return ok();
@@ -696,7 +699,45 @@ export function fortify(s: GameState, fid: number): Result {
   if (!f) return fail('No such formation.');
   f.fortified = !f.fortified;
   f.path = [];
+  f.auto = undefined;
   return ok();
+}
+
+/** Why this formation cannot be automated in this way, or null. */
+export function autoProblem(f: Formation, mode: 'crew' | 'explore'): string | null {
+  if (mode === 'crew')
+    return f.kind === 'workers' || f.kind === 'engineers' ? null : 'Only crews build on their own.';
+  return f.kind === 'army' && f.cohorts.length <= 2
+    ? null
+    : 'Only small bands (one or two cohorts) explore on their own.';
+}
+
+/** Let a formation work on its own (or take it back with mode null). */
+export function automate(s: GameState, fid: number, mode: 'crew' | 'explore' | null): Result {
+  const f = formation(s, fid);
+  if (!f) return fail('No such formation.');
+  if (!mode) {
+    f.auto = undefined;
+    return ok('Back under your orders.');
+  }
+  const why = autoProblem(f, mode);
+  if (why) return fail(why);
+  f.auto = mode;
+  f.fortified = false;
+  f.path = [];
+  return ok(
+    mode === 'crew'
+      ? `${f.name} build roads and railways on their own.`
+      : `${f.name} explore on their own.`,
+  );
+}
+
+/** The governor plans a settlement's districts and buildings each turn, or stops. */
+export function automateCity(s: GameState, cityId: number, on: boolean): Result {
+  const c = city(s, cityId);
+  if (!c) return fail('No such settlement.');
+  c.auto = on || undefined;
+  return ok(on ? `The governor plans ${c.name} from now on.` : `You plan ${c.name} again.`);
 }
 
 // ---------------------------------------------------------------- cities
@@ -995,6 +1036,8 @@ export function endTurn(s: GameState): string[] {
   // a civil war choice left open: the player stands with the throne; an event, its first answer
   events.push(...settlePending(s, me));
   events.push(...settleRealmEvent(s, me));
+  // what the player has handed over: crews, scouts and settlements that run themselves
+  playerAutomation(s, me);
   const logStart = s.log.length;
   // AI acts after the player, in the same turn
   for (const civ of s.civs)
@@ -1157,7 +1200,7 @@ export function endTurn(s: GameState): string[] {
   events.push(...coalitionTurn(s));
   events.push(...historyTurn(s));
   heal(s);
-  for (const c of s.cities) c.guard = Math.min(1, c.guard + 0.1);
+  events.push(...siegeTurn(s));
   s.turn++;
   for (const f of s.formations) f.moves = formationMoves(f);
   // standing orders carry on at the start of the new turn
@@ -1511,6 +1554,40 @@ export function offerPeace(s: GameState, from: number, to: number): Result {
 
 setPowerFn((s, civId) => militaryPower(s, civId));
 setEndWarFn((s, a, b) => endWar(s, a, b));
+setCedeFn((s, id, to) => cedeCity(s, id, to));
+
+/** A settlement handed over by treaty: no plunder, but its old owner's troops withdraw. */
+export function cedeCity(s: GameState, cityId: number, to: number) {
+  const c = city(s, cityId);
+  if (!c || c.civId === to) return;
+  const old = s.civs[c.civId];
+  c.civId = to;
+  c.governor = undefined;
+  c.siege = undefined;
+  if (
+    c.tier === 'metropolis' &&
+    s.cities.some(x => x !== c && x.civId === to && x.tier === 'metropolis')
+  ) {
+    c.tier = 'city';
+    const extra = cityDistricts(s, c).slice(DISTRICT_CAP.city);
+    s.districts = s.districts.filter(d => !extra.includes(d));
+  }
+  // the old owner's troops and crews withdraw to their nearest settlement
+  const home = s.cities
+    .filter(x => x.civId === old.id)
+    .sort((a, b) => distance(gridOf(s), a.hex, c.hex) - distance(gridOf(s), b.hex, c.hex))[0];
+  for (const f of s.formations)
+    if (f.hex === c.hex && f.civId === old.id) {
+      if (home) {
+        f.hex = home.hex;
+        f.path = [];
+      } else f.cohorts = [];
+    }
+  s.formations = s.formations.filter(f => f.cohorts.length);
+  invalidateMarkets();
+  remember(s, old.id, to, 'ceded', 'Took our land by treaty', -15, 0.1);
+  log(s, to, `The ${old.name} cede ${c.name} to the ${s.civs[to].name}.`);
+}
 
 /** Score: people, cities, knowledge and culture. Decides the game at the turn limit. */
 export function score(s: GameState, civId: number): number {
@@ -1715,6 +1792,8 @@ function battleInputs(s: GameState, f: Formation, hex: number) {
 export function cityWalls(s: GameState, c: City): { walls: number; guard: number } {
   let walls = 0,
     guard = 0;
+  // a long siege breaches the walls: they stop counting until it is lifted
+  if (siegeBreached(s, c)) return { walls: 0, guard: 0 };
   for (const d of cityDistricts(s, c))
     for (const x of d.slots)
       if (x.built && x.type && SLOT_TYPES[x.type].walls && SLOT_TYPES[x.type].walls! > walls) {
@@ -1722,6 +1801,70 @@ export function cityWalls(s: GameState, c: City): { walls: number; guard: number
         guard = SLOT_TYPES[x.type].guard ?? 0;
       }
   return { walls, guard };
+}
+
+// ---------------------------------------------------------------- sieges
+
+/** Enemy cohorts that must stand around a settlement to besiege it. */
+export const SIEGE_COHORTS = 3;
+/** Turns of siege before the guard starts to starve, and before the walls are breached. */
+export const SIEGE_STARVE = 2;
+export const SIEGE_BREACH = 5;
+
+export const siegeBreached = (s: GameState, c: City) =>
+  !!c.siege && s.turn - c.siege.since >= SIEGE_BREACH;
+
+/** Enemy troops (at war with the owner) standing next to a settlement, by people. */
+export function besiegers(s: GameState, c: City): Map<number, number> {
+  const g = gridOf(s);
+  const around = new Set(neighbors(g, c.hex));
+  const by = new Map<number, number>();
+  for (const f of s.formations)
+    if (
+      f.kind === 'army' &&
+      around.has(f.hex) &&
+      f.aboard === undefined &&
+      atWar(s, f.civId, c.civId)
+    )
+      by.set(f.civId, (by.get(f.civId) ?? 0) + f.cohorts.length);
+  return by;
+}
+
+/**
+ * Each turn: a settlement ringed by enough enemy troops is besieged. It stops growing, its guard
+ * does not recover and, after SIEGE_STARVE turns, starves (−10% a turn); after SIEGE_BREACH turns
+ * its walls are breached. Lifted, the guard recovers 10% a turn as before.
+ */
+export function siegeTurn(s: GameState): string[] {
+  const out: string[] = [];
+  const me = s.civs.find(c => c.isPlayer);
+  for (const c of s.cities) {
+    const by = [...besiegers(s, c).entries()].sort((a, b) => b[1] - a[1])[0];
+    if (!by || by[1] < SIEGE_COHORTS) {
+      if (c.siege && me && (c.civId === me.id || c.siege.by === me.id))
+        out.push(`The siege of ${c.name} is lifted.`);
+      c.siege = undefined;
+      c.guard = Math.min(1, c.guard + 0.1);
+      continue;
+    }
+    if (!c.siege) {
+      c.siege = { since: s.turn, by: by[0] };
+      if (me && c.civId === me.id)
+        out.push(
+          `${c.name} is besieged by the ${s.civs[by[0]].name}! Lift the siege, or its walls fall in ${SIEGE_BREACH} turns.`,
+        );
+      else if (me && by[0] === me.id)
+        out.push(
+          `Your troops besiege ${c.name}: its guard starves and its walls fall in ${SIEGE_BREACH} turns.`,
+        );
+    }
+    const t = s.turn - c.siege.since;
+    c.food = Math.min(c.food, 0);
+    if (t >= SIEGE_STARVE) c.guard = Math.max(0.2, c.guard - 0.1);
+    if (t === SIEGE_BREACH && me && (c.civId === me.id || c.siege.by === me.id))
+      out.push(`The walls of ${c.name} are breached.`);
+  }
+  return out;
 }
 
 const cohortSiege = (c: Cohort) => SLOTS.reduce((a, k) => a + (ITEMS[c.loadout[k]].siege ?? 0), 0);

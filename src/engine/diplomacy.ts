@@ -188,8 +188,23 @@ function goodValue(s: GameState, civId: number, g: string, n: number): number {
   return priceOf(g) * need * n;
 }
 
+/** What a settlement is worth in a treaty: its people, its rank and its districts. */
+export function cityValue(s: GameState, cityId: number): number {
+  const c = s.cities.find(x => x.id === cityId);
+  if (!c) return 0;
+  const tier = c.tier === 'metropolis' ? 50 : c.tier === 'city' ? 20 : 0;
+  return Math.round(
+    15 + c.pop / 200 + tier + s.districts.filter(d => d.cityId === c.id).length * 3,
+  );
+}
+
+/** Hand a settlement over to another people (peace terms). Set by game.ts. */
+let cedeFn: (s: GameState, cityId: number, to: number) => void = () => {};
+export const setCedeFn = (f: typeof cedeFn) => (cedeFn = f);
+
 function bundleValue(s: GameState, civId: number, b: Bundle, turns: number): number {
   let v = (b.gold ?? 0) + (b.goldPerTurn ?? 0) * turns * 0.7;
+  for (const id of b.cities ?? []) v += cityValue(s, id);
   for (const [g, n] of Object.entries(b.goods ?? {})) v += goodValue(s, civId, g, n);
   for (const [g, n] of Object.entries(b.goodsPerTurn ?? {}))
     v += goodValue(s, civId, g, n * turns) * 0.7;
@@ -199,6 +214,11 @@ function bundleValue(s: GameState, civId: number, b: Bundle, turns: number): num
 /** Can the side pay the one-off part of a bundle right now? */
 function canPay(s: GameState, civId: number, b: Bundle): string | null {
   if ((b.gold ?? 0) > s.civs[civId].gold) return `${s.civs[civId].name} lack the gold.`;
+  const own = s.cities.filter(c => c.civId === civId);
+  for (const id of b.cities ?? [])
+    if (!own.some(c => c.id === id)) return 'That settlement is not theirs to give.';
+  if ((b.cities?.length ?? 0) >= own.length && b.cities?.length)
+    return `The ${s.civs[civId].name} will not give up their last settlement.`;
   const cap = capitalOf(s, civId);
   const goods = { ...(b.goods ?? {}) };
   // the first turn of a per-turn deal must also be payable
@@ -220,6 +240,8 @@ export interface Evaluation {
 export function evaluateOffer(s: GameState, from: number, to: number, o: Offer): Evaluation {
   const turns = o.turns ?? DEAL_TURNS;
   const op = opinion(s, to, from);
+  if (!o.peace && (o.give.cities?.length || o.get.cities?.length))
+    return { accept: false, value: 0, reason: 'Settlements change hands only in a peace treaty.' };
   const payFrom = canPay(s, from, o.give);
   if (payFrom) return { accept: false, value: 0, reason: payFrom };
   const payTo = canPay(s, to, o.get);
@@ -228,6 +250,8 @@ export function evaluateOffer(s: GameState, from: number, to: number, o: Offer):
   if (war && !o.peace)
     return { accept: false, value: 0, reason: 'You are at war: offer peace first.' };
   let value = bundleValue(s, to, o.give, turns) - bundleValue(s, to, o.get, turns);
+  // giving up land hurts more than its worth
+  for (const id of o.get.cities ?? []) value -= cityValue(s, id) * 0.5;
   if (o.peace) {
     if (!war) return { accept: false, value: 0, reason: 'You are not at war.' };
     if (inCivilWar(s, from, to))
@@ -252,8 +276,12 @@ export function evaluateOffer(s: GameState, from: number, to: number, o: Offer):
     const winning = theirDead > myDead * 1.3 + 200 || (w.taken?.[to] ?? 0) > (w.taken?.[from] ?? 0);
     const losing = myDead > theirDead * 1.3 + 200 || (w.taken?.[from] ?? 0) > (w.taken?.[to] ?? 0);
     const quiet = w.lastFight !== undefined ? s.turn - w.lastFight >= 15 : length >= 40;
+    // a side losing badly wants out: the more dead and the more settlements lost, the more it pays
+    const lostTowns = w.taken?.[from] ?? 0;
+    const desperation = losing ? Math.min(60, myDead / 100) + Math.min(45, 15 * lostTowns) : 0;
     value +=
       length * 0.5 +
+      desperation +
       (winning ? -35 : losing ? 30 : 0) +
       (quiet ? 15 : 0) +
       (theirs / Math.max(1, mine) - 1) * 25;
@@ -321,6 +349,7 @@ function pay(s: GameState, from: number, to: number, b: Bundle) {
   }
   if (b.goods && src && dst && marketSpend(s, src, b.goods))
     for (const [g, n] of Object.entries(b.goods)) dst.stockpile[g] = (dst.stockpile[g] ?? 0) + n;
+  for (const id of b.cities ?? []) cedeFn(s, id, to);
 }
 
 /** Carry out an accepted offer. */
@@ -387,11 +416,12 @@ export function describeOffer(s: GameState, o: Offer): string {
   if (o.peace) parts.push('peace');
   if (o.pact) parts.push(`a non-aggression pact for ${PACT_TURNS} turns`);
   if (o.alliance) parts.push('an alliance');
-  const g = describeBundle(o.give, o.turns),
-    t = describeBundle(o.get, o.turns);
+  const named = (b: Bundle) =>
+    (b.cities ?? []).map(id => s.cities.find(c => c.id === id)?.name ?? 'a settlement');
+  const g = [describeBundle(o.give, o.turns), ...named(o.give)].filter(Boolean).join(', '),
+    t = [describeBundle(o.get, o.turns), ...named(o.get)].filter(Boolean).join(', ');
   if (g) parts.push(`${g} one way`);
   if (t) parts.push(`${t} the other`);
-  void s;
   return parts.join('; ') || 'nothing';
 }
 

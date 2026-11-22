@@ -747,11 +747,22 @@ export class MapRenderer {
           y + R * 0.45,
           tier === 'town' ? R * 1.35 : tier === 'city' ? R * 1.6 : R * 1.8,
         );
+        // a besieged settlement: a dashed red ring, solid once its walls are breached
+        if (c.siege) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(160,40,30,0.9)';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash(s.turn - c.siege.since >= 5 ? [] : [6, 4]);
+          ctx.beginPath();
+          ctx.arc(x, y, R * 0.92, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
         cityBanners.push(() =>
           this.banner(
             x,
             y + R * 0.62,
-            `${c.name}  ${(c.pop / 1000).toFixed(1)}k`,
+            `${c.name}  ${(c.pop / 1000).toFixed(1)}k${c.siege ? '  (besieged)' : ''}`,
             s.civs[c.civId].color,
             zoom,
           ),

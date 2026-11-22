@@ -77,6 +77,8 @@ export interface Design {
 export type FormationKind = 'army' | 'settlers' | 'fleet' | 'workers' | 'engineers';
 
 export interface Formation {
+  /** works on its own each turn: a crew builds roads and rails, a scout explores */
+  auto?: 'crew' | 'explore';
   id: number;
   civId: number;
   name: string;
@@ -95,6 +97,10 @@ export interface Formation {
 export type Tier = 'town' | 'city' | 'metropolis';
 
 export interface City {
+  /** the governor plans its districts and buildings each turn (the player's settlements) */
+  auto?: boolean;
+  /** enemy troops around it since this turn (siege); guard falls, walls breach in time */
+  siege?: { since: number; by: number };
   id: number;
   civId: number;
   name: string;
@@ -289,6 +295,8 @@ export interface Bundle {
   gold?: number;
   goodsPerTurn?: Record<string, number>;
   goldPerTurn?: number;
+  /** settlements handed over (peace treaties only) */
+  cities?: number[];
 }
 
 export interface Offer {

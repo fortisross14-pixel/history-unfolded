@@ -649,10 +649,10 @@ function fillDistrict(s: GameState, civ: Civ, c: City, d: District, plan: (strin
   }
 }
 
-export function planDistricts(s: GameState, civ: Civ, c: City) {
+export function planDistricts(s: GameState, civ: Civ, c: City, force = false) {
   // replanning is costly: each settlement looks again every few turns, staggered
   const ds = cityDistricts(s, c);
-  if ((s.turn + c.id) % 3 !== 0 && ds.length > 1) return;
+  if (!force && (s.turn + c.id) % 3 !== 0 && ds.length > 1) return;
   const centre = ds.find(isCentre);
   if (c.tier === 'town') {
     // a town's second district works the land
@@ -773,6 +773,40 @@ function aiDynasties(s: GameState, civ: Civ) {
   if (war?.rival !== undefined && !war.pending && s.turn - war.since >= 5) {
     if (armyStrength(s, civ.id) < armyStrength(s, war.rival) * 0.5) yieldThrone(s, civ.id);
   }
+}
+
+/** The player's automated units and settlements, run with the AI's own orders. */
+export function playerAutomation(s: GameState, civ: Civ) {
+  const rng = mulberry32(hashSeed(s.settings.map.seed, s.turn * 131 + civ.id));
+  for (const f of s.formations.filter(x => x.civId === civ.id && x.auto)) {
+    if (!s.formations.includes(f)) continue;
+    if (f.auto === 'crew') crewOrders(s, civ, f);
+    else if (f.auto === 'explore') exploreOrders(s, civ, f, rng);
+  }
+  // a governor looks every few turns, or at once when nothing is being built
+  for (const c of s.cities)
+    if (c.civId === civ.id && c.auto) planDistricts(s, civ, c, !constructionQueue(s, c).length);
+}
+
+/** A scout heads for the nearest unexplored land; with none left in reach it rests. */
+function exploreOrders(s: GameState, civ: Civ, f: Formation, rng: Rng) {
+  const g = gridOf(s);
+  if (!f.path.length) {
+    let best = -1,
+      bd = Infinity;
+    for (const k of within(g, f.hex, 8)) {
+      if (civ.explored[k] || !isPassableLand(s.map, k)) continue;
+      const d = distance(g, f.hex, k) + rng() * 2;
+      if (d < bd) {
+        bd = d;
+        best = k;
+      }
+    }
+    if (best >= 0) f.path = planPath(s, f, best) ?? [];
+    // nothing left to find nearby: hand the scout back to the player
+    else f.auto = undefined;
+  }
+  advance(s, f);
 }
 
 /**
@@ -1378,6 +1412,32 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
       (w.taken?.[o.id] ?? 0) > (w.taken?.[civ.id] ?? 0) ||
       mineP < militaryPower(s, o.id) * 0.6;
     const quiet = w.lastFight !== undefined ? s.turn - w.lastFight >= 15 : length >= 40;
+    // winning against the player: offer peace on terms (a settlement it holds near us, or tribute)
+    const winning =
+      theirDead > myDead * 1.4 + 300 ||
+      (w.taken?.[civ.id] ?? 0) > (w.taken?.[o.id] ?? 0) ||
+      mineP > militaryPower(s, o.id) * 1.6;
+    if (o.isPlayer && winning && !losing && length >= 12 && !pending && length % 6 === 0) {
+      const theirs = s.cities.filter(c => c.civId === o.id);
+      const near = theirs
+        .filter(c => cities.some(m => distance(g, m.hex, c.hex) <= 6) || c.siege?.by === civ.id)
+        .sort((a, b) => a.pop - b.pop)[0];
+      const income = Math.max(3, Math.round((o.stats?.income ?? 10) * 0.25));
+      const terms =
+        near && theirs.length > 1
+          ? { give: {}, get: { cities: [near.id] }, peace: true }
+          : { give: {}, get: { goldPerTurn: income }, peace: true, turns: 20 };
+      newProposal(s, {
+        from: civ.id,
+        to: o.id,
+        kind: 'peace',
+        offer: terms,
+        text: terms.get.cities
+          ? `The ${civ.name} are winning this war. They offer peace if you cede ${near!.name}.`
+          : `The ${civ.name} are winning this war. They offer peace for ${income} gold a turn for 20 turns.`,
+      });
+      continue;
+    }
     if (length < 10 || !(losing || (quiet && length >= 20))) continue;
     const offer = { give: {}, get: {}, peace: true };
     if (o.isPlayer) {

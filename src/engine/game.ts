@@ -57,7 +57,7 @@ import {
   settlePending,
 } from './dynasty.ts';
 import { AREA_NAMES, type Area } from '../data/dynasties.ts';
-import { eventTurn, settleEvent } from './events.ts';
+import { realmEventTurn, settleRealmEvent } from './realmEvents.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
 import {
@@ -928,7 +928,7 @@ export function endTurn(s: GameState): string[] {
   const me = player(s);
   // a civil war choice left open: the player stands with the throne; an event, its first answer
   events.push(...settlePending(s, me));
-  events.push(...settleEvent(s, me));
+  events.push(...settleRealmEvent(s, me));
   const logStart = s.log.length;
   // AI acts after the player, in the same turn
   for (const civ of s.civs) if (!civ.isPlayer && civ.alive) aiTurn(s, civ);
@@ -1056,7 +1056,7 @@ export function endTurn(s: GameState): string[] {
   for (const c of s.civs) updateExplored(s, c.id);
   // now and then a story asks for a choice
   if (me.alive) {
-    const ev = eventTurn(s, me);
+    const ev = realmEventTurn(s, me);
     if (ev) events.push(`A matter for the throne: ${ev}.`);
   }
   checkVictory(s);

@@ -1,6 +1,6 @@
 /** Headless checks of renaming, road crews and the event system. */
 import { aiTurn } from '../src/engine/ai.ts';
-import { EVENT_DEFS, pendingEvent, resolveEvent } from '../src/engine/events.ts';
+import { REALM_EVENTS, pendingRealmEvent, resolveRealmEvent } from '../src/engine/realmEvents.ts';
 import {
   buildRoad,
   endTurn,
@@ -94,7 +94,7 @@ check(
     aiTurn(t, p);
     p.isPlayer = true;
     endTurn(t);
-    const ev = t.events?.pending;
+    const ev = t.realmEvents?.pending;
     if (ev && ev.turn === t.turn) fired.push({ turn: t.turn, id: ev.id });
   }
   const gaps = fired.slice(1).map((f, i) => f.turn - fired[i].turn);
@@ -111,7 +111,7 @@ check(
     fired.every((f, i) => i === 0 || f.id !== fired[i - 1].id),
     'never the same event twice in a row',
   );
-  const once = Object.values(EVENT_DEFS)
+  const once = Object.values(REALM_EVENTS)
     .filter(e => e.cooldown === Infinity)
     .map(e => e.id);
   check(
@@ -124,23 +124,23 @@ check(
   const t = structuredClone(s);
   const p = player(t);
   p.gold = 0;
-  t.events = {
+  t.realmEvents = {
     next: 999,
     history: [],
     queued: [],
     pending: { id: 'festival', turn: t.turn, subject: {}, variant: 0 },
   };
   t.cities.find(c => c.civId !== p.id)!.civId = p.id;
-  const ev = pendingEvent(t, p)!;
+  const ev = pendingRealmEvent(t, p)!;
   check(!!ev.choices[0].blocked, `an unaffordable choice says why: "${ev.choices[0].blocked}"`);
-  check(!resolveEvent(t, p, 0).ok, 'and cannot be made');
+  check(!resolveRealmEvent(t, p, 0).ok, 'and cannot be made');
   const before = p.culture.points;
   p.gold = 500;
   check(
-    resolveEvent(t, p, 0).ok && p.culture.points === before + 25,
+    resolveRealmEvent(t, p, 0).ok && p.culture.points === before + 25,
     'the festival gives +25 culture as it said',
   );
-  check(!t.events!.pending, 'the event is done');
+  check(!t.realmEvents!.pending, 'the event is done');
 }
 
 console.log(failures ? `${failures} failures` : 'all event checks passed');

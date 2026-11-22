@@ -53,8 +53,8 @@ import { MapView } from './MapView.tsx';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
 import { DynastiesDialog } from './DynastiesDialog.tsx';
-import { EventDialog } from './EventDialog.tsx';
-import { pendingEvent } from '../engine/events.ts';
+import { RealmEventDialog } from './RealmEventDialog.tsx';
+import { pendingRealmEvent } from '../engine/realmEvents.ts';
 import { assignGovernor, rulerOf } from '../engine/dynasty.ts';
 import { ResearchDialog } from './ResearchDialog.tsx';
 import { ProposalDialog } from './ProposalDialog.tsx';
@@ -81,7 +81,7 @@ type Dialog =
   | { kind: 'peoples' }
   | { kind: 'goods' }
   | { kind: 'dynasties' }
-  | { kind: 'event' }
+  | { kind: 'realm-event' }
   | { kind: 'battle'; report: BattleReport }
   | { kind: 'war'; civId: number; then?: () => void }
   | null;
@@ -246,12 +246,12 @@ export function Game({
         label: 'Choose research',
         go: () => setDialog({ kind: 'research' }),
       });
-    const ev = pendingEvent(game, me);
+    const ev = pendingRealmEvent(game, me);
     if (ev)
       out.push({
         key: 'event',
         label: `Decide: ${ev.title}`,
-        go: () => setDialog({ kind: 'event' }),
+        go: () => setDialog({ kind: 'realm-event' }),
       });
     if (me.trinkets.length)
       out.push({
@@ -354,7 +354,7 @@ export function Game({
     // a house has risen: the choice of side cannot wait in the to-do list
     if (me.civilWar?.pending) setDialog({ kind: 'dynasties' });
     // a new event is shown once; closed, it waits in the to-do list
-    else if (game.events?.pending?.turn === game.turn) setDialog({ kind: 'event' });
+    else if (game.realmEvents?.pending?.turn === game.turn) setDialog({ kind: 'realm-event' });
     if (!selectNext()) setSel(null);
   };
 
@@ -1072,8 +1072,8 @@ export function Game({
           }}
         />
       )}
-      {dialog?.kind === 'event' && (
-        <EventDialog
+      {dialog?.kind === 'realm-event' && (
+        <RealmEventDialog
           game={game}
           civ={me}
           report={r => report({ ok: r.ok, msg: r.msg } as Result)}

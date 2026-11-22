@@ -1,4 +1,4 @@
-import { pendingEvent, resolveEvent } from '../engine/events.ts';
+import { pendingRealmEvent, resolveRealmEvent } from '../engine/realmEvents.ts';
 import type { Civ, GameState } from '../engine/types.ts';
 
 const KIND_ICON: Record<string, string> = {
@@ -12,7 +12,7 @@ const KIND_ICON: Record<string, string> = {
 };
 
 /** A story that asks for a choice. Each choice says what it costs and gives before it is made. */
-export function EventDialog({
+export function RealmEventDialog({
   game,
   civ,
   report,
@@ -23,7 +23,7 @@ export function EventDialog({
   report: (r: { ok: boolean; msg?: string }) => void;
   onClose: () => void;
 }) {
-  const ev = pendingEvent(game, civ);
+  const ev = pendingRealmEvent(game, civ);
   if (!ev) return null;
   return (
     <div className="modal-back" onClick={onClose}>
@@ -50,7 +50,7 @@ export function EventDialog({
               className="event-choice"
               disabled={!!ch.blocked}
               onClick={() => {
-                report(resolveEvent(game, civ, i));
+                report(resolveRealmEvent(game, civ, i));
                 onClose();
               }}
             >

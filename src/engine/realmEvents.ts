@@ -36,7 +36,7 @@ export interface Subject {
   hex?: number;
 }
 
-export interface EventState {
+export interface RealmEventState {
   /** turn the next event may come */
   next: number;
   history: { id: string; turn: number }[];
@@ -852,15 +852,15 @@ const EVENTS: EventDef[] = [
   },
 ];
 
-export const EVENT_DEFS: Record<string, EventDef> = Object.fromEntries(EVENTS.map(e => [e.id, e]));
+export const REALM_EVENTS: Record<string, EventDef> = Object.fromEntries(EVENTS.map(e => [e.id, e]));
 
 // ---------------------------------------------------------------- pacing
 
-export const newEventState = (): EventState => ({ next: 8 + 0, history: [], queued: [] });
+export const newRealmEventState = (): RealmEventState => ({ next: 8 + 0, history: [], queued: [] });
 
 function queue(s: GameState, id: string, inTurns: number, subject: Subject) {
-  s.events ??= newEventState();
-  s.events.queued.push({ id, turn: s.turn + inTurns, subject });
+  s.realmEvents ??= newRealmEventState();
+  s.realmEvents.queued.push({ id, turn: s.turn + inTurns, subject });
 }
 
 function ctxOf(s: GameState, civ: Civ, sub: Subject): Ctx | null {
@@ -887,9 +887,9 @@ function ctxOf(s: GameState, civ: Civ, sub: Subject): Ctx | null {
 }
 
 /** Called each turn for the player: maybe start an event. Returns its title for the turn report. */
-export function eventTurn(s: GameState, civ: Civ): string | null {
-  s.events ??= newEventState();
-  const st = s.events;
+export function realmEventTurn(s: GameState, civ: Civ): string | null {
+  s.realmEvents ??= newRealmEventState();
+  const st = s.realmEvents;
   if (st.pending) return null;
   const r = mulberry32(hashSeed(s.settings.map.seed, s.turn * 7919 + 13));
   // a follow-up that is due comes first
@@ -931,7 +931,7 @@ export function eventTurn(s: GameState, civ: Civ): string | null {
     subject = chosen.sub;
     st.next = s.turn + 5 + Math.floor(r() * 11);
   }
-  const e = EVENT_DEFS[id];
+  const e = REALM_EVENTS[id];
   st.pending = { id, turn: s.turn, subject, variant: Math.floor(r() * e.text.length) };
   st.lastKind = e.kind;
   const c = ctxOf(s, civ, subject)!;
@@ -939,13 +939,13 @@ export function eventTurn(s: GameState, civ: Civ): string | null {
 }
 
 /** The event waiting for the player, ready to show. */
-export function pendingEvent(s: GameState, civ: Civ) {
-  const p = s.events?.pending;
+export function pendingRealmEvent(s: GameState, civ: Civ) {
+  const p = s.realmEvents?.pending;
   if (!p) return null;
-  const e = EVENT_DEFS[p.id];
+  const e = REALM_EVENTS[p.id];
   const c = e && ctxOf(s, civ, p.subject);
   if (!e || !c) {
-    s.events!.pending = undefined;
+    s.realmEvents!.pending = undefined;
     return null;
   }
   const choices = e.choices(c);
@@ -963,13 +963,13 @@ export function pendingEvent(s: GameState, civ: Civ) {
 }
 
 /** Make the choice. Returns what happened. */
-export function resolveEvent(s: GameState, civ: Civ, index: number): { ok: boolean; msg: string } {
-  const p = s.events?.pending;
+export function resolveRealmEvent(s: GameState, civ: Civ, index: number): { ok: boolean; msg: string } {
+  const p = s.realmEvents?.pending;
   if (!p) return { ok: false, msg: 'No event is waiting.' };
-  const e = EVENT_DEFS[p.id];
+  const e = REALM_EVENTS[p.id];
   const c = ctxOf(s, civ, p.subject);
   if (!e || !c) {
-    s.events!.pending = undefined;
+    s.realmEvents!.pending = undefined;
     return { ok: false, msg: 'The moment has passed.' };
   }
   const ch = e.choices(c)[index];
@@ -977,20 +977,20 @@ export function resolveEvent(s: GameState, civ: Civ, index: number): { ok: boole
   const why = ch.blocked?.(c);
   if (why) return { ok: false, msg: why };
   const out = ch.apply(c);
-  s.events!.history.push({ id: e.id, turn: s.turn });
-  s.events!.pending = undefined;
+  s.realmEvents!.history.push({ id: e.id, turn: s.turn });
+  s.realmEvents!.pending = undefined;
   log(s, civ.id, `${e.title(c)}: ${ch.label}. ${out}`);
   return { ok: true, msg: out };
 }
 
 /** A choice left open when the turn ends: the first one that can be made. */
-export function settleEvent(s: GameState, civ: Civ): string[] {
-  const ev = pendingEvent(s, civ);
+export function settleRealmEvent(s: GameState, civ: Civ): string[] {
+  const ev = pendingRealmEvent(s, civ);
   if (!ev) return [];
   const i = Math.max(
     0,
     ev.choices.findIndex(ch => !ch.blocked),
   );
-  const r = resolveEvent(s, civ, i);
+  const r = resolveRealmEvent(s, civ, i);
   return r.ok ? [`${ev.title}: ${ev.choices[i].label}. ${r.msg}`] : [];
 }

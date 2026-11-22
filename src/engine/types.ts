@@ -328,5 +328,5 @@ export interface GameState {
   /** 1 where a road runs, per hex */
   roads: number[];
   /** the player's events: pacing, history, the one waiting for a choice */
-  events?: import('./events.ts').EventState;
+  realmEvents?: import('./realmEvents.ts').RealmEventState;
 }

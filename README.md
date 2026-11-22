@@ -15,10 +15,11 @@ npm run build      # type-check and build
 ## Checks
 
 ```bash
-npm test                     # map generator over every map type and size + core rules
+npm test                     # data references, map generator, core rules, culture and research
 node --no-warnings scripts/battles.ts   # matchup table of army compositions (balance)
 node --no-warnings scripts/aidiag.ts    # AI-only game: how each people does over time
 node --no-warnings scripts/citydiag.ts  # one AI city's districts and economy over time
+node --no-warnings scripts/pace.ts      # research, culture and upheaval pace of AI peoples
 npm run test:ui -- <outDir>  # drives the built game in headless Chromium and saves screenshots
                              # (needs `npx vite preview --port 4173` running)
 ```
@@ -49,8 +50,15 @@ npm run test:ui -- <outDir>  # drives the built game in headless Chromium and sa
   joined by road or river share one store; an enemy on the road cuts it.
 - **War and peace, cities falling**: declare war, capture cities by breaking their guard,
   eliminate peoples. Send settlers to found new cities.
-- **Starter research** (Tanning, Archery, Horseback Riding, Bronze Working, Iron Working) unlocks
-  equipment and reveals deposits.
+- **Research tree**: 57 techs over four eras (Ancient to Renaissance) unlocking gear (up to
+  plate, pikes, crossbows, muskets and field guns), buildings and bigger limits. Set a far goal
+  and research follows the path. Techs your culture leans towards are cheaper.
+- **Culture web**: 108 choices across nine domains (cosmology, politics, religion, society,
+  economy, war, seafaring, knowledge, arts). Forks close doors (Solar or Lunar Calendar, Warlord
+  or Council of Elders, Many Gods or One God…), choices cross domains, and tags add up to an
+  identity with its own bonuses. Going deep builds tension until an upheaval (a revolution, a
+  reformation) lets the people keep two choices and take a new path. Every people starts the
+  same and ends up different.
 - Fog of war, path preview with turn markers, go-to orders across turns, autosave.
 - Rival peoples expand, design and equip their own troops, garrison cities and go to war.
 

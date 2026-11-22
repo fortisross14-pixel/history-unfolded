@@ -12,6 +12,10 @@ import { findPath } from './path.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
 import type { City, Civ, Cohort, Design, Formation, GameSettings, GameState } from './types.ts';
 import { aiTurn } from './ai.ts';
+import { civMods, pct } from './mods.ts';
+import { cultureTurn, newCultureState } from './culture.ts';
+import { TAGS } from '../data/culture.ts';
+import { tagCounts as tagCountsOf } from './mods.ts';
 import {
   build,
   cityDistricts,
@@ -43,7 +47,7 @@ import {
   SETTLER_COHORTS,
 } from './units.ts';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
 export const MIN_CITY_DISTANCE = 4;
@@ -94,6 +98,9 @@ export function newGame(settings: GameSettings): GameState {
       blueprints: [],
       cityNames: 0,
       levies: 0,
+      researchGoal: null,
+      culture: newCultureState(),
+      leanings: pickLeanings(settings.map.seed, i),
       met: [],
       alive: true,
       kills: 0,
@@ -187,7 +194,7 @@ export function territory(s: GameState): Int16Array {
   const own = new Int16Array(g.w * g.h).fill(-1);
   const best = new Int16Array(g.w * g.h).fill(99);
   for (const c of s.cities) {
-    for (const k of within(g, c.hex, TERRITORY_RADIUS)) {
+    for (const k of within(g, c.hex, territoryRadius(s, c.civId))) {
       const d = distance(g, c.hex, k);
       if (d < best[k]) {
         best[k] = d;
@@ -206,7 +213,7 @@ export function supplyingCity(s: GameState, civId: number, hex: number): City | 
   for (const c of s.cities) {
     if (c.civId !== civId) continue;
     const d = distance(g, c.hex, hex);
-    if (d <= TERRITORY_RADIUS && d < bd) {
+    if (d <= territoryRadius(s, civId) && d < bd) {
       bd = d;
       best = c;
     }
@@ -221,11 +228,11 @@ export function visibleHexes(s: GameState, civId: number): Uint8Array {
   const v = new Uint8Array(g.w * g.h);
   for (const f of s.formations) {
     if (f.civId !== civId) continue;
-    for (const k of within(g, f.hex, formationSight(f, s.map))) v[k] = 1;
+    for (const k of within(g, f.hex, formationSight(f, s.map, civMods(s, civId).sight))) v[k] = 1;
   }
   for (const c of s.cities) {
     if (c.civId !== civId) continue;
-    for (const k of within(g, c.hex, TERRITORY_RADIUS + 1)) v[k] = 1;
+    for (const k of within(g, c.hex, territoryRadius(s, civId) + 1)) v[k] = 1;
   }
   return v;
 }
@@ -268,10 +275,10 @@ export function arrival(
   if (c && c.civId !== f.civId) return { blocked: 'A foreign city.' };
   const same = there.filter(o => o.kind === f.kind);
   if (!same.length) return {};
-  const fits = same.find(o => o.cohorts.length + f.cohorts.length <= capOf(o));
+  const fits = same.find(o => o.cohorts.length + f.cohorts.length <= capOf(o, s));
   if (!fits)
     return {
-      blocked: `Merging would exceed the command limit of ${capOf(same[0])} cohorts. Split first.`,
+      blocked: `Merging would exceed the command limit of ${capOf(same[0], s)} cohorts. Split first.`,
     };
   return { mergeWith: fits };
 }
@@ -288,7 +295,7 @@ export function passable(s: GameState, f: Formation): (hex: number) => boolean {
 export function stepCost(s: GameState, f: Formation, from: number, to: number): number {
   const base = enterCost(s.map, f, to);
   if (!isFinite(base)) return base;
-  if (s.roads[from] && s.roads[to]) return 0.5;
+  if (s.roads[from] && s.roads[to]) return Math.max(0.2, 0.5 + civMods(s, f.civId).roadCost);
   return base;
 }
 
@@ -374,8 +381,8 @@ export function merge(s: GameState, aId: number, bId: number): Result {
   if (!a || !b || a.hex !== b.hex || a.civId !== b.civId)
     return fail('Formations must share a hex.');
   if (a.kind !== b.kind) return fail('Settlers and troops cannot merge.');
-  if (a.cohorts.length + b.cohorts.length > capOf(b))
-    return fail(`Over the command limit of ${capOf(b)} cohorts.`);
+  if (a.cohorts.length + b.cohorts.length > capOf(b, s))
+    return fail(`Over the command limit of ${capOf(b, s)} cohorts.`);
   return ok(mergeInto(s, a, b));
 }
 
@@ -488,7 +495,7 @@ export function levy(s: GameState, cityId: number): Result {
   if (c.pop - LEVY_PEOPLE < MIN_CITY_POP)
     return fail(`${c.name} needs ${MIN_CITY_POP + LEVY_PEOPLE} people to raise a levy.`);
   c.pop -= LEVY_PEOPLE;
-  const f = addFormation(s, c.civId, 'army', c.hex, LEVY_COHORTS, nextLevyName(s, c.civId));
+  const f = addFormation(s, c.civId, 'army', c.hex, levySize(s, c.civId), nextLevyName(s, c.civId));
   f.moves = 0;
   if (hasSlot(s, c, 'barracks')) for (const co of f.cohorts) co.xp = 1;
   log(s, c.civId, `${c.name} raised the ${f.name} (500 people).`);
@@ -496,7 +503,10 @@ export function levy(s: GameState, cityId: number): Result {
 }
 
 /** Food a city must store to grow by 250 people: bigger cities grow more slowly. */
-export const growthCost = (c: City) => 10 + Math.floor(c.pop / 1000) * 8;
+export const growthCost = (s: GameState, c: City) =>
+  Math.round(
+    (15 + (c.pop / 1000) * 12 + (c.pop / 1000) ** 2 * 0.6) * pct(civMods(s, c.civId).growthPct),
+  );
 
 /** Per-turn summary of a city (see economy.ts for the slot-by-slot detail). */
 export function cityYield(s: GameState, c: City) {
@@ -548,7 +558,7 @@ export function refitPreview(
   const g = gridOf(s);
   const armoury = hasSlot(s, c, 'armoury');
   const far = !armoury && distance(g, c.hex, f.hex) > CITY_RADIUS;
-  const mul = (far ? 1.5 : 1) * (armoury ? 0.8 : 1);
+  const mul = (far ? 1.5 : 1) * (armoury ? 0.8 : 1) * pct(civMods(s, f.civId).refitPct);
   const cost: Record<string, number> = {},
     refund: Record<string, number> = {};
   const ids = new Set(cohortIds);
@@ -681,17 +691,19 @@ export function endTurn(s: GameState): string[] {
   for (const civ of s.civs) {
     if (!civ.alive) continue;
     let science = 0,
-      gold = 0;
+      gold = 0,
+      culture = 0;
     for (const c of s.cities.filter(x => x.civId === civ.id)) {
       const e = cityEconomy(s, c);
       science += e.total.science;
+      culture += e.total.culture;
       gold += e.total.gold;
       for (const [k, n] of Object.entries(e.total.goods))
         c.stockpile[k] = (c.stockpile[k] ?? 0) + n;
       marketSpend(s, c, e.inputs);
       c.food += e.surplus;
       // food stored turns into people while there is housing; starvation shrinks the city
-      const need = growthCost(c);
+      const need = growthCost(s, c);
       if (c.food >= need) {
         if (c.pop + 250 <= e.total.housing) {
           c.food -= need;
@@ -709,15 +721,16 @@ export function endTurn(s: GameState): string[] {
     let upkeep = 0;
     for (const f of s.formations)
       if (f.civId === civ.id) for (const co of f.cohorts) upkeep += cohortUpkeep(co);
+    upkeep = Math.round(upkeep * pct(civMods(s, civ.id).upkeepPct));
     civ.gold += gold - upkeep;
     if (civ.gold < 0) civ.gold = 0;
-    if (!civ.researching)
-      civ.researching = civ.isPlayer ? null : (availableTechs(civ)[0]?.id ?? null);
+    if (!civ.researching) civ.researching = nextResearch(s, civ);
     if (civ.researching) {
       civ.science += science;
       const t = TECHS[civ.researching];
-      if (civ.science >= t.cost) {
-        civ.science -= t.cost;
+      const cost = techCost(s, civ, t.id);
+      if (civ.science >= cost) {
+        civ.science -= cost;
         civ.techs.push(t.id);
         civ.researching = null;
         log(s, civ.id, `${civ.name} learned ${t.name}.`);
@@ -726,6 +739,14 @@ export function endTurn(s: GameState): string[] {
     }
   }
 
+  for (const civ of s.civs) {
+    if (!civ.alive) continue;
+    const culture = s.cities
+      .filter(c => c.civId === civ.id)
+      .reduce((a, c) => a + cityEconomy(s, c).total.culture, 0);
+    const msgs = cultureTurn(s, civ, culture);
+    if (civ.isPlayer) events.push(...msgs);
+  }
   heal(s);
   for (const c of s.cities) c.guard = Math.min(1, c.guard + 0.1);
   s.turn++;
@@ -754,7 +775,10 @@ function heal(s: GameState) {
     for (const c of f.cohorts) {
       if (c.strength >= COHORT_SIZE) continue;
       if (home) {
-        const want = Math.min(COHORT_SIZE - c.strength, medics ? 20 : 10);
+        const want = Math.min(
+          COHORT_SIZE - c.strength,
+          (medics ? 20 : 10) + civMods(s, f.civId).heal,
+        );
         const take = Math.min(want, Math.max(0, home.pop - MIN_CITY_POP));
         // medics return wounded to the ranks before new recruits are needed
         const free = medics ? Math.ceil(want / 2) : 0;
@@ -888,8 +912,9 @@ export function defenderAt(s: GameState, hex: number): { f?: Formation; city?: C
 }
 
 /** The city guard: townsfolk with spears and hide shields, more of them in bigger cities. */
-export function cityGuard(c: City): Cohort[] {
-  const n = 3 + Math.floor(c.pop / 2000);
+export function cityGuard(s: GameState, c: City): Cohort[] {
+  const walls = cityWalls(s, c);
+  const n = 3 + Math.floor(c.pop / 2000) + walls.guard + Math.floor(civMods(s, c.civId).guard);
   return Array.from({ length: n }, (_, i) => ({
     id: -1 - i,
     strength: Math.max(1, Math.round(COHORT_SIZE * c.guard)),
@@ -922,26 +947,167 @@ export function canAttack(s: GameState, fid: number, hex: number): AttackCheck {
 function battleInputs(s: GameState, f: Formation, hex: number) {
   const { f: df, city } = defenderAt(s, hex);
   const defCivId = df?.civId ?? city!.civId;
-  const defCohorts = df ? df.cohorts : cityGuard(city!);
+  const defCohorts = df ? df.cohorts : cityGuard(s, city!);
   const defName = df ? `${s.civs[defCivId].name} ${df.name}` : `${city!.name} guard`;
   const volleyOnly = f.cohorts.every(c => cohortRanged(c));
+  const own = territory(s);
+  const rough = s.map.relief[hex] !== 'flat' || s.map.vegetation[hex] !== 'none';
+  const am = civMods(s, f.civId),
+    dm = civMods(s, defCivId);
+  const attHome = own[f.hex] === f.civId,
+    defHome = own[hex] === defCivId;
+  // situational bonuses add up into simple multipliers for each side
+  const boost = (m: typeof am, attacking: boolean, home: boolean) => {
+    const sit =
+      (attacking ? m.attackPct : 0) +
+      (home ? m.homePct : 0) +
+      (rough ? m.roughPct : 0) +
+      (attacking && city ? m.siegePct : 0);
+    return {
+      melee: pct(m.meleePct + sit),
+      ranged: pct(m.rangedPct + sit),
+      charge: pct(m.chargePct + sit),
+      taken: Math.max(
+        0.4,
+        1 -
+          (m.defensePct +
+            (home ? m.homePct : 0) +
+            (rough ? m.roughPct : 0) +
+            (!attacking && city ? m.cityDefensePct : 0)) /
+            100,
+      ),
+    };
+  };
+  const walls = city ? cityWalls(s, city).walls : 0;
+  const siege = f.cohorts.length
+    ? f.cohorts.reduce((a, c) => a + cohortSiege(c), 0) / f.cohorts.length
+    : 0;
   return {
     att: {
       name: `${s.civs[f.civId].name} ${f.name}`,
       cohorts: f.cohorts,
-      morale: formationMorale(f),
+      morale: formationMorale(f) + am.morale,
+      boost: boost(am, true, attHome),
     },
     def: {
       name: defName,
       cohorts: defCohorts,
-      morale: df ? formationMorale(df) + (city ? 15 : 0) : 45,
+      morale: (df ? formationMorale(df) + (city ? 15 : 0) : 45) + dm.morale,
+      boost: boost(dm, false, defHome),
     },
-    ctx: { map: s.map, hex, fortified: !!df?.fortified, city: !!city, volleyOnly },
+    ctx: {
+      map: s.map,
+      hex,
+      fortified: !!df?.fortified,
+      city: !!city,
+      volleyOnly,
+      walls,
+      siege: Math.min(1, siege),
+    },
     df,
     city,
     defCivId,
   };
 }
+
+/** The city's best defences: walls or castle in its centre. */
+export function cityWalls(s: GameState, c: City): { walls: number; guard: number } {
+  let walls = 0,
+    guard = 0;
+  for (const d of cityDistricts(s, c))
+    for (const x of d.slots)
+      if (x.built && x.type && SLOT_TYPES[x.type].walls && SLOT_TYPES[x.type].walls! > walls) {
+        walls = SLOT_TYPES[x.type].walls!;
+        guard = SLOT_TYPES[x.type].guard ?? 0;
+      }
+  return { walls, guard };
+}
+
+const cohortSiege = (c: Cohort) => SLOTS.reduce((a, k) => a + (ITEMS[c.loadout[k]].siege ?? 0), 0);
+
+/** Cohorts per new levy. */
+export const levySize = (s: GameState, civId: number) =>
+  LEVY_COHORTS + Math.floor(civMods(s, civId).levyCohorts);
+export const territoryRadius = (s: GameState, civId: number) =>
+  TERRITORY_RADIUS + Math.floor(civMods(s, civId).territoryRadius);
+
+/** Later eras cost more than their listed base. */
+const ERA_COST = [1, 1.5, 2, 2.5, 3];
+
+/** Research cost after culture leanings and bonuses. */
+export function techCost(s: GameState, civ: Civ, id: string): number {
+  const t = TECHS[id];
+  const m = civMods(s, civ.id);
+  const fav = t.favoured && (tagCountsOf(civ)[t.favoured] ?? 0) >= 2 ? -20 : 0;
+  return Math.round(t.cost * ERA_COST[t.era] * pct(m.researchPct + fav));
+}
+
+/** What to research next: the player's goal path, else (AI) a pick that suits its plans. */
+export function nextResearch(s: GameState, civ: Civ): string | null {
+  const avail = availableTechs(civ);
+  if (civ.researchGoal) {
+    if (civ.techs.includes(civ.researchGoal)) civ.researchGoal = null;
+    else {
+      const step = goalStep(civ, civ.researchGoal);
+      if (step) return step;
+    }
+  }
+  if (civ.isPlayer || !avail.length) return null;
+  // AI: cheapest first, with a pull toward its culture and war needs
+  const atWarNow = s.wars.some(w => w.a === civ.id || w.b === civ.id);
+  const rng = mulberry32(hashSeed(s.settings.map.seed, s.turn * 17 + civ.id));
+  const score = (id: string) => {
+    const t = TECHS[id];
+    let v = techCost(s, civ, id);
+    if (t.favoured && civ.leanings.includes(t.favoured)) v *= 0.7;
+    if (
+      atWarNow &&
+      /sword|bow|mail|armour|pike|gun|musket|drill|chivalry|feudal|siege|iron|bronze/.test(
+        t.note.toLowerCase() + id,
+      )
+    )
+      v *= 0.7;
+    return v * (0.85 + rng() * 0.3);
+  };
+  return avail.sort((a, b) => score(a.id) - score(b.id))[0].id;
+}
+
+/** The first tech on the way to `goal` that can be researched now. */
+export function goalStep(civ: Civ, goal: string): string | null {
+  const seen = new Set<string>();
+  const walk = (id: string): string | null => {
+    if (civ.techs.includes(id) || seen.has(id)) return null;
+    seen.add(id);
+    const t = TECHS[id];
+    const missing = t.requires.filter(r => !civ.techs.includes(r));
+    if (!missing.length) return id;
+    // cheapest branch first
+    for (const r of missing.sort((a, b) => TECHS[a].cost - TECHS[b].cost)) {
+      const x = walk(r);
+      if (x) return x;
+    }
+    return null;
+  };
+  return walk(goal);
+}
+
+export function setResearchGoal(s: GameState, civId: number, goal: string | null): Result {
+  const civ = s.civs[civId];
+  if (goal && civ.techs.includes(goal)) return fail('Already known.');
+  civ.researchGoal = goal;
+  if (goal) civ.researching = goalStep(civ, goal);
+  return ok(goal ? `Researching towards ${TECHS[goal].name}.` : undefined);
+}
+
+function pickLeanings(seed: number, i: number): string[] {
+  const r = mulberry32(hashSeed(seed, 500 + i));
+  const tags = Object.keys(TAGS);
+  const a = tags[Math.floor(r() * tags.length)];
+  let b = tags[Math.floor(r() * tags.length)];
+  if (b === a) b = tags[(tags.indexOf(a) + 3) % tags.length];
+  return [a, b];
+}
+
 const cohortRanged = (c: Cohort) => isRanged(c.loadout);
 
 /** Expected result with average luck, without changing anything. */

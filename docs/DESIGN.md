@@ -386,6 +386,70 @@ contact with very different cultures, low stability).
   mine slot reveals iron, Sword, Chain) → *Metallurgy* (Plate, Foundry slot) → *Gunpowder*
   (needs saltpeter + sulfur; Arquebus).
 
+### 9.6 As built
+
+- **9 domains, 108 choices, 16 forks, 14 tags.** Domains: Cosmology, Politics, Religion,
+  Society, Economy, War, Seafaring, Knowledge, Arts. Four tiers each (cost 30 / 70 / 140 / 240
+  culture, +6% for every choice already adopted). Many choices need choices from **other
+  domains** (Rational Astronomy needs a Knowledge choice; Court Bureaucracy needs Scribes or
+  Record Keeping; Sea Raiders needs a warlike Politics, Society or War choice).
+- **Forks** ("choose one") lock their alternatives and everything that grows only from them:
+  Solar vs Lunar Calendar, Council of Elders vs Warlord, Many Gods vs One God, Clans vs
+  Households, Wealth in Land vs Trade, Shock vs Skirmish warfare, Coast Huggers vs Open Sea,
+  Scribes vs Bards, Grand Monuments vs Folk Arts, and late forks (Heliocentrism vs Celestial
+  Spheres, Absolutism / Enlightened Despotism / Constitution, Theocracy vs Secular State,
+  Caste System vs Social Mobility, Mercantilism vs Free Markets, Professional Army vs Citizen
+  Militia, Empiricism vs Scholasticism).
+- **Tags → identity.** Tags: Solar, Lunar, Maritime, Rationalist, Devout, Zealous, Tolerant,
+  Absolutist, Republican, Martial, Mercantile, Agrarian, Artistic, Expansionist. At 3, 6 and 9
+  choices carrying a tag the people gains that tag's tier bonuses (Maritime: coastal yields, sea
+  power, sight, gold; Rationalist: science, cheaper research; Martial: melee, bigger formations,
+  morale…). The top tags are shown as the people's identity everywhere.
+- **Culture points** come from each city (1, plus 1 per 4,000 people) and from shrines,
+  monuments, temples, amphitheatres, cathedrals and printing houses.
+- **Tension** per domain rises with each choice (deep, rigid choices like Absolutism, Caste
+  System or Empiricism add a lot), slowly every turn with how many choices the domain holds, and
+  when a neighbour within 10 hexes holds the opposite idea (Zealous/Tolerant,
+  Absolutist/Republican, Solar/Lunar, Rationalist/Devout).
+- **Upheaval** (Revolution, Reformation, Calendar reform, Social upheaval, Economic crisis,
+  Military reform, Turn from the sea, Scientific revolution, Renaissance): can be called at
+  tension 100, comes on its own at 150. It lasts 8 turns (−25% production, science, gold and
+  culture, −10% food, −5 morale, no new choices in that domain). Then the player **keeps up to 2**
+  choices of the domain; the rest become **legacy** (half effect, no tags), the domain's forks
+  open again and tension resets.
+- **Kindred and clashing peoples.** Two peoples sharing two strong tags are slow to go to war
+  with each other; clashing ideas make war more likely (the AI's threshold drops from 1.5× to
+  1.2× your strength). The Peoples screen shows each people's identity and how it relates to yours.
+- **AI:** each AI people has two random leanings that weight its choices; after that its tags
+  shape it. In test games peoples come out clearly different (e.g. agrarian-artistic,
+  devout-lunar, mercantile-absolutist-maritime).
+- Sea-power bonuses (`navalPct`) are tracked and shown but only take effect once fleets exist.
+
+### 10.1 As built
+
+- **57 techs in 4 eras** (Ancient 13, Classical 16, Medieval 16, Renaissance 12). Each has a
+  base cost scaled by era (×1.5, ×2, ×2.5, ×3). In AI test games a people reaches about 35 techs
+  by turn 200 and 50 by turn 300.
+- Techs unlock **equipment** (iron swords, composite bows, longbows, crossbows, pikes, lances,
+  arquebuses, muskets, field guns, kite shields, pavises, iron helmets, great helms, chain mail,
+  plate, cuirasses, hobnailed boots, heavy and barded horses, siege ladders, bayonets),
+  **buildings** (shrines, monuments, walls, temples, amphitheatres, cathedrals, castles,
+  libraries, universities, printing houses, observatories, aqueducts, tenements, harbours,
+  guild halls, lumber mills, windmills, saltpeter works, foundries, mines, banks…),
+  **reveal** iron, coal and saltpeter, and raise **limits**: cohorts per formation (Drill +2,
+  Professional Officers +3), cohorts per levy (Feudalism +1, Conscription +3), territory and
+  district reach (Administration +1), road speed (The Wheel, Engineering), city defence (Castles,
+  Star Forts).
+- New combat mechanics came with the gear: **armour-piercing** (crossbows ignore 40% of
+  protection, guns 50–60%), **lances** add to a mounted charge, **bayonets** give musketeers
+  melee and anti-charge, **pavises** stand on the ground so crossbowmen can use them, **walls**
+  cut assault damage (25%, castles 45%) and add guard cohorts, **siege** gear (ladders, guns)
+  ignores part of the walls.
+- **Culture-dependent costs:** a tech is 20% cheaper for a people holding 2+ choices of its
+  favoured tag (Sailing, Navigation, Compass, Cartography for Maritime; Writing, Philosophy,
+  Education for Rationalist; Astronomy for Solar…).
+- **Research goals:** click any later tech to aim for it; research then walks its prerequisites.
+
 ## 11. Civilizations and AI
 
 - **8–10 civs per game, all identical at start**: same starting units (1 Settlers, 1 levy of
@@ -473,10 +537,10 @@ its builder are dropped: maps are procedural only.
 
 ## 15. Milestones
 
-Progress: **M0–M4 done.** Unit designs (§5.4) replaced the earlier per-cohort loadout picking.
+Progress: **M0–M6 done.** Unit designs (§5.4) replaced the earlier per-cohort loadout picking.
 Settlers, war and peace, and city capture came with M3. M4 brought districts, workers, housing,
-construction, blueprints, roads and markets. A starter tech list (about 8 techs) still stands in
-for the full tree. Next: **M5, the research tree.**
+construction, blueprints, roads and markets. M5 the research tree (§10.1), M6 the culture web
+(§9.6). Next: **M7, smarter AI and diplomacy**, then naval.
 
 | # | Milestone | Done when |
 |---|---|---|

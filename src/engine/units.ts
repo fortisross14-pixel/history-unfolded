@@ -1,7 +1,8 @@
 /** Derived numbers for cohorts, designs and formations. Pure functions of the data. */
 import { ITEMS, loadoutKey, SLOTS, type DamageType, type Loadout } from '../data/items.ts';
 import { RELIEF, VEGETATION } from '../data/terrain.ts';
-import type { Civ, Cohort, Design, Formation, MapData } from './types.ts';
+import type { Civ, Cohort, Design, Formation, GameState, MapData } from './types.ts';
+import { civMods } from './mods.ts';
 
 export const COHORT_SIZE = 100;
 export const LEVY_COHORTS = 5;
@@ -11,7 +12,11 @@ export const SETTLER_CAP = 5;
 export const BASE_SIGHT = 2;
 export const BASE_MORALE = 30;
 
-export const capOf = (f: Formation) => (f.kind === 'settlers' ? SETTLER_CAP : COMMAND_CAP);
+/** Cohorts a formation may hold; research and culture raise it for armies. */
+export const capOf = (f: Formation, s?: GameState) =>
+  f.kind === 'settlers'
+    ? SETTLER_CAP
+    : COMMAND_CAP + (s ? Math.floor(civMods(s, f.civId).commandCap) : 0);
 export const people = (f: Formation) => f.cohorts.reduce((s, c) => s + c.strength, 0);
 
 export function loadoutWeight(l: Loadout): number {
@@ -48,9 +53,9 @@ export function formationMoves(f: Formation): number {
   return Math.min(...f.cohorts.map(c => cohortMoves(c.loadout)));
 }
 
-export function formationSight(f: Formation, m: MapData): number {
+export function formationSight(f: Formation, m: MapData, extra = 0): number {
   const kit = Math.max(0, ...f.cohorts.map(c => ITEMS[c.loadout.kit].sight ?? 0));
-  return BASE_SIGHT + kit + (m.relief[f.hex] === 'hills' ? 1 : 0);
+  return BASE_SIGHT + kit + (m.relief[f.hex] === 'hills' ? 1 : 0) + Math.floor(extra);
 }
 
 export const allMounted = (f: Formation) =>
@@ -138,6 +143,8 @@ export interface CohortStats {
   weight: number;
   upkeep: number;
   morale: number;
+  /** share of protection the cohort's weapon ignores */
+  armourPierce: number;
 }
 
 export function cohortStats(l: Loadout): CohortStats {
@@ -154,12 +161,16 @@ export function cohortStats(l: Loadout): CohortStats {
   return {
     role: roleOf(l),
     // ranged troops fight poorly hand to hand; javelin men keep a bit more punch
-    melee: w.ranged ? (w.id === 'javelins' ? 2 : 1) : (w.attack ?? 1),
+    melee:
+      (w.ranged ? (w.id === 'javelins' ? 2 : 1) : (w.attack ?? 1)) +
+      SLOTS.reduce((a, k) => a + (ITEMS[l[k]].meleeAdd ?? 0), 0),
     ranged: w.ranged ? (w.attack ?? 0) : 0,
     damage: w.ranged ? 'crush' : (w.damage ?? 'crush'),
     rangedDamage: w.damage ?? 'missile',
-    charge: ITEMS[l.mount].charge ?? 0,
-    antiCharge: w.antiCharge ?? 0,
+    charge: (ITEMS[l.mount].charge ?? 0) + (isMounted(l) ? (w.chargeAdd ?? 0) : 0),
+    antiCharge:
+      (w.antiCharge ?? 0) + SLOTS.reduce((a, k) => a + (ITEMS[l[k]].antiChargeAdd ?? 0), 0),
+    armourPierce: w.armourPierce ?? 0,
     protection,
     moves: cohortMoves(l),
     weight: loadoutWeight(l),
@@ -218,7 +229,7 @@ export function loadoutProblem(l: Loadout, techs: string[]): string | null {
     if (!it || it.slot !== s) return `Invalid ${s}`;
     if (it.tech && !techs.includes(it.tech)) return `${it.name} needs research`;
   }
-  if (ITEMS[l.weapon].twoHanded && !ITEMS[l.shield].empty)
+  if (ITEMS[l.weapon].twoHanded && !ITEMS[l.shield].empty && !ITEMS[l.shield].freeHands)
     return `${ITEMS[l.weapon].name} needs both hands: no shield`;
   return null;
 }

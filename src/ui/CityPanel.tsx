@@ -68,7 +68,8 @@ export function CityPanel({
               <tr>
                 <td>Guard</td>
                 <td>
-                  {cityGuard(c).length} cohorts of townsfolk, {Math.round(c.guard * 100)}% ready
+                  {cityGuard(game, c).length} cohorts of townsfolk, {Math.round(c.guard * 100)}%
+                  ready
                 </td>
               </tr>
               <tr>

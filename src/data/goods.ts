@@ -149,7 +149,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     yields: { saltpeter: 1 },
     terrain: ['desert', 'plains'],
     weight: 1,
-    revealedBy: 'chemistry',
+    revealedBy: 'alchemy',
   },
   ivory: {
     name: 'Ivory',

@@ -20,10 +20,21 @@ import { cohortStats, COHORT_SIZE, type CohortStats } from './units.ts';
 export const LETHALITY = 5;
 const PROT_SCALE = 4;
 
+export interface Boost {
+  melee: number;
+  ranged: number;
+  charge: number;
+  /** multiplier on damage this side takes */
+  taken: number;
+}
+const NO_BOOST: Boost = { melee: 1, ranged: 1, charge: 1, taken: 1 };
+
 export interface BattleSideInput {
   name: string;
   cohorts: Cohort[];
   morale: number;
+  /** research, culture and situation */
+  boost?: Boost;
 }
 
 export interface BattleContext {
@@ -34,6 +45,10 @@ export interface BattleContext {
   city: boolean;
   /** attacker only shoots: no charge, no melee */
   volleyOnly: boolean;
+  /** city walls: share of assault damage they stop */
+  walls?: number;
+  /** attacker's average siege gear: share of walls ignored */
+  siege?: number;
   rng: Rng;
 }
 
@@ -64,14 +79,16 @@ interface Unit {
 const front = (u: Unit) => u.s.role === 'infantry' || u.s.role === 'cavalry';
 const alive = (us: Unit[]) => us.filter(u => u.hp > 0.5);
 
-function mitigation(dmg: DamageType, prot: Record<DamageType, number>): number {
-  return PROT_SCALE / (PROT_SCALE + prot[dmg]);
+function mitigation(dmg: DamageType, prot: Record<DamageType, number>, ap = 0): number {
+  return PROT_SCALE / (PROT_SCALE + prot[dmg] * (1 - ap));
 }
+
+type Hit = { amount: number; type: DamageType; ap?: number };
 
 /** Spread `pool` of hits (per damage type) over targets weighted by exposure. */
 function strike(
   targets: Unit[],
-  hits: { amount: number; type: DamageType }[],
+  hits: Hit[],
   exposure: (u: Unit) => number,
   takenMul: number,
 ): number {
@@ -84,7 +101,7 @@ function strike(
     for (let i = 0; i < ts.length; i++) {
       if (!w[i]) continue;
       const share = (h.amount * w[i]) / total;
-      const d = Math.min(ts[i].hp, share * mitigation(h.type, ts[i].s.protection) * takenMul);
+      const d = Math.min(ts[i].hp, share * mitigation(h.type, ts[i].s.protection, h.ap) * takenMul);
       ts[i].hp -= d;
       dealt += d;
     }
@@ -106,6 +123,8 @@ export function resolveBattle(
     }));
   const A = mk(att.cohorts),
     D = mk(def.cohorts);
+  const bA = att.boost ?? NO_BOOST,
+    bD = def.boost ?? NO_BOOST;
   const startA = A.reduce((s, u) => s + u.hp, 0),
     startD = D.reduce((s, u) => s + u.hp, 0);
   const lines: string[] = [];
@@ -117,7 +136,9 @@ export function resolveBattle(
     (1 - RELIEF[m.relief[ctx.hex]].defense) *
     (cover ? 0.85 : 1) *
     (ctx.fortified ? 0.8 : 1) *
-    (ctx.city ? 0.65 : 1);
+    (ctx.city ? 0.65 * (1 - (ctx.walls ?? 0) * (1 - (ctx.siege ?? 0))) : 1) *
+    bD.taken;
+  const attMul = bA.taken;
   const lostA = () => startA - A.reduce((s, u) => s + Math.max(0, u.hp), 0);
   const lostD = () => startD - D.reduce((s, u) => s + Math.max(0, u.hp), 0);
   const luck = () => 0.85 + ctx.rng() * 0.3;
@@ -132,12 +153,13 @@ export function resolveBattle(
     };
   };
 
-  const volley = (from: Unit[], mul: number) =>
+  const volley = (from: Unit[], mul: number): Hit[] =>
     alive(from)
       .filter(u => u.s.ranged > 0)
       .map(u => ({
         amount: u.s.ranged * LETHALITY * (u.hp / COHORT_SIZE) * u.xpMul * mul,
         type: u.s.rangedDamage,
+        ap: u.s.armourPierce,
       }));
 
   let outcome: BattleReport['outcome'] = 'held';
@@ -160,10 +182,10 @@ export function resolveBattle(
   };
 
   // 1. volley: both sides shoot; cover blunts arrows at the defender
-  const aV = volley(A, luck()),
-    dV = volley(D, luck());
+  const aV = volley(A, luck() * bA.ranged),
+    dV = volley(D, luck() * bD.ranged);
   const hitD = strike(D, aV, exposure(D, false), defMul * (cover ? 0.7 : 1));
-  const hitA = strike(A, dV, exposure(A, false), 1);
+  const hitA = strike(A, dV, exposure(A, false), attMul);
   if (aV.length || dV.length)
     lines.push(
       `Volleys: ${att.name} lose ${Math.round(hitA)}, ${def.name} lose ${Math.round(hitD)}.`,
@@ -189,13 +211,19 @@ export function resolveBattle(
           u.xpMul *
           blunt *
           (noFront ? 1.5 : 1) *
+          bA.charge *
           luck(),
         type: u.s.damage,
       }));
       const d = strike(D, hits, exposure(D, true), defMul);
       let back = 0;
       if (spears > 0)
-        back = strike(riders, [{ amount: spears * LETHALITY * 0.8, type: 'pierce' }], () => 1, 1);
+        back = strike(
+          riders,
+          [{ amount: spears * LETHALITY * 0.8 * bD.melee, type: 'pierce' }],
+          () => 1,
+          attMul,
+        );
       lines.push(
         `Charge: ${def.name} lose ${Math.round(d)}${back ? `, spears cost the riders ${Math.round(back)}` : ''}${noFront ? ' (no front line to stop them)' : ''}.`,
       );
@@ -206,27 +234,33 @@ export function resolveBattle(
     // 3. melee rounds
     if (!moraleCheck('After the charge')) {
       for (let round = 1; round <= 3; round++) {
-        const side = (us: Unit[], enemy: Unit[]) => {
+        const side = (us: Unit[], enemy: Unit[], b: Boost) => {
           const screened = alive(us).some(front);
           const flank =
             !rough &&
             alive(us).some(u => u.s.role === 'cavalry') &&
             !alive(enemy).some(u => u.s.role === 'cavalry');
           const k = luck() * (flank ? 1.3 : 1);
-          const hits: { amount: number; type: DamageType }[] = [];
+          const hits: Hit[] = [];
           for (const u of alive(us)) {
             const str = (u.hp / COHORT_SIZE) * u.xpMul * k;
-            if (front(u)) hits.push({ amount: u.s.melee * LETHALITY * str, type: u.s.damage });
+            if (front(u))
+              hits.push({ amount: u.s.melee * LETHALITY * str * b.melee, type: u.s.damage });
             else if (screened || u.s.role === 'horse-archers')
-              hits.push({ amount: u.s.ranged * LETHALITY * 0.8 * str, type: u.s.rangedDamage });
-            else hits.push({ amount: u.s.melee * LETHALITY * 0.7 * str, type: u.s.damage });
+              hits.push({
+                amount: u.s.ranged * LETHALITY * 0.8 * str * b.ranged,
+                type: u.s.rangedDamage,
+                ap: u.s.armourPierce,
+              });
+            else
+              hits.push({ amount: u.s.melee * LETHALITY * 0.7 * str * b.melee, type: u.s.damage });
           }
           return { hits, flank };
         };
-        const a = side(A, D),
-          d = side(D, A);
+        const a = side(A, D, bA),
+          d = side(D, A, bD);
         const toD = strike(D, a.hits, exposure(D, true), defMul);
-        const toA = strike(A, d.hits, exposure(A, true), 1);
+        const toA = strike(A, d.hits, exposure(A, true), attMul);
         lines.push(
           `Melee ${round}: ${att.name} lose ${Math.round(toA)}, ${def.name} lose ${Math.round(toD)}${a.flank ? ' (flanked by cavalry)' : d.flank ? ' (attackers flanked)' : ''}.`,
         );

@@ -23,6 +23,8 @@ import {
   reachable,
   rename,
   setResearch,
+  setResearchGoal,
+  techCost,
   split,
   trainSettlers,
   visibleHexes,
@@ -40,6 +42,11 @@ import { HexPanel } from './HexPanel.tsx';
 import { MapView } from './MapView.tsx';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { ResearchDialog } from './ResearchDialog.tsx';
+import { CultureDialog, KeepDialog, TagChip } from './CultureDialog.tsx';
+import { resolveUpheaval, startUpheaval, takeNode } from '../engine/culture.ts';
+import { cityEconomy } from '../engine/economy.ts';
+import { identity } from '../engine/mods.ts';
+import { DOMAINS } from '../data/culture.ts';
 import { saveGame } from './save.ts';
 
 type Sel =
@@ -49,6 +56,7 @@ type Sel =
   | null;
 type Dialog =
   | { kind: 'research' }
+  | { kind: 'culture' }
   | { kind: 'city'; cityId: number; hex?: number }
   | { kind: 'designs'; open?: number | 'new' }
   | { kind: 'peoples' }
@@ -221,6 +229,8 @@ export function Game({
       else if (e.key === 'f' && mySelF) report(fortify(game, mySelF.id));
       else if (e.key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
       else if (e.key === 'd') setDialog({ kind: 'designs' });
+      else if (e.key === 'k') setDialog({ kind: 'culture' });
+      else if (e.key === 't') setDialog({ kind: 'research' });
       else if (e.key === 'r' && mySelF) report(buildRoad(game, mySelF.id));
       else if (e.key === 'c' && selCity && selCity.civId === me.id)
         setDialog({ kind: 'city', cityId: selCity.id });
@@ -258,6 +268,11 @@ export function Game({
   }, [sel, hover, version, battlePreview]);
 
   const research_ = me.researching ? TECHS[me.researching] : null;
+  const culturePerTurn = Math.round(
+    game.cities
+      .filter(c => c.civId === me.id)
+      .reduce((a, c) => a + cityEconomy(game, c).total.culture, 0),
+  );
   const myCities = game.cities.filter(c => c.civId === me.id);
   const idleCount = idle().length;
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
@@ -306,12 +321,27 @@ export function Game({
         <button className="research-btn" onClick={() => setDialog({ kind: 'research' })}>
           {research_ ? (
             <>
-              🔬 {research_.name} {me.science}/{research_.cost}
+              🔬 {research_.name} {Math.floor(me.science)}/{techCost(game, me, research_.id)}
             </>
           ) : (
             <>🔬 Choose research</>
           )}
         </button>
+        <button className="research-btn" onClick={() => setDialog({ kind: 'culture' })} title="K">
+          🎭 {Math.floor(me.culture.points)} (+{culturePerTurn})
+          {me.culture.upheaval ? (
+            <b className="war-pill">{DOMAINS[me.culture.upheaval.domain].upheaval}</b>
+          ) : (
+            ''
+          )}
+        </button>
+        <span className="ident-bar">
+          {identity(me)
+            .slice(0, 2)
+            .map(i => (
+              <TagChip key={i.tag} tag={i.tag} />
+            ))}
+        </span>
         <button onClick={() => setDialog({ kind: 'designs' })} title="D">
           ⚔ Unit designs ({me.designs.length})
         </button>
@@ -423,8 +453,8 @@ export function Game({
               to attack. Drag to pan, scroll to zoom.
             </p>
             <p className="muted small">
-              Keys: Space next unit · Enter end turn · F fortify · B found city · D designs · Esc
-              deselect
+              Keys: Space next unit · Enter end turn · F fortify · B found city · R road · C city ·
+              D designs · T research · K culture · Esc deselect
             </p>
           </div>
         )}
@@ -502,11 +532,33 @@ export function Game({
       )}
       {dialog?.kind === 'research' && (
         <ResearchDialog
+          game={game}
           civ={me}
           onClose={() => setDialog(null)}
           onPick={id => {
+            setResearchGoal(game, me.id, null);
             report(setResearch(game, me.id, id));
             setDialog(null);
+          }}
+          onGoal={id => report(setResearchGoal(game, me.id, id))}
+        />
+      )}
+      {dialog?.kind === 'culture' && (
+        <CultureDialog
+          game={game}
+          civ={me}
+          perTurn={culturePerTurn}
+          onClose={() => setDialog(null)}
+          onTake={id => report(takeNode(game, me.id, id))}
+          onUpheaval={d => report(startUpheaval(game, me.id, d))}
+        />
+      )}
+      {me.culture.choosing && (
+        <KeepDialog
+          civ={me}
+          onKeep={ids => {
+            report(resolveUpheaval(game, me.id, ids));
+            saveGame(game);
           }}
         />
       )}

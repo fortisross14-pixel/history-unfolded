@@ -26,6 +26,9 @@ import {
 } from './game.ts';
 import { distance, neighbors, within } from './hex.ts';
 import { SLOT_TYPES } from '../data/slots.ts';
+import { CULTURE_LIST, DOMAIN_LIST, OPPOSED } from '../data/culture.ts';
+import { canStartUpheaval, nodeCost, nodeStatus, startUpheaval, takeNode } from './culture.ts';
+import { tagCounts } from './mods.ts';
 import {
   cityDistricts,
   cityEconomy,
@@ -114,7 +117,147 @@ const PLANS: Plan[] = [
       mount: 'horse',
     }),
   },
+  // later eras: each only appears once its gear is researched
+  {
+    name: 'Composite archers',
+    role: 'ranged',
+    rank: 3,
+    loadout: t => ({
+      ...DEFAULT_LOADOUT,
+      weapon: 'composite-bow',
+      armour: has(t, 'tanning') ? 'leather' : 'padded',
+      helmet: has(t, 'iron-working') ? 'iron-helmet' : 'no-helmet',
+    }),
+  },
+  {
+    name: 'Men-at-arms',
+    role: 'front',
+    rank: 4,
+    loadout: () => ({
+      ...DEFAULT_LOADOUT,
+      weapon: 'iron-sword',
+      shield: 'kite-shield',
+      helmet: 'iron-helmet',
+      armour: 'chain-mail',
+      boots: 'marching-boots',
+    }),
+  },
+  {
+    name: 'Longbowmen',
+    role: 'ranged',
+    rank: 4,
+    loadout: () => ({
+      ...DEFAULT_LOADOUT,
+      weapon: 'longbow',
+      armour: 'leather',
+      helmet: 'iron-helmet',
+    }),
+  },
+  {
+    name: 'Crossbowmen',
+    role: 'ranged',
+    rank: 5,
+    loadout: () => ({
+      ...DEFAULT_LOADOUT,
+      weapon: 'crossbow',
+      shield: 'pavise',
+      helmet: 'iron-helmet',
+      armour: 'chain-mail',
+    }),
+  },
+  {
+    name: 'Pikemen',
+    role: 'front',
+    rank: 5,
+    loadout: () => ({
+      ...DEFAULT_LOADOUT,
+      weapon: 'pike',
+      helmet: 'iron-helmet',
+      armour: 'chain-mail',
+      boots: 'marching-boots',
+    }),
+  },
+  {
+    name: 'Knights',
+    role: 'front',
+    rank: 6,
+    loadout: () => ({
+      ...DEFAULT_LOADOUT,
+      weapon: 'lance',
+      shield: 'kite-shield',
+      helmet: 'great-helm',
+      armour: 'plate-armour',
+      mount: 'barded-horse',
+    }),
+  },
+  {
+    name: 'Arquebusiers',
+    role: 'ranged',
+    rank: 6,
+    loadout: () => ({
+      ...DEFAULT_LOADOUT,
+      weapon: 'arquebus',
+      helmet: 'iron-helmet',
+      armour: 'leather',
+    }),
+  },
+  {
+    name: 'Musketeers',
+    role: 'ranged',
+    rank: 7,
+    loadout: () => ({
+      ...DEFAULT_LOADOUT,
+      weapon: 'musket',
+      kit: 'bayonet',
+      armour: 'cuirass',
+      boots: 'hobnailed-boots',
+    }),
+  },
 ];
+
+/** Move one outdated or outclassed group per turn to the best design the market can pay for. */
+function upgrade(s: GameState, civ: Civ, f: Formation) {
+  if (f.kind !== 'army' || f.name === 'Scouts' || !supplyingCity(s, civ.id, f.hex)) return;
+  const rankOf = (id: number | null) => {
+    const d = civ.designs.find(x => x.id === id);
+    return PLANS.find(p => p.name === d?.name);
+  };
+  for (const c of f.cohorts) {
+    if (c.designId === null) continue;
+    const plan = rankOf(c.designId);
+    if (!plan) continue;
+    const better = PLANS.filter(p => p.role === plan.role && p.rank > plan.rank)
+      .map(p => ({ p, d: civ.designs.find(d => d.name === p.name) }))
+      .filter(x => x.d)
+      .sort((a, b) => b.p.rank - a.p.rank);
+    const same = f.cohorts.filter(x => x.designId === c.designId).map(x => x.id);
+    const current = civ.designs.find(d => d.id === c.designId)!;
+    const outdated = JSON.stringify(current.loadout) !== JSON.stringify(c.loadout);
+    for (const { d } of [...better, ...(outdated ? [{ d: current }] : [])]) {
+      const pv = refitPreview(s, f.id, same, d!.loadout);
+      if (pv.problem === null && !pv.missing.length) {
+        assignDesign(s, f.id, same, d!.id);
+        return;
+      }
+    }
+  }
+}
+
+/** Spend culture on the choice that best fits the people's leanings. */
+function chooseCulture(s: GameState, civ: Civ, rng: Rng) {
+  const avail = CULTURE_LIST.filter(n => nodeStatus(civ, n).kind === 'available');
+  if (!avail.length) return;
+  const score = (n: (typeof CULTURE_LIST)[number]) =>
+    n.tags.filter(t => civ.leanings.includes(t)).length * 3 +
+    (5 - n.tier) * 0.5 +
+    rng() * 2 -
+    nodeCost(s, civ, n) / 60;
+  const best = avail.sort((a, b) => score(b) - score(a))[0];
+  if (civ.culture.points >= nodeCost(s, civ, best)) takeNode(s, civ.id, best.id);
+  // the AI calls its own upheaval when a domain is close to boiling
+  const hot = DOMAIN_LIST.find(d => civ.culture.tension[d] >= 125);
+  if (hot && !canStartUpheaval(civ, hot)) startUpheaval(s, civ.id, hot);
+}
 
 function ensureDesigns(s: GameState, civ: Civ) {
   for (const p of PLANS) {
@@ -300,6 +443,7 @@ export function aiTurn(s: GameState, civ: Civ) {
   const g = gridOf(s);
   const rng = mulberry32(hashSeed(s.settings.map.seed, s.turn * 131 + civ.id));
   ensureDesigns(s, civ);
+  chooseCulture(s, civ, rng);
   const cities = s.cities.filter(c => c.civId === civ.id);
   const mine = () => s.formations.filter(f => f.civId === civ.id);
 
@@ -321,7 +465,19 @@ export function aiTurn(s: GameState, civ: Civ) {
       const near = s.cities.some(
         c => c.civId === o.id && cities.some(m => distance(g, c.hex, m.hex) <= 14),
       );
-      return near && mineP > militaryPower(s, o.id) * 1.5 + 5;
+      // peoples whose ideas clash with ours are easier to hate; kindred ones harder
+      const mine = tagCounts(civ),
+        theirs = tagCounts(o);
+      const clash = OPPOSED.some(
+        ([a, b]) =>
+          ((mine[a] ?? 0) >= 2 && (theirs[b] ?? 0) >= 2) ||
+          ((mine[b] ?? 0) >= 2 && (theirs[a] ?? 0) >= 2),
+      );
+      const shared = Object.keys(mine).filter(
+        t => (mine[t] ?? 0) >= 2 && (theirs[t] ?? 0) >= 2,
+      ).length;
+      const need = clash ? 1.2 : shared >= 2 ? 2.2 : 1.5;
+      return near && mineP > militaryPower(s, o.id) * need + 5;
     });
     if (targets.length) declareWar(s, civ.id, targets[Math.floor(rng() * targets.length)].id);
   }
@@ -331,6 +487,7 @@ export function aiTurn(s: GameState, civ: Civ) {
   for (const f of mine()) {
     if (!s.formations.includes(f)) continue;
     equip(s, civ, f);
+    if (f.moves > 0) upgrade(s, civ, f);
     if (f.kind === 'settlers') {
       // settle on arrival; pick a site if there is no route yet
       if (!f.path.length) {
@@ -377,7 +534,7 @@ export function aiTurn(s: GameState, civ: Civ) {
           o !== f &&
           o.civId === civ.id &&
           o.kind === 'army' &&
-          o.cohorts.length + f.cohorts.length <= capOf(f) &&
+          o.cohorts.length + f.cohorts.length <= capOf(f, s) &&
           o.name !== 'Scouts'
         )
           merge(s, o.id, f.id);

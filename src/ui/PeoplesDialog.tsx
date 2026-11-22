@@ -1,5 +1,8 @@
 import { atWar, militaryPower, type Result } from '../engine/game.ts';
 import type { GameState } from '../engine/types.ts';
+import { identity, tagCounts } from '../engine/mods.ts';
+import { OPPOSED, TAGS } from '../data/culture.ts';
+import { TagChip } from './CultureDialog.tsx';
 
 interface Props {
   game: GameState;
@@ -13,6 +16,22 @@ export function PeoplesDialog({ game, civId, onWar, onPeace, onClose }: Props) {
   const me = game.civs[civId];
   const mine = militaryPower(game, civId);
   const known = game.civs.filter(c => c.id !== civId && me.met.includes(c.id));
+  const mineTags = tagCounts(me);
+  /** kindred or clashing ideas colour how peoples see each other */
+  const relation = (other: number) => {
+    const theirs = tagCounts(game.civs[other]);
+    const strong = (t: Record<string, number>, k: string) => (t[k] ?? 0) >= 2;
+    const clash = OPPOSED.filter(
+      ([a, b]) =>
+        (strong(mineTags, a) && strong(theirs, b)) || (strong(mineTags, b) && strong(theirs, a)),
+    );
+    const shared = Object.keys(mineTags).filter(t => strong(mineTags, t) && strong(theirs, t));
+    if (clash.length)
+      return `Clashing ideas (${clash.map(([a, b]) => `${TAGS[a].name}/${TAGS[b].name}`).join(', ')}): quicker to war`;
+    if (shared.length >= 2)
+      return `Kindred (${shared.map(t => TAGS[t].name).join(', ')}): slow to war`;
+    return '';
+  };
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="modal peoples" onClick={e => e.stopPropagation()}>
@@ -27,6 +46,7 @@ export function PeoplesDialog({ game, civId, onWar, onPeace, onClose }: Props) {
           <tbody>
             <tr className="muted small">
               <td>People</td>
+              <td>Identity</td>
               <td>Cities</td>
               <td>Army strength</td>
               <td>Status</td>
@@ -42,6 +62,14 @@ export function PeoplesDialog({ game, civId, onWar, onPeace, onClose }: Props) {
                 <tr key={c.id}>
                   <td>
                     <span className="swatch" style={{ background: c.color }} /> {c.name}
+                  </td>
+                  <td>
+                    {identity(c)
+                      .slice(0, 3)
+                      .map(i => (
+                        <TagChip key={i.tag} tag={i.tag} />
+                      ))}
+                    <div className="muted small">{relation(c.id)}</div>
                   </td>
                   <td>{c.alive ? game.cities.filter(x => x.civId === c.id).length : '—'}</td>
                   <td>

@@ -124,8 +124,8 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
               {c.pop.toLocaleString()} people (room for {e.total.housing.toLocaleString()}) ·
               workers {e.workersUsed.toLocaleString()}/{e.workers.toLocaleString()} · food{' '}
               {r1(e.total.food)} − {e.eat} eaten = {e.surplus >= 0 ? '+' : ''}
-              {r1(e.surplus)} ({r1(c.food)}/{growthCost(c)} to grow) · prod {r1(e.total.prod)} ·
-              science {e.total.science} · gold {e.total.gold}
+              {r1(e.surplus)} ({r1(c.food)}/{growthCost(game, c)} to grow) · prod {r1(e.total.prod)}{' '}
+              · science {e.total.science} · gold {e.total.gold}
             </small>
           </h2>
           <button className="x" onClick={onClose}>

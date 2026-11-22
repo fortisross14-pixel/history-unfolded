@@ -980,3 +980,353 @@ table.stats td:first-child {
   min-width: 14px !important;
   font-size: 7px !important;
 }
+
+/* ---------- research tree ---------- */
+.research {
+  width: min(1240px, 100%);
+}
+.research p .link {
+  margin-left: 6px;
+}
+.tree-scroll {
+  overflow: auto;
+  max-height: 72vh;
+  border-radius: 10px;
+  background: var(--paper-2);
+  padding: 10px;
+}
+.tree {
+  position: relative;
+}
+.tree-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.tl {
+  fill: none;
+  stroke: rgba(74, 50, 30, 0.28);
+  stroke-width: 1.5;
+}
+.tl.known {
+  stroke: rgba(61, 122, 58, 0.55);
+}
+.tl.hot {
+  stroke: var(--gold);
+  stroke-width: 3;
+}
+.era-label {
+  position: absolute;
+  top: 0;
+  text-align: center;
+  font:
+    600 15px Georgia,
+    serif;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.tech-card {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 6px 8px;
+  overflow: hidden;
+}
+.tech-card .tech-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.tech-card .tech-unlocks {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tech-card .tech-unlocks small {
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+.tech-card.known {
+  background: linear-gradient(#e6efd8, #d3e0bd);
+  opacity: 1;
+}
+.tech-card.can {
+  border-color: var(--ink);
+}
+.tech-card.path {
+  outline: 2px dashed var(--gold);
+}
+.tech-card.next,
+.tech-card.on {
+  outline: 3px solid var(--gold);
+  background: linear-gradient(#fff6dc, #f3e2b2);
+}
+
+/* ---------- culture ---------- */
+.culture {
+  width: min(1400px, 100%);
+}
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.ident {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.pips {
+  display: inline-flex;
+  gap: 2px;
+}
+.pips i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d6c6a2;
+  border: 1px solid var(--edge);
+}
+.pips i.on {
+  background: var(--gold);
+}
+.tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: #8a7a5a;
+  margin-right: 3px;
+}
+.tag-solar {
+  background: #d1a72f;
+}
+.tag-lunar {
+  background: #5a6fa8;
+}
+.tag-maritime {
+  background: #2f7d8a;
+}
+.tag-rationalist {
+  background: #3d7a3a;
+}
+.tag-devout {
+  background: #7a4ea0;
+}
+.tag-zealous {
+  background: #a3342a;
+}
+.tag-tolerant {
+  background: #5fae8f;
+}
+.tag-absolutist {
+  background: #6b1f1f;
+}
+.tag-republican {
+  background: #3a6ea8;
+}
+.tag-martial {
+  background: #6b3f22;
+}
+.tag-mercantile {
+  background: #c9962b;
+}
+.tag-agrarian {
+  background: #8aa02a;
+}
+.tag-artistic {
+  background: #c2507a;
+}
+.tag-expansionist {
+  background: #b0663a;
+}
+.ident-bar {
+  display: inline-flex;
+  gap: 2px;
+}
+.upheaval-banner {
+  background: #f3d9cf;
+  border: 1px solid var(--bad);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.domain-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0;
+}
+.domain-tabs button {
+  padding: 3px 10px;
+  border-width: 1px 1px 3px;
+}
+.domain-tabs button.on {
+  background: linear-gradient(#fff6dc, #f3e2b2);
+}
+.web {
+  max-height: 62vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.domain-row {
+  display: grid;
+  grid-template-columns: 170px repeat(4, 1fr);
+  gap: 8px;
+  border-left: 5px solid;
+  padding: 6px 0 6px 8px;
+  background: rgba(233, 220, 189, 0.4);
+  border-radius: 6px;
+}
+@media (max-width: 1000px) {
+  .domain-row {
+    grid-template-columns: 1fr;
+  }
+}
+.domain-head h3 {
+  margin: 0;
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.domain-head small {
+  display: block;
+}
+.tension {
+  position: relative;
+  height: 8px;
+  background: #e0d1ad;
+  border-radius: 4px;
+  margin: 6px 0 2px;
+  overflow: visible;
+}
+.tension span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+.tension i {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--ink);
+}
+.small-btn {
+  padding: 2px 8px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.tier {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fork {
+  border: 1px dashed var(--ink-soft);
+  border-radius: 8px;
+  padding: 12px 4px 4px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fork-label {
+  position: absolute;
+  top: -1px;
+  left: 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+.cnode {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 7px;
+  opacity: 1;
+}
+.cnode small {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.cnode .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.cnode.taken {
+  background: linear-gradient(#e6efd8, #cfe0b4);
+  border-color: var(--good);
+}
+.cnode.legacy {
+  background: repeating-linear-gradient(45deg, #efe5cf, #efe5cf 6px, #e5d8b8 6px, #e5d8b8 12px);
+}
+.cnode.locked {
+  opacity: 0.45;
+  text-decoration: line-through;
+  text-decoration-color: rgba(0, 0, 0, 0.25);
+}
+.cnode.needs,
+.cnode.upheaval {
+  opacity: 0.7;
+}
+.cnode.can {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px rgba(201, 150, 43, 0.4);
+}
+.cnode:disabled {
+  cursor: default;
+}
+.cstate.available {
+  color: var(--ink) !important;
+  font-weight: 600;
+}
+.cstate.taken {
+  color: var(--good) !important;
+  font-weight: 600;
+}
+.keep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+}
+.keep-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+}
+.keep-row.on {
+  background: #fff6dc;
+}
+.cnode:disabled {
+  opacity: 0.8;
+}
+.cnode.taken:disabled,
+.cnode.legacy:disabled {
+  opacity: 1;
+}
+.cnode.locked:disabled {
+  opacity: 0.45;
+}
+.tech-card:disabled {
+  opacity: 1;
+}

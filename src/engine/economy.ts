@@ -13,6 +13,7 @@ import { isWater, RELIEF, VEGETATION } from '../data/terrain.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
 import { hexFood } from './mapgen.ts';
 import type { City, District, GameState, SlotState } from './types.ts';
+import { civMods, pct } from './mods.ts';
 
 export const DISTRICT_RADIUS = 2;
 export const WORKER_SHARE = 0.5;
@@ -156,6 +157,7 @@ function addYield(
   into.prod += (y.prod ?? 0) * k;
   into.science += (y.science ?? 0) * k;
   into.gold += (y.gold ?? 0) * k;
+  into.culture += (y.culture ?? 0) * k;
   into.housing += (y.housing ?? 0) * k;
   for (const [g, n] of Object.entries(y.goods ?? {})) into.goods[g] = (into.goods[g] ?? 0) + n * k;
 }
@@ -164,6 +166,7 @@ const zero = () => ({
   prod: 0,
   science: 0,
   gold: 0,
+  culture: 0,
   housing: 0,
   goods: {} as Record<string, number>,
 });
@@ -193,7 +196,8 @@ export interface CityEconomy {
 export function cityEconomy(s: GameState, c: City): CityEconomy {
   const g = gridOf(s);
   const total = zero();
-  const workers = Math.floor((c.pop * WORKER_SHARE) / 50) * 50;
+  const mods = civMods(s, c.civId);
+  const workers = Math.floor((c.pop * (WORKER_SHARE + mods.workers / 100)) / 50) * 50;
   let free = workers;
   const inputs: Record<string, number> = {};
   const stock = marketStock(s, c);
@@ -280,6 +284,9 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
         addYield(out, a.bonus, n);
         if (a.pct) for (const gd of Object.keys(out.goods)) out.goods[gd] *= 1 + (a.pct / 100) * n;
       }
+      // research and culture boost whole groups of buildings
+      const gp = mods.groupPct[t.group];
+      if (gp) scaleTotals(out, pct(gp), true);
       // granaries reward each neighbouring grain field
       if (t.id === 'granary') {
         const fields = gridNeighbors(i).filter(
@@ -294,6 +301,18 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
   }
   total.science += Math.floor(c.pop / 2000);
   total.gold += Math.floor(c.pop / 2500);
+  total.culture += 1 + Math.floor(c.pop / 4000);
+  // people-wide bonuses, coastal cities, upheavals
+  const coast = isCoastal(s, c) ? mods.coastalPct : 0;
+  total.food *= pct(mods.foodPct + coast * 0.5);
+  total.prod *= pct(mods.prodPct + coast * 0.5);
+  total.science *= pct(mods.sciencePct);
+  total.gold *= pct(mods.goldPct + coast);
+  total.culture *= pct(mods.culturePct);
+  total.housing *= pct(mods.housingPct);
+  for (const k of ['food', 'prod', 'science', 'gold', 'culture'] as const)
+    total[k] = Math.round(total[k] * 10) / 10;
+  total.housing = Math.round(total.housing / 50) * 50;
   const eat = Math.ceil(c.pop / 1000) * 2;
   return {
     total,
@@ -407,10 +426,27 @@ export function marketSpend(s: GameState, c: City, cost: Record<string, number>)
   return true;
 }
 
+export const isCoastal = (s: GameState, c: City) =>
+  neighbors(gridOf(s), c.hex).some(
+    k => s.map.terrain[k] === 'coast' || s.map.terrain[k] === 'lake',
+  );
+
+function scaleTotals(t: Totals, k: number, goodsToo: boolean) {
+  t.food *= k;
+  t.prod *= k;
+  t.science *= k;
+  t.gold *= k;
+  t.culture *= k;
+  if (goodsToo) for (const g of Object.keys(t.goods)) t.goods[g] *= k;
+}
+
+export const districtRadius = (s: GameState, civId: number) =>
+  DISTRICT_RADIUS + Math.floor(civMods(s, civId).districtRadius);
+
 /** Hexes a city can put districts on: its own territory within DISTRICT_RADIUS, on land. */
 export function districtSites(s: GameState, c: City, owner: Int16Array): number[] {
   const g = gridOf(s);
-  return within(g, c.hex, DISTRICT_RADIUS).filter(
+  return within(g, c.hex, districtRadius(s, c.civId)).filter(
     k => !isWater(s.map.terrain[k]) && owner[k] === c.civId && nearestCity(s, k)?.id === c.id,
   );
 }

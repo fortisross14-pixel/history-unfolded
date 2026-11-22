@@ -31,7 +31,32 @@ await page.screenshot({ path: `${out}/2-start.png` });
 await page.click('button:has-text("Found city")');
 await page.waitForTimeout(200);
 if (!(await page.$('.modal.research'))) await page.click('.research-btn');
-await page.click('.tech:has-text("Archery")');
+await page.screenshot({ path: `${out}/2b-research.png` });
+await page.click('.tech-card.can:has-text("Archery")');
+// set a far goal from the tree, then look at the culture web
+await page.click('.research-btn:has-text("Archery")');
+await page.click('.tech-card:has-text("Iron Working")');
+await page.screenshot({ path: `${out}/2c-research-goal.png` });
+await page.click('.modal.research .x');
+await page.evaluate(() => {
+  const hu = (
+    globalThis as unknown as {
+      __hu: { game: { civs: { culture: { points: number } }[] }; bump: () => void };
+    }
+  ).__hu;
+  hu.game.civs[0].culture.points = 200;
+  hu.bump();
+});
+await page.click('.research-btn:has-text("🎭")');
+await page.waitForSelector('.modal.culture');
+await page.click('.cnode.can:has-text("Star Lore")');
+await page.click('.cnode.can:has-text("Solar Calendar")');
+await page.click('.cnode.can:has-text("Chiefdom")');
+await page.screenshot({ path: `${out}/2d-culture.png` });
+await page.click('.domain-tabs button:has-text("Cosmology")');
+await page.screenshot({ path: `${out}/2e-culture-cosmology.png` });
+await page.click('.modal.culture .x');
+
 // city screen: lay out a "Farm" district and fill a few slots
 await page.click('button:has-text("City & districts")');
 await page.waitForSelector('.modal.city-screen');

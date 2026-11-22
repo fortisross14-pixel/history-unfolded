@@ -1,5 +1,6 @@
 import type { ReliefId, TerrainId, VegetationId } from '../data/terrain.ts';
 import type { Loadout } from '../data/items.ts';
+import type { Domain } from '../data/culture.ts';
 
 export type MapType =
   'continents' | 'pangaea' | 'archipelago' | 'inland-sea' | 'highlands' | 'random';
@@ -102,6 +103,11 @@ export interface Civ {
   isPlayer: boolean;
   techs: string[];
   researching: string | null;
+  /** a later tech the player aims for; research follows its prerequisites */
+  researchGoal: string | null;
+  culture: CultureState;
+  /** AI only: culture tags it leans towards */
+  leanings: string[];
   science: number;
   gold: number;
   /** 1 = explored, per hex */
@@ -143,6 +149,17 @@ export interface Blueprint {
   id: number;
   name: string;
   slots: (string | null)[];
+}
+
+export interface CultureState {
+  points: number;
+  taken: string[];
+  /** choices kept from before an upheaval: half their effect, no tags */
+  legacy: string[];
+  tension: Record<Domain, number>;
+  upheaval: { domain: Domain; turnsLeft: number } | null;
+  /** an upheaval has ended and the player must choose what to keep */
+  choosing: Domain | null;
 }
 
 export interface War {

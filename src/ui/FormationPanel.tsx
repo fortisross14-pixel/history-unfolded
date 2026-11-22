@@ -98,7 +98,8 @@ export function FormationPanel(p: Props) {
             </h2>
           )}
           <div className="muted">
-            {civ.name} · {people(f).toLocaleString()} people · {f.cohorts.length}/{capOf(f)} cohorts
+            {civ.name} · {people(f).toLocaleString()} people · {f.cohorts.length}/{capOf(f, game)}{' '}
+            cohorts
           </div>
           <div className="muted small">
             Moves {f.moves}/{formationMoves(f)} · {TERRAIN[m.terrain[f.hex]].name}
@@ -304,7 +305,7 @@ export function FormationPanel(p: Props) {
               </button>
               {mine && o.kind === f.kind && (
                 <button
-                  disabled={o.cohorts.length + f.cohorts.length > capOf(o)}
+                  disabled={o.cohorts.length + f.cohorts.length > capOf(o, game)}
                   onClick={() => p.onMerge(o.id)}
                 >
                   Merge

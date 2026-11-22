@@ -1007,64 +1007,50 @@ a {
   font-size: 7px !important;
 }
 
-/* ---------- research tree ---------- */
+/* ---------- research: one age at a time ---------- */
 .research {
-  width: min(1240px, 100%);
+  width: min(1080px, 100%);
 }
 .research p .link {
   margin-left: 6px;
 }
-.tree-scroll {
+.age-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 6px 0 8px;
+}
+.age-tabs button.on {
+  background: linear-gradient(#fff6dc, #f3e2b2);
+  border-color: var(--gold);
+}
+.age-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  max-height: 58vh;
   overflow: auto;
-  max-height: 72vh;
+  padding: 8px;
   border-radius: 10px;
   background: var(--paper-2);
-  padding: 10px;
-}
-.tree {
-  position: relative;
-}
-.tree-lines {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.tl {
-  fill: none;
-  stroke: rgba(74, 50, 30, 0.28);
-  stroke-width: 1.5;
-}
-.tl.known {
-  stroke: rgba(61, 122, 58, 0.55);
-}
-.tl.hot {
-  stroke: var(--gold);
-  stroke-width: 3;
-}
-.era-label {
-  position: absolute;
-  top: 0;
-  text-align: center;
-  font:
-    600 15px Georgia,
-    serif;
-  color: var(--ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 .tech-card {
-  position: absolute;
   display: flex;
   flex-direction: column;
   gap: 2px;
   text-align: left;
   padding: 6px 8px;
+  min-height: 72px;
   overflow: hidden;
 }
 .tech-card .tech-head {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 6px;
+}
+.tech-card .tech-head b {
+  flex: 1;
 }
 .tech-card .tech-unlocks {
   display: flex;
@@ -1078,9 +1064,12 @@ a {
   text-overflow: ellipsis;
   font-size: 11px;
 }
+.tech-card .tech-unlocks small.needs {
+  font-style: italic;
+}
 .tech-card.known {
   background: linear-gradient(#e6efd8, #d3e0bd);
-  opacity: 1;
+  opacity: 0.85;
 }
 .tech-card.can {
   border-color: var(--ink);
@@ -1092,6 +1081,42 @@ a {
 .tech-card.on {
   outline: 3px solid var(--gold);
   background: linear-gradient(#fff6dc, #f3e2b2);
+}
+.age-gate {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  background: linear-gradient(90deg, #fff6dc, #f1dfb0);
+}
+.age-gate.done {
+  border-color: rgba(61, 122, 58, 0.6);
+  background: linear-gradient(90deg, #eef4e4, #d9e6c4);
+}
+.age-gate-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.age-gate-text b {
+  font:
+    700 17px Georgia,
+    serif;
+}
+.age-meter {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(74, 50, 30, 0.15);
+  overflow: hidden;
+}
+.age-meter span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
 }
 
 /* ---------- culture ---------- */

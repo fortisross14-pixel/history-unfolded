@@ -35,7 +35,7 @@ await page.screenshot({ path: `${out}/2b-research.png` });
 await page.click('.tech-card.can:has-text("Archery")');
 // set a far goal from the tree, then look at the culture web
 await page.click('.research-btn:has-text("Archery")');
-await page.click('.tech-card:has-text("Iron Working")');
+await page.click('.age-gate button');
 await page.screenshot({ path: `${out}/2c-research-goal.png` });
 await page.click('.modal.research .x');
 await page.evaluate(() => {
@@ -57,8 +57,16 @@ await page.click('.domain-tabs button:has-text("Cosmology")');
 await page.screenshot({ path: `${out}/2e-culture-cosmology.png` });
 await page.click('.modal.culture .x');
 
-// city screen: lay out a "Farm" district and fill a few slots
-await page.click('button:has-text("City & districts")');
+// founding opened nothing: the new city waits in the to-do list ("Plan Corin")
+if (await page.$('.modal.city-screen')) throw new Error('founding a city opened the city screen');
+for (let i = 0; i < 6 && !(await page.$('.modal.city-screen')); i++) {
+  const label = (await page.textContent('button.next')) ?? '';
+  await page.click('button.next');
+  await page.waitForTimeout(120);
+  if (!label.startsWith('Plan') && (await page.$('.modal'))) await page.keyboard.press('Escape');
+}
+if (!(await page.$('.modal.city-screen'))) throw new Error('the to-do list never offered the city');
+await page.screenshot({ path: `${out}/3-todo-city.png` });
 await page.waitForSelector('.modal.city-screen');
 await page.screenshot({ path: `${out}/3a-city-screen.png` });
 const hexes = page.locator('.hexmap .hx:not(.off)');

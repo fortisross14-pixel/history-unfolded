@@ -467,53 +467,62 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                 {sel.t?.fixed ? (
                   <p className="muted small">The town hall stays.</p>
                 ) : (
-                  groups.map(gr => (
-                    <div key={gr}>
-                      <h3 className="pal-group" style={{ color: GROUPS[gr].color }}>
-                        {GROUPS[gr].name}
-                      </h3>
-                      <div className="pal-items">
-                        {SLOT_LIST.filter(t => t.group === gr).map(t => {
-                          const why = slotProblem(game, c.civId, hex, centre, t.id, mineD.id);
-                          return (
-                            <button
-                              key={t.id}
-                              className={`pal ${sel.st.type === t.id ? 'on' : ''} ${why ? 'locked' : ''}`}
-                              title={why ?? t.note}
-                              onClick={() => act(setSlot(game, mineD.id, cell, t.id))}
-                            >
-                              <Art
-                                k={`building/${t.id}`}
-                                size={36}
-                                fallback={
-                                  <span
-                                    className="cell-glyph"
-                                    style={{ background: GROUPS[t.group].color }}
-                                  >
-                                    {t.glyph}
-                                  </span>
-                                }
-                              />
-                              <span>
-                                <b>{t.name}</b>
-                                <small>
-                                  <YieldLine y={t.out} />
-                                </small>
-                                <small className="muted">
-                                  {t.labour ? `${t.labour} workers · ` : ''}
-                                  {t.build.prod} prod{t.build.goods ? ' + ' : ''}
-                                  {t.build.goods && <Goods goods={t.build.goods} />}
-                                  {t.inputs ? ' · uses ' : ''}
-                                  {t.inputs && <Goods goods={t.inputs} />}
-                                </small>
-                                {why && <small className="bad">{why}</small>}
-                              </span>
-                            </button>
-                          );
-                        })}
+                  groups.map(gr => {
+                    // buildings not researched yet stay out of the list
+                    const known = SLOT_LIST.filter(
+                      t =>
+                        t.group === gr &&
+                        (!t.tech || civ.techs.includes(t.tech) || sel.st.type === t.id),
+                    );
+                    if (!known.length) return null;
+                    return (
+                      <div key={gr}>
+                        <h3 className="pal-group" style={{ color: GROUPS[gr].color }}>
+                          {GROUPS[gr].name}
+                        </h3>
+                        <div className="pal-items">
+                          {known.map(t => {
+                            const why = slotProblem(game, c.civId, hex, centre, t.id, mineD.id);
+                            return (
+                              <button
+                                key={t.id}
+                                className={`pal ${sel.st.type === t.id ? 'on' : ''} ${why ? 'locked' : ''}`}
+                                title={why ?? t.note}
+                                onClick={() => act(setSlot(game, mineD.id, cell, t.id))}
+                              >
+                                <Art
+                                  k={`building/${t.id}`}
+                                  size={36}
+                                  fallback={
+                                    <span
+                                      className="cell-glyph"
+                                      style={{ background: GROUPS[t.group].color }}
+                                    >
+                                      {t.glyph}
+                                    </span>
+                                  }
+                                />
+                                <span>
+                                  <b>{t.name}</b>
+                                  <small>
+                                    <YieldLine y={t.out} />
+                                  </small>
+                                  <small className="muted">
+                                    {t.labour ? `${t.labour} workers · ` : ''}
+                                    {t.build.prod} prod{t.build.goods ? ' + ' : ''}
+                                    {t.build.goods && <Goods goods={t.build.goods} />}
+                                    {t.inputs ? ' · uses ' : ''}
+                                    {t.inputs && <Goods goods={t.inputs} />}
+                                  </small>
+                                  {why && <small className="bad">{why}</small>}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </>
             ) : (

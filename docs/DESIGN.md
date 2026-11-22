@@ -456,10 +456,16 @@ contact with very different cultures, low stability).
 
 ### 10.1 As built
 
-- **57 techs in 4 eras** (Ancient 13, Classical 16, Medieval 16, Renaissance 12). Each has a
-  base cost scaled by era (×1.5, ×2, ×3, ×6: science grows with population, so the last era has
-  to cost far more to last). In AI test games the leading people has about 44 techs by turn 200,
-  55 by turn 300 and the full tree around turn 340 of 400 (`scripts/pace.ts`).
+- **Four ages, one small tree each** (Ancient 13 techs, Classical 16, Medieval 15, Renaissance
+  12). Prerequisites only link techs of the same age, and most techs have none, so an age's techs
+  can be taken in almost any order. Each age ends in a **gate tech** (Classical Age, Medieval
+  Age, Renaissance Age) that opens once a people knows about two thirds of the age (9, 11, 10
+  techs: any of them) and unlocks the next age. Skipped techs stay available later. The research
+  screen shows only the ages reached, current age first; later ages stay hidden.
+- Base costs scale by age (×1.5, ×2, ×3, ×9: science grows with population, so the last age
+  must cost far more to last). In AI test games the leading people has about 47 techs by
+  turn 200 and the whole tree around turn 320–330 of 400 (`scripts/pace.ts`). Science is stored
+  even while nothing is being researched.
 - Techs unlock **equipment** (iron swords, composite bows, longbows, crossbows, pikes, lances,
   arquebuses, muskets, field guns, kite shields, pavises, iron helmets, great helms, chain mail,
   plate, cuirasses, hobnailed boots, heavy and barded horses, siege ladders, bayonets),
@@ -478,7 +484,8 @@ contact with very different cultures, low stability).
 - **Culture-dependent costs:** a tech is 20% cheaper for a people holding 2+ choices of its
   favoured tag (Sailing, Navigation, Compass, Cartography for Maritime; Writing, Philosophy,
   Education for Rationalist; Astronomy for Solar…).
-- **Research goals:** click any later tech to aim for it; research then walks its prerequisites.
+- **Research goals:** click a tech you cannot take yet, or the next age's gate, to aim for it;
+  research then takes the cheapest steps there.
 
 ### 10.2 Diplomacy (as built)
 
@@ -534,14 +541,19 @@ contact with very different cultures, low stability).
 2. **Formation panel.** Cohort list grouped by loadout; select N cohorts → "Assign loadout" or
    "Split"; stats summary; templates dropdown.
 3. **Loadout designer.** Pick items per slot, see stats, cost and upkeep, save as template.
+   Only gear already researched is listed; a slot with nothing to choose yet is left out.
 4. **City panel.** Population, labour, food, housing, districts list, levy button.
-5. **District designer.** 3×3 grid, palette of unlocked slot types, valid/invalid highlighting
+5. **District designer.** 3×3 grid, palette of researched slot types (others hidden), valid/invalid highlighting
    for the target hex, adjacency arrows, totals (output, labour, cost), save as blueprint.
-6. **Research screen.** Tech tree.
+6. **Research screen.** The current age's techs as cards, tabs for earlier ages with techs left,
+   and the gate to the next age with a progress bar. The big web is the culture screen's.
 7. **Culture web screen.** Zoomable graph by domain; locked nodes greyed with "locked by: Solar
    Calendar"; tension meters; upheaval status; tag summary.
 8. **Diplomacy & trade.** Civs, relations with tag-based reasons, goods deals.
-9. **End turn / notifications.**
+9. **End turn / to-do list.** Nothing opens by itself (founding a city opens neither research
+   nor the city). The turn box's button walks through what is left: choose research, plan a
+   city with nothing under construction, order idle units. Enter asks once while the list is
+   not empty.
 
 ## 14. Technical plan
 

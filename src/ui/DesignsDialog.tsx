@@ -41,7 +41,19 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
   const [name, setName] = useState(current?.name ?? '');
   const [l, setL] = useState<Loadout>({ ...(current?.loadout ?? DEFAULT_LOADOUT) });
   const [sea, setSea] = useState<boolean>(!!current?.naval);
-  const slotList = sea ? NAVAL_SLOTS : SLOTS;
+  // only gear this people can make: research brings the rest
+  const usable = (slot: Slot) =>
+    ITEM_LIST.filter(
+      i =>
+        i.slot === slot &&
+        !!i.naval === sea &&
+        (!i.tech || civ.techs.includes(i.tech) || l[slot] === i.id),
+    );
+  const slotList = (sea ? NAVAL_SLOTS : SLOTS).filter(sl => usable(sl).length > 1);
+  const hiddenSlots = (sea ? NAVAL_SLOTS : SLOTS).filter(sl => usable(sl).length <= 1);
+  const lockedCount = ITEM_LIST.filter(
+    i => !!i.naval === sea && i.tech && !civ.techs.includes(i.tech),
+  ).length;
   const slotName = (k: Slot) => (sea ? NAVAL_SLOT_NAMES[k]! : SLOT_NAMES[k]);
   const switchSea = (v: boolean) => {
     setSea(v);
@@ -146,7 +158,7 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
               <div key={slot} className="slot">
                 <h3>{slotName(slot)}</h3>
                 <div className="items">
-                  {ITEM_LIST.filter(i => i.slot === slot && !!i.naval === sea).map(it => {
+                  {usable(slot).map(it => {
                     const locked = !!it.tech && !civ.techs.includes(it.tech);
                     const on = l[slot] === it.id;
                     const clash =
@@ -199,6 +211,15 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
                 </div>
               </div>
             ))}
+            {lockedCount > 0 && (
+              <p className="muted small more-gear">
+                {lockedCount} more pieces of gear come with research
+                {hiddenSlots.length
+                  ? `, among them the first ${hiddenSlots.map(sl => slotName(sl).toLowerCase() + 's').join(' and ')}`
+                  : ''}
+                .
+              </p>
+            )}
           </div>
 
           <aside className="loadout-side">

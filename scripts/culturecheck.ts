@@ -9,6 +9,7 @@ import {
   UPHEAVAL_TURNS,
 } from '../src/engine/culture.ts';
 import {
+  availableTechs,
   endTurn,
   foundCity,
   newGame,
@@ -50,16 +51,25 @@ check(
   techCost(s, me, 'iron-working') === Math.round(TECHS['iron-working'].cost * 2),
   'classical techs cost 2x their base',
 );
+check(!availableTechs(me).some(t => t.era > 1), 'only the Ancient age is open at the start');
+check(
+  !availableTechs(me).some(t => t.id === 'classical-age'),
+  'the Classical Age needs Ancient techs first',
+);
 const g = setResearchGoal(s, me.id, 'iron-working');
 check(
-  g.ok && me.researching === 'mining',
-  `goal Iron Working starts with Mining (${me.researching})`,
+  g.ok && !!me.researching && TECHS[me.researching].era === 1,
+  `goal Iron Working starts with an Ancient tech (${me.researching})`,
 );
-me.science = 10000;
-for (let t = 0; t < 4 && !me.techs.includes('iron-working'); t++) endTurn(s);
+me.science = 100000;
+for (let t = 0; t < 14 && !me.techs.includes('iron-working'); t++) endTurn(s);
 check(
-  me.techs.includes('bronze-working') && me.techs.includes('iron-working'),
-  `goal path researched: ${me.techs.join(', ')}`,
+  me.techs.includes('classical-age') && me.techs.includes('iron-working'),
+  `goal reached through the Classical Age: ${me.techs.join(', ')}`,
+);
+check(
+  me.techs.filter(t => TECHS[t].era === 1 && !TECHS[t].gate).length >= 9,
+  'the age gate took 9 Ancient techs',
 );
 check(me.researchGoal === null || me.techs.includes('iron-working'), 'goal cleared once reached');
 

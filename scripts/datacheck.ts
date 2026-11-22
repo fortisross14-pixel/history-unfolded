@@ -38,7 +38,18 @@ const unlocks = (id: string) =>
   SLOT_LIST.filter(s => s.tech === id).length +
   (TECHS[id].mods ? 1 : 0) +
   Object.values(DEPOSITS).filter(d => d.revealedBy === id).length;
-for (const t of TECH_LIST) if (!unlocks(t.id)) errs.push(`tech ${t.id} unlocks nothing`);
+for (const t of TECH_LIST)
+  if (t.gate === undefined && !unlocks(t.id)) errs.push(`tech ${t.id} unlocks nothing`);
+// ages: prerequisites stay inside an age; every age after the first has one gate, and it can be met
+for (const t of TECH_LIST)
+  for (const r of t.requires)
+    if (TECHS[r] && TECHS[r].era !== t.era) errs.push(`tech ${t.id} needs ${r} from another age`);
+for (let e = 2; e <= 4; e++) {
+  const gates = TECH_LIST.filter(t => t.gate !== undefined && t.era === e - 1);
+  if (gates.length !== 1) errs.push(`age ${e} has ${gates.length} gates`);
+  else if (gates[0].gate! > TECH_LIST.filter(t => t.era === e - 1 && !t.gate).length)
+    errs.push(`gate ${gates[0].id} asks for more techs than its age has`);
+}
 console.log(
   `${TECH_LIST.length} techs, ${CULTURE_LIST.length} culture nodes, ${forks.size} forks, ${Object.keys(TAGS).length} tags, ${ITEM_LIST.length} items, ${SLOT_LIST.length} slot types`,
 );

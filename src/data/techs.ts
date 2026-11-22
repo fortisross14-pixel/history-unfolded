@@ -1,5 +1,7 @@
 /**
- * The research tree: four eras. Research unlocks parts (equipment, buildings), reveals deposits
+ * The research tree: four ages, each with its own small tree. Prerequisites stay inside an age;
+ * the way into the next age is its gate tech (Classical Age, Medieval Age, Renaissance Age),
+ * open once a people knows enough of the current age's techs, whichever they are. Research unlocks parts (equipment, buildings), reveals deposits
  * and raises limits; it never hands out finished units or buildings. A tech can be cheaper for
  * peoples whose culture leans its way.
  */
@@ -15,6 +17,8 @@ export interface TechInfo {
   favoured?: string;
   mods?: Partial<Mods>;
   note: string;
+  /** an age gate: needs this many techs of its own age, and opens the next age */
+  gate?: number;
 }
 
 export const ERAS = ['', 'Ancient', 'Classical', 'Medieval', 'Renaissance'];
@@ -62,44 +66,38 @@ export const TECH_LIST: TechInfo[] = [
     ['mining'],
     'Bronze swords, axes, helmets, shields and scale.',
   ),
+  t('classical-age', 'Classical Age', 1, 30, [], 'Opens the Classical age.', { gate: 9 }),
   // ---- classical
-  t(
-    'iron-working',
-    'Iron Working',
-    2,
-    50,
-    ['bronze-working'],
-    'Reveals iron. Iron mines, swords and helmets.',
-  ),
-  t('currency', 'Currency', 2, 45, ['writing'], 'Banks.', {
+  t('iron-working', 'Iron Working', 2, 50, [], 'Reveals iron. Iron mines, swords and helmets.'),
+  t('currency', 'Currency', 2, 45, [], 'Banks.', {
     favoured: 'mercantile',
     mods: { goldPct: 5 },
   }),
-  t('mathematics', 'Mathematics', 2, 55, ['writing'], 'Better science.', {
+  t('mathematics', 'Mathematics', 2, 55, [], 'Better science.', {
     favoured: 'rationalist',
     mods: { sciencePct: 5 },
   }),
-  t('construction', 'Construction', 2, 55, ['masonry'], 'Better production.', {
+  t('construction', 'Construction', 2, 55, [], 'Better production.', {
     mods: { prodPct: 5 },
   }),
-  t('carpentry', 'Carpentry', 2, 45, ['bronze-working'], 'Lumber mills.'),
-  t('priesthood', 'Priesthood', 2, 50, ['mysticism', 'writing'], 'Temples.', {
+  t('carpentry', 'Carpentry', 2, 45, [], 'Lumber mills.'),
+  t('priesthood', 'Priesthood', 2, 50, [], 'Temples.', {
     favoured: 'devout',
   }),
-  t('literature', 'Literature', 2, 55, ['writing'], 'Amphitheatres.', { favoured: 'artistic' }),
-  t('philosophy', 'Philosophy', 2, 75, ['writing', 'mysticism'], 'Libraries.', {
+  t('literature', 'Literature', 2, 55, [], 'Amphitheatres.', { favoured: 'artistic' }),
+  t('philosophy', 'Philosophy', 2, 75, [], 'Libraries.', {
     favoured: 'rationalist',
   }),
-  t('law', 'Code of Laws', 2, 60, ['writing'], 'Order and taxes.', {
+  t('law', 'Code of Laws', 2, 60, [], 'Order and taxes.', {
     mods: { goldPct: 5, tensionPct: -5 },
   }),
-  t('bowyery', 'Bowyery', 2, 50, ['archery'], 'Composite bows.'),
+  t('bowyery', 'Bowyery', 2, 50, [], 'Composite bows.'),
   t('mail-making', 'Mail Making', 2, 75, ['iron-working'], 'Chain mail and kite shields.'),
-  t('drill', 'Drill', 2, 65, ['bronze-working'], 'Bigger formations.', {
+  t('drill', 'Drill', 2, 65, [], 'Bigger formations.', {
     favoured: 'martial',
     mods: { commandCap: 2 },
   }),
-  t('selective-breeding', 'Selective Breeding', 2, 65, ['horseback-riding'], 'Heavy horses.'),
+  t('selective-breeding', 'Selective Breeding', 2, 65, [], 'Heavy horses.'),
   t(
     'engineering',
     'Engineering',
@@ -118,32 +116,27 @@ export const TECH_LIST: TechInfo[] = [
     'Siege ladders; better assaults.',
     { mods: { siegePct: 10 } },
   ),
-  t('navigation', 'Navigation', 2, 60, ['sailing'], 'Coastal cities prosper; ships see further.', {
+  t('navigation', 'Navigation', 2, 60, [], 'Coastal cities prosper; ships see further.', {
     favoured: 'maritime',
     mods: { coastalPct: 5, navalPct: 10 },
   }),
+  t('medieval-age', 'Medieval Age', 2, 100, [], 'Opens the Medieval age.', { gate: 11 }),
   // ---- medieval
-  t('feudalism', 'Feudalism', 3, 120, ['law', 'drill'], 'Bigger levies.', {
+  t('feudalism', 'Feudalism', 3, 120, [], 'Bigger levies.', {
     favoured: 'absolutist',
     mods: { levyCohorts: 1 },
   }),
-  t('mechanics', 'Mechanics', 3, 130, ['engineering'], 'Crossbows, pavises, windmills.'),
-  t(
-    'chivalry',
-    'Chivalry',
-    3,
-    150,
-    ['feudalism', 'selective-breeding'],
-    'Lances and barded horses.',
-    { favoured: 'martial' },
-  ),
-  t('theology', 'Theology', 3, 140, ['philosophy', 'priesthood'], 'Cathedrals.', {
+  t('mechanics', 'Mechanics', 3, 130, [], 'Crossbows, pavises, windmills.'),
+  t('chivalry', 'Chivalry', 3, 150, ['feudalism'], 'Lances and barded horses.', {
+    favoured: 'martial',
+  }),
+  t('theology', 'Theology', 3, 140, [], 'Cathedrals.', {
     favoured: 'devout',
   }),
-  t('education', 'Education', 3, 160, ['philosophy', 'literature'], 'Universities.', {
+  t('education', 'Education', 3, 160, [], 'Universities.', {
     favoured: 'rationalist',
   }),
-  t('guilds', 'Guilds', 3, 130, ['currency', 'carpentry'], 'Guild halls.', {
+  t('guilds', 'Guilds', 3, 130, [], 'Guild halls.', {
     favoured: 'mercantile',
   }),
   t(
@@ -151,65 +144,47 @@ export const TECH_LIST: TechInfo[] = [
     'Administration',
     3,
     170,
-    ['law', 'education'],
+    ['education'],
     'Wider territory and district reach.',
     { mods: { territoryRadius: 1, districtRadius: 1 } },
   ),
-  t('mineralogy', 'Mineralogy', 3, 110, ['iron-working', 'mining'], 'Reveals coal. Coal mines.'),
-  t(
-    'armour-smithing',
-    'Armour Smithing',
-    3,
-    180,
-    ['mail-making', 'mineralogy'],
-    'Plate armour and great helms.',
-  ),
+  t('mineralogy', 'Mineralogy', 3, 110, [], 'Reveals coal. Coal mines.'),
+  t('armour-smithing', 'Armour Smithing', 3, 180, ['mineralogy'], 'Plate armour and great helms.'),
   t('pike-tactics', 'Pike Tactics', 3, 140, ['feudalism'], 'Pikes.'),
-  t('yeomanry', 'Yeomanry', 3, 120, ['bowyery'], 'Longbows.'),
-  t('castles', 'Castles', 3, 150, ['construction', 'feudalism'], 'Castles.', {
+  t('yeomanry', 'Yeomanry', 3, 120, [], 'Longbows.'),
+  t('castles', 'Castles', 3, 150, ['feudalism'], 'Castles.', {
     mods: { cityDefensePct: 10 },
   }),
-  t('urbanism', 'Urbanism', 3, 160, ['engineering'], 'Tenements.', { mods: { housingPct: 5 } }),
-  t(
-    'alchemy',
-    'Alchemy',
-    3,
-    150,
-    ['philosophy', 'mineralogy'],
-    'Reveals saltpeter. Saltpeter works.',
-  ),
-  t('compass', 'Compass', 3, 130, ['navigation'], 'Coastal trade; sight.', {
+  t('urbanism', 'Urbanism', 3, 160, [], 'Tenements.', { mods: { housingPct: 5 } }),
+  t('alchemy', 'Alchemy', 3, 150, ['mineralogy'], 'Reveals saltpeter. Saltpeter works.'),
+  t('compass', 'Compass', 3, 130, [], 'Coastal trade; sight.', {
     favoured: 'maritime',
     mods: { coastalPct: 10, sight: 1, navalPct: 10 },
   }),
+  t('renaissance-age', 'Renaissance Age', 3, 220, [], 'Opens the Renaissance.', { gate: 10 }),
   // ---- renaissance
-  t('gunpowder', 'Gunpowder', 4, 300, ['alchemy', 'mechanics'], 'Arquebuses.'),
-  t('printing', 'Printing Press', 4, 280, ['education', 'guilds'], 'Printing houses.', {
+  t('gunpowder', 'Gunpowder', 4, 300, [], 'Arquebuses.'),
+  t('printing', 'Printing Press', 4, 280, [], 'Printing houses.', {
     favoured: 'rationalist',
   }),
-  t('banking', 'Banking', 4, 300, ['guilds', 'currency'], 'Stock exchanges.', {
+  t('banking', 'Banking', 4, 300, [], 'Stock exchanges.', {
     favoured: 'mercantile',
   }),
-  t('astronomy', 'Astronomy', 4, 280, ['education', 'compass'], 'Observatories.', {
+  t('astronomy', 'Astronomy', 4, 280, [], 'Observatories.', {
     favoured: 'solar',
   }),
-  t('metallurgy', 'Metallurgy', 4, 320, ['armour-smithing'], 'Foundries and cuirasses.'),
+  t('metallurgy', 'Metallurgy', 4, 320, [], 'Foundries and cuirasses.'),
   t('musketry', 'Musketry', 4, 380, ['gunpowder'], 'Muskets and bayonets.'),
   t('artillery', 'Artillery', 4, 400, ['gunpowder', 'metallurgy'], 'Field guns.', {
     mods: { siegePct: 15 },
   }),
-  t('conscription', 'Conscription', 4, 360, ['administration', 'musketry'], 'Much bigger levies.', {
+  t('conscription', 'Conscription', 4, 360, ['musketry'], 'Much bigger levies.', {
     mods: { levyCohorts: 3 },
   }),
-  t(
-    'officer-corps',
-    'Professional Officers',
-    4,
-    340,
-    ['administration', 'drill'],
-    'Much bigger formations.',
-    { favoured: 'martial', mods: { commandCap: 3 } },
-  ),
+  t('officer-corps', 'Professional Officers', 4, 340, [], 'Much bigger formations.', {
+    favoured: 'martial',
+    mods: { commandCap: 3 },
+  }),
   t(
     'scientific-method',
     'Scientific Method',
@@ -223,13 +198,29 @@ export const TECH_LIST: TechInfo[] = [
     favoured: 'mercantile',
     mods: { groupPct: { commerce: 20 } },
   }),
-  t('cartography', 'Cartography', 4, 300, ['compass', 'printing'], 'Better maps.', {
+  t('cartography', 'Cartography', 4, 300, ['printing'], 'Better maps.', {
     favoured: 'maritime',
     mods: { sight: 1, coastalPct: 5 },
   }),
-  t('star-forts', 'Star Forts', 4, 350, ['castles', 'gunpowder'], 'Cities hold against guns.', {
+  t('star-forts', 'Star Forts', 4, 350, ['gunpowder'], 'Cities hold against guns.', {
     mods: { cityDefensePct: 20 },
   }),
 ];
 
 export const TECHS: Record<string, TechInfo> = Object.fromEntries(TECH_LIST.map(x => [x.id, x]));
+
+/** The gate tech that opens each age after the first. */
+export const AGE_GATE: Record<number, string> = Object.fromEntries(
+  TECH_LIST.filter(x => x.gate !== undefined).map(x => [x.era + 1, x.id]),
+);
+
+/** The latest age a people has reached: 1 + the gates it has researched. */
+export const ageOf = (techs: string[]): number => {
+  let age = 1;
+  while (AGE_GATE[age + 1] && techs.includes(AGE_GATE[age + 1])) age++;
+  return age;
+};
+
+/** Techs of an age, gates left out. */
+export const ageTechs = (era: number) =>
+  TECH_LIST.filter(x => x.era === era && x.gate === undefined);

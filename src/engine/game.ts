@@ -6,7 +6,7 @@ import { CITY_NAMES, CIV_PRESETS } from '../data/civs.ts';
 import { DEPOSITS } from '../data/goods.ts';
 import { isWater, type ReliefId, type TerrainId, type VegetationId } from '../data/terrain.ts';
 import { DEFAULT_LOADOUT, isNavalLoadout, ITEMS, SLOTS, type Loadout } from '../data/items.ts';
-import { TECHS, TECH_LIST } from '../data/techs.ts';
+import { AGE_GATE, ageOf, ageTechs, ERAS, TECHS, TECH_LIST } from '../data/techs.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
 import { generateMap, isPassableLand, MAP_SIZES } from './mapgen.ts';
 import { findPath } from './path.ts';
@@ -61,7 +61,7 @@ import {
   SETTLER_COHORTS,
 } from './units.ts';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
 export const MIN_CITY_DISTANCE = 4;
@@ -839,9 +839,20 @@ export function assignDesign(
 
 // ---------------------------------------------------------------- research
 
+/** How many of an age's techs a people knows, gates left out. */
+export const knownInAge = (civ: Civ, era: number) =>
+  ageTechs(era).filter(t => civ.techs.includes(t.id)).length;
+
+/** Techs that can be researched now: in an age already reached, prerequisites known; a gate also
+ * needs enough of its age known. */
 export function availableTechs(civ: Civ) {
+  const age = ageOf(civ.techs);
   return TECH_LIST.filter(
-    t => !civ.techs.includes(t.id) && t.requires.every(r => civ.techs.includes(r)),
+    t =>
+      !civ.techs.includes(t.id) &&
+      t.era <= age &&
+      t.requires.every(r => civ.techs.includes(r)) &&
+      (t.gate === undefined || knownInAge(civ, t.era) >= t.gate),
   );
 }
 
@@ -903,16 +914,25 @@ export function endTurn(s: GameState): string[] {
     civ.gold += gold - upkeep;
     if (civ.gold < 0) civ.gold = 0;
     if (!civ.researching) civ.researching = nextResearch(s, civ);
+    // science is stored even while nothing is chosen, so choosing late costs nothing
+    civ.science += science;
     if (civ.researching) {
-      civ.science += science;
       const t = TECHS[civ.researching];
       const cost = techCost(s, civ, t.id);
       if (civ.science >= cost) {
         civ.science -= cost;
         civ.techs.push(t.id);
         civ.researching = null;
-        log(s, civ.id, `${civ.name} learned ${t.name}.`);
-        if (civ.isPlayer) events.push(`Research complete: ${t.name}. ${t.note}`);
+        if (t.gate !== undefined) {
+          log(s, civ.id, `The ${civ.name} enter the ${ERAS[t.era + 1]} age.`);
+          if (civ.isPlayer)
+            events.push(
+              `A new age: the ${ERAS[t.era + 1]}. ${ageTechs(t.era + 1).length} new techs to research.`,
+            );
+        } else {
+          log(s, civ.id, `${civ.name} learned ${t.name}.`);
+          if (civ.isPlayer) events.push(`Research complete: ${t.name}. ${t.note}`);
+        }
       }
     }
   }
@@ -1009,7 +1029,17 @@ function unbits(b64: string, n: number): number[] {
  * Saves are versioned. Each entry upgrades a save from version k to k + 1; keep them forever.
  * Versions before MIN_SAVE_VERSION came from development builds and are not loadable.
  */
-const MIGRATIONS: Record<number, (d: GameState) => GameState> = {};
+const MIGRATIONS: Record<number, (d: GameState) => GameState> = {
+  // 5 → 6: research went to ages; anyone already holding a later age's tech gets its gates
+  5: d => {
+    for (const c of d.civs) {
+      const top = Math.max(1, ...c.techs.map(id => TECHS[id]?.era ?? 1));
+      for (let e = 2; e <= top; e++) if (!c.techs.includes(AGE_GATE[e])) c.techs.push(AGE_GATE[e]);
+      if (c.researchGoal && !TECHS[c.researchGoal]) c.researchGoal = null;
+    }
+    return { ...d, version: 6 };
+  },
+};
 export const MIN_SAVE_VERSION = 5;
 
 /** Compact JSON: terrain as strings, explored and roads as bitsets, no generation-only data. */
@@ -1392,7 +1422,7 @@ export const territoryRadius = (s: GameState, civId: number) =>
   TERRITORY_RADIUS + Math.floor(civMods(s, civId).territoryRadius);
 
 /** Later eras cost more than their listed base (indexed by era, 1..4). */
-const ERA_COST = [1, 1.5, 2, 3, 6];
+const ERA_COST = [1, 1.5, 2, 3, 9];
 
 /** Research cost after culture leanings and bonuses. */
 export function techCost(s: GameState, civ: Civ, id: string): number {
@@ -1419,6 +1449,8 @@ export function nextResearch(s: GameState, civ: Civ): string | null {
   const score = (id: string) => {
     const t = TECHS[id];
     let v = techCost(s, civ, id);
+    // a new age is worth reaching as soon as it opens
+    if (t.gate !== undefined) v *= 0.35;
     if (t.favoured && civ.leanings.includes(t.favoured)) v *= 0.7;
     if (civ.sea === undefined && (id === 'sailing' || id === 'navigation') && boxedIn(s, civ))
       v *= 0.3;
@@ -1449,6 +1481,15 @@ export function goalStep(civ: Civ, goal: string): string | null {
     if (civ.techs.includes(id) || seen.has(id)) return null;
     seen.add(id);
     const t = TECHS[id];
+    // a later age is reached through its gate
+    if (t.era > ageOf(civ.techs)) return walk(AGE_GATE[t.era]);
+    if (t.gate !== undefined && knownInAge(civ, t.era) < t.gate) {
+      // any tech of the age counts: take the cheapest open one
+      const open = availableTechs(civ)
+        .filter(x => x.era === t.era && x.gate === undefined)
+        .sort((a, b) => a.cost - b.cost);
+      return open[0]?.id ?? null;
+    }
     const missing = t.requires.filter(r => !civ.techs.includes(r));
     if (!missing.length) return id;
     // cheapest branch first

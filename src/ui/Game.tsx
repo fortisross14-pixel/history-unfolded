@@ -4,6 +4,7 @@ import { isMuted, setMuted, sound } from './sound.ts';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
 import {
+  availableTechs,
   assignDesign,
   attack,
   buildRoad,
@@ -53,7 +54,7 @@ import { ProposalDialog } from './ProposalDialog.tsx';
 import { answerProposal, proposeDeal } from '../engine/diplomacy.ts';
 import { CultureDialog, KeepDialog, TagChip } from './CultureDialog.tsx';
 import { resolveUpheaval, startUpheaval, takeNode } from '../engine/culture.ts';
-import { cityEconomy } from '../engine/economy.ts';
+import { cityEconomy, constructionQueue } from '../engine/economy.ts';
 import { identity } from '../engine/mods.ts';
 import { DOMAINS } from '../data/culture.ts';
 import { saveGame } from './save.ts';
@@ -75,11 +76,38 @@ type Dialog =
   | { kind: 'war'; civId: number; then?: () => void }
   | null;
 
+/** "research, 2 cities, 3 units" */
+function todoSummary(list: { key: string }[]): string {
+  const n = (k: string) => list.filter(t => t.key.startsWith(k)).length;
+  const parts: string[] = [];
+  if (n('research')) parts.push('choose research');
+  const c = n('city:'),
+    u = n('unit:');
+  if (c) parts.push(`plan ${c} cit${c > 1 ? 'ies' : 'y'}`);
+  if (u) parts.push(`${u} unit${u > 1 ? 's' : ''} to order`);
+  return parts.join(', ');
+}
+
+/** What the Next button will do: the item after the current one. */
+function nextLabel(
+  list: { key: string; label: string }[],
+  last: string,
+  sel: { kind: string; id?: number } | null,
+): string {
+  const here =
+    sel?.kind === 'formation' ? `unit:${sel.id}` : sel?.kind === 'city' ? `city:${sel.id}` : '';
+  const at = list.findIndex(t => t.key === (here || last));
+  const t = list[(at + 1) % list.length];
+  const more = list.length - 1;
+  const what = t.key.startsWith('unit:') ? `Next: ${t.label}` : t.label;
+  return more ? `${what} (+${more})` : what;
+}
+
 const KEYS: [string, string][] = [
   ['Click', 'Select a unit, city or hex'],
   ['Right-click', 'Move the selected unit there, or attack'],
   ['Enter', 'End the turn (asks once if units still wait)'],
-  ['Space N', 'Next unit waiting for orders'],
+  ['Space N', 'Next thing to do: research, a city to plan, a unit to order'],
   ['F', 'Fortify'],
   ['B', 'Found a city (settlers)'],
   ['R', 'Build a road'],
@@ -175,6 +203,7 @@ export function Game({
   const idle = () =>
     game.formations.filter(f => f.civId === me.id && f.moves > 0 && !f.fortified && !f.path.length);
   const focus = (hex: number) => setCenter({ hex, n: Date.now() });
+  /** The next unit waiting for orders, after the one selected. */
   const selectNext = () => {
     const list = idle();
     if (!list.length) return false;
@@ -182,6 +211,54 @@ export function Game({
     const f = list[(cur + 1) % list.length];
     setSel({ kind: 'formation', id: f.id });
     focus(f.hex);
+    return true;
+  };
+  /**
+   * What is still to do this turn: choose research, give idle cities something to build, order
+   * units. Nothing opens by itself; the turn box walks through this list.
+   */
+  type Todo = { key: string; label: string; go: () => void };
+  const todo = (): Todo[] => {
+    const out: Todo[] = [];
+    const mine = game.cities.filter(c => c.civId === me.id);
+    if (!me.researching && mine.length && availableTechs(me).length)
+      out.push({
+        key: 'research',
+        label: 'Choose research',
+        go: () => setDialog({ kind: 'research' }),
+      });
+    for (const c of mine)
+      if (!constructionQueue(game, c).length)
+        out.push({
+          key: `city:${c.id}`,
+          label: `Plan ${c.name}`,
+          go: () => {
+            setSel({ kind: 'city', id: c.id });
+            focus(c.hex);
+            setDialog({ kind: 'city', cityId: c.id });
+          },
+        });
+    for (const f of idle())
+      out.push({
+        key: `unit:${f.id}`,
+        label: f.name,
+        go: () => {
+          setSel({ kind: 'formation', id: f.id });
+          focus(f.hex);
+        },
+      });
+    return out;
+  };
+  const lastTodo = useRef('');
+  const doNext = () => {
+    const list = todo();
+    if (!list.length) return false;
+    const here =
+      sel?.kind === 'formation' ? `unit:${sel.id}` : sel?.kind === 'city' ? `city:${sel.id}` : '';
+    const at = list.findIndex(t => t.key === (here || lastTodo.current));
+    const t = list[(at + 1) % list.length];
+    lastTodo.current = t.key;
+    t.go();
     return true;
   };
 
@@ -239,13 +316,8 @@ export function Game({
     events.filter(urgent).forEach(e => toast(e, true));
     if (calm.length <= 2) calm.forEach(e => toast(e));
     else toast(`${calm.length} things happened. 📜 Last turn has the full story.`);
-    if (
-      !me.researching &&
-      game.cities.some(c => c.civId === me.id) &&
-      Object.keys(TECHS).some(t => !me.techs.includes(t))
-    )
-      toast('Choose something to research.');
     bump();
+    lastTodo.current = '';
     if (!selectNext()) setSel(null);
   };
 
@@ -368,19 +440,18 @@ export function Game({
       if (key === 'Enter') {
         e.preventDefault();
         // ask once when units still wait for orders
-        if (idle().length && !endArmed.current) {
+        const left = todo();
+        if (left.length && !endArmed.current) {
           endArmed.current = true;
           setTimeout(() => (endArmed.current = false), 2500);
-          toast(
-            `${idle().length} unit${idle().length > 1 ? 's' : ''} still without orders: press Enter again to end the turn.`,
-          );
+          toast(`Still to do: ${todoSummary(left)}. Press Enter again to end the turn.`);
           return;
         }
         endArmed.current = false;
         doEndTurn();
       } else if (key === ' ' || key === 'n') {
         e.preventDefault();
-        selectNext();
+        doNext();
       } else if (key === 'Escape') {
         setSel(null);
         setArmed(-1);
@@ -438,7 +509,7 @@ export function Game({
     [version],
   );
   const myCities = game.cities.filter(c => c.civId === me.id);
-  const idleCount = idle().length;
+  const todos = todo();
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
 
   const proposal = game.proposals.find(p => p.to === me.id);
@@ -655,9 +726,11 @@ export function Game({
             onFound={() => {
               const hex = selF.hex;
               const r = report(foundCity(game, selF.id));
-              const c = cityAt(game, hex);
-              if (r.ok && c) setSel({ kind: 'city', id: c.id });
-              if (r.ok && !me.researching) setDialog({ kind: 'research' });
+              // research and the city's first district wait in the to-do list
+              if (r.ok && !selectNext()) {
+                const c = cityAt(game, hex);
+                setSel(c ? { kind: 'city', id: c.id } : null);
+              }
             }}
             onFortify={() => report(fortify(game, selF.id))}
             onRename={n => report(rename(game, selF.id, n))}
@@ -786,8 +859,13 @@ export function Game({
         </div>
       )}
       <div className="turn-box" ref={turnRef}>
-        <button className="next" onClick={selectNext} disabled={!idleCount}>
-          {idleCount ? `Next unit (${idleCount})` : 'All units ordered'}
+        <button
+          className="next"
+          onClick={doNext}
+          disabled={!todos.length}
+          title={todos.length ? `To do: ${todoSummary(todos)}` : undefined}
+        >
+          {todos.length ? nextLabel(todos, lastTodo.current, sel) : 'All done'}
         </button>
         <button className="end-turn" onClick={doEndTurn} disabled={busy}>
           End turn ⏎

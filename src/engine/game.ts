@@ -63,6 +63,7 @@ import { difficultyOf, yieldFactor } from './difficulty.ts';
 import { victoryTurn } from './victory.ts';
 import { aiPathTurn, enterAge } from './paths.ts';
 import { crisisTurn } from './crises.ts';
+import { coalitionTurn } from './coalition.ts';
 import { aiPolicyTurn, policyTurn } from './policies.ts';
 import { settlerFactor } from '../data/policies.ts';
 import { realmEventTurn, settleRealmEvent } from './realmEvents.ts';
@@ -523,6 +524,8 @@ export function stepCost(s: GameState, f: Formation, from: number, to: number): 
   const base = enterCost(s.map, f, to);
   if (!isFinite(base)) return base;
   if (isWaterHex(s, from)) return Math.max(1, formationMoves(f)); // landing
+  // railways: a fifth of a move from rail to rail
+  if (s.roads[from] === RAIL && s.roads[to] === RAIL) return RAIL_COST;
   if (s.roads[from] && s.roads[to]) return Math.max(0.2, 0.5 + civMods(s, f.civId).roadCost);
   return base;
 }
@@ -1151,6 +1154,7 @@ export function endTurn(s: GameState): string[] {
     if (!civ.isPlayer) aiPolicyTurn(s, civ);
   }
   events.push(...diplomacyTurn(s));
+  events.push(...coalitionTurn(s));
   events.push(...historyTurn(s));
   heal(s);
   for (const c of s.cities) c.guard = Math.min(1, c.guard + 0.1);
@@ -2328,9 +2332,41 @@ export function trainCrew(s: GameState, cityId: number, kind: 'workers' | 'engin
   return ok(`${f.name} leave ${c.name}.`);
 }
 
+/** A hex value in s.roads: 1 a road, 2 a railway (laid by engineers over a road). */
+export const RAIL = 2;
+export const RAIL_COST = 0.2;
+export const RAIL_GOLD = 10;
+
+/** Why this formation cannot lay a railway where it stands, or null. */
+export function railProblem(s: GameState, f: Formation): string | null {
+  if (f.kind !== 'engineers') return 'Only engineers lay railways.';
+  if (!s.civs[f.civId].techs.includes('railways')) return 'Railways need the Railways tech.';
+  if (s.roads[f.hex] === RAIL) return 'There is a railway here already.';
+  if (!s.roads[f.hex]) return 'Railways are laid over a road: build the road first.';
+  if (f.moves <= 0) return 'No moves left this turn.';
+  if (s.civs[f.civId].gold < RAIL_GOLD) return `A stretch of railway costs ${RAIL_GOLD} gold.`;
+  return null;
+}
+
+/** Engineers lay a railway over the road they stand on. */
+export function buildRail(s: GameState, fid: number): Result {
+  const f = formation(s, fid);
+  if (!f) return fail('No such formation.');
+  const why = railProblem(s, f);
+  if (why) return fail(why);
+  s.roads[f.hex] = RAIL;
+  s.civs[f.civId].gold -= RAIL_GOLD;
+  invalidateMarkets();
+  f.moves = 0;
+  f.path = [];
+  return ok(`Railway laid (${RAIL_GOLD} gold).`);
+}
+
 export function buildRoad(s: GameState, fid: number): Result {
   const f = formation(s, fid);
   if (!f) return fail('No such formation.');
+  // engineers on a road lay rails over it
+  if (f.kind === 'engineers' && s.roads[f.hex] === 1) return buildRail(s, fid);
   const who = roadBuilderProblem(s, f);
   if (who) return fail(who);
   if (s.roads[f.hex]) return fail('There is a road here already.');

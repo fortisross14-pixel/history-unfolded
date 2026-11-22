@@ -84,6 +84,11 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   Renaissance; Diplomatic and Scientific in the Industrial age. Progress on the Victory screen (V).
 - **National directions**: on entering the Classical age and the Renaissance, choose a lasting
   direction with an edict (Nation screen, O); some are alternate developments earned by history.
+- **Railways**: engineers lay rails over roads (Railways tech); rail-to-rail moves cost a fifth of
+  a move and rail-linked settlements make 15% more production.
+- **Coalitions**: a people running away with the game (holding a victory goal, or 1.5× the next
+  score) faces a coalition: embargo, worse opinion, and joint wars when together they are strong
+  enough.
 - **Age policies**: one three-way lever per age (way of life, revenue, feudal balance, trade,
   labour) on the Nation screen; each side gives and costs, the middle is balanced.
 - **Crises**: famine, debt, plague, schism and strikes grow out of the realm's own state (crowding,

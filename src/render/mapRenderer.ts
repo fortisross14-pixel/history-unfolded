@@ -577,6 +577,24 @@ export class MapRenderer {
         ctx.stroke();
       }
 
+      // 5c. railways: a dark iron line with light sleepers over the road
+      for (const pass of [0, 1]) {
+        ctx.strokeStyle = pass === 0 ? 'rgba(38,34,32,0.95)' : 'rgba(236,226,204,0.95)';
+        ctx.lineWidth = pass === 0 ? 3.2 : 1.4;
+        ctx.setLineDash(pass === 0 ? [] : [1.5, 3.5]);
+        ctx.beginPath();
+        for (const i of onScreen) {
+          if (!known(i) || s.roads[i] !== 2) continue;
+          for (const n of neighbors(g, i)) {
+            if (s.roads[n] !== 2 || !known(n) || n < i) continue;
+            ctx.moveTo(cx(i), cy(i));
+            ctx.lineTo(cx(n), cy(n));
+          }
+        }
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
       // 6. deposits
       for (const i of onScreen) {
         if (!known(i) || !depositVisible(s, civId, i)) continue;

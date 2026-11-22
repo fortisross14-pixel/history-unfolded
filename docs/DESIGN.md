@@ -688,11 +688,15 @@ The great houses are the thread through the game.
 - AI peoples keep about half the realm under the throne, give the rest to the house strongest in
   each settlement's line, honour restless houses, and yield a civil war when outgunned two to one.
 
-## 11c. Building on the map
+## 11c. Building on the map (as built)
 
-Roads by age, as built: any army until the Medieval age, then workers; engineers join in the
-Industrial age (§8.1). Planned: engineers lay **railways** (faster than roads, carrying trade
-like them) and later improvements.
+Roads by age: any army until the Medieval age, then workers; engineers join in the Industrial
+age (§8.1). **Railways**: with the Railways tech, engineers standing on a road lay a railway over
+it (10 gold, the rest of their moves; the R key or "Lay railway"). Moving from rail to rail costs
+a fifth of a move. A settlement on a railway that reaches another of its realm's settlements
+makes 15% more production. Rails carry trade like roads. AI peoples raise a crew of engineers
+once they know Railways and lay rails between settlements 6 hexes apart or less, once the roads
+are done. Rails are drawn as a dark iron line with light sleepers.
 
 ## 11d. Events (as built)
 
@@ -812,6 +816,23 @@ AI peoples review their levers every 5 turns from their own situation (few settl
 migratory; restless houses → autonomy; crowding → mercantilism; many factories → welfare).
 Policies are the per-age system of the Dynamic Ages plan in its simplest form; the plague events
 of the event pools were retired so plague exists once, as the crisis.
+
+## 12e. Coalitions (as built)
+
+From turn 100, when one great people runs away with the game (it holds a victory goal, or its
+score is 1.5 times the next people's), the others band together against it, and say why.
+Everything is out in the open: no hidden bonus for anyone.
+- Members think worse of the leader (−20, fading) and better of each other (+10).
+- Members end their trade treaties with the leader (an embargo).
+- A held victory goal is news everywhere: every great people can join, and learns of the leader.
+- Every 5 turns, when the AI members' combined strength reaches 90% of the leader's, those not
+  at war and not bound by a pact declare war together. The player is never dragged in.
+- AI members also look for war on the leader twice as often, at any distance they can reach.
+- It breaks up when the leader no longer holds a goal and its score falls under 1.25 times the
+  next.
+The Victory screen names the coalition and its reason. In 400-turn AI games coalitions formed
+against peoples holding the Cultural goal and fought four wars in one game; the leader still won
+there, so a coalition is counterplay, not a guaranteed stop.
 
 ## 13. Core screens and flows
 

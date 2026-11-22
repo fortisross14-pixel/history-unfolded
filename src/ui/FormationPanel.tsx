@@ -5,6 +5,8 @@ import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
 import {
   canFoundCity,
   roadBuilderProblem,
+  railProblem,
+  RAIL_GOLD,
   cargoOf,
   formationsAt,
   refitPreview,
@@ -70,6 +72,7 @@ export function FormationPanel(p: Props) {
   const m = game.map;
   const foundWhy = f.kind === 'settlers' ? canFoundCity(game, f) : null;
   const roadWhy = roadBuilderProblem(game, f);
+  const railWhy = f.kind === 'engineers' ? railProblem(game, f) : null;
   const setAll = (n: 'all' | 'none') =>
     setPick(Object.fromEntries(groups.map(g => [g.key, n === 'all' ? g.cohorts.length : 0])));
   const design = civ.designs.find(d => d.id === designId) ?? null;
@@ -332,20 +335,35 @@ export function FormationPanel(p: Props) {
               <Icon name="flag" /> Found city
             </button>
           )}
-          {f.kind !== 'fleet' && f.kind !== 'settlers' && f.aboard === undefined && (
+          {f.kind === 'engineers' && game.roads[f.hex] === 1 && (
             <button
               onClick={p.onRoad}
-              disabled={!!game.roads[f.hex] || f.moves <= 0 || !!roadWhy}
+              disabled={!!railWhy}
               title={
-                roadWhy ??
-                (game.roads[f.hex]
-                  ? 'There is a road here'
-                  : 'Lay a road on this hex (R). Uses the remaining moves.')
+                railWhy ??
+                `Lay a railway over this road (R): ${RAIL_GOLD} gold, the remaining moves.`
               }
             >
-              <Icon name="road" /> Build road
+              <Icon name="road" /> Lay railway
             </button>
           )}
+          {f.kind !== 'fleet' &&
+            f.kind !== 'settlers' &&
+            f.aboard === undefined &&
+            !(f.kind === 'engineers' && game.roads[f.hex] === 1) && (
+              <button
+                onClick={p.onRoad}
+                disabled={!!game.roads[f.hex] || f.moves <= 0 || !!roadWhy}
+                title={
+                  roadWhy ??
+                  (game.roads[f.hex]
+                    ? 'There is a road here'
+                    : 'Lay a road on this hex (R). Uses the remaining moves.')
+                }
+              >
+                <Icon name="road" /> Build road
+              </button>
+            )}
           <button onClick={p.onFortify} title="F">
             <Icon name="fortify" /> {f.fortified ? 'Wake' : 'Fortify'}
           </button>
@@ -361,6 +379,7 @@ export function FormationPanel(p: Props) {
                 ? 'No moves left this turn for a road.'
                 : null,
               f.kind !== 'fleet' && f.kind !== 'settlers' && !game.roads[f.hex] ? roadWhy : null,
+              f.kind === 'engineers' && game.roads[f.hex] === 1 ? railWhy : null,
             ].filter(Boolean);
             return why.length ? <p className="muted small why">{why.join(' ')}</p> : null;
           })()}

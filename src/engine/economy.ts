@@ -519,7 +519,9 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
   // people-wide bonuses, coastal cities, upheavals
   const coast = isCoastal(s, c) ? mods.coastalPct : 0;
   total.food *= pct(mods.foodPct + coast * 0.5);
-  total.prod *= pct(mods.prodPct + coast * 0.5);
+  // a settlement on a railway linked by rail to another of its realm's settlements
+  const rail = railLinked(s, c) ? RAIL_PROD_PCT : 0;
+  total.prod *= pct(mods.prodPct + coast * 0.5 + rail);
   total.science *= pct(mods.sciencePct);
   total.gold *= pct(mods.goldPct + coast);
   total.culture *= pct(mods.culturePct);
@@ -617,6 +619,44 @@ const hasPort = (s: GameState, c: City) =>
  */
 const marketCache = new WeakMap<GameState, { key: string; groups: Map<number, City[]> }>();
 let marketVersion = 0;
+/** Production bonus (%) for a settlement joined by rail to another of the realm's settlements. */
+export const RAIL_PROD_PCT = 15;
+const railCache = new WeakMap<GameState, { key: string; comp: Int32Array }>();
+
+/** Rail networks: each rail hex gets a component id; recomputed when the rails change. */
+function railComponents(s: GameState): Int32Array {
+  const key = `${s.turn}|${marketVersion}`;
+  const hit = railCache.get(s);
+  if (hit && hit.key === key) return hit.comp;
+  const g = gridOf(s);
+  const comp = new Int32Array(s.roads.length).fill(-1);
+  let id = 0;
+  for (let i = 0; i < s.roads.length; i++) {
+    if (s.roads[i] !== 2 || comp[i] >= 0) continue;
+    const stack = [i];
+    comp[i] = id;
+    while (stack.length) {
+      const h = stack.pop()!;
+      for (const n of neighbors(g, h))
+        if (s.roads[n] === 2 && comp[n] < 0) {
+          comp[n] = id;
+          stack.push(n);
+        }
+    }
+    id++;
+  }
+  railCache.set(s, { key, comp });
+  return comp;
+}
+
+/** Is this settlement on a railway that reaches another settlement of its realm? */
+export function railLinked(s: GameState, c: City): boolean {
+  const comp = railComponents(s);
+  const k = comp[c.hex];
+  if (k < 0) return false;
+  return s.cities.some(o => o.id !== c.id && o.civId === c.civId && comp[o.hex] === k);
+}
+
 /** Call when roads, cities, ports or wars change: market links are recomputed on next use. */
 export function invalidateMarkets() {
   marketVersion++;

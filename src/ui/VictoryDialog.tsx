@@ -31,6 +31,20 @@ export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () 
           the Industrial age. A dominance goal must be held for a number of turns, and everyone is
           warned when someone holds one.
         </p>
+        {game.coalition && (
+          <p className={`small ${game.coalition.against === me.id ? 'warn' : ''}`}>
+            <b>Coalition:</b>{' '}
+            {game.coalition.members
+              .map(id => game.civs[id].name)
+              .map(n => `the ${n}`)
+              .join(', ')}{' '}
+            stand against{' '}
+            {game.coalition.against === me.id
+              ? `you, because you ${game.coalition.reason}`
+              : `the ${game.civs[game.coalition.against].name}, because they ${game.coalition.reason}`}
+            .
+          </p>
+        )}
         <div className="victory-list">
           {VICTORIES.map(v => {
             const mine = progress(game, me, v.id);

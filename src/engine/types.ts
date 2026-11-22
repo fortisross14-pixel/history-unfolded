@@ -365,6 +365,8 @@ export interface GameState {
   holding?: Record<string, { civId: number; since: number }>;
   /** the age the player just entered: shows the "Entering the age" card until closed */
   ageCard?: number;
+  /** the peoples banded together against a runaway leader (coalition.ts) */
+  coalition?: { against: number; members: number[]; since: number; reason: string };
   /** a crisis has just struck the player: its dialog opens once */
   crisisCard?: boolean;
   districts: District[];

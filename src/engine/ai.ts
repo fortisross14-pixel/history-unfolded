@@ -800,6 +800,18 @@ function crewOrders(s: GameState, civ: Civ, f: Formation) {
       const next = todo.sort((x, y) => distance(g, f.hex, x) - distance(g, f.hex, y));
       if (!best || distance(g, f.hex, next[0]) < distance(g, f.hex, best[0])) best = next;
     }
+  // the roads are done: engineers lay railways along them, between settlements 6 hexes apart or less
+  if (!best && f.kind === 'engineers' && civ.techs.includes('railways') && civ.gold >= 25)
+    for (const a of mine)
+      for (const b of mine) {
+        if (b.id <= a.id || distance(g, a.hex, b.hex) > 6) continue;
+        const way = findPath(g, a.hex, b.hex, (_x, y) => (s.roads[y] ? 1 : Infinity));
+        if (!way) continue;
+        const todo = [a.hex, ...way].filter(h => s.roads[h] !== 2);
+        if (!todo.length) continue;
+        const next = todo.sort((x, y) => distance(g, f.hex, x) - distance(g, f.hex, y));
+        if (!best || distance(g, f.hex, next[0]) < distance(g, f.hex, best[0])) best = next;
+      }
   if (!best) {
     f.fortified = true;
     return;
@@ -858,6 +870,12 @@ export function aiTurn(s: GameState, civ: Civ) {
       : undefined;
   // a road crew for every four settlements
   const crews = mine().filter(f => f.kind === 'workers' || f.kind === 'engineers').length;
+  // with Railways, one crew of engineers too, whatever the workers
+  const engineers = mine().filter(f => f.kind === 'engineers').length;
+  if (civ.techs.includes('railways') && !engineers && cities.length >= 2 && civ.gold >= 60) {
+    const from = [...cities].sort((a, b) => b.pop - a.pop).find(c => c.pop >= 2400);
+    if (from) trainCrew(s, from.id, 'engineers');
+  }
   if (cities.length >= 2 && crews < Math.ceil(cities.length / 4) && civ.gold >= 30) {
     const from = [...cities].sort((a, b) => b.pop - a.pop).find(c => c.pop >= 2400);
     if (from) trainCrew(s, from.id, ageOf(civ.techs) >= 5 ? 'engineers' : 'workers');
@@ -1316,19 +1334,27 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
 
   // declare war on a weaker neighbour we dislike
   const diff = difficultyOf(s);
-  if (!enemies.length && s.turn > diff.firstWarTurn && rng() < diff.warChance) {
+  // a coalition member looks for war on the runaway leader twice as often
+  const coal = s.coalition?.members.includes(civ.id) ? s.coalition.against : -1;
+  if (
+    !enemies.length &&
+    s.turn > diff.firstWarTurn &&
+    rng() < diff.warChance * (coal >= 0 ? 2 : 1)
+  ) {
     const targets = others.filter(o => {
       if (o.isPlayer && s.turn <= diff.peaceWithPlayerUntil) return false;
       if (allied(s, civ.id, o.id)) return false;
       const near = s.cities.some(
         c => c.civId === o.id && cities.some(m => distance(g, c.hex, m.hex) <= 14),
       );
-      if (!near) return false;
+      // a coalition goes after the runaway leader wherever it can reach it
+      if (!near && o.id !== coal) return false;
       const op = opinion(s, civ.id, o.id);
       const pact = hasPact(s, civ.id, o.id);
       if (pact && !(op < -60 && mineP > militaryPower(s, o.id) * 3)) return false;
-      if (op > 10) return false;
-      const need = (op < -40 ? 1.1 : op < -15 ? 1.3 : 1.6) * diff.warMargin;
+      if (op > 10 && o.id !== coal) return false;
+      const need =
+        (op < -40 ? 1.1 : op < -15 ? 1.3 : 1.6) * diff.warMargin * (o.id === coal ? 0.75 : 1);
       return mineP > militaryPower(s, o.id) * need + 5 && canReach(s, civ, o);
     });
     if (targets.length)

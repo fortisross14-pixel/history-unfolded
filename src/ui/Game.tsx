@@ -22,6 +22,7 @@ import {
   previewBattle,
   reachable,
   rename,
+  score,
   setResearch,
   setResearchGoal,
   techCost,
@@ -42,6 +43,8 @@ import { HexPanel } from './HexPanel.tsx';
 import { MapView } from './MapView.tsx';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { ResearchDialog } from './ResearchDialog.tsx';
+import { ProposalDialog } from './ProposalDialog.tsx';
+import { answerProposal, proposeDeal } from '../engine/diplomacy.ts';
 import { CultureDialog, KeepDialog, TagChip } from './CultureDialog.tsx';
 import { resolveUpheaval, startUpheaval, takeNode } from '../engine/culture.ts';
 import { cityEconomy } from '../engine/economy.ts';
@@ -277,14 +280,54 @@ export function Game({
   const idleCount = idle().length;
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
 
-  if (!me.alive) {
+  const proposal = game.proposals.find(p => p.to === me.id);
+  if (game.ended || !me.alive) {
+    const e = game.ended;
+    const won = e && e.winner === me.id;
+    const ranking = game.civs.slice().sort((a, b) => score(game, b.id) - score(game, a.id));
     return (
       <div className="menu">
         <div className="menu-card">
-          <h1>Your people are no more</h1>
+          <h1>{won ? 'Victory' : me.alive ? 'The age is over' : 'Your people are no more'}</h1>
           <p className="subtitle">
-            Turn {game.turn}. The chronicles will remember the {me.name}.
+            Turn {game.turn}. {won && e?.reason === 'conquest' ? `The ${me.name} stand alone.` : ''}
+            {e?.reason === 'score'
+              ? `The ${game.civs[e.winner].name} are remembered as the greatest people of the age.`
+              : ''}
+            {!me.alive ? ` The chronicles will remember the ${me.name}.` : ''}
           </p>
+          <table className="stats">
+            <tbody>
+              {ranking.map(c => (
+                <tr key={c.id}>
+                  <td>
+                    <span className="swatch" style={{ background: c.color }} /> {c.name}
+                    {c.alive ? '' : ' (gone)'}
+                  </td>
+                  <td>score {score(game, c.id)}</td>
+                  <td>
+                    {identity(c)
+                      .slice(0, 2)
+                      .map(i => (
+                        <TagChip key={i.tag} tag={i.tag} />
+                      ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {me.alive && e && (
+            <button
+              className="wide"
+              onClick={() => {
+                game.settings.turnLimit = (game.settings.turnLimit ?? 400) + 100;
+                delete game.ended;
+                bump();
+              }}
+            >
+              Keep playing (100 more turns)
+            </button>
+          )}
           <button className="primary wide" onClick={onQuit}>
             Back to the menu
           </button>
@@ -316,6 +359,7 @@ export function Game({
         </span>
         <span>
           Turn <b>{game.turn}</b>
+          <small className="muted">/{game.settings.turnLimit ?? 400}</small>
         </span>
         <span title="Gold">⛁ {me.gold}</span>
         <button className="research-btn" onClick={() => setDialog({ kind: 'research' })}>
@@ -569,6 +613,10 @@ export function Game({
           onClose={() => setDialog(null)}
           onWar={id => setDialog({ kind: 'war', civId: id })}
           onPeace={id => report(offerPeace(game, me.id, id))}
+          onDeal={(id, o) => {
+            const r = proposeDeal(game, me.id, id, o);
+            report({ ok: r.ok, msg: r.msg } as Result);
+          }}
         />
       )}
       {dialog?.kind === 'war' && (
@@ -604,6 +652,16 @@ export function Game({
           onClose={() => {
             setDialog(null);
             bump();
+          }}
+        />
+      )}
+      {proposal && !dialog && (
+        <ProposalDialog
+          game={game}
+          p={proposal}
+          onAnswer={yes => {
+            const r = answerProposal(game, proposal.id, yes);
+            report({ ok: r.ok, msg: r.msg } as Result);
           }}
         />
       )}

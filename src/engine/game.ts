@@ -12,6 +12,16 @@ import { findPath } from './path.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
 import type { City, Civ, Cohort, Design, Formation, GameSettings, GameState } from './types.ts';
 import { aiTurn } from './ai.ts';
+import {
+  alliesOf,
+  breakTreaties,
+  diplomacyTurn,
+  hasPact,
+  proposeDeal,
+  remember,
+  setEndWarFn,
+  setPowerFn,
+} from './diplomacy.ts';
 import { civMods, pct } from './mods.ts';
 import { cultureTurn, newCultureState } from './culture.ts';
 import { TAGS } from '../data/culture.ts';
@@ -47,7 +57,7 @@ import {
   SETTLER_COHORTS,
 } from './units.ts';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
 export const MIN_CITY_DISTANCE = 4;
@@ -79,6 +89,9 @@ export function newGame(settings: GameSettings): GameState {
     nextId: 1,
     log: [],
     wars: [],
+    memories: [],
+    treaties: [],
+    proposals: [],
     districts: [],
     roads: new Array(map.w * map.h).fill(0),
   };
@@ -747,6 +760,7 @@ export function endTurn(s: GameState): string[] {
     const msgs = cultureTurn(s, civ, culture);
     if (civ.isPlayer) events.push(...msgs);
   }
+  events.push(...diplomacyTurn(s));
   heal(s);
   for (const c of s.cities) c.guard = Math.min(1, c.guard + 0.1);
   s.turn++;
@@ -760,6 +774,7 @@ export function endTurn(s: GameState): string[] {
     }
   }
   for (const c of s.civs) updateExplored(s, c.id);
+  checkVictory(s);
   return events;
 }
 
@@ -864,11 +879,34 @@ export function pathTurns(s: GameState, f: Formation, path: number[]): number[] 
 export const atWar = (s: GameState, a: number, b: number) =>
   s.wars.some(w => (w.a === a && w.b === b) || (w.a === b && w.b === a));
 
-export function declareWar(s: GameState, a: number, b: number): Result {
+/**
+ * Declare war. Breaking a pact is remembered by everyone; the target's allies join in; the
+ * target and its friends remember who started it.
+ */
+export function declareWar(s: GameState, a: number, b: number, called = false): Result {
   if (a === b || atWar(s, a, b)) return fail('Already at war.');
+  const A = s.civs[a],
+    B = s.civs[b];
+  const treachery = hasPact(s, a, b);
+  breakTreaties(s, a, b);
   s.wars.push({ a, b, since: s.turn });
-  const msg = `The ${s.civs[a].name} declared war on the ${s.civs[b].name}!`;
+  const msg = called
+    ? `The ${A.name} joined their allies against the ${B.name}!`
+    : `The ${A.name} declared war on the ${B.name}${treachery ? ', breaking their pact' : ''}!`;
   log(s, a, msg);
+  if (!called) {
+    remember(s, b, a, 'war', 'Declared war on us', -40, 0.2);
+    if (treachery)
+      for (const c of s.civs)
+        if (c.alive && c.id !== a)
+          remember(s, c.id, a, 'treachery', 'Broke a sworn pact', c.id === b ? -40 : -15, 0.1);
+    // the target's allies come to its aid
+    for (const ally of alliesOf(s, b)) {
+      if (ally === a || !s.civs[ally].alive || atWar(s, ally, a)) continue;
+      declareWar(s, ally, a, true);
+      remember(s, b, ally, 'aid', 'Stood by us in war', 20, 0.1);
+    }
+  }
   return ok(msg);
 }
 
@@ -884,21 +922,49 @@ export function militaryPower(s: GameState, civId: number): number {
   return Math.round(p);
 }
 
-/** The player offers peace. The AI takes it once the war has dragged on and is not going its way. */
+/** Offer peace: the other side weighs how the war is going and how long it has lasted. */
 export function offerPeace(s: GameState, from: number, to: number): Result {
-  const w = s.wars.find(x => (x.a === from && x.b === to) || (x.a === to && x.b === from));
-  if (!w) return fail('You are not at war.');
-  const length = s.turn - w.since;
-  const theirs = militaryPower(s, to),
-    mine = militaryPower(s, from);
-  if (length < 6)
-    return fail(
-      `The ${s.civs[to].name} want this war to run its course (${6 - length} more turns).`,
-    );
-  if (theirs > mine * 1.6 && length < 20)
-    return fail(`The ${s.civs[to].name} feel strong and refuse.`);
-  endWar(s, from, to);
-  return ok(`Peace with the ${s.civs[to].name}.`);
+  if (!atWar(s, from, to)) return fail('You are not at war.');
+  const r = proposeDeal(s, from, to, { give: {}, get: {}, peace: true });
+  return r.ok ? ok(`Peace with the ${s.civs[to].name}.`) : fail(r.msg);
+}
+
+setPowerFn((s, civId) => militaryPower(s, civId));
+setEndWarFn((s, a, b) => endWar(s, a, b));
+
+/** Score: people, cities, knowledge and culture. Decides the game at the turn limit. */
+export function score(s: GameState, civId: number): number {
+  const cities = s.cities.filter(c => c.civId === civId);
+  const pop = cities.reduce((a, c) => a + c.pop, 0);
+  const civ = s.civs[civId];
+  return Math.round(
+    pop / 1000 +
+      cities.length * 10 +
+      civ.techs.length * 3 +
+      civ.culture.taken.length * 3 +
+      civ.kills / 2000,
+  );
+}
+
+export const DEFAULT_TURN_LIMIT = 400;
+
+/** Decide the game: last people standing, or best score at the turn limit. */
+export function checkVictory(s: GameState) {
+  if (s.ended) return;
+  const me = player(s);
+  if (!me.alive) {
+    s.ended = { winner: -1, reason: 'defeat' };
+    return;
+  }
+  const alive = s.civs.filter(c => c.alive);
+  if (alive.length === 1) {
+    s.ended = { winner: alive[0].id, reason: 'conquest' };
+    return;
+  }
+  if (s.turn >= (s.settings.turnLimit ?? DEFAULT_TURN_LIMIT)) {
+    const best = alive.sort((x, y) => score(s, y.id) - score(s, x.id))[0];
+    s.ended = { winner: best.id, reason: 'score' };
+  }
 }
 
 // ---------------------------------------------------------------- battle
@@ -1255,6 +1321,7 @@ function captureCity(s: GameState, c: City, by: Formation): string {
   s.formations = s.formations.filter(x => !(x.hex === c.hex && x.civId === old.id));
   by.hex = c.hex;
   const msg = `${civ.name} captured ${c.name} from the ${old.name}!`;
+  remember(s, old.id, civ.id, 'conquest', 'Took our cities', -30, 0.1);
   log(s, by.civId, msg);
   return msg;
 }

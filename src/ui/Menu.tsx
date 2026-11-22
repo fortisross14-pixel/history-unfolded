@@ -24,6 +24,7 @@ export function Menu({
   const [mountains, setMtn] = useState<Level3>('normal');
   const [seed, setSeed] = useState<number>(randomSeed());
   const [name, setName] = useState('');
+  const [turnLimit, setTurnLimit] = useState(400);
 
   const select = <T extends string>(
     label: string,
@@ -113,6 +114,16 @@ export function Menu({
             </span>
           </label>
           <label className="field">
+            <span>Game length</span>
+            <select value={turnLimit} onChange={e => setTurnLimit(Number(e.target.value))}>
+              {[200, 300, 400, 600].map(n => (
+                <option key={n} value={n}>
+                  {n} turns
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
             <span>Your people</span>
             <input
               placeholder="Aurelians"
@@ -129,6 +140,7 @@ export function Menu({
               map: { type, size, seaLevel, climate, rainfall, resources, mountains, seed },
               civCount: civs,
               playerName: name.trim(),
+              turnLimit,
             })
           }
         >

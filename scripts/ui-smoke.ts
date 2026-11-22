@@ -207,6 +207,22 @@ for (let i = 0; i < 6; i++) {
 }
 await page.waitForTimeout(200);
 await page.screenshot({ path: `${out}/10-zoomed-out.png` });
+// diplomacy: the peoples screen and a deal
+if (await page.$('.modal-back')) await page.keyboard.press('Escape');
+const proposalBtn = await page.$('.modal.proposal button:not(.primary)');
+if (proposalBtn) await proposalBtn.click();
+await page.click('button:has-text("Peoples")');
+await page.waitForSelector('.modal.peoples');
+await page.screenshot({ path: `${out}/10b-peoples.png` });
+const dealBtn = await page.$('button:has-text("Propose a deal")');
+if (dealBtn) {
+  await dealBtn.click();
+  await page.waitForSelector('.modal.deal');
+  await page.click('.deal-side >> nth=0 >> input >> nth=0');
+  await page.keyboard.type('5');
+  await page.screenshot({ path: `${out}/10c-deal.png` });
+  await page.click('.modal.deal .x');
+} else await page.click('.modal.peoples .x');
 await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(300);
 await page.screenshot({ path: `${out}/11-phone.png` });

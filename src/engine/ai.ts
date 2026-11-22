@@ -26,12 +26,22 @@ import {
 } from './game.ts';
 import { distance, neighbors, within } from './hex.ts';
 import { SLOT_TYPES } from '../data/slots.ts';
-import { CULTURE_LIST, DOMAIN_LIST, OPPOSED } from '../data/culture.ts';
+import { CULTURE_LIST, DOMAIN_LIST } from '../data/culture.ts';
 import { canStartUpheaval, nodeCost, nodeStatus, startUpheaval, takeNode } from './culture.ts';
-import { tagCounts } from './mods.ts';
+import {
+  allied,
+  capitalOf,
+  evaluateOffer,
+  executeOffer,
+  hasPact,
+  newProposal,
+  opinion,
+} from './diplomacy.ts';
+import { cityGuard, cityWalls } from './game.ts';
 import {
   cityDistricts,
   cityEconomy,
+  marketStock,
   constructionQueue,
   districtAt,
   districtSites,
@@ -42,7 +52,7 @@ import type { City } from './types.ts';
 import { hexFood, isPassableLand } from './mapgen.ts';
 import { hashSeed, mulberry32, type Rng } from './rng.ts';
 import type { Civ, Formation, GameState } from './types.ts';
-import { capOf, COHORT_SIZE, isRanged, loadoutProblem, people } from './units.ts';
+import { capOf, COHORT_SIZE, isRanged, loadoutProblem, people, power } from './units.ts';
 
 interface Plan {
   name: string;
@@ -456,31 +466,10 @@ export function aiTurn(s: GameState, civ: Civ) {
     else if (c.pop >= 3000 && armies < cities.length * 2 + 1) levy(s, c.id);
   }
 
-  // --- war
+  // --- diplomacy and war
+  aiDiplomacy(s, civ, rng);
   const enemies = s.civs.filter(o => o.alive && o.id !== civ.id && atWar(s, civ.id, o.id));
-  if (!enemies.length && s.turn > 30 && rng() < 0.06) {
-    const mineP = militaryPower(s, civ.id);
-    const targets = s.civs.filter(o => {
-      if (!o.alive || o.id === civ.id || !civ.met.includes(o.id)) return false;
-      const near = s.cities.some(
-        c => c.civId === o.id && cities.some(m => distance(g, c.hex, m.hex) <= 14),
-      );
-      // peoples whose ideas clash with ours are easier to hate; kindred ones harder
-      const mine = tagCounts(civ),
-        theirs = tagCounts(o);
-      const clash = OPPOSED.some(
-        ([a, b]) =>
-          ((mine[a] ?? 0) >= 2 && (theirs[b] ?? 0) >= 2) ||
-          ((mine[b] ?? 0) >= 2 && (theirs[a] ?? 0) >= 2),
-      );
-      const shared = Object.keys(mine).filter(
-        t => (mine[t] ?? 0) >= 2 && (theirs[t] ?? 0) >= 2,
-      ).length;
-      const need = clash ? 1.2 : shared >= 2 ? 2.2 : 1.5;
-      return near && mineP > militaryPower(s, o.id) * need + 5;
-    });
-    if (targets.length) declareWar(s, civ.id, targets[Math.floor(rng() * targets.length)].id);
-  }
+  const camp = enemies.length ? planCampaign(s, civ, enemies) : ((civ.ai = undefined), undefined);
 
   // --- formations
   const garrisoned = new Set<number>();
@@ -564,46 +553,271 @@ export function aiTurn(s: GameState, civ: Civ) {
       }
       continue;
     }
-    // hunt: nearest enemy army, settlers or city
-    let target = -1,
-      td = Infinity;
-    for (const o of s.formations) {
-      if (!enemies.some(e => e.id === o.civId)) continue;
-      const d = distance(g, f.hex, o.hex);
-      if (d < td && d <= 10) {
-        td = d;
-        target = o.hex;
-      }
-    }
-    for (const c of s.cities) {
-      if (!enemies.some(e => e.id === c.civId)) continue;
-      const d = distance(g, f.hex, c.hex) - 2;
-      if (d < td) {
-        td = d;
-        target = c.hex;
-      }
-    }
-    if (target < 0) continue;
-    if (distance(g, f.hex, target) === 1) {
-      const pv = previewBattle(s, f.id, target);
-      const good =
-        !pv ||
-        pv.outcome === 'defender-broke' ||
-        pv.defender.lost / Math.max(1, pv.defender.start) >=
-          (pv.attacker.lost / Math.max(1, pv.attacker.start)) * 0.9;
-      if (good) {
-        attack(s, f.id, target);
-        continue;
-      }
-      f.fortified = true;
+    // defend: an enemy army close to one of our cities comes first
+    const threat = s.formations.find(
+      o =>
+        enemies.some(e => e.id === o.civId) &&
+        o.kind === 'army' &&
+        cities.some(c => distance(g, c.hex, o.hex) <= 3) &&
+        distance(g, f.hex, o.hex) <= 6,
+    );
+    if (threat) {
+      if (strikeIfGood(s, f, threat.hex)) continue;
+      f.path = pathNextTo(s, f, threat.hex) ?? [];
+      advance(s, f);
+      if (s.formations.includes(f) && f.moves > 0 && distance(g, f.hex, threat.hex) === 1)
+        strikeIfGood(s, f, threat.hex);
       continue;
     }
-    f.path = pathNextTo(s, f, target) ?? [];
-    advance(s, f);
-    // close enough to strike this turn?
-    if (s.formations.includes(f) && f.moves > 0 && distance(g, f.hex, target) === 1) {
-      const pv = previewBattle(s, f.id, target);
-      if (!pv || pv.outcome === 'defender-broke') attack(s, f.id, target);
+    // opportunity: an enemy right next to us
+    const adj = neighbors(g, f.hex).find(h =>
+      s.formations.some(o => o.hex === h && enemies.some(e => e.id === o.civId)),
+    );
+    if (adj !== undefined && strikeIfGood(s, f, adj)) continue;
+    if (!camp) continue;
+    const target = s.cities.find(c => c.id === camp.targetCity)!;
+    if (camp.phase === 'gather') {
+      // assemble at the staging city and fold into big formations
+      if (f.hex !== camp.staging) {
+        f.path = planPath(s, f, camp.staging) ?? [];
+        advance(s, f);
+      }
+      if (s.formations.includes(f) && f.hex === camp.staging)
+        for (const o of formationsAt(s, f.hex))
+          if (
+            o !== f &&
+            o.civId === civ.id &&
+            o.kind === 'army' &&
+            o.name !== 'Scouts' &&
+            o.cohorts.length + f.cohorts.length <= capOf(f, s) &&
+            s.formations.includes(o)
+          )
+            merge(s, o.id, f.id);
+      continue;
     }
+    // march on the target city and assault it
+    if (distance(g, f.hex, target.hex) === 1) {
+      if (!strikeIfGood(s, f, target.hex, 0.75)) f.fortified = true;
+      continue;
+    }
+    f.path = pathNextTo(s, f, target.hex) ?? [];
+    advance(s, f);
+    if (s.formations.includes(f) && f.moves > 0 && distance(g, f.hex, target.hex) === 1)
+      strikeIfGood(s, f, target.hex, 0.75);
+  }
+}
+
+/** Attack if the expected exchange favours us (`ratio` < 1 accepts worse trades, for sieges). */
+function strikeIfGood(s: GameState, f: Formation, hex: number, ratio = 0.9): boolean {
+  if (f.moves <= 0) return false;
+  const pv = previewBattle(s, f.id, hex);
+  const good =
+    !pv ||
+    pv.outcome === 'defender-broke' ||
+    pv.defender.lost / Math.max(1, pv.defender.start) >=
+      (pv.attacker.lost / Math.max(1, pv.attacker.start)) * ratio;
+  if (!good) return false;
+  attack(s, f.id, hex);
+  return true;
+}
+
+/** Estimated strength holding a city: its army plus its guard behind walls. */
+function cityDefence(s: GameState, cityHex: number): number {
+  const c = s.cities.find(x => x.hex === cityHex)!;
+  const g = gridOf(s);
+  let p = 0;
+  for (const o of s.formations)
+    if (o.civId === c.civId && o.kind === 'army' && distance(g, o.hex, c.hex) <= 1) p += power(o);
+  const guard = {
+    ...s.formations[0],
+    kind: 'army' as const,
+    cohorts: cityGuard(s, c),
+    civId: c.civId,
+  };
+  p += power(guard) * (1 + cityWalls(s, c).walls);
+  return p * 1.6; // walls and the city bonus
+}
+
+/**
+ * A campaign: pick the softest enemy city we can reach by land, gather the field armies at our
+ * nearest city, march once strong enough (or after waiting long enough), regroup if bled white.
+ */
+function planCampaign(s: GameState, civ: Civ, enemies: Civ[]) {
+  const g = gridOf(s);
+  const cities = s.cities.filter(c => c.civId === civ.id);
+  const field = s.formations.filter(
+    f =>
+      f.civId === civ.id &&
+      f.kind === 'army' &&
+      f.name !== 'Scouts' &&
+      !cities.some(c => c.hex === f.hex && f.fortified),
+  );
+  if (!cities.length || !field.length) return undefined;
+  let camp = civ.ai;
+  const valid =
+    camp && s.cities.some(c => c.id === camp!.targetCity && enemies.some(e => e.id === c.civId));
+  if (!valid) {
+    const probe = field[0];
+    let best: { city: (typeof s.cities)[number]; staging: number; v: number } | undefined;
+    for (const c of s.cities) {
+      if (!enemies.some(e => e.id === c.civId)) continue;
+      const home = cities
+        .slice()
+        .sort((a, b) => distance(g, a.hex, c.hex) - distance(g, b.hex, c.hex))[0];
+      const d = distance(g, home.hex, c.hex);
+      if (d > 18) continue;
+      if (!pathNextTo(s, { ...probe, hex: home.hex }, c.hex)) continue; // not reachable over land
+      const v = d * 3 + cityDefence(s, c.hex) / 4;
+      if (!best || v < best.v) best = { city: c, staging: home.hex, v };
+    }
+    if (!best) return undefined;
+    camp = civ.ai = {
+      targetCity: best.city.id,
+      staging: best.staging,
+      phase: 'gather',
+      since: s.turn,
+    };
+  }
+  const c = camp!;
+  const target = s.cities.find(x => x.id === c.targetCity)!;
+  const near = (h: number) =>
+    field.filter(f => distance(g, f.hex, h) <= 2).reduce((a, f) => a + power(f), 0);
+  const need = cityDefence(s, target.hex) * 1.3;
+  if (c.phase === 'gather' && (near(c.staging) >= need || s.turn - c.since > 12)) {
+    c.phase = 'march';
+    c.since = s.turn;
+  } else if (c.phase === 'march' && field.reduce((a, f) => a + power(f), 0) < need * 0.5) {
+    c.phase = 'gather';
+    c.since = s.turn;
+  }
+  return c;
+}
+
+/** War, peace, pacts and alliances, and offers to the player. */
+function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
+  const g = gridOf(s);
+  const me = s.civs.find(c => c.isPlayer)!;
+  const cities = s.cities.filter(c => c.civId === civ.id);
+  const mineP = militaryPower(s, civ.id);
+  const others = s.civs.filter(o => o.alive && o.id !== civ.id && civ.met.includes(o.id));
+  const pending = s.proposals.some(p => p.from === civ.id);
+  const enemies = others.filter(o => atWar(s, civ.id, o.id));
+
+  // declare war on a weaker neighbour we dislike
+  if (!enemies.length && s.turn > 30 && rng() < 0.06) {
+    const targets = others.filter(o => {
+      if (allied(s, civ.id, o.id)) return false;
+      const near = s.cities.some(
+        c => c.civId === o.id && cities.some(m => distance(g, c.hex, m.hex) <= 14),
+      );
+      if (!near) return false;
+      const op = opinion(s, civ.id, o.id);
+      const pact = hasPact(s, civ.id, o.id);
+      if (pact && !(op < -60 && mineP > militaryPower(s, o.id) * 3)) return false;
+      if (op > 10) return false;
+      const need = op < -40 ? 1.1 : op < -15 ? 1.3 : 1.6;
+      return mineP > militaryPower(s, o.id) * need + 5;
+    });
+    if (targets.length)
+      declareWar(
+        s,
+        civ.id,
+        targets.sort((a, b) => opinion(s, civ.id, a.id) - opinion(s, civ.id, b.id))[0].id,
+      );
+  }
+
+  // seek peace when the war goes badly or drags on
+  for (const o of enemies) {
+    const w = s.wars.find(
+      x => (x.a === civ.id && x.b === o.id) || (x.b === civ.id && x.a === o.id),
+    )!;
+    const length = s.turn - w.since;
+    const losing = mineP < militaryPower(s, o.id) * 0.8;
+    if (length < 10 || !(losing || length >= 25)) continue;
+    const offer = { give: {}, get: {}, peace: true };
+    if (o.isPlayer) {
+      if (!pending && length % 5 === 0)
+        newProposal(s, {
+          from: civ.id,
+          to: o.id,
+          kind: 'peace',
+          offer,
+          text: `The ${civ.name} have had enough of this war and offer peace.`,
+        });
+    } else if (evaluateOffer(s, civ.id, o.id, offer).accept) executeOffer(s, civ.id, o.id, offer);
+  }
+
+  // pacts and alliances among the AI
+  for (const o of others) {
+    if (o.isPlayer || atWar(s, civ.id, o.id)) continue;
+    const a = opinion(s, civ.id, o.id),
+      b = opinion(s, o.id, civ.id);
+    if (!hasPact(s, civ.id, o.id) && a >= 25 && b >= 25 && rng() < 0.05)
+      executeOffer(s, civ.id, o.id, { give: {}, get: {}, pact: true });
+    else if (!allied(s, civ.id, o.id) && a >= 50 && b >= 50 && rng() < 0.03)
+      executeOffer(s, civ.id, o.id, { give: {}, get: {}, alliance: true });
+  }
+
+  // offers and demands to the player
+  if (pending || !others.includes(me) || atWar(s, civ.id, me.id) || rng() > 0.05) return;
+  const op = opinion(s, civ.id, me.id);
+  const cap = capitalOf(s, civ.id),
+    theirCap = capitalOf(s, me.id);
+  if (!cap || !theirCap) return;
+  const mine = marketStock(s, cap),
+    theirs = marketStock(s, theirCap);
+  const near = s.cities.some(
+    c => c.civId === me.id && cities.some(m => distance(g, c.hex, m.hex) <= 12),
+  );
+  if (mineP > militaryPower(s, me.id) * 2 && op < -15 && near && !hasPact(s, civ.id, me.id)) {
+    const gold = Math.min(me.gold, 40 + s.turn / 4);
+    if (gold >= 20) {
+      newProposal(s, {
+        from: civ.id,
+        to: me.id,
+        kind: 'demand',
+        offer: { give: {}, get: { gold: Math.round(gold) } },
+        text: `The ${civ.name} demand ${Math.round(gold)} gold as tribute. Refuse, and they may come for it.`,
+      });
+      return;
+    }
+  }
+  if (op >= 55 && !allied(s, civ.id, me.id)) {
+    newProposal(s, {
+      from: civ.id,
+      to: me.id,
+      kind: 'alliance',
+      offer: { give: {}, get: {}, alliance: true },
+      text: `The ${civ.name} propose an alliance: an attack on one is an attack on both.`,
+    });
+    return;
+  }
+  if (op >= 25 && !hasPact(s, civ.id, me.id)) {
+    newProposal(s, {
+      from: civ.id,
+      to: me.id,
+      kind: 'pact',
+      offer: { give: {}, get: {}, pact: true },
+      text: `The ${civ.name} propose a non-aggression pact.`,
+    });
+    return;
+  }
+  // trade: our surplus for something we lack that the player has plenty of
+  const surplus = Object.keys(mine).filter(k => mine[k] > 120 && (theirs[k] ?? 0) < 40);
+  const want = Object.keys(theirs).filter(k => theirs[k] > 60 && (mine[k] ?? 0) < 20);
+  if (surplus.length && want.length && op > -20) {
+    const give = surplus[Math.floor(rng() * surplus.length)],
+      get = want[Math.floor(rng() * want.length)];
+    newProposal(s, {
+      from: civ.id,
+      to: me.id,
+      kind: 'trade',
+      offer: {
+        give: { goodsPerTurn: { [give]: 3 } },
+        get: { goodsPerTurn: { [get]: 2 } },
+        turns: 20,
+      },
+      text: `The ${civ.name} offer a trade: 3 ${give} a turn for 2 ${get} a turn, for 20 turns.`,
+    });
   }
 }

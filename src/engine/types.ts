@@ -24,6 +24,8 @@ export interface GameSettings {
   map: MapSettings;
   civCount: number;
   playerName: string;
+  /** the game ends on this turn with a score victory */
+  turnLimit?: number;
 }
 
 export interface Deposit {
@@ -108,6 +110,8 @@ export interface Civ {
   culture: CultureState;
   /** AI only: culture tags it leans towards */
   leanings: string[];
+  /** AI only: the current military campaign */
+  ai?: { targetCity: number; staging: number; phase: 'gather' | 'march'; since: number };
   science: number;
   gold: number;
   /** 1 = explored, per hex */
@@ -162,6 +166,62 @@ export interface CultureState {
   choosing: Domain | null;
 }
 
+/** Something one people remembers about another. Fades over time. */
+export interface Memory {
+  /** who remembers */
+  to: number;
+  /** who did it */
+  about: number;
+  kind: string;
+  text: string;
+  value: number;
+  turn: number;
+  /** points it moves toward 0 each turn */
+  fade: number;
+}
+
+/** What one side of a deal hands over. Per-turn items run for `turns` turns. */
+export interface Bundle {
+  goods?: Record<string, number>;
+  gold?: number;
+  goodsPerTurn?: Record<string, number>;
+  goldPerTurn?: number;
+}
+
+export interface Offer {
+  /** from the proposer */
+  give: Bundle;
+  /** from the other side */
+  get: Bundle;
+  peace?: boolean;
+  pact?: boolean;
+  alliance?: boolean;
+  turns?: number;
+}
+
+export interface Treaty {
+  kind: 'pact' | 'alliance' | 'trade';
+  a: number;
+  b: number;
+  since: number;
+  /** last turn it holds; -1 for open-ended */
+  until: number;
+  /** per-turn flows for trade treaties: a pays aGives, b pays bGives */
+  aGives?: Bundle;
+  bGives?: Bundle;
+}
+
+/** An offer the AI makes to the player, waiting for an answer. */
+export interface Proposal {
+  id: number;
+  from: number;
+  to: number;
+  kind: 'trade' | 'pact' | 'alliance' | 'peace' | 'demand';
+  offer: Offer;
+  turn: number;
+  text: string;
+}
+
 export interface War {
   a: number;
   b: number;
@@ -185,6 +245,11 @@ export interface GameState {
   nextId: number;
   log: LogEntry[];
   wars: War[];
+  memories: Memory[];
+  treaties: Treaty[];
+  proposals: Proposal[];
+  /** set when the game is decided */
+  ended?: { winner: number; reason: 'conquest' | 'score' | 'defeat' };
   districts: District[];
   /** 1 where a road runs, per hex */
   roads: number[];

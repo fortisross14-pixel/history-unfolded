@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "check:map": "node --no-warnings scripts/mapcheck.ts",
     "check:rules": "node --no-warnings scripts/rulescheck.ts",
-    "test": "node --no-warnings scripts/datacheck.ts && node --no-warnings scripts/mapcheck.ts && node --no-warnings scripts/rulescheck.ts && node --no-warnings scripts/culturecheck.ts",
+    "test": "node --no-warnings scripts/datacheck.ts && node --no-warnings scripts/mapcheck.ts && node --no-warnings scripts/rulescheck.ts && node --no-warnings scripts/culturecheck.ts && node --no-warnings scripts/diplocheck.ts",
     "test:ui": "node --no-warnings scripts/ui-smoke.ts",
     "format": "prettier --write src scripts"
   },

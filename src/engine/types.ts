@@ -114,6 +114,8 @@ export interface Civ {
   name: string;
   color: string;
   isPlayer: boolean;
+  /** a free people: one city, never expands; can be befriended, allied, absorbed or conquered */
+  independent?: boolean;
   techs: string[];
   researching: string | null;
   /** a later tech the player aims for; research follows its prerequisites */
@@ -329,4 +331,20 @@ export interface GameState {
   roads: number[];
   /** the player's events: pacing, history, the one waiting for a choice */
   realmEvents?: import('./realmEvents.ts').RealmEventState;
+  /** history events waiting for the player's choice */
+  events: PendingEvent[];
+  /** last turn each civ had a history event */
+  lastEvent: Record<number, number>;
+}
+
+/** A history event that has happened to a people and waits for a choice. */
+export interface PendingEvent {
+  id: number;
+  eventId: string;
+  civId: number;
+  turn: number;
+  /** the city it happens in, if any */
+  cityId?: number;
+  /** the other people involved, if any */
+  other?: number;
 }

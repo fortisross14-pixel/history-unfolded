@@ -139,7 +139,7 @@ check(takeNode(s, me.id, 'lunar-calendar').ok, 'take the new path: Lunar Calenda
 
 // ---- AI peoples build identities over a long game
 for (let t = 0; t < 200; t++) endTurn(s);
-const ais = s.civs.filter(c => !c.isPlayer && c.alive);
+const ais = s.civs.filter(c => !c.isPlayer && c.alive && !c.independent);
 for (const c of ais)
   console.log(
     `     ${c.name}: ${c.techs.length} techs, ${c.culture.taken.length} choices, identity ${identity(

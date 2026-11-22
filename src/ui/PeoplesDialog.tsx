@@ -17,6 +17,13 @@ import {
 } from '../engine/diplomacy.ts';
 import { marketStock } from '../engine/economy.ts';
 import { atWar, militaryPower, score } from '../engine/game.ts';
+import {
+  absorbCost,
+  absorbProblem,
+  describeTribute,
+  standing,
+  tributeTo,
+} from '../engine/independents.ts';
 import { identity, tagCounts } from '../engine/mods.ts';
 import type { Bundle, GameState, Offer } from '../engine/types.ts';
 import { TagChip } from './CultureDialog.tsx';
@@ -28,13 +35,27 @@ interface Props {
   onWar: (other: number) => void;
   onPeace: (other: number) => void;
   onDeal: (other: number, o: Offer) => void;
+  onGift: (other: number, gold: number) => void;
+  onAbsorb: (other: number) => void;
   onClose: () => void;
 }
 
-export function PeoplesDialog({ game, civId, onWar, onPeace, onDeal, onClose }: Props) {
+export function PeoplesDialog({
+  game,
+  civId,
+  onWar,
+  onPeace,
+  onDeal,
+  onGift,
+  onAbsorb,
+  onClose,
+}: Props) {
   const me = game.civs[civId];
   const mine = militaryPower(game, civId);
-  const known = game.civs.filter(c => c.id !== civId && me.met.includes(c.id));
+  // great peoples first, then the free peoples
+  const known = game.civs
+    .filter(c => c.id !== civId && me.met.includes(c.id))
+    .sort((a, b) => Number(!!a.independent) - Number(!!b.independent));
   const [dealWith, setDealWith] = useState<number | null>(null);
   const mineTags = tagCounts(me);
   const relation = (other: number) => {
@@ -94,6 +115,12 @@ export function PeoplesDialog({ game, civId, onWar, onPeace, onDeal, onClose }: 
                 <div className="people-head">
                   <span className="swatch" style={{ background: c.color }} />
                   <b>{c.name}</b>
+                  {c.independent && (
+                    <span className="muted small">
+                      {' '}
+                      free people · {standing(game, c.id, civId)}
+                    </span>
+                  )}
                   <span className="ident-bar">
                     {identity(c)
                       .slice(0, 3)
@@ -151,6 +178,25 @@ export function PeoplesDialog({ game, civId, onWar, onPeace, onDeal, onClose }: 
                       ) : (
                         <>
                           <button onClick={() => setDealWith(c.id)}>Propose a deal…</button>
+                          {c.independent && (
+                            <>
+                              <button onClick={() => onGift(c.id, 25)}>Gift 25 gold</button>
+                              <button onClick={() => onGift(c.id, 100)}>Gift 100 gold</button>
+                              <button
+                                disabled={absorbProblem(game, civId, c.id) !== null}
+                                title={absorbProblem(game, civId, c.id) ?? ''}
+                                onClick={() => onAbsorb(c.id)}
+                              >
+                                Absorb ({absorbCost(game, c.id)} gold)
+                              </button>
+                              <span className="muted small">
+                                They send you {describeTribute(tributeTo(game, c.id, civId))}.
+                                {absorbProblem(game, civId, c.id)
+                                  ? ` Absorb: ${absorbProblem(game, civId, c.id)}`
+                                  : ''}
+                              </span>
+                            </>
+                          )}
                           <button
                             onClick={() => onWar(c.id)}
                             title={

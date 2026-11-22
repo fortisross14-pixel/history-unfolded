@@ -93,9 +93,15 @@ check(
     p.isPlayer = false;
     aiTurn(t, p);
     p.isPlayer = true;
+    const before = t.lastEvent[p.id];
     endTurn(t);
     const ev = t.realmEvents?.pending;
     if (ev && ev.turn === t.turn) fired.push({ turn: t.turn, id: ev.id });
+    else if (t.lastEvent[p.id] !== before) {
+      // a history event (free peoples, envoys): it shares the same pacing
+      const h = t.events.find(e => e.civId === p.id);
+      fired.push({ turn: t.turn, id: 'history:' + (h?.eventId ?? '?') });
+    }
   }
   const gaps = fired.slice(1).map((f, i) => f.turn - fired[i].turn);
   check(fired.length >= 12 && fired.length <= 40, `${fired.length} events in 220 turns`);

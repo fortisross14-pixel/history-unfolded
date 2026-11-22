@@ -852,7 +852,9 @@ const EVENTS: EventDef[] = [
   },
 ];
 
-export const REALM_EVENTS: Record<string, EventDef> = Object.fromEntries(EVENTS.map(e => [e.id, e]));
+export const REALM_EVENTS: Record<string, EventDef> = Object.fromEntries(
+  EVENTS.map(e => [e.id, e]),
+);
 
 // ---------------------------------------------------------------- pacing
 
@@ -894,7 +896,11 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
   const r = mulberry32(hashSeed(s.settings.map.seed, s.turn * 7919 + 13));
   // a follow-up that is due comes first
   // never two close together: at least 3 turns since the last one, follow-ups included
-  const last = st.history.length ? st.history[st.history.length - 1].turn : -Infinity;
+  // history events (events.ts) share the gap: one stream of stories for the player, not two
+  const own = st.history.length ? st.history[st.history.length - 1].turn : -Infinity;
+  const other = s.lastEvent?.[civ.id] ?? -Infinity;
+  if (other > own) st.next = Math.max(st.next, other + 5);
+  const last = Math.max(own, other);
   if (s.turn - last < 3) return null;
   const due = st.queued.findIndex(q => q.turn <= s.turn);
   let id: string | null = null,
@@ -932,6 +938,7 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
     st.next = s.turn + 5 + Math.floor(r() * 11);
   }
   const e = REALM_EVENTS[id];
+  if (s.lastEvent) s.lastEvent[civ.id] = s.turn;
   st.pending = { id, turn: s.turn, subject, variant: Math.floor(r() * e.text.length) };
   st.lastKind = e.kind;
   const c = ctxOf(s, civ, subject)!;
@@ -963,7 +970,11 @@ export function pendingRealmEvent(s: GameState, civ: Civ) {
 }
 
 /** Make the choice. Returns what happened. */
-export function resolveRealmEvent(s: GameState, civ: Civ, index: number): { ok: boolean; msg: string } {
+export function resolveRealmEvent(
+  s: GameState,
+  civ: Civ,
+  index: number,
+): { ok: boolean; msg: string } {
   const p = s.realmEvents?.pending;
   if (!p) return { ok: false, msg: 'No event is waiting.' };
   const e = REALM_EVENTS[p.id];

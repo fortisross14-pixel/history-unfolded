@@ -27,10 +27,10 @@ import { hashSeed, mulberry32, pick, range, type Rng } from './rng.ts';
 import type { Deposit, MapData, MapSettings, MapType } from './types.ts';
 
 export const MAP_SIZES = {
-  small: { w: 52, h: 32, civs: 4 },
-  standard: { w: 70, h: 44, civs: 6 },
-  large: { w: 88, h: 54, civs: 8 },
-  huge: { w: 106, h: 66, civs: 10 },
+  small: { w: 52, h: 32, civs: 5, independents: 4 },
+  standard: { w: 70, h: 44, civs: 8, independents: 7 },
+  large: { w: 88, h: 54, civs: 11, independents: 10 },
+  huge: { w: 106, h: 66, civs: 14, independents: 13 },
 } as const;
 
 export const MAP_TYPES: { id: MapType; name: string; note: string }[] = [
@@ -393,7 +393,11 @@ export function generateMap(s: MapSettings): MapData {
     deposit,
     starts: [],
   };
-  map.starts = placeStarts(map, MAP_SIZES[s.size].civs, mulberry32(hashSeed(s.seed, 10)));
+  map.starts = placeStarts(
+    map,
+    MAP_SIZES[s.size].civs + MAP_SIZES[s.size].independents,
+    mulberry32(hashSeed(s.seed, 10)),
+  );
   return map;
 }
 

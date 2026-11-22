@@ -266,6 +266,13 @@ export function evaluateOffer(s: GameState, from: number, to: number, o: Offer):
   }
   if (o.alliance) {
     if (allied(s, from, to)) return { accept: false, value: 0, reason: 'You are already allies.' };
+    const sworn = s.civs[to].independent && alliesOf(s, to).find(x => x !== from);
+    if (sworn !== undefined && sworn !== false)
+      return {
+        accept: false,
+        value: 0,
+        reason: `They are sworn to the ${s.civs[sworn].name}.`,
+      };
     if (op < 40)
       return {
         accept: false,

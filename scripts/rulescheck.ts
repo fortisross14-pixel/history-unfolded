@@ -77,8 +77,18 @@ for (const seed of [1, 2, 3, 42]) {
   const me = player(s);
   // plain numbers below: the houses start with no strengths
   for (const c of s.civs) for (const d of c.dynasties) d.traits = {};
-  check(s.civs.length === 6, '6 civs');
-  check(s.cities.length === 5, 'AI civs founded their capitals');
+  const majors = s.civs.filter(c => !c.independent);
+  const free = s.civs.filter(c => c.independent);
+  check(majors.length === 6, '6 civs');
+  check(free.length >= 5, `free peoples placed (${free.length})`);
+  check(
+    s.cities.filter(c => !s.civs[c.civId].independent).length === 5,
+    'AI civs founded their capitals',
+  );
+  check(
+    free.every(f => s.cities.filter(c => c.civId === f.id).length === 1),
+    'every free people holds one city',
+  );
   const mine = () => s.formations.filter(f => f.civId === me.id);
   check(mine().length === 3, 'player starts with settlers, levy, scouts');
   const settlers = mine().find(f => f.kind === 'settlers')!;

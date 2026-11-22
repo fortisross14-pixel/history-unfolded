@@ -37,7 +37,17 @@ import { SLOT_TYPES } from '../data/slots.ts';
 import { CULTURE_LIST, DOMAIN_LIST } from '../data/culture.ts';
 import { canStartUpheaval, nodeCost, nodeStatus, startUpheaval, takeNode } from './culture.ts';
 import {
+  absorb,
+  absorbCost,
+  absorbProblem,
+  ABSORB_OPINION,
+  giveGift,
+  protectorOf,
+  standing,
+} from './independents.ts';
+import {
   allied,
+  alliesOf,
   capitalOf,
   evaluateOffer,
   executeOffer,
@@ -638,7 +648,7 @@ function fillDistrict(s: GameState, civ: Civ, c: City, d: District, plan: (strin
   }
 }
 
-function planDistricts(s: GameState, civ: Civ, c: City) {
+export function planDistricts(s: GameState, civ: Civ, c: City) {
   // replanning is costly: each settlement looks again every few turns, staggered
   const ds = cityDistricts(s, c);
   if ((s.turn + c.id) % 3 !== 0 && ds.length > 1) return;
@@ -1360,8 +1370,40 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
       b = opinion(s, o.id, civ.id);
     if (!hasPact(s, civ.id, o.id) && a >= 25 && b >= 25 && rng() < 0.05)
       executeOffer(s, civ.id, o.id, { give: {}, get: {}, pact: true });
-    else if (!allied(s, civ.id, o.id) && a >= 50 && b >= 50 && rng() < 0.03)
+    else if (
+      !allied(s, civ.id, o.id) &&
+      a >= 50 &&
+      b >= 50 &&
+      rng() < 0.03 &&
+      !(o.independent && alliesOf(s, o.id).length)
+    )
       executeOffer(s, civ.id, o.id, { give: {}, get: {}, alliance: true });
+  }
+
+  // free peoples nearby: court them with gifts, swear alliances, absorb old allies
+  for (const o of others) {
+    if (!o.independent || atWar(s, civ.id, o.id)) continue;
+    const near = s.cities.some(
+      c => c.civId === o.id && cities.some(m => distance(g, c.hex, m.hex) <= 10),
+    );
+    if (!near) continue;
+    const st = standing(s, o.id, civ.id);
+    if (st === 'Allies') {
+      if (
+        absorbProblem(s, civ.id, o.id) === null &&
+        civ.gold > absorbCost(s, o.id) + 80 &&
+        rng() < 0.1
+      )
+        absorb(s, civ.id, o.id);
+      else if (civ.gold > 120 && opinion(s, o.id, civ.id) < ABSORB_OPINION && rng() < 0.05)
+        giveGift(s, civ.id, o.id, 30);
+      continue;
+    }
+    if (protectorOf(s, o.id) !== undefined) continue;
+    const offer = { give: {}, get: {}, alliance: true };
+    if (evaluateOffer(s, civ.id, o.id, offer).accept && rng() < 0.3)
+      executeOffer(s, civ.id, o.id, offer);
+    else if (civ.gold > 80 && rng() < 0.06) giveGift(s, civ.id, o.id, 25);
   }
 
   // offers and demands to the player

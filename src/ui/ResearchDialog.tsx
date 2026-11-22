@@ -136,6 +136,7 @@ export function ResearchDialog({ game, civ, onPick, onGoal, onClose }: Props) {
                   className={shown === e ? 'on' : ''}
                   onClick={() => setShown(e)}
                 >
+                  <Art k={`era/${ERAS[e].toLowerCase()}`} size={22} className="era-art" />
                   {ERAS[e]}
                   {left ? <small> · {left} left</small> : <small> ✓</small>}
                 </button>

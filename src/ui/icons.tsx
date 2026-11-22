@@ -1,3 +1,4 @@
+import { artUrl } from '../render/art.ts';
 import { ICON_SYMBOLS } from './iconSymbols.ts';
 
 /** Interface names (the keys art sheets use, icon/<name>) mapped to the built-in line icons. */
@@ -40,6 +41,17 @@ const ALIAS: Record<string, string> = {
 };
 
 export const iconName = (name: string) => ALIAS[name] ?? name;
+
+/** Interface names whose generated art (icon/<key>) is drawn under another key. */
+const ART_ALIAS: Record<string, string> = {
+  research: 'science',
+  goods: 'ledger',
+  report: 'load',
+  flag: 'levy',
+  split: 'split',
+};
+/** The generated icon for an interface name, if the art set has one. */
+export const iconArt = (name: string) => artUrl(`icon/${ART_ALIAS[name] ?? name}`);
 export const hasIcon = (name: string) => iconName(name) in ICON_SYMBOLS;
 
 /** Mount once: the sprite every <Icon> points into. */
@@ -56,18 +68,35 @@ export function IconSprite() {
   );
 }
 
-/** A line icon in the current text colour. */
+/**
+ * An interface icon: the generated icon art where it exists, else a line icon in the current text
+ * colour. `line` keeps the line icon (white on teal, where coloured art would not read).
+ */
 export function Icon({
   name,
   size,
   className = '',
   title,
+  line = false,
 }: {
   name: string;
   size?: number;
   className?: string;
   title?: string;
+  line?: boolean;
 }) {
+  const art = line ? undefined : iconArt(name);
+  if (art)
+    return (
+      <img
+        className={`icon icon-art ${className}`}
+        src={art}
+        alt={title ?? ''}
+        title={title}
+        style={size ? { height: size, width: 'auto' } : undefined}
+        draggable={false}
+      />
+    );
   const id = iconName(name);
   return (
     <svg

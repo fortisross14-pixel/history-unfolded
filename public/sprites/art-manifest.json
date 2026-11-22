@@ -1,1 +1,1922 @@
-{}
+{
+ "badge/forest": {
+  "path": "art/badge/forest.webp",
+  "w": 96,
+  "h": 76
+ },
+ "badge/hills": {
+  "path": "art/badge/hills.webp",
+  "w": 96,
+  "h": 53
+ },
+ "badge/jungle": {
+  "path": "art/badge/jungle.webp",
+  "w": 96,
+  "h": 89
+ },
+ "badge/marsh": {
+  "path": "art/badge/marsh.webp",
+  "w": 96,
+  "h": 91
+ },
+ "badge/mountains": {
+  "path": "art/badge/mountains.webp",
+  "w": 96,
+  "h": 63
+ },
+ "building/academy": {
+  "path": "art/building/academy.webp",
+  "w": 96,
+  "h": 90
+ },
+ "building/amphitheatre": {
+  "path": "art/building/amphitheatre.webp",
+  "w": 96,
+  "h": 73
+ },
+ "building/aqueduct": {
+  "path": "art/building/aqueduct.webp",
+  "w": 96,
+  "h": 58
+ },
+ "building/armoury": {
+  "path": "art/building/armoury.webp",
+  "w": 96,
+  "h": 91
+ },
+ "building/bank": {
+  "path": "art/building/bank.webp",
+  "w": 96,
+  "h": 82
+ },
+ "building/barracks": {
+  "path": "art/building/barracks.webp",
+  "w": 96,
+  "h": 78
+ },
+ "building/cannery": {
+  "path": "art/building/cannery.webp",
+  "w": 96,
+  "h": 88
+ },
+ "building/castle": {
+  "path": "art/building/castle.webp",
+  "w": 96,
+  "h": 80
+ },
+ "building/cathedral": {
+  "path": "art/building/cathedral.webp",
+  "w": 86,
+  "h": 96
+ },
+ "building/counting-house": {
+  "path": "art/building/counting-house.webp",
+  "w": 96,
+  "h": 74
+ },
+ "building/empty": {
+  "path": "art/building/empty.webp",
+  "w": 96,
+  "h": 64
+ },
+ "building/engineers": {
+  "path": "art/building/engineers.webp",
+  "w": 96,
+  "h": 73
+ },
+ "building/factory": {
+  "path": "art/building/factory.webp",
+  "w": 96,
+  "h": 93
+ },
+ "building/farm": {
+  "path": "art/building/farm.webp",
+  "w": 96,
+  "h": 82
+ },
+ "building/fishing-dock": {
+  "path": "art/building/fishing-dock.webp",
+  "w": 96,
+  "h": 91
+ },
+ "building/foundry": {
+  "path": "art/building/foundry.webp",
+  "w": 96,
+  "h": 86
+ },
+ "building/granary": {
+  "path": "art/building/granary.webp",
+  "w": 91,
+  "h": 96
+ },
+ "building/guild-hall": {
+  "path": "art/building/guild-hall.webp",
+  "w": 96,
+  "h": 85
+ },
+ "building/harbour": {
+  "path": "art/building/harbour.webp",
+  "w": 96,
+  "h": 78
+ },
+ "building/houses": {
+  "path": "art/building/houses.webp",
+  "w": 96,
+  "h": 70
+ },
+ "building/hunting-lodge": {
+  "path": "art/building/hunting-lodge.webp",
+  "w": 96,
+  "h": 84
+ },
+ "building/infirmary": {
+  "path": "art/building/infirmary.webp",
+  "w": 96,
+  "h": 81
+ },
+ "building/ironworks": {
+  "path": "art/building/ironworks.webp",
+  "w": 95,
+  "h": 96
+ },
+ "building/kings-mine": {
+  "path": "art/building/kings-mine.webp",
+  "w": 96,
+  "h": 78
+ },
+ "building/laboratory": {
+  "path": "art/building/laboratory.webp",
+  "w": 96,
+  "h": 91
+ },
+ "building/library": {
+  "path": "art/building/library.webp",
+  "w": 96,
+  "h": 87
+ },
+ "building/lumber-mill": {
+  "path": "art/building/lumber-mill.webp",
+  "w": 96,
+  "h": 74
+ },
+ "building/market": {
+  "path": "art/building/market.webp",
+  "w": 96,
+  "h": 67
+ },
+ "building/mine": {
+  "path": "art/building/mine.webp",
+  "w": 96,
+  "h": 86
+ },
+ "building/mint": {
+  "path": "art/building/mint.webp",
+  "w": 96,
+  "h": 92
+ },
+ "building/monument": {
+  "path": "art/building/monument.webp",
+  "w": 79,
+  "h": 96
+ },
+ "building/observatory": {
+  "path": "art/building/observatory.webp",
+  "w": 91,
+  "h": 96
+ },
+ "building/paper-mill": {
+  "path": "art/building/paper-mill.webp",
+  "w": 96,
+  "h": 82
+ },
+ "building/pasture": {
+  "path": "art/building/pasture.webp",
+  "w": 96,
+  "h": 76
+ },
+ "building/plantation": {
+  "path": "art/building/plantation.webp",
+  "w": 96,
+  "h": 76
+ },
+ "building/power-plant": {
+  "path": "art/building/power-plant.webp",
+  "w": 96,
+  "h": 91
+ },
+ "building/printing-house": {
+  "path": "art/building/printing-house.webp",
+  "w": 96,
+  "h": 95
+ },
+ "building/pumping-station": {
+  "path": "art/building/pumping-station.webp",
+  "w": 96,
+  "h": 85
+ },
+ "building/railway-station": {
+  "path": "art/building/railway-station.webp",
+  "w": 96,
+  "h": 69
+ },
+ "building/royal-forest": {
+  "path": "art/building/royal-forest.webp",
+  "w": 96,
+  "h": 73
+ },
+ "building/royal-granaries": {
+  "path": "art/building/royal-granaries.webp",
+  "w": 96,
+  "h": 74
+ },
+ "building/sawmill": {
+  "path": "art/building/sawmill.webp",
+  "w": 96,
+  "h": 95
+ },
+ "building/school": {
+  "path": "art/building/school.webp",
+  "w": 96,
+  "h": 81
+ },
+ "building/shipyard": {
+  "path": "art/building/shipyard.webp",
+  "w": 96,
+  "h": 71
+ },
+ "building/shrine": {
+  "path": "art/building/shrine.webp",
+  "w": 96,
+  "h": 79
+ },
+ "building/smithy": {
+  "path": "art/building/smithy.webp",
+  "w": 96,
+  "h": 84
+ },
+ "building/stock-exchange": {
+  "path": "art/building/stock-exchange.webp",
+  "w": 96,
+  "h": 83
+ },
+ "building/tannery": {
+  "path": "art/building/tannery.webp",
+  "w": 96,
+  "h": 77
+ },
+ "building/temple": {
+  "path": "art/building/temple.webp",
+  "w": 96,
+  "h": 89
+ },
+ "building/tenements": {
+  "path": "art/building/tenements.webp",
+  "w": 96,
+  "h": 79
+ },
+ "building/town-hall": {
+  "path": "art/building/town-hall.webp",
+  "w": 96,
+  "h": 91
+ },
+ "building/university": {
+  "path": "art/building/university.webp",
+  "w": 96,
+  "h": 90
+ },
+ "building/walls": {
+  "path": "art/building/walls.webp",
+  "w": 96,
+  "h": 62
+ },
+ "building/war-college": {
+  "path": "art/building/war-college.webp",
+  "w": 96,
+  "h": 85
+ },
+ "building/weaver": {
+  "path": "art/building/weaver.webp",
+  "w": 96,
+  "h": 82
+ },
+ "building/windmill": {
+  "path": "art/building/windmill.webp",
+  "w": 89,
+  "h": 96
+ },
+ "building/woodlot": {
+  "path": "art/building/woodlot.webp",
+  "w": 96,
+  "h": 85
+ },
+ "building/workshop": {
+  "path": "art/building/workshop.webp",
+  "w": 96,
+  "h": 67
+ },
+ "deposit/cattle": {
+  "path": "art/deposit/cattle.webp",
+  "w": 96,
+  "h": 74
+ },
+ "deposit/coal": {
+  "path": "art/deposit/coal.webp",
+  "w": 96,
+  "h": 68
+ },
+ "deposit/copper": {
+  "path": "art/deposit/copper.webp",
+  "w": 96,
+  "h": 65
+ },
+ "deposit/dyes": {
+  "path": "art/deposit/dyes.webp",
+  "w": 96,
+  "h": 81
+ },
+ "deposit/fish": {
+  "path": "art/deposit/fish.webp",
+  "w": 96,
+  "h": 55
+ },
+ "deposit/furs": {
+  "path": "art/deposit/furs.webp",
+  "w": 96,
+  "h": 78
+ },
+ "deposit/game": {
+  "path": "art/deposit/game.webp",
+  "w": 87,
+  "h": 96
+ },
+ "deposit/gold": {
+  "path": "art/deposit/gold.webp",
+  "w": 96,
+  "h": 73
+ },
+ "deposit/horses": {
+  "path": "art/deposit/horses.webp",
+  "w": 96,
+  "h": 81
+ },
+ "deposit/iron": {
+  "path": "art/deposit/iron.webp",
+  "w": 96,
+  "h": 74
+ },
+ "deposit/ivory": {
+  "path": "art/deposit/ivory.webp",
+  "w": 96,
+  "h": 93
+ },
+ "deposit/oil": {
+  "path": "art/deposit/oil.webp",
+  "w": 76,
+  "h": 96
+ },
+ "deposit/pearls": {
+  "path": "art/deposit/pearls.webp",
+  "w": 96,
+  "h": 87
+ },
+ "deposit/pigs": {
+  "path": "art/deposit/pigs.webp",
+  "w": 96,
+  "h": 67
+ },
+ "deposit/rice": {
+  "path": "art/deposit/rice.webp",
+  "w": 96,
+  "h": 90
+ },
+ "deposit/salt": {
+  "path": "art/deposit/salt.webp",
+  "w": 96,
+  "h": 68
+ },
+ "deposit/saltpeter": {
+  "path": "art/deposit/saltpeter.webp",
+  "w": 96,
+  "h": 83
+ },
+ "deposit/sheep": {
+  "path": "art/deposit/sheep.webp",
+  "w": 96,
+  "h": 73
+ },
+ "deposit/silk": {
+  "path": "art/deposit/silk.webp",
+  "w": 96,
+  "h": 85
+ },
+ "deposit/silver": {
+  "path": "art/deposit/silver.webp",
+  "w": 96,
+  "h": 72
+ },
+ "deposit/spices": {
+  "path": "art/deposit/spices.webp",
+  "w": 96,
+  "h": 87
+ },
+ "deposit/stone": {
+  "path": "art/deposit/stone.webp",
+  "w": 96,
+  "h": 71
+ },
+ "deposit/sugar": {
+  "path": "art/deposit/sugar.webp",
+  "w": 96,
+  "h": 94
+ },
+ "deposit/tin": {
+  "path": "art/deposit/tin.webp",
+  "w": 96,
+  "h": 66
+ },
+ "deposit/whales": {
+  "path": "art/deposit/whales.webp",
+  "w": 96,
+  "h": 78
+ },
+ "deposit/wheat": {
+  "path": "art/deposit/wheat.webp",
+  "w": 85,
+  "h": 96
+ },
+ "deposit/wine": {
+  "path": "art/deposit/wine.webp",
+  "w": 93,
+  "h": 96
+ },
+ "district/centre": {
+  "path": "art/district/centre.webp",
+  "w": 96,
+  "h": 79
+ },
+ "domain/arts": {
+  "path": "art/domain/arts.webp",
+  "w": 96,
+  "h": 88
+ },
+ "domain/cosmology": {
+  "path": "art/domain/cosmology.webp",
+  "w": 96,
+  "h": 79
+ },
+ "domain/economy": {
+  "path": "art/domain/economy.webp",
+  "w": 96,
+  "h": 82
+ },
+ "domain/knowledge": {
+  "path": "art/domain/knowledge.webp",
+  "w": 96,
+  "h": 91
+ },
+ "domain/politics": {
+  "path": "art/domain/politics.webp",
+  "w": 75,
+  "h": 96
+ },
+ "domain/religion": {
+  "path": "art/domain/religion.webp",
+  "w": 96,
+  "h": 92
+ },
+ "domain/seafaring": {
+  "path": "art/domain/seafaring.webp",
+  "w": 82,
+  "h": 96
+ },
+ "domain/society": {
+  "path": "art/domain/society.webp",
+  "w": 96,
+  "h": 87
+ },
+ "domain/war": {
+  "path": "art/domain/war.webp",
+  "w": 87,
+  "h": 96
+ },
+ "era/ancient": {
+  "path": "art/era/ancient.webp",
+  "w": 96,
+  "h": 96
+ },
+ "era/classical": {
+  "path": "art/era/classical.webp",
+  "w": 96,
+  "h": 96
+ },
+ "era/industrial": {
+  "path": "art/era/industrial.webp",
+  "w": 95,
+  "h": 96
+ },
+ "era/medieval": {
+  "path": "art/era/medieval.webp",
+  "w": 96,
+  "h": 96
+ },
+ "era/renaissance": {
+  "path": "art/era/renaissance.webp",
+  "w": 96,
+  "h": 96
+ },
+ "good/cloth": {
+  "path": "art/good/cloth.webp",
+  "w": 96,
+  "h": 76
+ },
+ "good/coal": {
+  "path": "art/good/coal.webp",
+  "w": 96,
+  "h": 74
+ },
+ "good/copper": {
+  "path": "art/good/copper.webp",
+  "w": 96,
+  "h": 71
+ },
+ "good/dyes": {
+  "path": "art/good/dyes.webp",
+  "w": 96,
+  "h": 81
+ },
+ "good/electricity": {
+  "path": "art/good/electricity.webp",
+  "w": 68,
+  "h": 96
+ },
+ "good/fish": {
+  "path": "art/good/fish.webp",
+  "w": 96,
+  "h": 61
+ },
+ "good/furs": {
+  "path": "art/good/furs.webp",
+  "w": 88,
+  "h": 96
+ },
+ "good/gold": {
+  "path": "art/good/gold.webp",
+  "w": 96,
+  "h": 68
+ },
+ "good/grain": {
+  "path": "art/good/grain.webp",
+  "w": 85,
+  "h": 96
+ },
+ "good/hides": {
+  "path": "art/good/hides.webp",
+  "w": 92,
+  "h": 96
+ },
+ "good/horses": {
+  "path": "art/good/horses.webp",
+  "w": 96,
+  "h": 88
+ },
+ "good/iron": {
+  "path": "art/good/iron.webp",
+  "w": 96,
+  "h": 71
+ },
+ "good/ivory": {
+  "path": "art/good/ivory.webp",
+  "w": 96,
+  "h": 81
+ },
+ "good/leatherwork": {
+  "path": "art/good/leatherwork.webp",
+  "w": 96,
+  "h": 90
+ },
+ "good/meat": {
+  "path": "art/good/meat.webp",
+  "w": 96,
+  "h": 82
+ },
+ "good/oil": {
+  "path": "art/good/oil.webp",
+  "w": 67,
+  "h": 96
+ },
+ "good/paper": {
+  "path": "art/good/paper.webp",
+  "w": 96,
+  "h": 79
+ },
+ "good/pearls": {
+  "path": "art/good/pearls.webp",
+  "w": 95,
+  "h": 96
+ },
+ "good/salt": {
+  "path": "art/good/salt.webp",
+  "w": 96,
+  "h": 73
+ },
+ "good/saltpeter": {
+  "path": "art/good/saltpeter.webp",
+  "w": 96,
+  "h": 66
+ },
+ "good/silk": {
+  "path": "art/good/silk.webp",
+  "w": 96,
+  "h": 82
+ },
+ "good/silver": {
+  "path": "art/good/silver.webp",
+  "w": 96,
+  "h": 67
+ },
+ "good/spices": {
+  "path": "art/good/spices.webp",
+  "w": 96,
+  "h": 91
+ },
+ "good/steel": {
+  "path": "art/good/steel.webp",
+  "w": 96,
+  "h": 67
+ },
+ "good/stone": {
+  "path": "art/good/stone.webp",
+  "w": 96,
+  "h": 73
+ },
+ "good/sugar": {
+  "path": "art/good/sugar.webp",
+  "w": 96,
+  "h": 93
+ },
+ "good/tin": {
+  "path": "art/good/tin.webp",
+  "w": 96,
+  "h": 70
+ },
+ "good/tools": {
+  "path": "art/good/tools.webp",
+  "w": 96,
+  "h": 82
+ },
+ "good/whale-oil": {
+  "path": "art/good/whale-oil.webp",
+  "w": 66,
+  "h": 96
+ },
+ "good/wine": {
+  "path": "art/good/wine.webp",
+  "w": 77,
+  "h": 96
+ },
+ "good/wood": {
+  "path": "art/good/wood.webp",
+  "w": 96,
+  "h": 78
+ },
+ "good/wool": {
+  "path": "art/good/wool.webp",
+  "w": 96,
+  "h": 80
+ },
+ "icon/absorb": {
+  "path": "art/icon/absorb.webp",
+  "w": 96,
+  "h": 96
+ },
+ "icon/alliance": {
+  "path": "art/icon/alliance.webp",
+  "w": 96,
+  "h": 65
+ },
+ "icon/army": {
+  "path": "art/icon/army.webp",
+  "w": 95,
+  "h": 96
+ },
+ "icon/back": {
+  "path": "art/icon/back.webp",
+  "w": 96,
+  "h": 61
+ },
+ "icon/blueprint": {
+  "path": "art/icon/blueprint.webp",
+  "w": 96,
+  "h": 78
+ },
+ "icon/charge": {
+  "path": "art/icon/charge.webp",
+  "w": 87,
+  "h": 93
+ },
+ "icon/check": {
+  "path": "art/icon/check.webp",
+  "w": 96,
+  "h": 83
+ },
+ "icon/cities": {
+  "path": "art/icon/cities.webp",
+  "w": 72,
+  "h": 96
+ },
+ "icon/city": {
+  "path": "art/icon/city.webp",
+  "w": 96,
+  "h": 71
+ },
+ "icon/close": {
+  "path": "art/icon/close.webp",
+  "w": 86,
+  "h": 85
+ },
+ "icon/culture": {
+  "path": "art/icon/culture.webp",
+  "w": 82,
+  "h": 96
+ },
+ "icon/demand": {
+  "path": "art/icon/demand.webp",
+  "w": 96,
+  "h": 53
+ },
+ "icon/designs": {
+  "path": "art/icon/designs.webp",
+  "w": 96,
+  "h": 88
+ },
+ "icon/district": {
+  "path": "art/icon/district.webp",
+  "w": 96,
+  "h": 89
+ },
+ "icon/dynasties": {
+  "path": "art/icon/dynasties.webp",
+  "w": 96,
+  "h": 80
+ },
+ "icon/end-turn": {
+  "path": "art/icon/end-turn.webp",
+  "w": 69,
+  "h": 96
+ },
+ "icon/equip": {
+  "path": "art/icon/equip.webp",
+  "w": 96,
+  "h": 65
+ },
+ "icon/experience": {
+  "path": "art/icon/experience.webp",
+  "w": 93,
+  "h": 96
+ },
+ "icon/food": {
+  "path": "art/icon/food.webp",
+  "w": 79,
+  "h": 96
+ },
+ "icon/fortify": {
+  "path": "art/icon/fortify.webp",
+  "w": 96,
+  "h": 84
+ },
+ "icon/forward": {
+  "path": "art/icon/forward.webp",
+  "w": 96,
+  "h": 63
+ },
+ "icon/found-city": {
+  "path": "art/icon/found-city.webp",
+  "w": 96,
+  "h": 91
+ },
+ "icon/gift": {
+  "path": "art/icon/gift.webp",
+  "w": 96,
+  "h": 75
+ },
+ "icon/go-to": {
+  "path": "art/icon/go-to.webp",
+  "w": 96,
+  "h": 95
+ },
+ "icon/gold": {
+  "path": "art/icon/gold.webp",
+  "w": 96,
+  "h": 89
+ },
+ "icon/help": {
+  "path": "art/icon/help.webp",
+  "w": 96,
+  "h": 95
+ },
+ "icon/housing": {
+  "path": "art/icon/housing.webp",
+  "w": 96,
+  "h": 80
+ },
+ "icon/layers": {
+  "path": "art/icon/layers.webp",
+  "w": 96,
+  "h": 79
+ },
+ "icon/ledger": {
+  "path": "art/icon/ledger.webp",
+  "w": 96,
+  "h": 74
+ },
+ "icon/levy": {
+  "path": "art/icon/levy.webp",
+  "w": 76,
+  "h": 96
+ },
+ "icon/load": {
+  "path": "art/icon/load.webp",
+  "w": 96,
+  "h": 84
+ },
+ "icon/lock": {
+  "path": "art/icon/lock.webp",
+  "w": 77,
+  "h": 96
+ },
+ "icon/melee": {
+  "path": "art/icon/melee.webp",
+  "w": 88,
+  "h": 96
+ },
+ "icon/menu": {
+  "path": "art/icon/menu.webp",
+  "w": 89,
+  "h": 46
+ },
+ "icon/merge": {
+  "path": "art/icon/merge.webp",
+  "w": 96,
+  "h": 36
+ },
+ "icon/minimap": {
+  "path": "art/icon/minimap.webp",
+  "w": 96,
+  "h": 82
+ },
+ "icon/morale": {
+  "path": "art/icon/morale.webp",
+  "w": 96,
+  "h": 90
+ },
+ "icon/moves": {
+  "path": "art/icon/moves.webp",
+  "w": 62,
+  "h": 96
+ },
+ "icon/next-unit": {
+  "path": "art/icon/next-unit.webp",
+  "w": 96,
+  "h": 59
+ },
+ "icon/notices": {
+  "path": "art/icon/notices.webp",
+  "w": 85,
+  "h": 96
+ },
+ "icon/opinion-down": {
+  "path": "art/icon/opinion-down.webp",
+  "w": 72,
+  "h": 96
+ },
+ "icon/opinion-up": {
+  "path": "art/icon/opinion-up.webp",
+  "w": 59,
+  "h": 96
+ },
+ "icon/pact": {
+  "path": "art/icon/pact.webp",
+  "w": 96,
+  "h": 57
+ },
+ "icon/peace": {
+  "path": "art/icon/peace.webp",
+  "w": 96,
+  "h": 85
+ },
+ "icon/people": {
+  "path": "art/icon/people.webp",
+  "w": 82,
+  "h": 96
+ },
+ "icon/peoples": {
+  "path": "art/icon/peoples.webp",
+  "w": 96,
+  "h": 59
+ },
+ "icon/production": {
+  "path": "art/icon/production.webp",
+  "w": 88,
+  "h": 96
+ },
+ "icon/protection": {
+  "path": "art/icon/protection.webp",
+  "w": 80,
+  "h": 96
+ },
+ "icon/ranged": {
+  "path": "art/icon/ranged.webp",
+  "w": 90,
+  "h": 96
+ },
+ "icon/research": {
+  "path": "art/icon/research.webp",
+  "w": 91,
+  "h": 96
+ },
+ "icon/road": {
+  "path": "art/icon/road.webp",
+  "w": 96,
+  "h": 81
+ },
+ "icon/save": {
+  "path": "art/icon/save.webp",
+  "w": 96,
+  "h": 68
+ },
+ "icon/science": {
+  "path": "art/icon/science.webp",
+  "w": 96,
+  "h": 73
+ },
+ "icon/settings": {
+  "path": "art/icon/settings.webp",
+  "w": 96,
+  "h": 93
+ },
+ "icon/settle": {
+  "path": "art/icon/settle.webp",
+  "w": 96,
+  "h": 68
+ },
+ "icon/sight": {
+  "path": "art/icon/sight.webp",
+  "w": 96,
+  "h": 55
+ },
+ "icon/split": {
+  "path": "art/icon/split.webp",
+  "w": 96,
+  "h": 88
+ },
+ "icon/trade": {
+  "path": "art/icon/trade.webp",
+  "w": 96,
+  "h": 85
+ },
+ "icon/upkeep": {
+  "path": "art/icon/upkeep.webp",
+  "w": 89,
+  "h": 96
+ },
+ "icon/war": {
+  "path": "art/icon/war.webp",
+  "w": 88,
+  "h": 96
+ },
+ "icon/warning": {
+  "path": "art/icon/warning.webp",
+  "w": 96,
+  "h": 83
+ },
+ "icon/workers": {
+  "path": "art/icon/workers.webp",
+  "w": 96,
+  "h": 88
+ },
+ "icon/zoom-in": {
+  "path": "art/icon/zoom-in.webp",
+  "w": 95,
+  "h": 96
+ },
+ "icon/zoom-out": {
+  "path": "art/icon/zoom-out.webp",
+  "w": 57,
+  "h": 96
+ },
+ "item/arquebus": {
+  "path": "art/item/arquebus.webp",
+  "w": 96,
+  "h": 52
+ },
+ "item/axe": {
+  "path": "art/item/axe.webp",
+  "w": 90,
+  "h": 96
+ },
+ "item/ballista": {
+  "path": "art/item/ballista.webp",
+  "w": 96,
+  "h": 81
+ },
+ "item/barded-horse": {
+  "path": "art/item/barded-horse.webp",
+  "w": 96,
+  "h": 87
+ },
+ "item/bayonet": {
+  "path": "art/item/bayonet.webp",
+  "w": 96,
+  "h": 85
+ },
+ "item/boarding-crew": {
+  "path": "art/item/boarding-crew.webp",
+  "w": 96,
+  "h": 81
+ },
+ "item/bow": {
+  "path": "art/item/bow.webp",
+  "w": 79,
+  "h": 96
+ },
+ "item/broadside": {
+  "path": "art/item/broadside.webp",
+  "w": 96,
+  "h": 61
+ },
+ "item/bronze-helmet": {
+  "path": "art/item/bronze-helmet.webp",
+  "w": 76,
+  "h": 96
+ },
+ "item/bronze-scale": {
+  "path": "art/item/bronze-scale.webp",
+  "w": 96,
+  "h": 87
+ },
+ "item/bronze-shield": {
+  "path": "art/item/bronze-shield.webp",
+  "w": 95,
+  "h": 96
+ },
+ "item/bronze-sword": {
+  "path": "art/item/bronze-sword.webp",
+  "w": 90,
+  "h": 96
+ },
+ "item/carrack": {
+  "path": "art/item/carrack.webp",
+  "w": 96,
+  "h": 87
+ },
+ "item/chain-mail": {
+  "path": "art/item/chain-mail.webp",
+  "w": 96,
+  "h": 92
+ },
+ "item/cog": {
+  "path": "art/item/cog.webp",
+  "w": 96,
+  "h": 93
+ },
+ "item/composite-bow": {
+  "path": "art/item/composite-bow.webp",
+  "w": 61,
+  "h": 96
+ },
+ "item/crossbow": {
+  "path": "art/item/crossbow.webp",
+  "w": 96,
+  "h": 72
+ },
+ "item/cuirass": {
+  "path": "art/item/cuirass.webp",
+  "w": 81,
+  "h": 96
+ },
+ "item/deck-archers": {
+  "path": "art/item/deck-archers.webp",
+  "w": 96,
+  "h": 74
+ },
+ "item/deck-guns": {
+  "path": "art/item/deck-guns.webp",
+  "w": 96,
+  "h": 68
+ },
+ "item/dugout": {
+  "path": "art/item/dugout.webp",
+  "w": 96,
+  "h": 52
+ },
+ "item/field-gun": {
+  "path": "art/item/field-gun.webp",
+  "w": 96,
+  "h": 69
+ },
+ "item/field-medics": {
+  "path": "art/item/field-medics.webp",
+  "w": 96,
+  "h": 73
+ },
+ "item/full-rig": {
+  "path": "art/item/full-rig.webp",
+  "w": 96,
+  "h": 95
+ },
+ "item/galleon": {
+  "path": "art/item/galleon.webp",
+  "w": 96,
+  "h": 90
+ },
+ "item/galley-hull": {
+  "path": "art/item/galley-hull.webp",
+  "w": 96,
+  "h": 93
+ },
+ "item/great-helm": {
+  "path": "art/item/great-helm.webp",
+  "w": 73,
+  "h": 96
+ },
+ "item/heavy-horse": {
+  "path": "art/item/heavy-horse.webp",
+  "w": 96,
+  "h": 89
+ },
+ "item/hide-shield": {
+  "path": "art/item/hide-shield.webp",
+  "w": 93,
+  "h": 96
+ },
+ "item/hobnailed-boots": {
+  "path": "art/item/hobnailed-boots.webp",
+  "w": 96,
+  "h": 85
+ },
+ "item/horse": {
+  "path": "art/item/horse.webp",
+  "w": 96,
+  "h": 84
+ },
+ "item/improvised": {
+  "path": "art/item/improvised.webp",
+  "w": 90,
+  "h": 96
+ },
+ "item/iron-helmet": {
+  "path": "art/item/iron-helmet.webp",
+  "w": 96,
+  "h": 72
+ },
+ "item/iron-sword": {
+  "path": "art/item/iron-sword.webp",
+  "w": 89,
+  "h": 96
+ },
+ "item/ivory-lamellar": {
+  "path": "art/item/ivory-lamellar.webp",
+  "w": 96,
+  "h": 88
+ },
+ "item/javelins": {
+  "path": "art/item/javelins.webp",
+  "w": 96,
+  "h": 93
+ },
+ "item/kite-shield": {
+  "path": "art/item/kite-shield.webp",
+  "w": 72,
+  "h": 96
+ },
+ "item/lance": {
+  "path": "art/item/lance.webp",
+  "w": 93,
+  "h": 96
+ },
+ "item/lateen-sail": {
+  "path": "art/item/lateen-sail.webp",
+  "w": 95,
+  "h": 96
+ },
+ "item/leather": {
+  "path": "art/item/leather.webp",
+  "w": 96,
+  "h": 88
+ },
+ "item/leather-cap": {
+  "path": "art/item/leather-cap.webp",
+  "w": 92,
+  "h": 96
+ },
+ "item/longbow": {
+  "path": "art/item/longbow.webp",
+  "w": 48,
+  "h": 96
+ },
+ "item/longship": {
+  "path": "art/item/longship.webp",
+  "w": 96,
+  "h": 82
+ },
+ "item/lookout": {
+  "path": "art/item/lookout.webp",
+  "w": 84,
+  "h": 96
+ },
+ "item/marching-boots": {
+  "path": "art/item/marching-boots.webp",
+  "w": 96,
+  "h": 87
+ },
+ "item/marines": {
+  "path": "art/item/marines.webp",
+  "w": 96,
+  "h": 96
+ },
+ "item/musket": {
+  "path": "art/item/musket.webp",
+  "w": 96,
+  "h": 54
+ },
+ "item/oars": {
+  "path": "art/item/oars.webp",
+  "w": 96,
+  "h": 85
+ },
+ "item/open-deck": {
+  "path": "art/item/open-deck.webp",
+  "w": 96,
+  "h": 59
+ },
+ "item/padded": {
+  "path": "art/item/padded.webp",
+  "w": 96,
+  "h": 85
+ },
+ "item/pavise": {
+  "path": "art/item/pavise.webp",
+  "w": 69,
+  "h": 96
+ },
+ "item/pike": {
+  "path": "art/item/pike.webp",
+  "w": 78,
+  "h": 96
+ },
+ "item/plate-armour": {
+  "path": "art/item/plate-armour.webp",
+  "w": 96,
+  "h": 92
+ },
+ "item/ram": {
+  "path": "art/item/ram.webp",
+  "w": 96,
+  "h": 64
+ },
+ "item/rifle": {
+  "path": "art/item/rifle.webp",
+  "w": 96,
+  "h": 69
+ },
+ "item/sandals": {
+  "path": "art/item/sandals.webp",
+  "w": 96,
+  "h": 69
+ },
+ "item/scouting-gear": {
+  "path": "art/item/scouting-gear.webp",
+  "w": 96,
+  "h": 92
+ },
+ "item/siege-ladders": {
+  "path": "art/item/siege-ladders.webp",
+  "w": 94,
+  "h": 96
+ },
+ "item/sling": {
+  "path": "art/item/sling.webp",
+  "w": 96,
+  "h": 91
+ },
+ "item/spear": {
+  "path": "art/item/spear.webp",
+  "w": 84,
+  "h": 96
+ },
+ "item/square-sail": {
+  "path": "art/item/square-sail.webp",
+  "w": 93,
+  "h": 96
+ },
+ "item/troop-deck": {
+  "path": "art/item/troop-deck.webp",
+  "w": 96,
+  "h": 59
+ },
+ "item/war-banner": {
+  "path": "art/item/war-banner.webp",
+  "w": 82,
+  "h": 96
+ },
+ "item/wicker-shield": {
+  "path": "art/item/wicker-shield.webp",
+  "w": 92,
+  "h": 96
+ },
+ "settlement/city": {
+  "path": "art/settlement/city.webp",
+  "w": 96,
+  "h": 81
+ },
+ "settlement/metropolis": {
+  "path": "art/settlement/metropolis.webp",
+  "w": 96,
+  "h": 85
+ },
+ "settlement/outpost": {
+  "path": "art/settlement/outpost.webp",
+  "w": 96,
+  "h": 74
+ },
+ "settlement/town": {
+  "path": "art/settlement/town.webp",
+  "w": 96,
+  "h": 79
+ },
+ "settlement/village": {
+  "path": "art/settlement/village.webp",
+  "w": 96,
+  "h": 67
+ },
+ "tag/absolutist": {
+  "path": "art/tag/absolutist.webp",
+  "w": 96,
+  "h": 92
+ },
+ "tag/agrarian": {
+  "path": "art/tag/agrarian.webp",
+  "w": 96,
+  "h": 81
+ },
+ "tag/artistic": {
+  "path": "art/tag/artistic.webp",
+  "w": 96,
+  "h": 90
+ },
+ "tag/devout": {
+  "path": "art/tag/devout.webp",
+  "w": 91,
+  "h": 96
+ },
+ "tag/expansionist": {
+  "path": "art/tag/expansionist.webp",
+  "w": 96,
+  "h": 89
+ },
+ "tag/lunar": {
+  "path": "art/tag/lunar.webp",
+  "w": 89,
+  "h": 96
+ },
+ "tag/maritime": {
+  "path": "art/tag/maritime.webp",
+  "w": 96,
+  "h": 95
+ },
+ "tag/martial": {
+  "path": "art/tag/martial.webp",
+  "w": 96,
+  "h": 88
+ },
+ "tag/mercantile": {
+  "path": "art/tag/mercantile.webp",
+  "w": 94,
+  "h": 96
+ },
+ "tag/rationalist": {
+  "path": "art/tag/rationalist.webp",
+  "w": 73,
+  "h": 96
+ },
+ "tag/republican": {
+  "path": "art/tag/republican.webp",
+  "w": 88,
+  "h": 96
+ },
+ "tag/solar": {
+  "path": "art/tag/solar.webp",
+  "w": 93,
+  "h": 96
+ },
+ "tag/tolerant": {
+  "path": "art/tag/tolerant.webp",
+  "w": 96,
+  "h": 68
+ },
+ "tag/zealous": {
+  "path": "art/tag/zealous.webp",
+  "w": 55,
+  "h": 96
+ },
+ "tech/administration": {
+  "path": "art/tech/administration.webp",
+  "w": 96,
+  "h": 77
+ },
+ "tech/alchemy": {
+  "path": "art/tech/alchemy.webp",
+  "w": 70,
+  "h": 96
+ },
+ "tech/animal-husbandry": {
+  "path": "art/tech/animal-husbandry.webp",
+  "w": 96,
+  "h": 93
+ },
+ "tech/archery": {
+  "path": "art/tech/archery.webp",
+  "w": 92,
+  "h": 96
+ },
+ "tech/armour-smithing": {
+  "path": "art/tech/armour-smithing.webp",
+  "w": 92,
+  "h": 96
+ },
+ "tech/artillery": {
+  "path": "art/tech/artillery.webp",
+  "w": 96,
+  "h": 75
+ },
+ "tech/astronomy": {
+  "path": "art/tech/astronomy.webp",
+  "w": 96,
+  "h": 89
+ },
+ "tech/banking": {
+  "path": "art/tech/banking.webp",
+  "w": 96,
+  "h": 78
+ },
+ "tech/bowyery": {
+  "path": "art/tech/bowyery.webp",
+  "w": 90,
+  "h": 96
+ },
+ "tech/bronze-working": {
+  "path": "art/tech/bronze-working.webp",
+  "w": 96,
+  "h": 82
+ },
+ "tech/carpentry": {
+  "path": "art/tech/carpentry.webp",
+  "w": 96,
+  "h": 96
+ },
+ "tech/cartography": {
+  "path": "art/tech/cartography.webp",
+  "w": 96,
+  "h": 84
+ },
+ "tech/castles": {
+  "path": "art/tech/castles.webp",
+  "w": 96,
+  "h": 77
+ },
+ "tech/chivalry": {
+  "path": "art/tech/chivalry.webp",
+  "w": 84,
+  "h": 96
+ },
+ "tech/classical-age": {
+  "path": "art/tech/classical-age.webp",
+  "w": 94,
+  "h": 96
+ },
+ "tech/compass": {
+  "path": "art/tech/compass.webp",
+  "w": 80,
+  "h": 96
+ },
+ "tech/conscription": {
+  "path": "art/tech/conscription.webp",
+  "w": 96,
+  "h": 79
+ },
+ "tech/construction": {
+  "path": "art/tech/construction.webp",
+  "w": 96,
+  "h": 85
+ },
+ "tech/currency": {
+  "path": "art/tech/currency.webp",
+  "w": 96,
+  "h": 96
+ },
+ "tech/drill": {
+  "path": "art/tech/drill.webp",
+  "w": 77,
+  "h": 96
+ },
+ "tech/education": {
+  "path": "art/tech/education.webp",
+  "w": 96,
+  "h": 85
+ },
+ "tech/electricity": {
+  "path": "art/tech/electricity.webp",
+  "w": 83,
+  "h": 96
+ },
+ "tech/engineering": {
+  "path": "art/tech/engineering.webp",
+  "w": 96,
+  "h": 94
+ },
+ "tech/feudalism": {
+  "path": "art/tech/feudalism.webp",
+  "w": 70,
+  "h": 96
+ },
+ "tech/guilds": {
+  "path": "art/tech/guilds.webp",
+  "w": 96,
+  "h": 85
+ },
+ "tech/gunpowder": {
+  "path": "art/tech/gunpowder.webp",
+  "w": 84,
+  "h": 96
+ },
+ "tech/horseback-riding": {
+  "path": "art/tech/horseback-riding.webp",
+  "w": 96,
+  "h": 94
+ },
+ "tech/industrial-age": {
+  "path": "art/tech/industrial-age.webp",
+  "w": 96,
+  "h": 92
+ },
+ "tech/iron-working": {
+  "path": "art/tech/iron-working.webp",
+  "w": 96,
+  "h": 82
+ },
+ "tech/irrigation": {
+  "path": "art/tech/irrigation.webp",
+  "w": 96,
+  "h": 80
+ },
+ "tech/joint-stock": {
+  "path": "art/tech/joint-stock.webp",
+  "w": 96,
+  "h": 85
+ },
+ "tech/law": {
+  "path": "art/tech/law.webp",
+  "w": 96,
+  "h": 85
+ },
+ "tech/literature": {
+  "path": "art/tech/literature.webp",
+  "w": 96,
+  "h": 78
+ },
+ "tech/machine-tools": {
+  "path": "art/tech/machine-tools.webp",
+  "w": 96,
+  "h": 69
+ },
+ "tech/mail-making": {
+  "path": "art/tech/mail-making.webp",
+  "w": 95,
+  "h": 96
+ },
+ "tech/masonry": {
+  "path": "art/tech/masonry.webp",
+  "w": 96,
+  "h": 80
+ },
+ "tech/mathematics": {
+  "path": "art/tech/mathematics.webp",
+  "w": 85,
+  "h": 96
+ },
+ "tech/mechanics": {
+  "path": "art/tech/mechanics.webp",
+  "w": 96,
+  "h": 83
+ },
+ "tech/medieval-age": {
+  "path": "art/tech/medieval-age.webp",
+  "w": 74,
+  "h": 96
+ },
+ "tech/metallurgy": {
+  "path": "art/tech/metallurgy.webp",
+  "w": 95,
+  "h": 96
+ },
+ "tech/mineralogy": {
+  "path": "art/tech/mineralogy.webp",
+  "w": 96,
+  "h": 85
+ },
+ "tech/mining": {
+  "path": "art/tech/mining.webp",
+  "w": 95,
+  "h": 96
+ },
+ "tech/musketry": {
+  "path": "art/tech/musketry.webp",
+  "w": 96,
+  "h": 68
+ },
+ "tech/mysticism": {
+  "path": "art/tech/mysticism.webp",
+  "w": 74,
+  "h": 96
+ },
+ "tech/navigation": {
+  "path": "art/tech/navigation.webp",
+  "w": 87,
+  "h": 96
+ },
+ "tech/officer-corps": {
+  "path": "art/tech/officer-corps.webp",
+  "w": 96,
+  "h": 85
+ },
+ "tech/oil-drilling": {
+  "path": "art/tech/oil-drilling.webp",
+  "w": 81,
+  "h": 96
+ },
+ "tech/philosophy": {
+  "path": "art/tech/philosophy.webp",
+  "w": 96,
+  "h": 96
+ },
+ "tech/pike-tactics": {
+  "path": "art/tech/pike-tactics.webp",
+  "w": 96,
+  "h": 92
+ },
+ "tech/pottery": {
+  "path": "art/tech/pottery.webp",
+  "w": 95,
+  "h": 96
+ },
+ "tech/preservation": {
+  "path": "art/tech/preservation.webp",
+  "w": 78,
+  "h": 96
+ },
+ "tech/priesthood": {
+  "path": "art/tech/priesthood.webp",
+  "w": 75,
+  "h": 96
+ },
+ "tech/printing": {
+  "path": "art/tech/printing.webp",
+  "w": 96,
+  "h": 92
+ },
+ "tech/railways": {
+  "path": "art/tech/railways.webp",
+  "w": 96,
+  "h": 64
+ },
+ "tech/renaissance-age": {
+  "path": "art/tech/renaissance-age.webp",
+  "w": 96,
+  "h": 94
+ },
+ "tech/rifling": {
+  "path": "art/tech/rifling.webp",
+  "w": 96,
+  "h": 76
+ },
+ "tech/sailing": {
+  "path": "art/tech/sailing.webp",
+  "w": 96,
+  "h": 95
+ },
+ "tech/scientific-method": {
+  "path": "art/tech/scientific-method.webp",
+  "w": 96,
+  "h": 85
+ },
+ "tech/selective-breeding": {
+  "path": "art/tech/selective-breeding.webp",
+  "w": 96,
+  "h": 92
+ },
+ "tech/siegecraft": {
+  "path": "art/tech/siegecraft.webp",
+  "w": 96,
+  "h": 80
+ },
+ "tech/star-forts": {
+  "path": "art/tech/star-forts.webp",
+  "w": 96,
+  "h": 84
+ },
+ "tech/steam-power": {
+  "path": "art/tech/steam-power.webp",
+  "w": 96,
+  "h": 90
+ },
+ "tech/tanning": {
+  "path": "art/tech/tanning.webp",
+  "w": 96,
+  "h": 92
+ },
+ "tech/the-wheel": {
+  "path": "art/tech/the-wheel.webp",
+  "w": 95,
+  "h": 96
+ },
+ "tech/theology": {
+  "path": "art/tech/theology.webp",
+  "w": 68,
+  "h": 96
+ },
+ "tech/urbanism": {
+  "path": "art/tech/urbanism.webp",
+  "w": 96,
+  "h": 62
+ },
+ "tech/writing": {
+  "path": "art/tech/writing.webp",
+  "w": 86,
+  "h": 96
+ },
+ "tech/yeomanry": {
+  "path": "art/tech/yeomanry.webp",
+  "w": 89,
+  "h": 96
+ },
+ "troop/archers": {
+  "path": "art/troop/archers.webp",
+  "w": 86,
+  "h": 96
+ },
+ "troop/arquebusiers": {
+  "path": "art/troop/arquebusiers.webp",
+  "w": 96,
+  "h": 89
+ },
+ "troop/axemen": {
+  "path": "art/troop/axemen.webp",
+  "w": 67,
+  "h": 96
+ },
+ "troop/banner": {
+  "path": "art/troop/banner.webp",
+  "w": 81,
+  "h": 96
+ },
+ "troop/carrack": {
+  "path": "art/troop/carrack.webp",
+  "w": 96,
+  "h": 92
+ },
+ "troop/cog": {
+  "path": "art/troop/cog.webp",
+  "w": 96,
+  "h": 93
+ },
+ "troop/crossbowmen": {
+  "path": "art/troop/crossbowmen.webp",
+  "w": 96,
+  "h": 91
+ },
+ "troop/field-gun": {
+  "path": "art/troop/field-gun.webp",
+  "w": 96,
+  "h": 69
+ },
+ "troop/galleon": {
+  "path": "art/troop/galleon.webp",
+  "w": 94,
+  "h": 96
+ },
+ "troop/galley": {
+  "path": "art/troop/galley.webp",
+  "w": 96,
+  "h": 81
+ },
+ "troop/heavy-cavalry": {
+  "path": "art/troop/heavy-cavalry.webp",
+  "w": 94,
+  "h": 96
+ },
+ "troop/heavy-infantry": {
+  "path": "art/troop/heavy-infantry.webp",
+  "w": 87,
+  "h": 96
+ },
+ "troop/horse-archers": {
+  "path": "art/troop/horse-archers.webp",
+  "w": 94,
+  "h": 96
+ },
+ "troop/javelins": {
+  "path": "art/troop/javelins.webp",
+  "w": 92,
+  "h": 96
+ },
+ "troop/knights": {
+  "path": "art/troop/knights.webp",
+  "w": 90,
+  "h": 96
+ },
+ "troop/lancers": {
+  "path": "art/troop/lancers.webp",
+  "w": 94,
+  "h": 96
+ },
+ "troop/levy": {
+  "path": "art/troop/levy.webp",
+  "w": 96,
+  "h": 88
+ },
+ "troop/light-cavalry": {
+  "path": "art/troop/light-cavalry.webp",
+  "w": 96,
+  "h": 93
+ },
+ "troop/longbowmen": {
+  "path": "art/troop/longbowmen.webp",
+  "w": 89,
+  "h": 96
+ },
+ "troop/longship": {
+  "path": "art/troop/longship.webp",
+  "w": 96,
+  "h": 83
+ },
+ "troop/medics": {
+  "path": "art/troop/medics.webp",
+  "w": 96,
+  "h": 63
+ },
+ "troop/musketeers": {
+  "path": "art/troop/musketeers.webp",
+  "w": 96,
+  "h": 91
+ },
+ "troop/pikemen": {
+  "path": "art/troop/pikemen.webp",
+  "w": 54,
+  "h": 96
+ },
+ "troop/riflemen": {
+  "path": "art/troop/riflemen.webp",
+  "w": 96,
+  "h": 82
+ },
+ "troop/scouts": {
+  "path": "art/troop/scouts.webp",
+  "w": 96,
+  "h": 94
+ },
+ "troop/settlers": {
+  "path": "art/troop/settlers.webp",
+  "w": 96,
+  "h": 74
+ },
+ "troop/siege": {
+  "path": "art/troop/siege.webp",
+  "w": 96,
+  "h": 96
+ },
+ "troop/slingers": {
+  "path": "art/troop/slingers.webp",
+  "w": 79,
+  "h": 96
+ },
+ "troop/spearmen": {
+  "path": "art/troop/spearmen.webp",
+  "w": 79,
+  "h": 96
+ },
+ "troop/swordsmen": {
+  "path": "art/troop/swordsmen.webp",
+  "w": 96,
+  "h": 96
+ },
+ "troop/transport": {
+  "path": "art/troop/transport.webp",
+  "w": 96,
+  "h": 81
+ },
+ "troop/workers": {
+  "path": "art/troop/workers.webp",
+  "w": 96,
+  "h": 84
+ }
+}

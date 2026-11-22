@@ -856,3 +856,48 @@ button.toast {
   font: 600 17px/1.2 var(--iv-body);
   letter-spacing: 0.01em;
 }
+
+/* ---------------------------------------------------------------- generated icon art */
+img.icon-art {
+  height: 1.3em;
+  width: auto;
+  vertical-align: -0.28em;
+  flex: none;
+  object-fit: contain;
+}
+.topbar img.icon-art {
+  height: 22px;
+}
+.topbar .stat img.icon-art {
+  height: 24px;
+}
+/* trackers: coloured art sits on an ivory disc instead of the teal one */
+.trk-ico:has(img.icon-art) {
+  background: var(--iv-panel-2);
+}
+.trk-ico img.icon-art {
+  height: 26px;
+}
+.panel .actions img.icon-art {
+  height: 20px;
+}
+.ico {
+  object-fit: contain;
+}
+img.ico {
+  height: 18px;
+  width: auto;
+}
+.age-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+img.era-art {
+  height: 22px;
+  width: auto;
+}
+.tech-card img.tech-art {
+  height: 30px;
+  width: auto;
+}

@@ -637,7 +637,7 @@ export function Game({
 
       <header className={`topbar ${menuOpen ? 'menu-open' : ''}`} ref={topRef}>
         <span className="crest" style={{ ['--civ' as string]: me.color }} aria-hidden>
-          <Icon name="crown" />
+          <Icon name="crown" line />
         </span>
         <span className="civ-name">
           <span className="swatch" style={{ background: me.color }} />
@@ -992,7 +992,7 @@ export function Game({
           {todos.length ? nextLabel(todos, lastTodo.current, sel) : 'All done'}
         </button>
         <button className="end-turn" onClick={doEndTurn} disabled={busy} title="End turn (Enter)">
-          <Icon name="end-turn" className="end-ico" />
+          <Icon name="end-turn" className="end-ico" line />
           <b>End turn</b>
           {todos.length ? <small>{todos.length} to do</small> : <small>All done</small>}
         </button>

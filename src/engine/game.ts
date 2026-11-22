@@ -1417,6 +1417,17 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
   const b = battleInputs(s, f, hex);
   const rng = mulberry32(hashSeed(s.settings.map.seed, s.turn * 7919 + f.id * 31 + hex));
   const report = resolveBattle(b.att, b.def, { ...b.ctx, rng });
+  report.scene = isWaterHex(s, hex)
+    ? 'naval'
+    : f.aboard !== undefined
+      ? 'landing'
+      : b.city
+        ? 'siege'
+        : report.lines.some(l => l.startsWith('Charge:'))
+          ? 'charge'
+          : s.map.vegetation[hex] === 'forest' || s.map.vegetation[hex] === 'jungle'
+            ? 'forest'
+            : 'field';
   const defCiv = s.civs[b.defCivId];
 
   const applyLosses = (fm: Formation, loss: Record<number, number>) => {

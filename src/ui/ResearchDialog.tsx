@@ -7,6 +7,7 @@ import { ERAS, TECH_LIST, TECHS, type TechInfo } from '../data/techs.ts';
 import { TAGS } from '../data/culture.ts';
 import { availableTechs, goalStep, techCost } from '../engine/game.ts';
 import { tagCounts } from '../engine/mods.ts';
+import { Art } from './bits.tsx';
 import type { Civ, GameState } from '../engine/types.ts';
 
 interface Props {
@@ -141,6 +142,7 @@ export function ResearchDialog({ game, civ, onPick, onGoal, onClose }: Props) {
                   title={t.note}
                 >
                   <span className="tech-head">
+                    <Art k={`tech/${t.id}`} size={30} className="tech-art" />
                     <b>{t.name}</b>
                     <small>
                       {known ? '✓' : on ? `${Math.floor(civ.science)}/${cost}` : cost}

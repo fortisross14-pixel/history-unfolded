@@ -29,7 +29,7 @@ import {
 } from '../engine/game.ts';
 import { centerUnit, within } from '../engine/hex.ts';
 import type { City, GameState } from '../engine/types.ts';
-import { Goods } from './bits.tsx';
+import { Art, Goods } from './bits.tsx';
 
 interface Props {
   game: GameState;
@@ -299,12 +299,19 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                       >
                         {x.t ? (
                           <>
-                            <span
-                              className="cell-glyph"
-                              style={{ background: GROUPS[x.t.group].color }}
-                            >
-                              {x.t.glyph}
-                            </span>
+                            <Art
+                              k={`building/${x.t.id}`}
+                              size={56}
+                              className="cell-art"
+                              fallback={
+                                <span
+                                  className="cell-glyph"
+                                  style={{ background: GROUPS[x.t.group].color }}
+                                >
+                                  {x.t.glyph}
+                                </span>
+                              }
+                            />
                             <b>{x.t.name}</b>
                             <small>{status}</small>
                             {x.rep?.staffed && (
@@ -475,12 +482,18 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                               title={why ?? t.note}
                               onClick={() => act(setSlot(game, mineD.id, cell, t.id))}
                             >
-                              <span
-                                className="cell-glyph"
-                                style={{ background: GROUPS[t.group].color }}
-                              >
-                                {t.glyph}
-                              </span>
+                              <Art
+                                k={`building/${t.id}`}
+                                size={36}
+                                fallback={
+                                  <span
+                                    className="cell-glyph"
+                                    style={{ background: GROUPS[t.group].color }}
+                                  >
+                                    {t.glyph}
+                                  </span>
+                                }
+                              />
                               <span>
                                 <b>{t.name}</b>
                                 <small>

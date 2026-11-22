@@ -16,6 +16,8 @@ import {
   cohortStats,
   formationMoves,
   formationSprite,
+  formationArtKey,
+  artKeyForLoadout,
   formationStats,
   groupCohorts,
   groupName,
@@ -24,7 +26,7 @@ import {
   ROLE_NAMES,
   spriteForLoadout,
 } from '../engine/units.ts';
-import { Goods, UnitPortrait } from './bits.tsx';
+import { Goods, Ico, UnitPortrait } from './bits.tsx';
 
 interface Props {
   game: GameState;
@@ -79,7 +81,7 @@ export function FormationPanel(p: Props) {
   return (
     <div className="panel formation">
       <div className="panel-head">
-        <UnitPortrait sprite={formationSprite(f)} color={civ.color} />
+        <UnitPortrait sprite={formationSprite(f)} art={formationArtKey(f)} color={civ.color} />
         <div>
           {editing ? (
             <form
@@ -144,12 +146,24 @@ export function FormationPanel(p: Props) {
       )}
       {f.kind !== 'settlers' && (
         <div className="stat-row">
-          <span title="Total melee strength">⚔ {stats.melee}</span>
-          <span title="Total ranged strength">🏹 {stats.ranged}</span>
-          <span title="Total charge">🐎 {stats.charge}</span>
-          <span title="Average protection">🛡 {stats.protection}</span>
-          <span title="Losses (%) it can take before breaking">✊ {stats.morale}%</span>
-          <span title="Gold per turn">⛁ {stats.upkeep}</span>
+          <span title="Total melee strength">
+            <Ico name="melee" fallback="⚔" /> {stats.melee}
+          </span>
+          <span title="Total ranged strength">
+            <Ico name="ranged" fallback="🏹" /> {stats.ranged}
+          </span>
+          <span title="Total charge">
+            <Ico name="charge" fallback="🐎" /> {stats.charge}
+          </span>
+          <span title="Average protection">
+            <Ico name="protection" fallback="🛡" /> {stats.protection}
+          </span>
+          <span title="Losses (%) it can take before breaking">
+            <Ico name="morale" fallback="✊" /> {stats.morale}%
+          </span>
+          <span title="Gold per turn">
+            <Ico name="upkeep" fallback="⛁" /> {stats.upkeep}
+          </span>
         </div>
       )}
       {f.kind === 'army' && f.cohorts.length > 1 && (
@@ -189,7 +203,12 @@ export function FormationPanel(p: Props) {
           return (
             <div key={g.key} className={`group ${k ? 'picked' : ''}`}>
               {f.kind === 'army' && (
-                <UnitPortrait sprite={spriteForLoadout(g.loadout)} color={civ.color} small />
+                <UnitPortrait
+                  sprite={spriteForLoadout(g.loadout)}
+                  art={artKeyForLoadout(g.loadout)}
+                  color={civ.color}
+                  small
+                />
               )}
               <div className="group-main">
                 <b>

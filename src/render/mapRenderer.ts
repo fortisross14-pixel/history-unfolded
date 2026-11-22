@@ -6,9 +6,16 @@ import { GOODS, DEPOSITS } from '../data/goods.ts';
 import { GROUPS, SLOT_TYPES } from '../data/slots.ts';
 import { TERRAIN, isWater } from '../data/terrain.ts';
 import { depositVisible, pathTurns, territory, visibleHexes } from '../engine/game.ts';
-import { centerUnit, hexAtUnit, neighbors, pixelSizeUnit, type Grid } from '../engine/hex.ts';
+import {
+  centerUnit,
+  hexAtUnit,
+  neighbors,
+  pixelSizeUnit,
+  row as rowOf,
+  type Grid,
+} from '../engine/hex.ts';
 import type { GameState } from '../engine/types.ts';
-import { formationSprite } from '../engine/units.ts';
+import { formationArtKey, formationSprite } from '../engine/units.ts';
 import type { Assets } from './assets.ts';
 
 export const R = 36; // hex radius in world pixels at zoom 1
@@ -233,9 +240,25 @@ export class MapRenderer {
 
     // 5. terrain symbols, drawn top to bottom so lower ones overlap
     const img = this.assets.img;
+    // generated miniatures first, built-in art otherwise
+    const unitKey = (f: (typeof s.formations)[number]) => {
+      const k = `art:${formationArtKey(f)}`;
+      return img[k] ? k : spriteKey(formationSprite(f));
+    };
     const sprite = (key: string, x: number, y: number, w: number) => {
       const im = img[key];
       if (!im) return;
+      // generated miniatures are sized by height (their widths vary), built-in art by width
+      if (
+        key.startsWith('art:unit/') ||
+        key.startsWith('art:ship/') ||
+        key.startsWith('art:city/')
+      ) {
+        const hh = w * (key.startsWith('art:city/') ? 0.9 : 1.05);
+        const ww = (im.naturalWidth / im.naturalHeight) * hh;
+        ctx.drawImage(im, x - ww / 2, y - hh, ww, hh);
+        return;
+      }
       const h = (im.naturalHeight / im.naturalWidth) * w;
       ctx.drawImage(im, x - w / 2, y - h, w, h);
     };
@@ -246,8 +269,29 @@ export class MapRenderer {
       const rel = m.relief[i],
         veg = m.vegetation[i],
         ter = m.terrain[i];
+      // generated terrain symbols, if the art set has them (see art/PROMPTS.md)
+      const extra = (prefix: string, n: number, salt: number) => {
+        const k = `art:terrain/${prefix}-${Math.floor(hash(i, salt) * n)}`;
+        return img[k] ? k : null;
+      };
+      if (isWater(ter)) {
+        const w =
+          hash(i, 40) > 0.82
+            ? Math.abs(rowOf(g, i) / g.h - 0.5) > 0.42
+              ? extra('ice', 3, 41)
+              : extra('waves', 4, 41)
+            : null;
+        if (w) sprite(w, x, y + R * 0.2, R * 0.7);
+        continue;
+      }
       if (rel === 'mountains') {
-        sprite(`mountain-${Math.floor(hash(i, 1) * 6)}`, x - R * 0.12, y + R * 0.15, R * 1.45);
+        const snowy = (ter === 'snow' || ter === 'tundra') && extra('snowpeak', 4, 1);
+        sprite(
+          snowy || `mountain-${Math.floor(hash(i, 1) * 6)}`,
+          x - R * 0.12,
+          y + R * 0.15,
+          R * 1.45,
+        );
         if (hash(i, 2) > 0.45)
           sprite(`mountain-${Math.floor(hash(i, 3) * 6)}`, x + R * 0.38, y + R * 0.5, R * 0.95);
         continue;
@@ -257,7 +301,11 @@ export class MapRenderer {
         if (veg === 'none')
           sprite(`hill-${Math.floor(hash(i, 4) * 6)}`, x + R * 0.3, y + R * 0.45, R * 0.8);
       }
-      if (veg === 'forest' || veg === 'jungle') {
+      const jungle = veg === 'jungle' && extra('jungle', 4, 12);
+      if (jungle) {
+        sprite(jungle, x - R * 0.2, y + R * 0.2, R * 0.85);
+        sprite(extra('jungle', 4, 13) ?? jungle, x + R * 0.3, y + R * 0.5, R * 0.75);
+      } else if (veg === 'forest' || veg === 'jungle') {
         const kind =
           veg === 'jungle'
             ? 'palm'
@@ -285,7 +333,15 @@ export class MapRenderer {
       } else if (veg === 'marsh') {
         sprite(`marsh-${Math.floor(hash(i, 6) * 4)}`, x, y + R * 0.4, R * 0.9);
       } else if (ter === 'desert' && rel === 'flat' && hash(i, 7) > 0.75) {
-        sprite(`rocks-${Math.floor(hash(i, 8) * 3)}`, x, y + R * 0.3, R * 0.6);
+        const dune = extra('dune', 4, 8);
+        if (dune) sprite(dune, x, y + R * 0.3, R * 0.75);
+        else sprite(`rocks-${Math.floor(hash(i, 8) * 3)}`, x, y + R * 0.3, R * 0.6);
+      } else if (ter === 'tundra' && rel === 'flat' && veg === 'none' && hash(i, 7) > 0.5) {
+        const sh = extra('tundra', 4, 8);
+        if (sh) sprite(sh, x, y + R * 0.35, R * 0.6);
+      } else if (m.river[i] && rel === 'flat' && veg === 'none' && hash(i, 7) > 0.6) {
+        const reed = extra('reeds', 3, 8);
+        if (reed) sprite(reed, x + R * 0.3, y + R * 0.45, R * 0.45);
       }
     }
 
@@ -359,7 +415,8 @@ export class MapRenderer {
       ctx.arc(x, y, R * 0.27, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      const icon = good.icon && img[`good:${good.icon}`];
+      const goodId = Object.keys(info.yields)[0];
+      const icon = img[`art:good/${goodId}`] ?? (good.icon && img[`good:${good.icon}`]);
       if (icon) {
         const w = R * 0.42,
           h = (icon.naturalHeight / icon.naturalWidth) * w;
@@ -470,7 +527,15 @@ export class MapRenderer {
         y = cy(c.hex);
       const coastal = neighbors(g, c.hex).some(n => m.terrain[n] === 'coast');
       const sizeKey = c.pop >= 8000 ? 'city' : c.pop >= 3000 ? 'town' : 'outpost';
-      sprite(`city:${coastal ? 'port' : 'city'}-${sizeKey}`, x, y + R * 0.45, R * 1.55);
+      const big =
+        c.pop >= 15000 ? 'metropolis' : c.pop >= 8000 ? 'city' : c.pop >= 3000 ? 'town' : 'village';
+      const artCity = `art:city/${coastal ? 'port-' : ''}${big}`;
+      sprite(
+        img[artCity] ? artCity : `city:${coastal ? 'port' : 'city'}-${sizeKey}`,
+        x,
+        y + R * 0.45,
+        R * 1.55,
+      );
       this.banner(
         x,
         y + R * 0.62,
@@ -531,7 +596,7 @@ export class MapRenderer {
         oy = hasCity ? -R * 0.1 : R * 0.42;
       if (fs.length > 1) {
         const other = fs.find(f => f !== top)!;
-        sprite(spriteKey(formationSprite(other)), x + ox + R * 0.28, y + oy - R * 0.05, R * 0.85);
+        sprite(unitKey(other), x + ox + R * 0.28, y + oy - R * 0.05, R * 0.85);
       }
       const color = s.civs[top.civId].color;
       // base disc
@@ -547,7 +612,7 @@ export class MapRenderer {
         ctx.stroke();
       }
       sprite(
-        spriteKey(formationSprite(top)),
+        unitKey(top),
         x + ox,
         y + oy + (top.kind === 'fleet' ? R * 0.1 : 0),
         top.kind === 'fleet' ? R * 1.35 : R * 1.15,

@@ -62,6 +62,8 @@ export interface SideReport {
 }
 
 export interface BattleReport {
+  /** which battle picture fits: set by the caller */
+  scene?: 'field' | 'siege' | 'naval' | 'charge' | 'forest' | 'landing';
   attacker: SideReport;
   defender: SideReport;
   lines: string[];

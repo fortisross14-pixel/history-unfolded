@@ -3,6 +3,7 @@ import { MAP_SIZES, MAP_TYPES } from '../engine/mapgen.ts';
 import { randomSeed } from '../engine/rng.ts';
 import type { GameSettings, Level3, MapSize, MapType } from '../engine/types.ts';
 import { hasSave } from './save.ts';
+import { artUrl } from '../render/art.ts';
 
 const L3 = (labels: [string, string, string]) =>
   (['low', 'normal', 'high'] as Level3[]).map((v, i) => ({ v, label: labels[i] }));
@@ -45,7 +46,14 @@ export function Menu({
   );
 
   return (
-    <div className="menu">
+    <div
+      className="menu"
+      style={
+        artUrl('title/title')
+          ? { backgroundImage: `url(${artUrl('title/title')})`, backgroundSize: 'cover' }
+          : undefined
+      }
+    >
       <div className="menu-card">
         <h1>History Unfolded</h1>
         <p className="subtitle">Every people starts the same. What they become is up to you.</p>

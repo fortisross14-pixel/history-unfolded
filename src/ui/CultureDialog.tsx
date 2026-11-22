@@ -21,6 +21,7 @@ import {
 } from '../engine/culture.ts';
 import { identity } from '../engine/mods.ts';
 import type { Civ, GameState } from '../engine/types.ts';
+import { Art } from './bits.tsx';
 
 interface Props {
   game: GameState;
@@ -32,7 +33,12 @@ interface Props {
 }
 
 export function TagChip({ tag }: { tag: string }) {
-  return <span className={`tag tag-${tag}`}>{TAGS[tag]?.name ?? tag}</span>;
+  return (
+    <span className={`tag tag-${tag}`}>
+      <Art k={`tag/${tag}`} size={14} className="tag-art" />
+      {TAGS[tag]?.name ?? tag}
+    </span>
+  );
 }
 
 /** The culture web: nine domains, four tiers, forks that close doors, tension and upheavals. */
@@ -77,7 +83,10 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
         onClick={() => onTake(n.id)}
         title={n.note}
       >
-        <b>{n.name}</b>
+        <span className="cnode-head">
+          <Art k={`culture/${n.id}`} size={28} />
+          <b>{n.name}</b>
+        </span>
         <span className="tags">
           {n.tags.map(t => (
             <TagChip key={t} tag={t} />
@@ -175,6 +184,7 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
             return (
               <div key={d} className="domain-row" style={{ borderLeftColor: DOMAINS[d].color }}>
                 <div className="domain-head">
+                  <Art k={`domain/${d}`} size={40} />
                   <h3 style={{ color: DOMAINS[d].color }}>{DOMAINS[d].name}</h3>
                   <small className="muted">{DOMAINS[d].note}</small>
                   <div

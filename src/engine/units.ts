@@ -328,3 +328,49 @@ export function formationSprite(f: Formation): string {
   const main = groupCohorts(f)[0]?.loadout;
   return main ? spriteForLoadout(main) : 'pikeman';
 }
+
+// ---------------------------------------------------------------- generated art keys
+
+const HEAVY = new Set(['bronze-scale', 'chain-mail', 'plate-armour', 'cuirass', 'ivory-lamellar']);
+
+/** The miniature that best fits a design: see art/PROMPTS.md (unit and ship sheets). */
+export function artKeyForLoadout(l: Loadout): string {
+  if (isShip(l)) {
+    if (l.weapon === 'deck-guns' || l.weapon === 'broadside') return 'ship/gunship';
+    if (l.armour === 'galley-hull')
+      return l.weapon === 'ram' || l.weapon === 'ballista' ? 'ship/war-galley' : 'ship/galley';
+    return `ship/${l.armour}`;
+  }
+  const w = l.weapon,
+    a = l.armour;
+  if (l.kit === 'scouting-gear' && !isMounted(l)) return 'unit/scout';
+  if (isMounted(l)) {
+    if (isRanged(l)) return 'unit/horse-archer';
+    if (w === 'lance' || l.mount === 'barded-horse') return 'unit/knight';
+    return HEAVY.has(a) || l.mount === 'heavy-horse' ? 'unit/heavy-cavalry' : 'unit/light-cavalry';
+  }
+  const ranged: Record<string, string> = {
+    sling: 'slinger',
+    javelins: 'javelineer',
+    bow: 'archer',
+    'composite-bow': 'archer',
+    longbow: 'longbowman',
+    crossbow: 'crossbowman',
+    arquebus: 'arquebusier',
+    musket: 'musketeer',
+    'field-gun': 'field-gun',
+  };
+  if (ranged[w]) return `unit/${ranged[w]}`;
+  if (w === 'improvised') return 'unit/levy';
+  if (w === 'pike') return 'unit/pikeman';
+  if (w === 'axe') return 'unit/axeman';
+  if (w === 'spear' || w === 'lance') return HEAVY.has(a) ? 'unit/hoplite' : 'unit/spearman';
+  if (a === 'plate-armour') return 'unit/plate-infantry';
+  return HEAVY.has(a) ? 'unit/heavy-swordsman' : 'unit/swordsman';
+}
+
+export function formationArtKey(f: Formation): string {
+  if (f.kind === 'settlers') return 'unit/settlers';
+  const main = groupCohorts(f)[0]?.loadout;
+  return main ? artKeyForLoadout(main) : 'unit/levy';
+}

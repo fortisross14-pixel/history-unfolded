@@ -1,0 +1,2235 @@
+[
+ {
+  "file": "style-seed.png",
+  "group": "seed",
+  "wave": 1,
+  "style": "miniature",
+  "cols": 2,
+  "rows": 1,
+  "height": 256,
+  "title": "Style seed (approve this first)",
+  "use": "Sets the look for every miniature. Ask for changes until you like it, then attach it to every later miniature prompt.",
+  "items": [
+   [
+    "spearman",
+    "one spearman: tunic, round wooden shield, spear held upright, on a small round dark-walnut base"
+   ],
+   [
+    "village",
+    "a small village: three timber-and-thatch houses around a well, on a round grassy base"
+   ]
+  ]
+ },
+ {
+  "file": "units-foot.png",
+  "group": "unit",
+  "wave": 1,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 192,
+  "extra": "Each figure stands on the same small round dark-walnut base, the base filling the bottom of the cell.",
+  "title": "Foot troops",
+  "use": "Map counters and unit cards. The game picks the closest figure for each design from its weapon, armour and mount.",
+  "items": [
+   [
+    "levy",
+    "a peasant levy with a club and a wooden pitchfork, plain tunic, no armour"
+   ],
+   [
+    "spearman",
+    "a light spearman with a spear and a round wooden shield, padded jacket"
+   ],
+   [
+    "hoplite",
+    "a heavy spearman: bronze helmet, bronze breastplate, large round bronze shield, long spear"
+   ],
+   [
+    "pikeman",
+    "a pikeman holding a very long pike angled forward, steel helmet, mail shirt"
+   ],
+   [
+    "axeman",
+    "an axeman with a two-handed bronze axe, helmet, leather armour, no shield"
+   ],
+   [
+    "swordsman",
+    "a swordsman with a short sword and a hide shield, leather armour"
+   ],
+   [
+    "heavy-swordsman",
+    "a heavy swordsman: iron sword, kite shield, mail coat, iron helmet"
+   ],
+   [
+    "plate-infantry",
+    "a dismounted man-at-arms in full plate armour with a great helm and a long sword"
+   ],
+   [
+    "slinger",
+    "a slinger whirling a sling, no armour, pouch of stones"
+   ],
+   [
+    "javelineer",
+    "a javelin thrower about to throw, wicker shield, two spare javelins"
+   ],
+   [
+    "archer",
+    "an archer drawing a short bow, quiver at the hip, leather cap"
+   ],
+   [
+    "longbowman",
+    "a longbowman drawing a tall longbow, padded jacket, iron helmet"
+   ]
+  ]
+ },
+ {
+  "file": "units-more.png",
+  "group": "unit",
+  "wave": 1,
+  "style": "miniature",
+  "cols": 5,
+  "rows": 2,
+  "height": 192,
+  "extra": "Each figure stands on the same small round dark-walnut base (riders and the cart on a slightly larger oval one).",
+  "title": "Gunpowder, cavalry and civilians",
+  "use": "Map counters and unit cards.",
+  "items": [
+   [
+    "crossbowman",
+    "a crossbowman aiming a crossbow from behind a tall standing pavise shield"
+   ],
+   [
+    "arquebusier",
+    "an arquebusier firing an arquebus resting on a forked stand, smoke puff"
+   ],
+   [
+    "musketeer",
+    "a musketeer with a musket and fixed bayonet, steel cuirass, brimmed hat"
+   ],
+   [
+    "field-gun",
+    "a small bronze field cannon on a two-wheeled carriage with one gunner"
+   ],
+   [
+    "light-cavalry",
+    "a light horseman with a spear and a small round shield on a bay horse"
+   ],
+   [
+    "heavy-cavalry",
+    "a heavy cavalryman in mail on a big horse, sword raised"
+   ],
+   [
+    "knight",
+    "an armoured knight in plate with a lance and kite shield on a barded horse"
+   ],
+   [
+    "horse-archer",
+    "a horse archer shooting a composite bow from the saddle at a gallop"
+   ],
+   [
+    "scout",
+    "a scout on foot with a walking staff, cloak and a small spyglass"
+   ],
+   [
+    "settlers",
+    "settlers: a family with an ox cart loaded with sacks and tools"
+   ]
+  ]
+ },
+ {
+  "file": "ships.png",
+  "group": "ship",
+  "wave": 1,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 2,
+  "height": 192,
+  "extra": "Each ship is seen from the side and a little above, sailing right, with only a thin patch of sea directly under the hull.",
+  "title": "Ships",
+  "use": "Fleets on the map and in the ship designer.",
+  "items": [
+   [
+    "dugout",
+    "a dugout canoe with two paddlers"
+   ],
+   [
+    "galley",
+    "a coastal galley with a row of oars and one square sail"
+   ],
+   [
+    "war-galley",
+    "a war galley with a bronze ram at the bow and a small deck platform"
+   ],
+   [
+    "longship",
+    "a longship with a striped square sail and shields along the side"
+   ],
+   [
+    "cog",
+    "a cog: tall single mast, square sail, high wooden castles at bow and stern"
+   ],
+   [
+    "carrack",
+    "a carrack with three masts and a high stern castle"
+   ],
+   [
+    "galleon",
+    "a galleon with four masts, many sails and a tall ornate stern"
+   ],
+   [
+    "gunship",
+    "a gun frigate with a row of open gun ports and three masts"
+   ]
+  ]
+ },
+ {
+  "file": "cities.png",
+  "group": "city",
+  "wave": 1,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 2,
+  "height": 256,
+  "title": "Cities",
+  "use": "City markers on the map, by size; the second row stands by the water.",
+  "items": [
+   [
+    "village",
+    "a village of a few timber houses and a palisade, on a round grassy base"
+   ],
+   [
+    "town",
+    "a walled town: stone church, market square, tiled roofs"
+   ],
+   [
+    "city",
+    "a city: stone walls with towers, a keep, many roofs"
+   ],
+   [
+    "metropolis",
+    "a great city: double walls, a cathedral, a palace, dense streets"
+   ],
+   [
+    "port-village",
+    "a fishing village with a wooden jetty and two boats, on a round base half sand, half water"
+   ],
+   [
+    "port-town",
+    "a harbour town with a stone quay, warehouses and a small lighthouse"
+   ],
+   [
+    "port-city",
+    "a port city with walls, docks, cranes and moored ships"
+   ],
+   [
+    "port-metropolis",
+    "a great port with a fortified harbour, arsenal and many ships"
+   ]
+  ]
+ },
+ {
+  "file": "goods-2.png",
+  "group": "good",
+  "wave": 1,
+  "style": "ink",
+  "cols": 5,
+  "rows": 2,
+  "height": 72,
+  "title": "Goods icons (second set)",
+  "use": "Resource icons on the map, in stores, costs and trade. Match the first goods sheet exactly.",
+  "items": [
+   [
+    "stone",
+    "a stack of cut stone blocks"
+   ],
+   [
+    "hides",
+    "a stretched animal hide"
+   ],
+   [
+    "copper",
+    "copper ore nuggets, reddish"
+   ],
+   [
+    "tin",
+    "grey tin ingots"
+   ],
+   [
+    "iron",
+    "iron ore and an iron bar"
+   ],
+   [
+    "coal",
+    "a heap of black coal lumps"
+   ],
+   [
+    "saltpeter",
+    "a small sack of white saltpeter crystals"
+   ],
+   [
+    "horses",
+    "a horse head in profile"
+   ],
+   [
+    "meat",
+    "a ham leg"
+   ],
+   [
+    "ivory",
+    "a curved elephant tusk"
+   ]
+  ]
+ },
+ {
+  "file": "terrain-2.png",
+  "group": "terrain",
+  "wave": 1,
+  "style": "ink",
+  "cols": 7,
+  "rows": 4,
+  "height": 80,
+  "title": "More terrain symbols",
+  "use": "Map details for terrains that are now only a colour wash. Same scale as the existing trees and hills.",
+  "items": [
+   [
+    "dune-0",
+    "a low sand dune with a wind ripple"
+   ],
+   [
+    "dune-1",
+    "a low sand dune with a wind ripple"
+   ],
+   [
+    "dune-2",
+    "a low sand dune with a wind ripple"
+   ],
+   [
+    "dune-3",
+    "a low sand dune with a wind ripple"
+   ],
+   [
+    "snowpeak-0",
+    "a snow-capped mountain peak"
+   ],
+   [
+    "snowpeak-1",
+    "a snow-capped mountain peak"
+   ],
+   [
+    "snowpeak-2",
+    "a snow-capped mountain peak"
+   ],
+   [
+    "snowpeak-3",
+    "a snow-capped mountain peak"
+   ],
+   [
+    "tundra-0",
+    "low tundra shrubs and moss tufts"
+   ],
+   [
+    "tundra-1",
+    "low tundra shrubs and moss tufts"
+   ],
+   [
+    "tundra-2",
+    "low tundra shrubs and moss tufts"
+   ],
+   [
+    "tundra-3",
+    "low tundra shrubs and moss tufts"
+   ],
+   [
+    "jungle-0",
+    "a dense jungle thicket with broad leaves and vines"
+   ],
+   [
+    "jungle-1",
+    "a dense jungle thicket with broad leaves and vines"
+   ],
+   [
+    "jungle-2",
+    "a dense jungle thicket with broad leaves and vines"
+   ],
+   [
+    "jungle-3",
+    "a dense jungle thicket with broad leaves and vines"
+   ],
+   [
+    "reeds-0",
+    "a clump of river reeds"
+   ],
+   [
+    "reeds-1",
+    "a clump of river reeds"
+   ],
+   [
+    "reeds-2",
+    "a clump of river reeds"
+   ],
+   [
+    "oasis-0",
+    "a tiny oasis: two palms by a pool"
+   ],
+   [
+    "oasis-1",
+    "a tiny oasis: two palms by a pool"
+   ],
+   [
+    "waves-0",
+    "a few small stylised sea waves"
+   ],
+   [
+    "waves-1",
+    "a few small stylised sea waves"
+   ],
+   [
+    "waves-2",
+    "a few small stylised sea waves"
+   ],
+   [
+    "waves-3",
+    "a few small stylised sea waves"
+   ],
+   [
+    "ice-0",
+    "small ice floes"
+   ],
+   [
+    "ice-1",
+    "small ice floes"
+   ],
+   [
+    "ice-2",
+    "small ice floes"
+   ]
+  ]
+ },
+ {
+  "file": "ui-icons.png",
+  "group": "icon",
+  "wave": 1,
+  "style": "emblem",
+  "cols": 6,
+  "rows": 4,
+  "height": 64,
+  "title": "Interface icons",
+  "use": "Top bar, panels and stats (they replace the emoji now used).",
+  "items": [
+   [
+    "melee",
+    "a sword"
+   ],
+   [
+    "ranged",
+    "a bow with an arrow"
+   ],
+   [
+    "charge",
+    "a rearing horse"
+   ],
+   [
+    "protection",
+    "a shield"
+   ],
+   [
+    "morale",
+    "a raised fist holding a banner"
+   ],
+   [
+    "upkeep",
+    "a small coin purse"
+   ],
+   [
+    "gold",
+    "a stack of gold coins"
+   ],
+   [
+    "science",
+    "an open book with a star"
+   ],
+   [
+    "culture",
+    "a theatre mask and a laurel"
+   ],
+   [
+    "food",
+    "a sheaf of wheat"
+   ],
+   [
+    "production",
+    "a hammer and anvil"
+   ],
+   [
+    "housing",
+    "a small house"
+   ],
+   [
+    "workers",
+    "a pickaxe and a hoe crossed"
+   ],
+   [
+    "moves",
+    "a boot print"
+   ],
+   [
+    "sight",
+    "an eye"
+   ],
+   [
+    "war",
+    "two crossed swords"
+   ],
+   [
+    "peace",
+    "an olive branch"
+   ],
+   [
+    "pact",
+    "two clasped hands"
+   ],
+   [
+    "alliance",
+    "two interlocked rings"
+   ],
+   [
+    "trade",
+    "a balance scale"
+   ],
+   [
+    "research",
+    "an astrolabe"
+   ],
+   [
+    "designs",
+    "a helmet over crossed spears"
+   ],
+   [
+    "peoples",
+    "three standing figures"
+   ],
+   [
+    "end-turn",
+    "an hourglass"
+   ]
+  ]
+ },
+ {
+  "file": "buildings-1.png",
+  "group": "building",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 128,
+  "extra": "Each building is a small diorama on the same square tile of ground, seen from above at three-quarter view.",
+  "title": "District buildings 1",
+  "use": "The 3×3 district grid and the building list in the city screen.",
+  "items": [
+   [
+    "town-hall",
+    "town hall: The heart of the city"
+   ],
+   [
+    "grain-field",
+    "grain field: Cereals. Needs flat open land in reach; wheat and rice deposits add more"
+   ],
+   [
+    "pig-pen",
+    "pig pen: Meat. Fed better next to a grain field"
+   ],
+   [
+    "cattle-pasture",
+    "cattle pasture: Meat and leather. Cattle deposits double it"
+   ],
+   [
+    "sheep-run",
+    "sheep run: Meat and hides on hills"
+   ],
+   [
+    "horse-stud",
+    "horse stud: Breeds horses for cavalry"
+   ],
+   [
+    "fishing-dock",
+    "fishing dock: Needs a coast or lake. Fish deposits add more"
+   ],
+   [
+    "granary",
+    "granary: Each neighbouring grain field gives +1 food"
+   ],
+   [
+    "woodlot",
+    "woodlot: Wood. Needs forest in reach"
+   ],
+   [
+    "quarry",
+    "quarry: Stone. Needs a stone deposit"
+   ],
+   [
+    "copper-mine",
+    "copper mine: Needs a copper deposit"
+   ],
+   [
+    "tin-mine",
+    "tin mine: Needs a tin deposit"
+   ]
+  ]
+ },
+ {
+  "file": "buildings-2.png",
+  "group": "building",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 128,
+  "extra": "Each building is a small diorama on the same square tile of ground, seen from above at three-quarter view.",
+  "title": "District buildings 2",
+  "use": "The 3×3 district grid and the building list in the city screen.",
+  "items": [
+   [
+    "iron-mine",
+    "iron mine: Needs an iron deposit"
+   ],
+   [
+    "coal-mine",
+    "coal mine: Needs a coal deposit"
+   ],
+   [
+    "gold-mine",
+    "gold mine: Needs a gold deposit"
+   ],
+   [
+    "silver-mine",
+    "silver mine: Needs a silver deposit"
+   ],
+   [
+    "hunting-lodge",
+    "hunting lodge: Hides, plus furs or ivory where they are found"
+   ],
+   [
+    "plantation",
+    "plantation: Spices, silk, dyes or wine"
+   ],
+   [
+    "workshop",
+    "workshop: Turns wood into production"
+   ],
+   [
+    "armoury",
+    "armoury: Troops near this city equip for 20% less and without the +50% distance cost"
+   ],
+   [
+    "barracks",
+    "barracks: Levies raised here start with one battle of experience"
+   ],
+   [
+    "infirmary",
+    "infirmary: Neighbouring mines and quarries produce 15% more"
+   ],
+   [
+    "school",
+    "school: Science, more next to houses"
+   ],
+   [
+    "market",
+    "market: +1 gold for each neighbouring market, bank or houses"
+   ]
+  ]
+ },
+ {
+  "file": "buildings-3.png",
+  "group": "building",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 128,
+  "extra": "Each building is a small diorama on the same square tile of ground, seen from above at three-quarter view.",
+  "title": "District buildings 3",
+  "use": "The 3×3 district grid and the building list in the city screen.",
+  "items": [
+   [
+    "bank",
+    "bank: Banks cluster: +1 gold per neighbouring bank, +2 next to a stock exchange"
+   ],
+   [
+    "stock-exchange",
+    "stock exchange: Feeds the banks around it"
+   ],
+   [
+    "houses",
+    "houses: Room for 1,000 more people"
+   ],
+   [
+    "shrine",
+    "shrine: Culture"
+   ],
+   [
+    "monument",
+    "monument: Culture without workers"
+   ],
+   [
+    "walls",
+    "city walls: Assaults on the city do a quarter less damage; one more guard cohort"
+   ],
+   [
+    "temple",
+    "temple: Culture, more next to shrines and monuments"
+   ],
+   [
+    "amphitheatre",
+    "amphitheatre: Culture and a little gold, more next to houses"
+   ],
+   [
+    "cathedral",
+    "cathedral: Great culture"
+   ],
+   [
+    "castle",
+    "castle: Assaults do 45% less damage; two more guard cohorts (replaces walls)"
+   ],
+   [
+    "library",
+    "library: Science, more next to schools"
+   ],
+   [
+    "university",
+    "university: Great science, more next to libraries"
+   ]
+  ]
+ },
+ {
+  "file": "buildings-4.png",
+  "group": "building",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 128,
+  "extra": "Each building is a small diorama on the same square tile of ground, seen from above at three-quarter view.",
+  "title": "District buildings 4",
+  "use": "The 3×3 district grid and the building list in the city screen.",
+  "items": [
+   [
+    "printing-house",
+    "printing house: Books spread learning and ideas"
+   ],
+   [
+    "observatory",
+    "observatory: Needs hills or mountains in reach"
+   ],
+   [
+    "aqueduct",
+    "aqueduct: Room for 2,000 more people"
+   ],
+   [
+    "tenements",
+    "tenements: Room for 1,500 more people"
+   ],
+   [
+    "shipyard",
+    "shipyard: Lets the city build ships. Needs a coast or lake"
+   ],
+   [
+    "harbour",
+    "harbour: Food and trade by the water"
+   ],
+   [
+    "guild-hall",
+    "guild hall: Gold and production, more next to workshops"
+   ],
+   [
+    "lumber-mill",
+    "lumber mill: More wood, more next to woodlots"
+   ],
+   [
+    "windmill",
+    "windmill: +1 food for each neighbouring grain field"
+   ],
+   [
+    "saltpeter-works",
+    "saltpeter works: Needs a saltpeter deposit. For gunpowder"
+   ],
+   [
+    "foundry",
+    "foundry: Burns coal for heavy production"
+   ]
+  ]
+ },
+ {
+  "file": "equipment-1.png",
+  "group": "item",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 96,
+  "extra": "Each item alone, shown like a museum object at the same angle and scale; ship parts shown as a small model of that part.",
+  "title": "Equipment 1",
+  "use": "Item cards in the unit and ship designer.",
+  "items": [
+   [
+    "sling",
+    "sling (cheap ranged harassment)"
+   ],
+   [
+    "javelins",
+    "javelins (short-range volleys; usable with a shield)"
+   ],
+   [
+    "spear",
+    "spear (holds off mounted charges)"
+   ],
+   [
+    "bow",
+    "bow (strong volleys. two-handed)"
+   ],
+   [
+    "axe",
+    "bronze axe (breaks armour. two-handed: no shield)"
+   ],
+   [
+    "bronze-sword",
+    "bronze sword (strong in melee)"
+   ],
+   [
+    "wicker-shield",
+    "wicker shield (light cover from missiles)"
+   ],
+   [
+    "hide-shield",
+    "hide shield (all-round cover)"
+   ],
+   [
+    "bronze-shield",
+    "bronze shield (heavy, near unbreakable)"
+   ],
+   [
+    "leather-cap",
+    "leather cap"
+   ],
+   [
+    "bronze-helmet",
+    "bronze helmet (steadies the line)"
+   ],
+   [
+    "padded",
+    "padded jacket (cheap and light)"
+   ]
+  ]
+ },
+ {
+  "file": "equipment-2.png",
+  "group": "item",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 96,
+  "extra": "Each item alone, shown like a museum object at the same angle and scale; ship parts shown as a small model of that part.",
+  "title": "Equipment 2",
+  "use": "Item cards in the unit and ship designer.",
+  "items": [
+   [
+    "leather",
+    "leather armour (light all-round protection)"
+   ],
+   [
+    "bronze-scale",
+    "bronze scale (heavy. weak to crushing blows)"
+   ],
+   [
+    "ivory-lamellar",
+    "ivory lamellar (light and strong, needs ivory)"
+   ],
+   [
+    "sandals",
+    "sandals"
+   ],
+   [
+    "marching-boots",
+    "marching boots (foot troops cross rough ground faster)"
+   ],
+   [
+    "horse",
+    "horse (fast, charges, flanks. poor in forest and marsh)"
+   ],
+   [
+    "scouting-gear",
+    "scouting gear (+1 move, +1 sight)"
+   ],
+   [
+    "war-banner",
+    "war banner (the whole formation holds longer)"
+   ],
+   [
+    "field-medics",
+    "field medics (the formation heals faster)"
+   ],
+   [
+    "iron-sword",
+    "iron sword (the workhorse blade)"
+   ],
+   [
+    "composite-bow",
+    "composite bow (short and strong; good from horseback)"
+   ],
+   [
+    "longbow",
+    "longbow (long range volleys. two-handed)"
+   ]
+  ]
+ },
+ {
+  "file": "equipment-3.png",
+  "group": "item",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 96,
+  "extra": "Each item alone, shown like a museum object at the same angle and scale; ship parts shown as a small model of that part.",
+  "title": "Equipment 3",
+  "use": "Item cards in the unit and ship designer.",
+  "items": [
+   [
+    "crossbow",
+    "crossbow (punches through armour)"
+   ],
+   [
+    "pike",
+    "pike (a wall of points no horse will face)"
+   ],
+   [
+    "lance",
+    "lance (devastating charges from horseback)"
+   ],
+   [
+    "arquebus",
+    "arquebus (loud, slow and armour-piercing)"
+   ],
+   [
+    "musket",
+    "musket (massed volleys. pair with bayonets)"
+   ],
+   [
+    "field-gun",
+    "field gun (breaks walls and formations. very slow)"
+   ],
+   [
+    "kite-shield",
+    "kite shield (covers a rider or a man from shoulder to shin)"
+   ],
+   [
+    "pavise",
+    "pavise (a standing shield: works with bows and crossbows)"
+   ],
+   [
+    "iron-helmet",
+    "iron helmet"
+   ],
+   [
+    "great-helm",
+    "great helm (fearsome, hot, nearly blind)"
+   ],
+   [
+    "chain-mail",
+    "chain mail (flexible iron rings)"
+   ],
+   [
+    "plate-armour",
+    "plate armour (near proof against blades and arrows. heavy)"
+   ]
+  ]
+ },
+ {
+  "file": "equipment-4.png",
+  "group": "item",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 96,
+  "extra": "Each item alone, shown like a museum object at the same angle and scale; ship parts shown as a small model of that part.",
+  "title": "Equipment 4",
+  "use": "Item cards in the unit and ship designer.",
+  "items": [
+   [
+    "cuirass",
+    "cuirass (light plate for the age of guns)"
+   ],
+   [
+    "hobnailed-boots",
+    "hobnailed boots (rough ground and long marches)"
+   ],
+   [
+    "heavy-horse",
+    "heavy horse (big horses hit harder but tire sooner)"
+   ],
+   [
+    "barded-horse",
+    "barded horse (an armoured destrier)"
+   ],
+   [
+    "siege-ladders",
+    "siege ladders (ignore part of a city's walls when assaulting)"
+   ],
+   [
+    "bayonet",
+    "bayonet (turns a musket into a short pike)"
+   ],
+   [
+    "ram",
+    "ship part — ram (hole the enemy below the waterline)"
+   ],
+   [
+    "boarding-crew",
+    "ship part — boarding crew (grapples and blades)"
+   ],
+   [
+    "deck-archers",
+    "ship part — deck archers (arrows from the rail; can harass the shore)"
+   ],
+   [
+    "ballista",
+    "ship part — ballista (bolt throwers)"
+   ],
+   [
+    "deck-guns",
+    "ship part — deck guns (cannon on deck)"
+   ],
+   [
+    "broadside",
+    "ship part — broadside (rows of guns down each side)"
+   ]
+  ]
+ },
+ {
+  "file": "equipment-5.png",
+  "group": "item",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 96,
+  "extra": "Each item alone, shown like a museum object at the same angle and scale; ship parts shown as a small model of that part.",
+  "title": "Equipment 5",
+  "use": "Item cards in the unit and ship designer.",
+  "items": [
+   [
+    "dugout",
+    "ship part — dugout canoe (coast only. carries 1 cohort)"
+   ],
+   [
+    "galley-hull",
+    "ship part — galley (coast only. carries 3 cohorts)"
+   ],
+   [
+    "longship",
+    "ship part — longship (crosses open sea. carries 3 cohorts)"
+   ],
+   [
+    "cog",
+    "ship part — cog (ocean-going, high sides. carries 5 cohorts)"
+   ],
+   [
+    "carrack",
+    "ship part — carrack (big and sturdy. carries 6 cohorts)"
+   ],
+   [
+    "galleon",
+    "ship part — galleon (a floating fortress. carries 8 cohorts)"
+   ],
+   [
+    "oars",
+    "ship part — oars"
+   ],
+   [
+    "square-sail",
+    "ship part — square sail"
+   ],
+   [
+    "lateen-sail",
+    "ship part — lateen sail (sails close to the wind)"
+   ],
+   [
+    "full-rig",
+    "ship part — full rig (many masts and sails)"
+   ],
+   [
+    "troop-deck",
+    "ship part — troop deck (+2 cohorts carried)"
+   ],
+   [
+    "marines",
+    "ship part — marines (fighting men aboard)"
+   ]
+  ]
+ },
+ {
+  "file": "equipment-6.png",
+  "group": "item",
+  "wave": 2,
+  "style": "miniature",
+  "cols": 4,
+  "rows": 3,
+  "height": 96,
+  "extra": "Each item alone, shown like a museum object at the same angle and scale; ship parts shown as a small model of that part.",
+  "title": "Equipment 6",
+  "use": "Item cards in the unit and ship designer.",
+  "items": [
+   [
+    "lookout",
+    "ship part — crow's nest (+1 sight)"
+   ]
+  ]
+ },
+ {
+  "file": "techs-ancient.png",
+  "group": "tech",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 4,
+  "rows": 3,
+  "height": 128,
+  "title": "Ancient research",
+  "use": "Research tree cards.",
+  "items": [
+   [
+    "mysticism",
+    "Mysticism: Shrines"
+   ],
+   [
+    "tanning",
+    "Tanning: Leather armour, caps, marching boots, field medics, infirmaries"
+   ],
+   [
+    "pottery",
+    "Pottery: Granaries"
+   ],
+   [
+    "mining",
+    "Mining: Copper, tin, gold and silver mines"
+   ],
+   [
+    "animal-husbandry",
+    "Animal Husbandry: Horse studs"
+   ],
+   [
+    "archery",
+    "Archery: Bows"
+   ],
+   [
+    "masonry",
+    "Masonry: Monuments and city walls"
+   ],
+   [
+    "sailing",
+    "Sailing: Harbours"
+   ],
+   [
+    "writing",
+    "Writing: Schools"
+   ],
+   [
+    "irrigation",
+    "Irrigation: Farms produce more"
+   ],
+   [
+    "the-wheel",
+    "The Wheel: Carts: faster on roads"
+   ],
+   [
+    "horseback-riding",
+    "Horseback Riding: Horses as mounts"
+   ]
+  ]
+ },
+ {
+  "file": "techs-ancient-2.png",
+  "group": "tech",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 4,
+  "rows": 1,
+  "height": 128,
+  "title": "Ancient research",
+  "use": "Research tree cards.",
+  "items": [
+   [
+    "bronze-working",
+    "Bronze Working: Bronze swords, axes, helmets, shields and scale"
+   ]
+  ]
+ },
+ {
+  "file": "techs-classical.png",
+  "group": "tech",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 4,
+  "rows": 3,
+  "height": 128,
+  "title": "Classical research",
+  "use": "Research tree cards.",
+  "items": [
+   [
+    "iron-working",
+    "Iron Working: Reveals iron. Iron mines, swords and helmets"
+   ],
+   [
+    "currency",
+    "Currency: Banks"
+   ],
+   [
+    "mathematics",
+    "Mathematics: Better science"
+   ],
+   [
+    "construction",
+    "Construction: Better production"
+   ],
+   [
+    "carpentry",
+    "Carpentry: Lumber mills"
+   ],
+   [
+    "priesthood",
+    "Priesthood: Temples"
+   ],
+   [
+    "literature",
+    "Literature: Amphitheatres"
+   ],
+   [
+    "philosophy",
+    "Philosophy: Libraries"
+   ],
+   [
+    "law",
+    "Code of Laws: Order and taxes"
+   ],
+   [
+    "bowyery",
+    "Bowyery: Composite bows"
+   ],
+   [
+    "mail-making",
+    "Mail Making: Chain mail and kite shields"
+   ],
+   [
+    "drill",
+    "Drill: Bigger formations"
+   ]
+  ]
+ },
+ {
+  "file": "techs-classical-2.png",
+  "group": "tech",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 4,
+  "rows": 1,
+  "height": 128,
+  "title": "Classical research",
+  "use": "Research tree cards.",
+  "items": [
+   [
+    "selective-breeding",
+    "Selective Breeding: Heavy horses"
+   ],
+   [
+    "engineering",
+    "Engineering: Aqueducts, hobnailed boots, faster roads"
+   ],
+   [
+    "siegecraft",
+    "Siegecraft: Siege ladders; better assaults"
+   ],
+   [
+    "navigation",
+    "Navigation: Coastal cities prosper; ships see further"
+   ]
+  ]
+ },
+ {
+  "file": "techs-medieval.png",
+  "group": "tech",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 4,
+  "rows": 3,
+  "height": 128,
+  "title": "Medieval research",
+  "use": "Research tree cards.",
+  "items": [
+   [
+    "feudalism",
+    "Feudalism: Bigger levies"
+   ],
+   [
+    "mechanics",
+    "Mechanics: Crossbows, pavises, windmills"
+   ],
+   [
+    "chivalry",
+    "Chivalry: Lances and barded horses"
+   ],
+   [
+    "theology",
+    "Theology: Cathedrals"
+   ],
+   [
+    "education",
+    "Education: Universities"
+   ],
+   [
+    "guilds",
+    "Guilds: Guild halls"
+   ],
+   [
+    "administration",
+    "Administration: Wider territory and district reach"
+   ],
+   [
+    "mineralogy",
+    "Mineralogy: Reveals coal. Coal mines"
+   ],
+   [
+    "armour-smithing",
+    "Armour Smithing: Plate armour and great helms"
+   ],
+   [
+    "pike-tactics",
+    "Pike Tactics: Pikes"
+   ],
+   [
+    "yeomanry",
+    "Yeomanry: Longbows"
+   ],
+   [
+    "castles",
+    "Castles: Castles"
+   ]
+  ]
+ },
+ {
+  "file": "techs-medieval-2.png",
+  "group": "tech",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 4,
+  "rows": 1,
+  "height": 128,
+  "title": "Medieval research",
+  "use": "Research tree cards.",
+  "items": [
+   [
+    "urbanism",
+    "Urbanism: Tenements"
+   ],
+   [
+    "alchemy",
+    "Alchemy: Reveals saltpeter. Saltpeter works"
+   ],
+   [
+    "compass",
+    "Compass: Coastal trade; sight"
+   ]
+  ]
+ },
+ {
+  "file": "techs-renaissance.png",
+  "group": "tech",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 4,
+  "rows": 3,
+  "height": 128,
+  "title": "Renaissance research",
+  "use": "Research tree cards.",
+  "items": [
+   [
+    "gunpowder",
+    "Gunpowder: Arquebuses"
+   ],
+   [
+    "printing",
+    "Printing Press: Printing houses"
+   ],
+   [
+    "banking",
+    "Banking: Stock exchanges"
+   ],
+   [
+    "astronomy",
+    "Astronomy: Observatories"
+   ],
+   [
+    "metallurgy",
+    "Metallurgy: Foundries and cuirasses"
+   ],
+   [
+    "musketry",
+    "Musketry: Muskets and bayonets"
+   ],
+   [
+    "artillery",
+    "Artillery: Field guns"
+   ],
+   [
+    "conscription",
+    "Conscription: Much bigger levies"
+   ],
+   [
+    "officer-corps",
+    "Professional Officers: Much bigger formations"
+   ],
+   [
+    "scientific-method",
+    "Scientific Method: Science surges"
+   ],
+   [
+    "joint-stock",
+    "Joint-Stock Companies: Commerce booms"
+   ],
+   [
+    "cartography",
+    "Cartography: Better maps"
+   ]
+  ]
+ },
+ {
+  "file": "techs-renaissance-2.png",
+  "group": "tech",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 4,
+  "rows": 1,
+  "height": 128,
+  "title": "Renaissance research",
+  "use": "Research tree cards.",
+  "items": [
+   [
+    "star-forts",
+    "Star Forts: Cities hold against guns"
+   ]
+  ]
+ },
+ {
+  "file": "culture-domains.png",
+  "group": "domain",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 3,
+  "rows": 3,
+  "height": 128,
+  "title": "Culture domains",
+  "use": "Domain headers in the culture web.",
+  "items": [
+   [
+    "cosmology",
+    "Cosmology: Sky, time and the order of things"
+   ],
+   [
+    "politics",
+    "Politics: Who rules and how"
+   ],
+   [
+    "religion",
+    "Religion: Gods, priests and faith"
+   ],
+   [
+    "society",
+    "Society: Families, castes and classes"
+   ],
+   [
+    "economy",
+    "Economy: Wealth, land and trade"
+   ],
+   [
+    "war",
+    "War: How the people fights"
+   ],
+   [
+    "seafaring",
+    "Seafaring: The coast and beyond"
+   ],
+   [
+    "knowledge",
+    "Knowledge: Learning and record"
+   ],
+   [
+    "arts",
+    "Arts: Beauty, memory and pride"
+   ]
+  ]
+ },
+ {
+  "file": "culture-tags.png",
+  "group": "tag",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 7,
+  "rows": 2,
+  "height": 64,
+  "title": "Identity tags",
+  "use": "Identity badges next to a people's name (each inside a small round seal).",
+  "items": [
+   [
+    "solar",
+    "Solar: Sun, seasons and harvests, inside a small round wax seal"
+   ],
+   [
+    "lunar",
+    "Lunar: Moon, tides and night roads, inside a small round wax seal"
+   ],
+   [
+    "maritime",
+    "Maritime: Facing the sea, inside a small round wax seal"
+   ],
+   [
+    "rationalist",
+    "Rationalist: Reason before tradition, inside a small round wax seal"
+   ],
+   [
+    "devout",
+    "Devout: Faith at the centre of life, inside a small round wax seal"
+   ],
+   [
+    "zealous",
+    "Zealous: One truth, carried by the sword, inside a small round wax seal"
+   ],
+   [
+    "tolerant",
+    "Tolerant: Many ways, one people, inside a small round wax seal"
+   ],
+   [
+    "absolutist",
+    "Absolutist: One ruler, one will, inside a small round wax seal"
+   ],
+   [
+    "republican",
+    "Republican: Power shared among citizens, inside a small round wax seal"
+   ],
+   [
+    "martial",
+    "Martial: War as a way of life, inside a small round wax seal"
+   ],
+   [
+    "mercantile",
+    "Mercantile: Trade and profit, inside a small round wax seal"
+   ],
+   [
+    "agrarian",
+    "Agrarian: Land, herds and harvest, inside a small round wax seal"
+   ],
+   [
+    "artistic",
+    "Artistic: Beauty and memory, inside a small round wax seal"
+   ],
+   [
+    "expansionist",
+    "Expansionist: Always the next valley, inside a small round wax seal"
+   ]
+  ]
+ },
+ {
+  "file": "culture-cosmology.png",
+  "group": "culture",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 5,
+  "rows": 3,
+  "height": 96,
+  "title": "Culture: Cosmology",
+  "use": "Culture web cards.",
+  "items": [
+   [
+    "star-lore",
+    "Star Lore: Naming the stars"
+   ],
+   [
+    "solar-calendar",
+    "Solar Calendar: The year follows the sun: sowing and harvest on time. Shapes much of what follows"
+   ],
+   [
+    "lunar-calendar",
+    "Lunar Calendar: The month follows the moon: tides, fishing and night travel. Shapes much of what follows"
+   ],
+   [
+    "sun-cult",
+    "Sun Cult: The sun as god and king"
+   ],
+   [
+    "monumental-astronomy",
+    "Monumental Astronomy: Stone circles that track the year"
+   ],
+   [
+    "tide-lore",
+    "Tide Lore: Knowing when the sea gives and takes"
+   ],
+   [
+    "night-navigation",
+    "Night Navigation: Steering by the stars"
+   ],
+   [
+    "divine-kingship",
+    "Divine Kingship: The ruler as child of the sun"
+   ],
+   [
+    "rational-astronomy",
+    "Rational Astronomy: Measuring, not worshipping"
+   ],
+   [
+    "celestial-navigation",
+    "Celestial Navigation: Open sea by night and day"
+   ],
+   [
+    "mystic-orders",
+    "Mystic Orders: Moon priests who keep the hidden calendar"
+   ],
+   [
+    "heliocentrism",
+    "Heliocentrism: The earth moves. The priests will not like it"
+   ],
+   [
+    "celestial-spheres",
+    "Celestial Spheres: Heaven is perfect and fixed"
+   ]
+  ]
+ },
+ {
+  "file": "culture-politics.png",
+  "group": "culture",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 5,
+  "rows": 3,
+  "height": 96,
+  "title": "Culture: Politics",
+  "use": "Culture web cards.",
+  "items": [
+   [
+    "chiefdom",
+    "Chiefdom: A leader for war and peace"
+   ],
+   [
+    "council-of-elders",
+    "Council of Elders: Decisions by the old and wise"
+   ],
+   [
+    "warlord",
+    "Warlord: Rule by the strongest"
+   ],
+   [
+    "assembly",
+    "Assembly: Free men speak in the square"
+   ],
+   [
+    "tribal-law",
+    "Customary Law: Old customs written down"
+   ],
+   [
+    "divine-right",
+    "Divine Right: The ruler is chosen by the gods"
+   ],
+   [
+    "war-chiefs",
+    "War Chiefs: Captains for every host"
+   ],
+   [
+    "republic",
+    "Republic: Magistrates elected for a year"
+   ],
+   [
+    "senate",
+    "Senate: A chamber of the able"
+   ],
+   [
+    "court-bureaucracy",
+    "Court Bureaucracy: Scribes and officials in every town"
+   ],
+   [
+    "absolutism",
+    "Absolutism: The state is the ruler. Strong, and the people grow restless"
+   ],
+   [
+    "enlightened-despotism",
+    "Enlightened Despotism: All for the people, nothing by the people"
+   ],
+   [
+    "constitution",
+    "Constitution: Written limits on power"
+   ]
+  ]
+ },
+ {
+  "file": "culture-religion.png",
+  "group": "culture",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 5,
+  "rows": 3,
+  "height": 96,
+  "title": "Culture: Religion",
+  "use": "Culture web cards.",
+  "items": [
+   [
+    "ancestor-spirits",
+    "Ancestor Spirits: The dead watch over the living"
+   ],
+   [
+    "many-gods",
+    "Many Gods: A god for every hearth and hill"
+   ],
+   [
+    "one-god",
+    "One God: One god, one truth"
+   ],
+   [
+    "shrines-of-all",
+    "Shrines of All: Every god gets a corner"
+   ],
+   [
+    "priesthood-caste",
+    "Priestly Caste: A class who speak for the gods"
+   ],
+   [
+    "holy-war",
+    "Holy War: War against unbelievers is pious"
+   ],
+   [
+    "state-religion",
+    "State Religion: Throne and altar as one"
+   ],
+   [
+    "pilgrimage",
+    "Pilgrimage: Roads full of the faithful"
+   ],
+   [
+    "syncretism",
+    "Syncretism: Foreign gods welcomed and merged"
+   ],
+   [
+    "militant-orders",
+    "Militant Orders: Monks who fight"
+   ],
+   [
+    "inquisition",
+    "Inquisition: Doubt is a crime"
+   ],
+   [
+    "theocracy",
+    "Theocracy: The priests rule"
+   ],
+   [
+    "secular-state",
+    "Secular State: Faith is private; the state is not"
+   ]
+  ]
+ },
+ {
+  "file": "culture-society.png",
+  "group": "culture",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 5,
+  "rows": 3,
+  "height": 96,
+  "title": "Culture: Society",
+  "use": "Culture web cards.",
+  "items": [
+   [
+    "kinship",
+    "Kinship: Blood binds"
+   ],
+   [
+    "clan-society",
+    "Clans: Every man belongs to a fighting clan"
+   ],
+   [
+    "household-society",
+    "Households: The family farm is the unit of life"
+   ],
+   [
+    "warrior-caste",
+    "Warrior Caste: Born to fight"
+   ],
+   [
+    "land-tenure",
+    "Land Tenure: Who owns the field works it best"
+   ],
+   [
+    "craft-guilds",
+    "Craft Traditions: Skills passed from master to apprentice"
+   ],
+   [
+    "caste-system",
+    "Caste System: Everyone in their place. Rigid"
+   ],
+   [
+    "social-mobility",
+    "Social Mobility: Talent rises"
+   ],
+   [
+    "urban-life",
+    "Urban Life: Cities as the place to be"
+   ],
+   [
+    "feudal-levy",
+    "Feudal Levy: Every lord owes men"
+   ],
+   [
+    "free-cities",
+    "Free Cities: Towns with their own charters"
+   ],
+   [
+    "peasant-communes",
+    "Peasant Communes: The village decides"
+   ]
+  ]
+ },
+ {
+  "file": "culture-economy.png",
+  "group": "culture",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 5,
+  "rows": 3,
+  "height": 96,
+  "title": "Culture: Economy",
+  "use": "Culture web cards.",
+  "items": [
+   [
+    "barter",
+    "Barter: This for that"
+   ],
+   [
+    "land-wealth",
+    "Wealth in Land: Fields and herds are riches"
+   ],
+   [
+    "trade-wealth",
+    "Wealth in Trade: Coin and goods are riches"
+   ],
+   [
+    "tribute",
+    "Tribute: The weak pay the strong"
+   ],
+   [
+    "coinage",
+    "Coinage: Stamped metal everyone trusts"
+   ],
+   [
+    "granary-system",
+    "Granary System: Store in the fat years"
+   ],
+   [
+    "merchant-houses",
+    "Merchant Houses: Families who trade across seas"
+   ],
+   [
+    "estates",
+    "Great Estates: Lords farm with many hands"
+   ],
+   [
+    "mining-charters",
+    "Mining Charters: The right to dig, for a share"
+   ],
+   [
+    "mercantilism",
+    "Mercantilism: The state hoards and exports"
+   ],
+   [
+    "free-markets",
+    "Free Markets: Let them trade"
+   ],
+   [
+    "banking-families",
+    "Banking Families: Credit for kings and generals"
+   ]
+  ]
+ },
+ {
+  "file": "culture-war.png",
+  "group": "culture",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 5,
+  "rows": 3,
+  "height": 96,
+  "title": "Culture: War",
+  "use": "Culture web cards.",
+  "items": [
+   [
+    "war-bands",
+    "War Bands: Young men raiding together"
+   ],
+   [
+    "shock-warfare",
+    "Shock Warfare: Close fast and hit hard"
+   ],
+   [
+    "skirmish-warfare",
+    "Skirmish Warfare: Strike from afar, never stand"
+   ],
+   [
+    "shield-wall",
+    "Shield Wall: Shoulder to shoulder"
+   ],
+   [
+    "horse-culture",
+    "Horse Culture: Born in the saddle"
+   ],
+   [
+    "archery-tradition",
+    "Archery Tradition: Every boy learns the bow"
+   ],
+   [
+    "drilled-ranks",
+    "Drilled Ranks: March in step, die in step"
+   ],
+   [
+    "siege-engineers",
+    "Siege Engineers: Rams, towers and mines"
+   ],
+   [
+    "mountain-warfare",
+    "Mountain Warfare: Fight where horses cannot"
+   ],
+   [
+    "professional-army",
+    "Professional Army: Paid soldiers for life"
+   ],
+   [
+    "citizen-militia",
+    "Citizen Militia: Every citizen a soldier when needed"
+   ],
+   [
+    "conquest-doctrine",
+    "Doctrine of Conquest: The world is to be taken"
+   ]
+  ]
+ },
+ {
+  "file": "culture-seafaring.png",
+  "group": "culture",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 5,
+  "rows": 3,
+  "height": 96,
+  "title": "Culture: Seafaring",
+  "use": "Culture web cards.",
+  "items": [
+   [
+    "coastal-fishing",
+    "Coastal Fishing: Nets and small boats"
+   ],
+   [
+    "coast-huggers",
+    "Coast Huggers: Never out of sight of land"
+   ],
+   [
+    "open-sea",
+    "Open Sea: Beyond the horizon"
+   ],
+   [
+    "harbour-towns",
+    "Harbour Towns: Life by the quay"
+   ],
+   [
+    "sea-raiders",
+    "Sea Raiders: Longships on every shore"
+   ],
+   [
+    "shipwrights",
+    "Shipwrights: Hulls that last"
+   ],
+   [
+    "thalassocracy",
+    "Thalassocracy: Rule of the waves"
+   ],
+   [
+    "trade-leagues",
+    "Sea Trade Leagues: Allied ports, shared profit"
+   ],
+   [
+    "explorers",
+    "Explorers: Maps of distant lands"
+   ],
+   [
+    "navigation-schools",
+    "Navigation Schools: Science of the sea"
+   ],
+   [
+    "admiralty",
+    "Admiralty: A navy, not a fleet"
+   ]
+  ]
+ },
+ {
+  "file": "culture-knowledge.png",
+  "group": "culture",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 5,
+  "rows": 3,
+  "height": 96,
+  "title": "Culture: Knowledge",
+  "use": "Culture web cards.",
+  "items": [
+   [
+    "oral-tradition",
+    "Oral Tradition: Memory in songs"
+   ],
+   [
+    "scribes",
+    "Scribes: Knowledge written down"
+   ],
+   [
+    "bards",
+    "Bards: Knowledge sung"
+   ],
+   [
+    "natural-philosophy",
+    "Natural Philosophy: Why does the stone fall?"
+   ],
+   [
+    "medicine",
+    "Medicine: Herbs and bone-setting"
+   ],
+   [
+    "record-keeping",
+    "Record Keeping: Tallies and archives"
+   ],
+   [
+    "genealogies",
+    "Genealogies: Every family knows its line"
+   ],
+   [
+    "academies",
+    "Academies: Schools of the learned"
+   ],
+   [
+    "engineering-tradition",
+    "Engineering Tradition: Bridges, mills and roads"
+   ],
+   [
+    "herbalism",
+    "Herbal Lore: The wise women know"
+   ],
+   [
+    "empiricism",
+    "Empiricism: Test everything. The faithful will be shaken"
+   ],
+   [
+    "scholasticism",
+    "Scholasticism: Reason in the service of faith"
+   ]
+  ]
+ },
+ {
+  "file": "culture-arts.png",
+  "group": "culture",
+  "wave": 3,
+  "style": "emblem",
+  "cols": 5,
+  "rows": 2,
+  "height": 96,
+  "title": "Culture: Arts",
+  "use": "Culture web cards.",
+  "items": [
+   [
+    "storytelling",
+    "Storytelling: Tales by the fire"
+   ],
+   [
+    "grand-monuments",
+    "Grand Monuments: Stone that outlives kings"
+   ],
+   [
+    "folk-arts",
+    "Folk Arts: Art of the many"
+   ],
+   [
+    "epic-poetry",
+    "Epic Poetry: Heroes sung for generations"
+   ],
+   [
+    "theatre",
+    "Theatre: The city watches itself"
+   ],
+   [
+    "sculpture",
+    "Sculpture: Gods and rulers in stone"
+   ],
+   [
+    "patronage",
+    "Patronage: The rich pay for beauty"
+   ],
+   [
+    "court-arts",
+    "Court Arts: Splendour for the throne"
+   ],
+   [
+    "humanism",
+    "Humanism: Man as the measure"
+   ],
+   [
+    "golden-age",
+    "Golden Age: Everything flourishes at once"
+   ]
+  ]
+ },
+ {
+  "file": "battle-field.png",
+  "group": "battle",
+  "wave": 3,
+  "style": "miniature",
+  "cols": 1,
+  "rows": 1,
+  "height": 540,
+  "title": "Battle scene: field",
+  "use": "Header of the battle report.",
+  "items": [
+   [
+    "field",
+    "two armies clash on open grassland: spear lines, archers behind, cavalry on a flank"
+   ]
+  ],
+  "whole": {
+   "width": 1280,
+   "aspect": "wide landscape, about 2.4 : 1"
+  }
+ },
+ {
+  "file": "battle-siege.png",
+  "group": "battle",
+  "wave": 3,
+  "style": "miniature",
+  "cols": 1,
+  "rows": 1,
+  "height": 540,
+  "title": "Battle scene: siege",
+  "use": "Header of the battle report.",
+  "items": [
+   [
+    "siege",
+    "an assault on stone city walls with ladders and a battering ram"
+   ]
+  ],
+  "whole": {
+   "width": 1280,
+   "aspect": "wide landscape, about 2.4 : 1"
+  }
+ },
+ {
+  "file": "battle-naval.png",
+  "group": "battle",
+  "wave": 3,
+  "style": "miniature",
+  "cols": 1,
+  "rows": 1,
+  "height": 540,
+  "title": "Battle scene: naval",
+  "use": "Header of the battle report.",
+  "items": [
+   [
+    "naval",
+    "two fleets of galleys and sailing ships fighting at close range"
+   ]
+  ],
+  "whole": {
+   "width": 1280,
+   "aspect": "wide landscape, about 2.4 : 1"
+  }
+ },
+ {
+  "file": "battle-charge.png",
+  "group": "battle",
+  "wave": 3,
+  "style": "miniature",
+  "cols": 1,
+  "rows": 1,
+  "height": 540,
+  "title": "Battle scene: charge",
+  "use": "Header of the battle report.",
+  "items": [
+   [
+    "charge",
+    "heavy cavalry charging into a wall of pikes"
+   ]
+  ],
+  "whole": {
+   "width": 1280,
+   "aspect": "wide landscape, about 2.4 : 1"
+  }
+ },
+ {
+  "file": "battle-forest.png",
+  "group": "battle",
+  "wave": 3,
+  "style": "miniature",
+  "cols": 1,
+  "rows": 1,
+  "height": 540,
+  "title": "Battle scene: forest",
+  "use": "Header of the battle report.",
+  "items": [
+   [
+    "forest",
+    "an ambush in a dense forest, archers among the trees"
+   ]
+  ],
+  "whole": {
+   "width": 1280,
+   "aspect": "wide landscape, about 2.4 : 1"
+  }
+ },
+ {
+  "file": "battle-landing.png",
+  "group": "battle",
+  "wave": 3,
+  "style": "miniature",
+  "cols": 1,
+  "rows": 1,
+  "height": 540,
+  "title": "Battle scene: landing",
+  "use": "Header of the battle report.",
+  "items": [
+   [
+    "landing",
+    "troops wading ashore from boats onto a beach under fire"
+   ]
+  ],
+  "whole": {
+   "width": 1280,
+   "aspect": "wide landscape, about 2.4 : 1"
+  }
+ },
+ {
+  "file": "title.png",
+  "group": "title",
+  "wave": 3,
+  "style": "miniature",
+  "cols": 1,
+  "rows": 1,
+  "height": 1080,
+  "title": "Title screen",
+  "use": "Menu background.",
+  "items": [
+   [
+    "title",
+    "a sweeping low-poly landscape seen from a hill: a river valley with a walled city, fields, a harbour with ships, mountains beyond, morning light, room in the upper third for the game title (do not write it)"
+   ]
+  ],
+  "whole": {
+   "width": 1920,
+   "aspect": "wide landscape, 16 : 9"
+  }
+ }
+]

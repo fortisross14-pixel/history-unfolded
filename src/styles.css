@@ -1463,3 +1463,37 @@ p.good {
 .ship-row select {
   flex: 1;
 }
+/* generated art slots */
+.art {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+}
+.ico {
+  margin-right: 2px;
+}
+.item-art {
+  align-self: center;
+  margin-bottom: 2px;
+}
+.cell-art {
+  align-self: center;
+}
+.tech-art {
+  margin-right: 4px;
+}
+.tag-art {
+  margin-right: 3px;
+  vertical-align: -2px;
+}
+.cnode-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.battle-art {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}

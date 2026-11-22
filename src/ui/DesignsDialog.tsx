@@ -20,8 +20,9 @@ import {
   loadoutProblem,
   ROLE_NAMES,
   spriteForLoadout,
+  artKeyForLoadout,
 } from '../engine/units.ts';
-import { Goods, UnitPortrait } from './bits.tsx';
+import { Art, Goods, UnitPortrait } from './bits.tsx';
 
 interface Props {
   game: GameState;
@@ -109,7 +110,12 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
                   className={`design-row ${editing === d.id ? 'on' : ''}`}
                   onClick={() => pick(d.id)}
                 >
-                  <UnitPortrait sprite={spriteForLoadout(d.loadout)} color={civ.color} small />
+                  <UnitPortrait
+                    sprite={spriteForLoadout(d.loadout)}
+                    art={artKeyForLoadout(d.loadout)}
+                    color={civ.color}
+                    small
+                  />
                   <span>
                     <b>{d.name}</b>
                     <small>
@@ -123,7 +129,11 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
 
           <div className="design-editor">
             <div className="row name-row">
-              <UnitPortrait sprite={spriteForLoadout(l)} color={civ.color} />
+              <UnitPortrait
+                sprite={spriteForLoadout(l)}
+                art={artKeyForLoadout(l)}
+                color={civ.color}
+              />
               <input
                 className="design-name"
                 placeholder="Name it: Hoplites, Foot Falcons, Iron Wall…"
@@ -156,6 +166,7 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
                           setL(next);
                         }}
                       >
+                        <Art k={`item/${it.id}`} size={44} className="item-art" />
                         <b>{it.name}</b>
                         <small>
                           {locked ? (

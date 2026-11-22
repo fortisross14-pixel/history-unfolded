@@ -393,7 +393,11 @@ export function generateMap(s: MapSettings): MapData {
     deposit,
     starts: [],
   };
-  map.starts = placeStarts(map, MAP_SIZES[s.size].civs + MAP_SIZES[s.size].independents, mulberry32(hashSeed(s.seed, 10)));
+  map.starts = placeStarts(
+    map,
+    MAP_SIZES[s.size].civs + MAP_SIZES[s.size].independents,
+    mulberry32(hashSeed(s.seed, 10)),
+  );
   return map;
 }
 

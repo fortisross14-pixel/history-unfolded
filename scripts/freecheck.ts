@@ -42,14 +42,23 @@ const f = free[0];
 me.met.push(f.id);
 f.met.push(me.id);
 const fCity = s.cities.find(c => c.civId === f.id)!;
-check(fCity && s.formations.some(x => x.civId === f.id && x.hex === fCity.hex), 'free city has a garrison');
+check(
+  fCity && s.formations.some(x => x.civId === f.id && x.hex === fCity.hex),
+  'free city has a garrison',
+);
 
 // ---- befriending with gifts
 me.gold = 1000;
 const before = opinion(s, f.id, me.id);
 check(giveGift(s, me.id, f.id, 50).ok, 'gift accepted');
-check(opinion(s, f.id, me.id) > before + 20, `gift wins them over (${before} → ${opinion(s, f.id, me.id)})`);
-check(standing(s, f.id, me.id) === 'Friends', `friends after the gift (${standing(s, f.id, me.id)})`);
+check(
+  opinion(s, f.id, me.id) > before + 20,
+  `gift wins them over (${before} → ${opinion(s, f.id, me.id)})`,
+);
+check(
+  standing(s, f.id, me.id) === 'Friends',
+  `friends after the gift (${standing(s, f.id, me.id)})`,
+);
 check(tributeTo(s, f.id, me.id).gold === 1, 'friends send a little gold');
 
 // ---- alliance and exclusivity

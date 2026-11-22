@@ -72,6 +72,8 @@ import {
 import type { Area } from '../data/dynasties.ts';
 import { isHousing, MIN_HOUSING } from '../data/slots.ts';
 import {
+  buildRoad,
+  trainCrew,
   buildShip,
   cargoOf,
   cityGuard,
@@ -88,9 +90,11 @@ import {
   marketStock,
   constructionQueue,
   isCentre,
+  marketCities,
   slotProblem,
   workable,
 } from './economy.ts';
+import { ageOf } from '../data/techs.ts';
 import { districtRoom, placeDistrict, setSlot, upgradeInfo, upgradeSettlement } from './game.ts';
 import type { City, District } from './types.ts';
 import { hexFood, isPassableLand } from './mapgen.ts';
@@ -770,6 +774,45 @@ function aiDynasties(s: GameState, civ: Civ) {
   }
 }
 
+/**
+ * Road crews join the realm's settlements into one market: the nearest pair (within 5 hexes)
+ * not yet linked gets a road, hex by hex, on the shortest way over open land.
+ */
+function crewOrders(s: GameState, civ: Civ, f: Formation) {
+  const g = gridOf(s);
+  if (f.moves <= 0) return;
+  const mine = s.cities.filter(c => c.civId === civ.id);
+  let best: number[] | null = null;
+  for (const a of mine)
+    for (const b of mine) {
+      if (b.id <= a.id || distance(g, a.hex, b.hex) > 5) continue;
+      if (marketCities(s, a).includes(b)) continue;
+      const way = findPath(g, a.hex, b.hex, (_x, y) =>
+        isPassableLand(s.map, y) && !s.formations.some(o => o.hex === y && o.civId !== civ.id)
+          ? 1
+          : Infinity,
+      );
+      if (!way) continue;
+      const todo = [a.hex, ...way].filter(h => !s.roads[h]);
+      if (!todo.length) continue;
+      // the nearest unfinished stretch to this crew
+      const next = todo.sort((x, y) => distance(g, f.hex, x) - distance(g, f.hex, y));
+      if (!best || distance(g, f.hex, next[0]) < distance(g, f.hex, best[0])) best = next;
+    }
+  if (!best) {
+    f.fortified = true;
+    return;
+  }
+  f.fortified = false;
+  if (f.hex === best[0]) {
+    buildRoad(s, f.id);
+    return;
+  }
+  f.path = planPath(s, f, best[0]) ?? [];
+  advance(s, f);
+  if (f.hex === best[0] && f.moves > 0) buildRoad(s, f.id);
+}
+
 /** Raise the best town to a city once it has towns around it to feed it; then a metropolis. */
 function planUpgrades(s: GameState, civ: Civ, cities: City[]) {
   const towns = cities.filter(c => c.tier === 'town');
@@ -812,6 +855,12 @@ export function aiTurn(s: GameState, civ: Civ) {
     towns.length >= 3 * (ranked.length + 1) - 1
       ? towns.slice().sort((a, b) => b.pop - a.pop)[0]
       : undefined;
+  // a road crew for every four settlements
+  const crews = mine().filter(f => f.kind === 'workers' || f.kind === 'engineers').length;
+  if (cities.length >= 2 && crews < Math.ceil(cities.length / 4) && civ.gold >= 30) {
+    const from = [...cities].sort((a, b) => b.pop - a.pop).find(c => c.pop >= 2400);
+    if (from) trainCrew(s, from.id, ageOf(civ.techs) >= 5 ? 'engineers' : 'workers');
+  }
   for (const c of cities) {
     const armies = mine().filter(f => f.kind === 'army' && f.name !== 'Scouts').length;
     if (c === rising && armies >= 1) continue;
@@ -875,6 +924,10 @@ export function aiTurn(s: GameState, civ: Civ) {
     if (f.aboard !== undefined || civ.sea?.cargo === f.id || civ.sea?.fleet === f.id) continue;
     if (f.kind === 'fleet') {
       fleetOrders(s, civ, f, enemies);
+      continue;
+    }
+    if (f.kind === 'workers' || f.kind === 'engineers') {
+      crewOrders(s, civ, f);
       continue;
     }
     equip(s, civ, f);
@@ -1336,7 +1389,11 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
     if (!near) continue;
     const st = standing(s, o.id, civ.id);
     if (st === 'Allies') {
-      if (absorbProblem(s, civ.id, o.id) === null && civ.gold > absorbCost(s, o.id) + 80 && rng() < 0.1)
+      if (
+        absorbProblem(s, civ.id, o.id) === null &&
+        civ.gold > absorbCost(s, o.id) + 80 &&
+        rng() < 0.1
+      )
         absorb(s, civ.id, o.id);
       else if (civ.gold > 120 && opinion(s, o.id, civ.id) < ABSORB_OPINION && rng() < 0.05)
         giveGift(s, civ.id, o.id, 30);
@@ -1344,7 +1401,8 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
     }
     if (protectorOf(s, o.id) !== undefined) continue;
     const offer = { give: {}, get: {}, alliance: true };
-    if (evaluateOffer(s, civ.id, o.id, offer).accept && rng() < 0.3) executeOffer(s, civ.id, o.id, offer);
+    if (evaluateOffer(s, civ.id, o.id, offer).accept && rng() < 0.3)
+      executeOffer(s, civ.id, o.id, offer);
     else if (civ.gold > 80 && rng() < 0.06) giveGift(s, civ.id, o.id, 25);
   }
 

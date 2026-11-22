@@ -76,8 +76,11 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   smithies, tanneries, weavers, mints and foundries work goods up; what runs out lowers yields.
   The Goods screen (G) shows made, used, traded and net per good and sells a surplus by the turn
   to other peoples.
-- **Roads and markets**: lay roads with any formation (half a move per hex along them). Cities
+- **Roads and markets**: roads are built, not given: any army early, workers from the Medieval
+  age, engineers from the Industrial (half a move per hex along them). Cities
   joined by road or river share one store; an enemy on the road cuts it.
+- **Events**: a story to decide every 5 to 15 turns, varied, with costs shown up front.
+- **Renaming**: rename any settlement from its panel (✎).
 - **War and peace, cities falling**: declare war, capture cities by breaking their guard,
   eliminate peoples. Send settlers to found new cities.
 - **Research tree**: 57 techs over four eras (Ancient to Renaissance) unlocking gear (up to

@@ -258,7 +258,8 @@ export const HISTORY_EVENTS: HistoryEvent[] = [
     choices: [
       {
         label: 'Give her command of our largest army',
-        effect: (s, c) => `${biggestArmy(s, c.id)?.name ?? 'The army'}: every cohort gains experience`,
+        effect: (s, c) =>
+          `${biggestArmy(s, c.id)?.name ?? 'The army'}: every cohort gains experience`,
         apply: (s, c) => {
           const f = biggestArmy(s, c.id);
           if (f) for (const co of f.cohorts) co.xp += 1;
@@ -465,8 +466,7 @@ export const HISTORY_EVENTS: HistoryEvent[] = [
       {
         label: 'Hear them out, and nothing more',
         effect: (_s, _c, x) => `The ${them(x).name} think a little better of you`,
-        apply: (s, c, x) =>
-          remember(s, them(x).id, c.id, 'envoys', 'Heard our envoys', 6, 0.15),
+        apply: (s, c, x) => remember(s, them(x).id, c.id, 'envoys', 'Heard our envoys', 6, 0.15),
         ai: 1,
       },
     ],
@@ -528,7 +528,8 @@ export const HISTORY_EVENTS: HistoryEvent[] = [
       {
         label: 'Stay out of it',
         effect: (_s, _c, x) => `The ${them(x).name} cool towards you a little`,
-        apply: (s, c, x) => remember(s, them(x).id, c.id, 'heirs', 'Did not take our side', -6, 0.2),
+        apply: (s, c, x) =>
+          remember(s, them(x).id, c.id, 'heirs', 'Did not take our side', -6, 0.2),
         ai: 1,
       },
     ],
@@ -562,9 +563,9 @@ export const HISTORY_EVENTS: HistoryEvent[] = [
       },
       {
         label: 'Better allies than subjects',
-        effect: (_s, _c, x) => `The alliance and its tribute go on; the ${them(x).name} are touched`,
-        apply: (s, c, x) =>
-          remember(s, them(x).id, c.id, 'kin', 'Respected our freedom', 10, 0.1),
+        effect: (_s, _c, x) =>
+          `The alliance and its tribute go on; the ${them(x).name} are touched`,
+        apply: (s, c, x) => remember(s, them(x).id, c.id, 'kin', 'Respected our freedom', 10, 0.1),
         ai: 1,
       },
     ],
@@ -611,8 +612,16 @@ function rollEvent(s: GameState, civ: Civ, r: Rng): PendingEvent | null {
   for (const e of HISTORY_EVENTS) {
     const ctx: EventCtx = {};
     if (e.needs.includes('city')) ctx.city = pick(r, cities);
-    if (e.needs.includes('other')) ctx.other = pick(r, met.filter(o => !o.independent));
-    if (e.needs.includes('free')) ctx.other = pick(r, met.filter(o => o.independent));
+    if (e.needs.includes('other'))
+      ctx.other = pick(
+        r,
+        met.filter(o => !o.independent),
+      );
+    if (e.needs.includes('free'))
+      ctx.other = pick(
+        r,
+        met.filter(o => o.independent),
+      );
     if (e.needs.includes('city') && !ctx.city) continue;
     if ((e.needs.includes('other') || e.needs.includes('free')) && !ctx.other) continue;
     if (e.when && !e.when(s, civ, ctx)) continue;
@@ -649,7 +658,11 @@ export function resolveEvent(
   if (why) return { ok: false, msg: why };
   s.events = s.events.filter(x => x !== p);
   c.apply(s, civ, ctx);
-  s.log.push({ turn: s.turn, civId: civ.id, text: `${e.title}: the ${civ.name} chose “${c.label}”.` });
+  s.log.push({
+    turn: s.turn,
+    civId: civ.id,
+    text: `${e.title}: the ${civ.name} chose “${c.label}”.`,
+  });
   return { ok: true, msg: `${e.title}: ${c.effect(s, civ, ctx)}.` };
 }
 

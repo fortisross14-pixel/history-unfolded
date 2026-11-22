@@ -75,7 +75,8 @@ export function absorbProblem(s: GameState, by: number, freeId: number): string 
   if (age < ABSORB_ALLIED_TURNS)
     return `The alliance is too young (${ABSORB_ALLIED_TURNS - age} more turns).`;
   const op = opinion(s, freeId, by);
-  if (op < ABSORB_OPINION) return `They are not ready to join you (opinion ${op}, need ${ABSORB_OPINION}).`;
+  if (op < ABSORB_OPINION)
+    return `They are not ready to join you (opinion ${op}, need ${ABSORB_OPINION}).`;
   const cost = absorbCost(s, freeId);
   if (s.civs[by].gold < cost) return `It takes ${cost} gold to win over their elders.`;
   return null;
@@ -161,7 +162,8 @@ export function independentTurn(s: GameState, civ: Civ, levy: (cityId: number) =
     if (!t.gold && !Object.keys(t.goods).length) continue;
     o.gold += t.gold;
     const cap = capitalOf(s, o.id);
-    if (cap) for (const [g, n] of Object.entries(t.goods)) cap.stockpile[g] = (cap.stockpile[g] ?? 0) + n;
+    if (cap)
+      for (const [g, n] of Object.entries(t.goods)) cap.stockpile[g] = (cap.stockpile[g] ?? 0) + n;
   }
 
   for (const w of s.wars) {

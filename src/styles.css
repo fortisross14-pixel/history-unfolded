@@ -2172,3 +2172,39 @@ kbd {
   vertical-align: middle;
   font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
 }
+input.rename {
+  font:
+    700 18px Georgia,
+    serif;
+  width: 100%;
+}
+
+/* ---------- events ---------- */
+.modal.event {
+  width: min(560px, 100%);
+}
+.event-icon {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+.event-text {
+  font:
+    italic 16px/1.5 Georgia,
+    serif;
+  margin: 4px 0 14px;
+}
+.event-choices {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.event-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  text-align: left;
+}
+.event-choice small {
+  color: var(--ink-soft);
+}

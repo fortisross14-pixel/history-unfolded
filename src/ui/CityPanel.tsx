@@ -1,7 +1,9 @@
 import { governorOf } from '../engine/dynasty.ts';
 import { DISTRICT_CAP, marketCities, marketStock, TIER_NAME } from '../engine/economy.ts';
 import { useState } from 'react';
+import { ageOf } from '../data/techs.ts';
 import {
+  CREW,
   growthCost,
   upgradeInfo,
   hasSlot,
@@ -24,6 +26,8 @@ export function CityPanel({
   onOpen,
   onShip,
   onGovernor,
+  onRename,
+  onCrew,
 }: {
   game: GameState;
   c: City;
@@ -33,17 +37,44 @@ export function CityPanel({
   onOpen: () => void;
   onShip: (designId: number) => void;
   onGovernor?: (dynastyId: number) => void;
+  onRename?: (name: string) => void;
+  onCrew?: (kind: 'workers' | 'engineers') => void;
 }) {
   const y = cityYield(game, c);
   const civ = game.civs[c.civId];
   const canLevy = c.pop - LEVY_PEOPLE >= MIN_CITY_POP;
   const [ship, setShip] = useState(0);
+  const [renaming, setRenaming] = useState(false);
   return (
     <div className="panel city">
       <div className="panel-head">
         <span className="swatch" style={{ background: civ.color }} />
         <div>
-          <h2>{c.name}</h2>
+          {renaming ? (
+            <input
+              className="rename"
+              autoFocus
+              defaultValue={c.name}
+              maxLength={24}
+              onBlur={e => {
+                onRename?.(e.target.value);
+                setRenaming(false);
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                if (e.key === 'Escape') setRenaming(false);
+              }}
+            />
+          ) : (
+            <h2>
+              {c.name}{' '}
+              {mine && onRename && (
+                <button className="link small" onClick={() => setRenaming(true)} title="Rename">
+                  ✎
+                </button>
+              )}
+            </h2>
+          )}
           <div className="muted">
             {TIER_NAME[c.tier]} · {civ.name} · founded turn {c.founded}
           </div>
@@ -165,6 +196,24 @@ export function CityPanel({
             >
               Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
             </button>
+            <button
+              disabled={c.pop - CREW.workers.people < MIN_CITY_POP || civ.gold < CREW.workers.gold}
+              onClick={() => onCrew?.('workers')}
+              title="Workers build roads in every age (from the Medieval age only they and engineers can)"
+            >
+              Send workers ({CREW.workers.people} people, {CREW.workers.gold} gold)
+            </button>
+            {ageOf(civ.techs) >= 5 && (
+              <button
+                disabled={
+                  c.pop - CREW.engineers.people < MIN_CITY_POP || civ.gold < CREW.engineers.gold
+                }
+                onClick={() => onCrew?.('engineers')}
+                title="Engineers build roads, and will lay railways"
+              >
+                Send engineers ({CREW.engineers.people} people, {CREW.engineers.gold} gold)
+              </button>
+            )}
           </div>
           {(!canLevy || c.pop - SETTLERS_PEOPLE < MIN_CITY_POP) && (
             <p className="muted small why">

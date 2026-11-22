@@ -439,8 +439,11 @@ About 28 goods are in play, and they arrive over time:
 ### 8.1 Cities, roads and markets (as built)
 
 - Every city has its **own store**. What its districts produce goes there.
-- **Roads**: any formation can lay a road on the hex it stands on (it uses the rest of its
-  moves). City hexes always count as road. Moving from one road hex to the next costs half a
+- **Roads**: nothing is built for you. A builder lays a road on the hex it stands on (it uses
+  the rest of its moves): any army in the Ancient and Classical ages; from the Medieval age
+  **workers** (raised in a settlement: 200 people, 10 gold); from the Industrial age also
+  **engineers** (200 people, 40 gold). Settlement hexes always count as road. The AI raises a
+  crew per four settlements and links its nearest unlinked pair. Moving from one road hex to the next costs half a
   move, whatever the ground.
 - **Markets**: cities of the same people joined by an unbroken chain of road, river or city
   hexes form one **market**, and pay for everything from the **pooled store** of all its
@@ -685,15 +688,22 @@ The great houses are the thread through the game.
 - AI peoples keep about half the realm under the throne, give the rest to the house strongest in
   each settlement's line, honour restless houses, and yield a civil war when outgunned two to one.
 
-## 11c. Building on the map (planned)
+## 11c. Building on the map
 
-Roads are built by any army today. Later ages need trained hands:
-- **Ancient and Classical**: any formation lays roads (as now).
-- **Medieval onward**: **workers**, a civilian formation raised in a settlement, build better
-  roads and improvements.
-- **Industrial**: **engineers** lay railways (faster than roads, and they carry trade like
-  roads) and the modern improvements that follow.
-Not built yet.
+Roads by age, as built: any army until the Medieval age, then workers; engineers join in the
+Industrial age (§8.1). Planned: engineers lay **railways** (faster than roads, carrying trade
+like them) and later improvements.
+
+## 11d. Events (as built)
+
+A story every 5 to 15 turns (the first after turn 8, never closer than 3 turns), each asking for
+a choice whose cost and effect are shown before it is made; a choice the realm cannot pay for is
+greyed with the reason. 18 events across land, people, court, trade, war, faith and knowledge
+(harvests, blight, prospectors, plague and its aftermath, fire, house feuds, heirs, scholars,
+caravans, bandits, festivals, refugees, floods, envoys, inventors, a relic and a comet).
+Against repetition: cooldowns per event, once-a-game events, a lower weight for the same kind as
+the last one and for events already seen. Some queue a follow-up a few turns later. Costs scale
+with the age. Left undecided, the first open choice is taken when the turn ends.
 
 ## 12. Victory and game length
 

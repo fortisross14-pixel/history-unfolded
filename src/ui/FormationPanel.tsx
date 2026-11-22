@@ -3,6 +3,7 @@ import { ITEMS, SLOTS } from '../data/items.ts';
 import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
 import {
   canFoundCity,
+  roadBuilderProblem,
   cargoOf,
   formationsAt,
   refitPreview,
@@ -25,6 +26,7 @@ import {
   people,
   ROLE_NAMES,
   spriteForLoadout,
+  isCivilian,
 } from '../engine/units.ts';
 import { Goods, Ico, UnitPortrait } from './bits.tsx';
 
@@ -66,6 +68,7 @@ export function FormationPanel(p: Props) {
   const supply = supplyingCity(game, f.civId, f.hex);
   const m = game.map;
   const foundWhy = f.kind === 'settlers' ? canFoundCity(game, f) : null;
+  const roadWhy = roadBuilderProblem(game, f);
   const setAll = (n: 'all' | 'none') =>
     setPick(Object.fromEntries(groups.map(g => [g.key, n === 'all' ? g.cohorts.length : 0])));
   const design = civ.designs.find(d => d.id === designId) ?? null;
@@ -144,7 +147,7 @@ export function FormationPanel(p: Props) {
           penalty).
         </p>
       )}
-      {f.kind !== 'settlers' && (
+      {!isCivilian(f) && (
         <div className="stat-row">
           <span title="Total melee strength">
             <Ico name="melee" fallback="⚔" /> {stats.melee}
@@ -252,7 +255,7 @@ export function FormationPanel(p: Props) {
         })}
       </div>
 
-      {mine && f.kind !== 'settlers' && f.aboard === undefined && (
+      {mine && !isCivilian(f) && f.aboard === undefined && (
         <div className="assign">
           <div className="row">
             <span className="assign-label">
@@ -328,14 +331,15 @@ export function FormationPanel(p: Props) {
               Found city
             </button>
           )}
-          {f.kind !== 'fleet' && f.aboard === undefined && (
+          {f.kind !== 'fleet' && f.kind !== 'settlers' && f.aboard === undefined && (
             <button
               onClick={p.onRoad}
-              disabled={!!game.roads[f.hex] || f.moves <= 0}
+              disabled={!!game.roads[f.hex] || f.moves <= 0 || !!roadWhy}
               title={
-                game.roads[f.hex]
+                roadWhy ??
+                (game.roads[f.hex]
                   ? 'There is a road here'
-                  : 'Lay a road on this hex (R). Uses the remaining moves.'
+                  : 'Lay a road on this hex (R). Uses the remaining moves.')
               }
             >
               Build road
@@ -355,6 +359,7 @@ export function FormationPanel(p: Props) {
               f.kind !== 'fleet' && !game.roads[f.hex] && f.moves <= 0
                 ? 'No moves left this turn for a road.'
                 : null,
+              f.kind !== 'fleet' && f.kind !== 'settlers' && !game.roads[f.hex] ? roadWhy : null,
             ].filter(Boolean);
             return why.length ? <p className="muted small why">{why.join(' ')}</p> : null;
           })()}

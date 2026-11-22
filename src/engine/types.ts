@@ -71,7 +71,8 @@ export interface Design {
   naval?: boolean;
 }
 
-export type FormationKind = 'army' | 'settlers' | 'fleet';
+/** settlers, workers and engineers are civilians: they do not fight */
+export type FormationKind = 'army' | 'settlers' | 'fleet' | 'workers' | 'engineers';
 
 export interface Formation {
   id: number;
@@ -326,4 +327,6 @@ export interface GameState {
   districts: District[];
   /** 1 where a road runs, per hex */
   roads: number[];
+  /** the player's events: pacing, history, the one waiting for a choice */
+  events?: import('./events.ts').EventState;
 }

@@ -848,9 +848,13 @@ export class MapRenderer {
         const label =
           top.kind === 'settlers'
             ? '⌂'
-            : top.kind === 'fleet'
-              ? `⛵${top.cohorts.length}`
-              : String(top.cohorts.length);
+            : top.kind === 'workers'
+              ? '⚒'
+              : top.kind === 'engineers'
+                ? '⚙'
+                : top.kind === 'fleet'
+                  ? `⛵${top.cohorts.length}`
+                  : String(top.cohorts.length);
         const bx = x + ox - R * 0.62,
           by = y + oy - R * 1.3;
         ctx.fillStyle = color;

@@ -57,6 +57,7 @@ import {
   settlePending,
 } from './dynasty.ts';
 import { AREA_NAMES, type Area } from '../data/dynasties.ts';
+import { eventTurn, settleEvent } from './events.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
 import {
@@ -75,6 +76,7 @@ import {
   people,
   refitCost,
   SETTLER_COHORTS,
+  isCivilian,
 } from './units.ts';
 
 export const SAVE_VERSION = 9;
@@ -609,6 +611,20 @@ export function rename(s: GameState, fid: number, name: string): Result {
   return ok();
 }
 
+/** Rename a settlement (its centre district follows when it still carries the old name). */
+export function renameCity(s: GameState, cityId: number, name: string): Result {
+  const c = city(s, cityId);
+  const n = name.trim().slice(0, 24);
+  if (!c || !n) return fail('Give it a name.');
+  if (s.cities.some(x => x !== c && x.name.toLowerCase() === n.toLowerCase()))
+    return fail(`There is already a ${n}.`);
+  const old = c.name;
+  c.name = n;
+  for (const d of s.districts)
+    if (d.cityId === c.id && d.name.startsWith(old)) d.name = n + d.name.slice(old.length);
+  return ok(`${old} is now called ${n}.`);
+}
+
 export function fortify(s: GameState, fid: number): Result {
   const f = formation(s, fid);
   if (!f) return fail('No such formation.');
@@ -665,17 +681,6 @@ export function foundCity(s: GameState, fid: number): Result {
   centre.slots[4] = { type: 'town-hall', built: true, progress: 0, paid: true };
   s.districts.push(centre);
   s.roads[c.hex] = 1;
-  // a new town close to one of its own people's settlements is joined to it by a track
-  const g0 = gridOf(s);
-  const kin = s.cities
-    .filter(x => x !== c && x.civId === civ.id && distance(g0, x.hex, c.hex) <= 3)
-    .sort((a, b) => distance(g0, a.hex, c.hex) - distance(g0, b.hex, c.hex))[0];
-  if (kin) {
-    const track = findPath(g0, c.hex, kin.hex, (_a, b) =>
-      isPassableLand(s.map, b) ? 1 : Infinity,
-    );
-    if (track && track.length <= 3) for (const h of track) s.roads[h] = 1;
-  }
   invalidateMarkets();
   s.formations = s.formations.filter(x => x.id !== f.id);
   s.map.vegetation[f.hex] = 'none';
@@ -765,7 +770,7 @@ export function refitPreview(
 ): RefitPreview {
   const f = formation(s, fid);
   if (!f) return { problem: 'No such formation.' };
-  if (f.kind === 'settlers') return { problem: 'Settlers carry no weapons.' };
+  if (isCivilian(f)) return { problem: `${f.name} carry no weapons.` };
   if ((f.kind === 'fleet') !== !!ITEMS[to.armour]?.naval)
     return {
       problem: f.kind === 'fleet' ? 'Ships take ship designs.' : 'Troops take troop designs.',
@@ -921,8 +926,9 @@ export function setResearch(s: GameState, civId: number, techId: string): Result
 export function endTurn(s: GameState): string[] {
   const events: string[] = [];
   const me = player(s);
-  // a civil war choice left open: the player stands with the throne
+  // a civil war choice left open: the player stands with the throne; an event, its first answer
   events.push(...settlePending(s, me));
+  events.push(...settleEvent(s, me));
   const logStart = s.log.length;
   // AI acts after the player, in the same turn
   for (const civ of s.civs) if (!civ.isPlayer && civ.alive) aiTurn(s, civ);
@@ -1048,6 +1054,11 @@ export function endTurn(s: GameState): string[] {
     }
   }
   for (const c of s.civs) updateExplored(s, c.id);
+  // now and then a story asks for a choice
+  if (me.alive) {
+    const ev = eventTurn(s, me);
+    if (ev) events.push(`A matter for the throne: ${ev}.`);
+  }
   checkVictory(s);
   return events;
 }
@@ -1058,7 +1069,7 @@ export function endTurn(s: GameState): string[] {
  */
 function heal(s: GameState) {
   for (const f of s.formations) {
-    if (f.kind === 'settlers' || f.aboard !== undefined) continue;
+    if (isCivilian(f) || f.aboard !== undefined) continue;
     const medics = f.cohorts.some(c => c.loadout.kit === 'field-medics');
     const home = supplyingCity(s, f.civId, f.hex);
     for (const c of f.cohorts) {
@@ -1460,7 +1471,7 @@ export interface AttackCheck {
 export function canAttack(s: GameState, fid: number, hex: number): AttackCheck {
   const f = formation(s, fid);
   if (!f) return { problem: 'No such formation.' };
-  if (f.kind === 'settlers') return { problem: 'Settlers do not fight.' };
+  if (isCivilian(f)) return { problem: `${f.name} do not fight.` };
   const waterTarget = isWaterHex(s, hex);
   if (f.kind === 'army' && waterTarget) return { problem: 'Troops cannot fight ships at sea.' };
   if (f.kind === 'fleet' && !waterTarget && !f.cohorts.some(c => cohortRanged(c)))
@@ -1472,7 +1483,7 @@ export function canAttack(s: GameState, fid: number, hex: number): AttackCheck {
   )
     return { problem: 'Nothing to land on.' };
   const { f: df, city } = defenderAt(s, hex);
-  const civilians = formationsAt(s, hex).filter(x => x.kind === 'settlers' && x.civId !== f.civId);
+  const civilians = formationsAt(s, hex).filter(x => isCivilian(x) && x.civId !== f.civId);
   const civId = df?.civId ?? city?.civId ?? civilians[0]?.civId;
   if (civId === undefined || civId === f.civId) return { problem: 'Nothing to attack there.' };
   if (f.kind === 'fleet' && !waterTarget && !df && !city)
@@ -1730,7 +1741,7 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
     f.moves = 0;
     f.hex = hex;
     f.aboard = undefined;
-    const msg = `${attCiv.name} ${f.name} scattered the ${s.civs[chk.target!.civId].name} settlers.`;
+    const msg = `${attCiv.name} ${f.name} scattered the ${s.civs[chk.target!.civId].name} ${victims.map(v => v.name.toLowerCase()).join(' and ')}.`;
     log(s, f.civId, msg);
     checkElimination(s);
     updateExplored(s, f.civId);
@@ -2135,9 +2146,44 @@ export function deleteBlueprint(s: GameState, civId: number, id: number) {
 // ---------------------------------------------------------------- roads
 
 /** Troops or settlers lay a road on the hex they stand on; it takes their remaining moves. */
+/**
+ * Who may lay a road: in the Ancient and Classical ages any army or workers; from the Medieval
+ * age only workers or engineers (engineers come with the Industrial age, and will lay railways).
+ */
+export function roadBuilderProblem(s: GameState, f: Formation): string | null {
+  if (f.kind === 'workers' || f.kind === 'engineers') return null;
+  if (f.kind !== 'army') return 'Only troops (early on) or workers build roads.';
+  if (ageOf(s.civs[f.civId].techs) >= 3)
+    return 'From the Medieval age roads need workers: raise them in a settlement.';
+  return null;
+}
+
+/** People and gold for a crew of workers (any age) or engineers (Industrial age). */
+export const CREW = { workers: { people: 200, gold: 10 }, engineers: { people: 200, gold: 40 } };
+
+export function trainCrew(s: GameState, cityId: number, kind: 'workers' | 'engineers'): Result {
+  const c = city(s, cityId);
+  if (!c) return fail('No such settlement.');
+  const civ = s.civs[c.civId];
+  if (kind === 'engineers' && ageOf(civ.techs) < 5)
+    return fail('Engineers come with the Industrial age.');
+  const need = CREW[kind];
+  if (c.pop - need.people < MIN_CITY_POP)
+    return fail(`${c.name} needs ${MIN_CITY_POP + need.people} people.`);
+  if (civ.gold < need.gold) return fail(`A crew costs ${need.gold} gold.`);
+  c.pop -= need.people;
+  civ.gold -= need.gold;
+  const f = addFormation(s, c.civId, kind, c.hex, 2, kind === 'workers' ? 'Workers' : 'Engineers');
+  f.moves = 0;
+  log(s, c.civId, `${c.name} sent out ${f.name.toLowerCase()}.`);
+  return ok(`${f.name} leave ${c.name}.`);
+}
+
 export function buildRoad(s: GameState, fid: number): Result {
   const f = formation(s, fid);
   if (!f) return fail('No such formation.');
+  const who = roadBuilderProblem(s, f);
+  if (who) return fail(who);
   if (s.roads[f.hex]) return fail('There is a road here already.');
   if (!isPassableLand(s.map, f.hex)) return fail('No road can be built here.');
   if (f.moves <= 0) return fail('No moves left this turn.');

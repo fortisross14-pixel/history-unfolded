@@ -13,10 +13,12 @@ export const BASE_SIGHT = 2;
 export const BASE_MORALE = 30;
 
 /** Cohorts a formation may hold; research and culture raise it for armies. */
+/** Civilians: settlers, workers, engineers. They do not fight, and are lost if caught. */
+export const isCivilian = (f: Formation) =>
+  f.kind === 'settlers' || f.kind === 'workers' || f.kind === 'engineers';
+
 export const capOf = (f: Formation, s?: GameState) =>
-  f.kind === 'settlers'
-    ? SETTLER_CAP
-    : COMMAND_CAP + (s ? Math.floor(civMods(s, f.civId).commandCap) : 0);
+  isCivilian(f) ? SETTLER_CAP : COMMAND_CAP + (s ? Math.floor(civMods(s, f.civId).commandCap) : 0);
 export const people = (f: Formation) => f.cohorts.reduce((s, c) => s + c.strength, 0);
 
 export function loadoutWeight(l: Loadout): number {
@@ -140,6 +142,8 @@ export function groupName(
   kind = 'army',
 ): string {
   if (kind === 'settlers') return 'Settlers';
+  if (kind === 'workers') return 'Workers';
+  if (kind === 'engineers') return 'Engineers';
   const d = designOf(civ, g.designId);
   if (d) return d.name;
   if (isShip(g.loadout)) return ITEMS[g.loadout.armour].name;
@@ -317,7 +321,7 @@ const HULL_SPRITE: Record<string, string> = {
 };
 
 export function formationSprite(f: Formation): string {
-  if (f.kind === 'settlers') return 'colonist';
+  if (isCivilian(f)) return 'colonist';
   if (f.kind === 'fleet') {
     const main = groupCohorts(f)[0]?.loadout;
     if (!main) return 'ship:caravel';
@@ -370,6 +374,7 @@ export function artKeyForLoadout(l: Loadout): string {
 }
 
 export function formationArtKey(f: Formation): string {
+  if (f.kind === 'workers' || f.kind === 'engineers') return `unit/${f.kind}`;
   if (f.kind === 'settlers') return 'unit/settlers';
   const main = groupCohorts(f)[0]?.loadout;
   return main ? artKeyForLoadout(main) : 'unit/levy';

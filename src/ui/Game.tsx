@@ -5,6 +5,8 @@ import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
 import {
   availableTechs,
+  renameCity,
+  trainCrew,
   assignDesign,
   attack,
   buildRoad,
@@ -51,6 +53,8 @@ import { MapView } from './MapView.tsx';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
 import { DynastiesDialog } from './DynastiesDialog.tsx';
+import { EventDialog } from './EventDialog.tsx';
+import { pendingEvent } from '../engine/events.ts';
 import { assignGovernor, rulerOf } from '../engine/dynasty.ts';
 import { ResearchDialog } from './ResearchDialog.tsx';
 import { ProposalDialog } from './ProposalDialog.tsx';
@@ -77,9 +81,13 @@ type Dialog =
   | { kind: 'peoples' }
   | { kind: 'goods' }
   | { kind: 'dynasties' }
+  | { kind: 'event' }
   | { kind: 'battle'; report: BattleReport }
   | { kind: 'war'; civId: number; then?: () => void }
   | null;
+
+/** The last step opened a window (research, an event, trinkets): carry on after it. */
+const afterWindow = (key: string) => !!key && !key.startsWith('unit:') && !key.startsWith('city:');
 
 /** "research, 2 cities, 3 units" */
 function todoSummary(list: { key: string }[]): string {
@@ -87,6 +95,7 @@ function todoSummary(list: { key: string }[]): string {
   const parts: string[] = [];
   if (n('research')) parts.push('choose research');
   if (n('trinkets')) parts.push('give out trinkets');
+  if (n('event')) parts.push('an event to decide');
   const c = n('city:'),
     u = n('unit:');
   if (c) parts.push(`plan ${c} cit${c > 1 ? 'ies' : 'y'}`);
@@ -102,7 +111,7 @@ function nextLabel(
 ): string {
   const here =
     sel?.kind === 'formation' ? `unit:${sel.id}` : sel?.kind === 'city' ? `city:${sel.id}` : '';
-  const at = list.findIndex(t => t.key === (here || last));
+  const at = list.findIndex(t => t.key === (afterWindow(last) ? last : here || last));
   const t = list[(at + 1) % list.length];
   const more = list.length - 1;
   const what = t.key.startsWith('unit:') ? `Next: ${t.label}` : t.label;
@@ -237,6 +246,13 @@ export function Game({
         label: 'Choose research',
         go: () => setDialog({ kind: 'research' }),
       });
+    const ev = pendingEvent(game, me);
+    if (ev)
+      out.push({
+        key: 'event',
+        label: `Decide: ${ev.title}`,
+        go: () => setDialog({ kind: 'event' }),
+      });
     if (me.trinkets.length)
       out.push({
         key: 'trinkets',
@@ -271,7 +287,8 @@ export function Game({
     if (!list.length) return false;
     const here =
       sel?.kind === 'formation' ? `unit:${sel.id}` : sel?.kind === 'city' ? `city:${sel.id}` : '';
-    const at = list.findIndex(t => t.key === (here || lastTodo.current));
+    const last = lastTodo.current;
+    const at = list.findIndex(t => t.key === (afterWindow(last) ? last : here || last));
     const t = list[(at + 1) % list.length];
     lastTodo.current = t.key;
     t.go();
@@ -336,6 +353,8 @@ export function Game({
     lastTodo.current = '';
     // a house has risen: the choice of side cannot wait in the to-do list
     if (me.civilWar?.pending) setDialog({ kind: 'dynasties' });
+    // a new event is shown once; closed, it waits in the to-do list
+    else if (game.events?.pending?.turn === game.turn) setDialog({ kind: 'event' });
     if (!selectNext()) setSel(null);
   };
 
@@ -807,6 +826,16 @@ export function Game({
             onOpen={() => setDialog({ kind: 'city', cityId: selCity.id })}
             onShip={designId => report(buildShip(game, selCity.id, designId))}
             onGovernor={id => report(assignGovernor(game, me.id, selCity.id, id) as Result)}
+            onRename={n => report(renameCity(game, selCity.id, n))}
+            onCrew={kind => {
+              const r = report(trainCrew(game, selCity.id, kind));
+              const f = r.ok
+                ? formationsAt(game, selCity.hex)
+                    .filter(x => x.civId === me.id && x.kind === kind)
+                    .pop()
+                : undefined;
+              if (f) setSel({ kind: 'formation', id: f.id });
+            }}
             onSettlers={() => {
               const r = report(trainSettlers(game, selCity.id));
               if (r.ok) {
@@ -1041,6 +1070,14 @@ export function Game({
             report(resolveUpheaval(game, me.id, ids));
             saveGame(game);
           }}
+        />
+      )}
+      {dialog?.kind === 'event' && (
+        <EventDialog
+          game={game}
+          civ={me}
+          report={r => report({ ok: r.ok, msg: r.msg } as Result)}
+          onClose={() => setDialog(null)}
         />
       )}
       {dialog?.kind === 'dynasties' && (

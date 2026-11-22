@@ -50,6 +50,8 @@ import { HexPanel } from './HexPanel.tsx';
 import { MapView } from './MapView.tsx';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
+import { DynastiesDialog } from './DynastiesDialog.tsx';
+import { assignGovernor, rulerOf } from '../engine/dynasty.ts';
 import { ResearchDialog } from './ResearchDialog.tsx';
 import { ProposalDialog } from './ProposalDialog.tsx';
 import { answerProposal, ledgerOf, proposeDeal } from '../engine/diplomacy.ts';
@@ -74,6 +76,7 @@ type Dialog =
   | { kind: 'designs'; open?: number | 'new' }
   | { kind: 'peoples' }
   | { kind: 'goods' }
+  | { kind: 'dynasties' }
   | { kind: 'battle'; report: BattleReport }
   | { kind: 'war'; civId: number; then?: () => void }
   | null;
@@ -83,6 +86,7 @@ function todoSummary(list: { key: string }[]): string {
   const n = (k: string) => list.filter(t => t.key.startsWith(k)).length;
   const parts: string[] = [];
   if (n('research')) parts.push('choose research');
+  if (n('trinkets')) parts.push('give out trinkets');
   const c = n('city:'),
     u = n('unit:');
   if (c) parts.push(`plan ${c} cit${c > 1 ? 'ies' : 'y'}`);
@@ -119,6 +123,7 @@ const KEYS: [string, string][] = [
   ['D', 'Unit designs'],
   ['P', 'Peoples and diplomacy'],
   ['G', 'Goods: made, used and traded per turn'],
+  ['Y', 'Dynasties: houses, governors, trinkets'],
   ['Esc', 'Close a window, or clear the selection'],
   ['?', 'This list'],
 ];
@@ -229,6 +234,12 @@ export function Game({
         key: 'research',
         label: 'Choose research',
         go: () => setDialog({ kind: 'research' }),
+      });
+    if (me.trinkets.length)
+      out.push({
+        key: 'trinkets',
+        label: `Give out ${me.trinkets.length} trinket${me.trinkets.length > 1 ? 's' : ''}`,
+        go: () => setDialog({ kind: 'dynasties' }),
       });
     for (const c of mine)
       if (!constructionQueue(game, c).length)
@@ -463,6 +474,7 @@ export function Game({
       else if (key === 'd') setDialog({ kind: 'designs' });
       else if (key === 'p') setDialog({ kind: 'peoples' });
       else if (key === 'g') setDialog({ kind: 'goods' });
+      else if (key === 'y') setDialog({ kind: 'dynasties' });
       else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
       else if (key === 'k') setDialog({ kind: 'culture' });
       else if (key === 't') setDialog({ kind: 'research' });
@@ -642,6 +654,22 @@ export function Game({
         </button>
         <button
           className="secondary"
+          onClick={() => setDialog({ kind: 'dynasties' })}
+          title="Dynasties (Y)"
+        >
+          👑<span className="wide-only"> House {rulerOf(me).name}</span>
+          {me.civilWar ? (
+            <b className="war-pill">civil war</b>
+          ) : me.dynasties.some(d => d.unrest >= 60) ? (
+            <b className="war-pill">unrest</b>
+          ) : me.trinkets.length ? (
+            <b className="war-pill">{me.trinkets.length} to give</b>
+          ) : (
+            ''
+          )}
+        </button>
+        <button
+          className="secondary"
           onClick={() => setDialog({ kind: 'goods' })}
           title="Goods per turn (G)"
         >
@@ -774,6 +802,7 @@ export function Game({
             }}
             onOpen={() => setDialog({ kind: 'city', cityId: selCity.id })}
             onShip={designId => report(buildShip(game, selCity.id, designId))}
+            onGovernor={id => report(assignGovernor(game, me.id, selCity.id, id) as Result)}
             onSettlers={() => {
               const r = report(trainSettlers(game, selCity.id));
               if (r.ok) {
@@ -1008,6 +1037,14 @@ export function Game({
             report(resolveUpheaval(game, me.id, ids));
             saveGame(game);
           }}
+        />
+      )}
+      {dialog?.kind === 'dynasties' && (
+        <DynastiesDialog
+          game={game}
+          civId={me.id}
+          report={r => report({ ok: r.ok, msg: r.msg } as Result)}
+          onClose={() => setDialog(null)}
         />
       )}
       {dialog?.kind === 'goods' && (

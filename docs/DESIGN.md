@@ -261,6 +261,8 @@ You grow by founding many small towns, not by growing a few huge cities.
 - **Ranks need a culture choice and the action**: City Charter (society, open from any first
   society choice) lets towns become cities; Seat of Empire lets one city become the metropolis.
   Then the player raises the settlement from its screen.
+- **Rural districts, urban districts**: towns hold the extractive cells (farms, mines…). A people
+  can go urban and trade its cities' made goods for food and raw goods from other peoples.
 
 ### 7.1b Inside a district: housing, producers, boosters (as built)
 
@@ -269,25 +271,29 @@ You grow by founding many small towns, not by growing a few huge cities.
   missing. A city needs 6 housing cells in all (of a town's 18 cells), a metropolis 8. Each
   housing cell beyond its districts' two makes growth 8% cheaper (to 60% at most), so more
   people for settlers and levies, at the price of cells that make nothing.
-- **Producers** make things (a university +1½ science, a mine ½ stone plus what the land holds).
-- **Boosters** work on the producers of their kind in the same district:
-  - an **adder** (+½ on every yield of each target), from the early to the mid game;
-  - a **multiplier** (×2 on everything each target makes), late (the Renaissance).
-  Adders stack; of several multipliers on one building only the strongest counts.
+- Every building belongs to a **line** and has a **role**:
+  - **base** (+1 of the line's yield; rural bases give ½ plus what the land holds);
+  - **support** (+½ on every yield of each base of its line in the district), early to mid game;
+  - **modern multiplier** (×2 the line in its district), late; **one per district**;
+  - **great building** (+200%, ×3, the line in its district); **one in the whole realm**,
+    unlocked in a given age.
+  Supports stack; the multiplier and the great building multiply each other.
 
-| Chain | Producers | +½ adder | ×2 multiplier |
-|---|---|---|---|
-| Research | school (1), university (1½), observatory (2) | library (Philosophy) | research lab (Scientific Method) |
-| Food | farm, pasture, plantation, boats, lodge | granary (Pottery: farms, plantations), windmill (Mechanics: farms, pastures) | food packaging (Food Preservation) |
-| Mining | mine | infirmary (Tanning) | pumping station (Steam Power) |
-| Wood | woodcutter, hunting lodge | lumber mill (Carpentry) | steam sawmill (Steam Power) |
-| Culture | shrine (1), monument (1½), temple (2), cathedral (4) | amphitheatre (Literature) | printing house (Printing) |
-| Gold | market, bank, mint, harbour | guild hall (Guilds) | stock exchange (Banking) |
-| Industry | workshop, smithy, foundry, tannery, weaver | guild hall | factory (Steam Power; wears out a tool a turn) |
-| Housing | houses, tenements, aqueduct | market (+½ gold from each housing cell) | — |
+| Line | Bases | Support | Multiplier | Great building (age) |
+|---|---|---|---|---|
+| Food | farm, pasture, plantation, boats, lodge | granary, windmill | food packaging | Royal Granaries (Classical) |
+| Wood | woodcutter | lumber mill | steam sawmill | Royal Forest (Classical) |
+| Mining | mine | infirmary | pumping station | King's Mine (Medieval) |
+| Science | school, university, observatory | library | research lab | Academy of Sciences (Renaissance) |
+| Religion and arts | shrine, monument, temple | amphitheatre | printing house | Cathedral (Theology) |
+| Money | market, bank, mint, harbour | guild hall | counting house | Stock exchange (Joint-Stock) |
+| Industry | workshop, smithy, foundry, tannery, weaver | engineers' lodge | factory | Ironworks (Renaissance) |
 
-  Example: three universities make 4½ science; a library makes it 6; a research lab 12. The
-  other cells: two houses and a market or a temple.
+  The market also puts ½ gold on each housing cell of its district. Example: three
+  universities make 3 science; a library makes it 4½; a research lab 9; the Academy 27.
+- **Housing perks**: each housing cell beyond its districts' two makes growth 8% cheaper (to
+  60%), sends settlers out for 10% fewer people (to 600), and every two add a cohort to the
+  levies raised there (up to +3).
 - The settlement's rank bonus and research percentages apply after the boosters.
 
 - Old saves load with every settlement as a town that keeps its centre and oldest district.
@@ -620,6 +626,34 @@ contact with very different cultures, low stability).
   templates and district blueprints, scores them against what it has (goods, deposits) and what
   it has seen the player field, and adopts new templates when it meets something that beats it.
   This is what makes "someone creates something better" happen.
+
+## 11b. Dynasties (as built)
+
+The great houses are the thread through the game.
+
+- **One house rules from the start.** Once the realm has 3 settlements, two more rise in the
+  Classical age, a fourth in the Medieval, a fifth in the Renaissance (at most 5).
+- **Every settlement has a governor house** (the throne by default). Assign them from the
+  Houses screen (Y) or the settlement panel.
+- **Trinkets**: a finished building of a line has a 12% chance to yield a trinket of that line
+  (an astrolabe, a miner's lamp, a ledger of debts…). Give trinkets to houses: each adds +10% to
+  its line in the settlements the house governs; the ruling house lends half of its trinkets to
+  the whole realm. A house specialised in research governing research cities is very strong.
+- **Power and unrest**: a house's power is the people it governs, plus 500 per trinket. A house
+  that outweighs the throne grows restless (faster the bigger the gap; a throne under a third of
+  the realm makes everyone restless); one close to it grumbles; the rest calm down. Taking a
+  settlement from a house offends it (+10). **Honours** at court (15 gold per settlement) calm a
+  house by 35; a trinket given calms it by 10.
+- **Civil war** at 100 unrest: the rebel house's settlements make half, the others a tenth less.
+  After 8 turns the war is decided by the people each side governs (the rebels' trinkets and the
+  throne's armies count). If the rebels win they take the throne and half the old house's
+  trinkets; if they lose, their trinkets return to the treasury and their settlements to the
+  throne. The throne can also yield at once to spare the realm.
+- **Democracy** (politics, after Constitution): the houses become parties. Assignment is free
+  (no offence), the party governing the most people leads, unrest grows at a quarter of the rate,
+  and trinkets count for 40%.
+- AI peoples keep about half the realm under the throne, give the rest to the house that favours
+  each settlement's line, honour restless houses, and yield a war they are losing badly.
 
 ## 12. Victory and game length
 

@@ -97,6 +97,8 @@ export interface City {
   name: string;
   hex: number;
   tier: Tier;
+  /** the house that governs it (a dynasty id of its people) */
+  governor?: number;
   /** people */
   pop: number;
   food: number;
@@ -144,6 +146,13 @@ export interface Civ {
     /** sailing home to unload after a crossing could not be made */
     abort?: boolean;
   };
+  /** the great houses; `ruling` holds the throne */
+  dynasties: Dynasty[];
+  ruling: number;
+  /** trinkets earned by building, not yet given to a house */
+  trinkets: Trinket[];
+  /** a house has risen against the throne */
+  civilWar?: { rebel: number; since: number };
   science: number;
   gold: number;
   /** 1 = explored, per hex */
@@ -159,6 +168,22 @@ export interface Civ {
   /** enemy people killed / own people lost in battle, for the record */
   kills: number;
   losses: number;
+}
+
+export interface Trinket {
+  id: number;
+  name: string;
+  line: import('../data/slots.ts').Line;
+}
+
+export interface Dynasty {
+  id: number;
+  name: string;
+  color: string;
+  trinkets: Trinket[];
+  /** 0..REVOLT_AT: how close the house is to rising */
+  unrest: number;
+  founded: number;
 }
 
 /** One cell of a district's 3×3 grid. */

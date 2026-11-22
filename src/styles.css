@@ -2054,3 +2054,90 @@ kbd {
     gap: 10px;
   }
 }
+
+/* ---------- dynasties ---------- */
+.modal.dynasties {
+  width: min(900px, 100%);
+}
+.civil-war {
+  padding: 10px 12px;
+  margin: 8px 0;
+  border: 2px solid #b3261e;
+  border-radius: 8px;
+  background: rgba(179, 38, 30, 0.08);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.house-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+.house {
+  padding: 8px 10px;
+  border: 1px solid rgba(74, 50, 30, 0.25);
+  border-radius: 8px;
+  background: var(--paper-2);
+}
+.house.ruler {
+  border: 2px solid var(--gold);
+  background: linear-gradient(#fff6dc, #f3e2b2);
+}
+.house-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.house-head .swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+.house-bar {
+  position: relative;
+  height: 8px;
+  margin: 6px 0 2px;
+  border-radius: 4px;
+  background: rgba(74, 50, 30, 0.15);
+  overflow: visible;
+}
+.house-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+.house-bar i {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--ink);
+}
+.unrest {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0;
+}
+.unrest button.small {
+  padding: 2px 8px;
+  min-height: 0;
+  font-size: 12px;
+}
+.trinket-chip {
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: rgba(201, 150, 43, 0.18);
+  font-size: 12px;
+}
+.trinket-pool .row {
+  gap: 8px;
+  margin: 4px 0;
+  align-items: center;
+}

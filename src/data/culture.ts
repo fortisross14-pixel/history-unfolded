@@ -471,6 +471,16 @@ export const CULTURE_LIST: CultureNode[] = [
     'Written limits on power.',
     { any: ['republic', 'senate'], fork: 'late-rule' },
   ),
+  n(
+    'politics',
+    'democracy',
+    'Democracy',
+    4,
+    ['republican'],
+    { goldPct: 5, tensionPct: -10 },
+    'The great houses become parties: the one with most people behind it governs. Free to assign, rarely at war, but their favours count for less.',
+    { req: ['constitution'] },
+  ),
 
   // ---------------- religion
   n(

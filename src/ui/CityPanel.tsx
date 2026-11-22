@@ -1,3 +1,4 @@
+import { governorOf } from '../engine/dynasty.ts';
 import { DISTRICT_CAP, marketCities, marketStock, TIER_NAME } from '../engine/economy.ts';
 import { useState } from 'react';
 import {
@@ -22,6 +23,7 @@ export function CityPanel({
   onSettlers,
   onOpen,
   onShip,
+  onGovernor,
 }: {
   game: GameState;
   c: City;
@@ -30,6 +32,7 @@ export function CityPanel({
   onSettlers: () => void;
   onOpen: () => void;
   onShip: (designId: number) => void;
+  onGovernor?: (dynastyId: number) => void;
 }) {
   const y = cityYield(game, c);
   const civ = game.civs[c.civId];
@@ -53,6 +56,28 @@ export function CityPanel({
               <tr>
                 <td>Population</td>
                 <td>{c.pop.toLocaleString()} people</td>
+              </tr>
+              <tr>
+                <td>Governor</td>
+                <td>
+                  {(() => {
+                    const civ2 = game.civs[c.civId];
+                    const gov = governorOf(game, c);
+                    if (!gov) return '—';
+                    return civ2.dynasties.length > 1 ? (
+                      <select value={gov.id} onChange={e => onGovernor?.(Number(e.target.value))}>
+                        {civ2.dynasties.map(d => (
+                          <option key={d.id} value={d.id}>
+                            House {d.name}
+                            {d.id === civ2.ruling ? ' (throne)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      `House ${gov.name} (throne)`
+                    );
+                  })()}
+                </td>
               </tr>
               <tr>
                 <td>Districts</td>
@@ -79,7 +104,7 @@ export function CityPanel({
                   {y.food} grown, {y.eat} eaten →{' '}
                   <b className={y.surplus < 0 ? 'bad' : ''}>
                     {y.surplus >= 0 ? '+' : ''}
-                    {y.surplus}
+                    {Math.round(y.surplus * 10) / 10}
                   </b>{' '}
                   ({Math.floor(c.food)}/{growthCost(game, c)} to grow by 250)
                   {y.surplus < 0 && marketCities(game, c).length > 1 && (

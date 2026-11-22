@@ -57,6 +57,14 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   mining, wood, culture, gold and industry, with the multipliers late. Buildings need workers and something on
   the settlement's land (forest, flat land, a deposit), boost their neighbours, and are built by
   its production. Save layouts as blueprints. Houses give room to grow.
+- **Dynasties**: one ruling house at first, up to five as the ages turn. Houses govern
+  settlements and specialise through trinkets found while building (+10% to their line where
+  they govern; the throne lends half to all). A house that outweighs the throne grows restless
+  and may rise in civil war for the crown; honours calm it. Under Democracy houses become
+  parties: freer and safer, but weaker.
+- **Building lines**: base buildings, a support (+½ to each base), one modern multiplier per
+  district (×2) and one great building per realm (+200%): Royal Granaries, King's Mine,
+  Cathedral, Academy of Sciences, Stock exchange, Ironworks, Royal Forest.
 - **Working the land**: farms, pastures, woodcutters and mines give half a unit anywhere; pigs,
   wheat, fish and forest add more, cattle bring leather and sheep wool. Special goods (coal,
   iron, gold, sugar, spices, furs, whales, pearls…) need three of the working building in one

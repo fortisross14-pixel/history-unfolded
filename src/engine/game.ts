@@ -45,7 +45,8 @@ import {
   capStores,
   slotProblem,
 } from './economy.ts';
-import { isRural, SLOT_TYPES } from '../data/slots.ts';
+import { isRural, LINES, SLOT_TYPES } from '../data/slots.ts';
+import { dynastyTurn, foundingDynasty, maybeTrinket } from './dynasty.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
 import {
@@ -66,7 +67,7 @@ import {
   SETTLER_COHORTS,
 } from './units.ts';
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
 /** Settlements may not touch: at least one hex between them. */
@@ -128,8 +129,14 @@ export function newGame(settings: GameSettings): GameState {
       alive: true,
       kills: 0,
       losses: 0,
+      dynasties: [],
+      ruling: -1,
+      trinkets: [],
     };
     s.civs.push(civ);
+    const house = foundingDynasty(s, civ);
+    civ.dynasties.push(house);
+    civ.ruling = house.id;
     const start = map.starts[i];
     const g = gridOf(s);
     const free = neighbors(g, start).filter(k => isPassableLand(map, k));
@@ -671,13 +678,23 @@ export function foundCity(s: GameState, fid: number): Result {
 export function levy(s: GameState, cityId: number): Result {
   const c = city(s, cityId);
   if (!c) return fail('No such city.');
-  if (c.pop - LEVY_PEOPLE < MIN_CITY_POP)
-    return fail(`${c.name} needs ${MIN_CITY_POP + LEVY_PEOPLE} people to raise a levy.`);
-  c.pop -= LEVY_PEOPLE;
-  const f = addFormation(s, c.civId, 'army', c.hex, levySize(s, c.civId), nextLevyName(s, c.civId));
+  // spare housing fills bigger levies (those men are people too)
+  const extra = housingLevyExtra(s, c);
+  const people = LEVY_PEOPLE + extra * COHORT_SIZE;
+  if (c.pop - people < MIN_CITY_POP)
+    return fail(`${c.name} needs ${MIN_CITY_POP + people} people to raise a levy.`);
+  c.pop -= people;
+  const f = addFormation(
+    s,
+    c.civId,
+    'army',
+    c.hex,
+    levySize(s, c.civId) + extra,
+    nextLevyName(s, c.civId),
+  );
   f.moves = 0;
   if (hasSlot(s, c, 'barracks')) for (const co of f.cohorts) co.xp = 1;
-  log(s, c.civId, `${c.name} raised the ${f.name} (500 people).`);
+  log(s, c.civId, `${c.name} raised the ${f.name} (${people} people).`);
   return ok(`${f.name} raised in ${c.name}.`);
 }
 
@@ -924,8 +941,16 @@ export function endTurn(s: GameState): string[] {
           c.pop += 250;
         } else c.food = need;
       }
-      for (const done of build(s, c, e.total.prod))
-        if (civ.isPlayer) events.push(`${c.name}: ${done} finished.`);
+      for (const done of build(s, c, e.total.prod)) {
+        if (civ.isPlayer) events.push(`${c.name}: ${done.text} finished.`);
+        // a finished building of a line may bring a trinket for the houses
+        const line = SLOT_TYPES[done.type]?.line;
+        const t = line ? maybeTrinket(s, civ, line, c.id * 13 + done.type.length) : null;
+        if (t && civ.isPlayer)
+          events.push(
+            `A trinket is found in ${c.name}: the ${t.name} (${LINES[line!].name}). Give it to a house.`,
+          );
+      }
       if (c.food < -5) {
         c.food = 0;
         c.pop = Math.max(MIN_CITY_POP, c.pop - 250);
@@ -969,6 +994,8 @@ export function endTurn(s: GameState): string[] {
     if (!civ.alive) continue;
     const msgs = cultureTurn(s, civ, cultureOf.get(civ.id) ?? 0);
     if (civ.isPlayer) events.push(...msgs);
+    const dyn = dynastyTurn(s, civ);
+    if (civ.isPlayer) events.push(...dyn);
   }
   events.push(...diplomacyTurn(s));
   heal(s);
@@ -1103,6 +1130,16 @@ const MIGRATIONS: Record<number, (d: GameState) => GameState> = {
     for (const c of d.civs)
       for (const b of c.blueprints) b.slots = b.slots.map(t => (t && to[t]) || t);
     return { ...d, version: 8 };
+  },
+  // 8 → 9: dynasties, and buildings on lines
+  8: d => {
+    for (const c of d.civs) {
+      c.trinkets = [];
+      const house = foundingDynasty(d, c);
+      c.dynasties = [house];
+      c.ruling = house.id;
+    }
+    return { ...d, version: 9 };
   },
 };
 export const MIN_SAVE_VERSION = 5;
@@ -1490,6 +1527,14 @@ const cohortSiege = (c: Cohort) => SLOTS.reduce((a, k) => a + (ITEMS[c.loadout[k
 /** Cohorts per new levy. */
 export const levySize = (s: GameState, civId: number) =>
   LEVY_COHORTS + Math.floor(civMods(s, civId).levyCohorts);
+/**
+ * Spare housing (cells beyond each district's two) lets a settlement raise bigger levies (+1
+ * cohort per two, up to +3) and send out settlers for fewer people (−10% each, to 60%).
+ */
+export const housingLevyExtra = (s: GameState, c: City) =>
+  Math.min(3, Math.floor(housingCells(s, c).spare / 2));
+export const settlersCost = (s: GameState, c: City) =>
+  Math.round((SETTLERS_PEOPLE * Math.max(0.6, 1 - 0.1 * housingCells(s, c).spare)) / 50) * 50;
 export const territoryRadius = (s: GameState, civId: number) =>
   TERRITORY_RADIUS + Math.floor(civMods(s, civId).territoryRadius);
 
@@ -1759,6 +1804,7 @@ function captureCity(s: GameState, c: City, by: Formation): string {
   const old = s.civs[c.civId];
   const civ = s.civs[by.civId];
   c.civId = by.civId;
+  c.governor = undefined;
   invalidateMarkets();
   // a people keeps one metropolis: a second one taken steps down to a city
   if (
@@ -1806,9 +1852,10 @@ export function checkElimination(s: GameState) {
 export function trainSettlers(s: GameState, cityId: number): Result {
   const c = city(s, cityId);
   if (!c) return fail('No such city.');
-  if (c.pop - SETTLERS_PEOPLE < MIN_CITY_POP)
-    return fail(`${c.name} needs ${MIN_CITY_POP + SETTLERS_PEOPLE} people to send out settlers.`);
-  c.pop -= SETTLERS_PEOPLE;
+  const people = settlersCost(s, c);
+  if (c.pop - people < MIN_CITY_POP)
+    return fail(`${c.name} needs ${MIN_CITY_POP + people} people to send out settlers.`);
+  c.pop -= people;
   const f = addFormation(s, c.civId, 'settlers', c.hex, SETTLER_COHORTS, 'Settlers');
   f.moves = 0;
   log(s, c.civId, `${c.name} sent out settlers.`);

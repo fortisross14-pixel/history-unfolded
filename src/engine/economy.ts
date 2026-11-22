@@ -20,7 +20,9 @@ import {
 import {
   isHousing,
   isRural,
+  LINES,
   MIN_HOUSING,
+  ROLE_MUL,
   SLOT_TYPES,
   type SlotGroup,
   type SlotType,
@@ -31,8 +33,11 @@ import { distance, neighbors, within, type Grid } from './hex.ts';
 import { hexFood } from './mapgen.ts';
 import type { City, District, GameState, SlotState, Tier } from './types.ts';
 import { civMods, pct } from './mods.ts';
+import { lineBonus, warPenalty } from './dynasty.ts';
 
 export const WORKER_SHARE = 0.5;
+/** What a support building puts on each base of its line in the district. */
+export const SUPPORT_ADD = 0.5;
 
 /** Districts each kind of settlement can hold. */
 export const DISTRICT_CAP: Record<Tier, number> = { town: 2, city: 4, metropolis: 6 };
@@ -148,6 +153,21 @@ export function slotProblem(
   const here = cityAtHex(s, hex);
   if (here && here.tier !== 'town' && isRural(typeId))
     return 'Only towns have room for farms, woodlots and mines; the towns around feed the city.';
+  const d = s.districts.find(x => x.id === districtId);
+  if (t.role === 'multiplier' && d) {
+    const other = d.slots.find(
+      x => x.type && x.type !== typeId && SLOT_TYPES[x.type]?.role === 'multiplier',
+    );
+    if (other)
+      return `One multiplier per district: this one has a ${SLOT_TYPES[other.type!].name.toLowerCase()}.`;
+  }
+  if (t.role === 'great') {
+    const mine = new Set(s.cities.filter(c => c.civId === civId).map(c => c.id));
+    const there = s.districts.find(
+      x => x.id !== districtId && mine.has(x.cityId) && x.slots.some(y => y.type === typeId),
+    );
+    if (there) return `Only one in the realm: there is one in ${there.name}.`;
+  }
   const n = t.needs;
   if (!n) return null;
   if (n.centre && !centre) return 'Only in the centre district.';
@@ -294,6 +314,8 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
     }
   addYield(total, subsistence);
   const bonus = TIER_BONUS[c.tier ?? 'town'];
+  // the governing house (and the throne) favour their lines
+  const houses = lineBonus(s, c);
   // the land and deposits are shared by all the settlement's districts
   const used: Record<string, number> = {};
   const forest = landOf(s, c).some(
@@ -377,43 +399,60 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
         note = `Short of ${short.map(([gd]) => gd).join(', ')}: a third of its output`;
       reports.push({ problem: null, staffed: true, rate, out, note });
     }
-    // 2. adders: +x to every yield of each target in the district; 3. the strongest multiplier
-    const boosters = d.slots
-      .map((x, i) => ({ t: x.type ? SLOT_TYPES[x.type] : undefined, r: reports[i] }))
-      .filter(b => b.t?.boost && b.r.staffed);
-    for (const [phase, key] of [
-      [2, 'add'],
-      [3, 'mul'],
-    ] as const) {
-      for (let i = 0; i < 9; i++) {
-        const r = reports[i];
-        const type = d.slots[i].type;
-        if (!r.staffed || !type) continue;
-        const on = boosters.filter(b => b.t!.boost![key] && b.t!.boost!.of.includes(type));
-        if (!on.length) continue;
-        if (phase === 2) {
-          const add = on.reduce((a, b) => a + b.t!.boost!.add! * b.r.rate, 0);
-          for (const k of ['food', 'prod', 'science', 'gold', 'culture'] as const)
-            if (r.out[k] > 0) r.out[k] += add;
-          for (const gd of Object.keys(r.out.goods))
-            if (r.out.goods[gd] > 0) r.out.goods[gd] += add;
-        } else {
-          const mul = Math.max(...on.map(b => 1 + (b.t!.boost!.mul! - 1) * b.r.rate));
-          scaleTotals(r.out, mul, true);
-        }
+    // 2. supports add ½ to every yield of each base of their line (and the market to each house);
+    // 3. the district's multiplier doubles its line, a great building triples it
+    const staffedOf = (pred: (t: SlotType) => boolean) =>
+      d.slots
+        .map((x, k) => ({ t: x.type ? SLOT_TYPES[x.type] : undefined, r: reports[k] }))
+        .filter(b => b.t && b.r.staffed && pred(b.t));
+    for (let i = 0; i < 9; i++) {
+      const r = reports[i];
+      const t = d.slots[i].type ? SLOT_TYPES[d.slots[i].type!] : undefined;
+      if (!r.staffed || !t) continue;
+      let add = 0;
+      if (t.role === 'base' && t.line)
+        add += staffedOf(b => b.role === 'support' && b.line === t.line).reduce(
+          (a, b) => a + SUPPORT_ADD * b.r.rate,
+          0,
+        );
+      add += staffedOf(b => !!b.boost?.of.includes(t.id)).reduce(
+        (a, b) => a + b.t!.boost!.add * b.r.rate,
+        0,
+      );
+      if (add) {
+        for (const k of ['food', 'prod', 'science', 'gold', 'culture'] as const)
+          if (r.out[k] > 0) r.out[k] += add;
+        for (const gd of Object.keys(r.out.goods)) if (r.out.goods[gd] > 0) r.out.goods[gd] += add;
+        // a house with a market: its shops bring gold
+        if (t.group === 'residential') r.out.gold += add;
       }
+      if (t.line && (t.role === 'base' || t.role === 'support'))
+        for (const role of ['multiplier', 'great'] as const) {
+          const m = staffedOf(b => b.role === role && b.line === t.line)[0];
+          if (m) scaleTotals(r.out, 1 + (ROLE_MUL[role] - 1) * m.r.rate, true);
+        }
     }
-    for (const b of boosters) {
-      const targets = d.slots.filter(
-        (x, i) => x.type && b.t!.boost!.of.includes(x.type) && reports[i].staffed,
+    for (const b of staffedOf(
+      t => t.role === 'support' || t.role === 'multiplier' || t.role === 'great' || !!t.boost,
+    )) {
+      const t = b.t!;
+      const n = d.slots.filter(
+        (x, k) =>
+          x.type &&
+          reports[k].staffed &&
+          (t.boost
+            ? t.boost.of.includes(x.type)
+            : SLOT_TYPES[x.type].line === t.line && SLOT_TYPES[x.type].role === 'base'),
       ).length;
-      if (!targets)
-        b.r.note = `Boosts nothing here yet: needs ${b
-          .t!.boost!.of.map(id => SLOT_TYPES[id]?.name.toLowerCase())
-          .slice(0, 3)
-          .join(', ')}…`;
-      else
-        b.r.note = `${b.t!.boost!.mul ? `×${b.t!.boost!.mul}` : `+${b.t!.boost!.add}`} to ${targets} here`;
+      const what =
+        t.role === 'multiplier'
+          ? '×2'
+          : t.role === 'great'
+            ? '+200%'
+            : `+${t.boost?.add ?? SUPPORT_ADD}`;
+      b.r.note = n
+        ? `${what} to ${n} here`
+        : `Boosts nothing here yet: needs ${t.boost ? 'housing' : `${LINES[t.line!].name.toLowerCase()} buildings`}`;
     }
     // 4. the settlement's rank and the people's research and culture, then into the totals
     for (let i = 0; i < 9; i++) {
@@ -423,6 +462,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       const t = SLOT_TYPES[type];
       let up = 0;
       if (!t.fixed) up += FOCUS.includes(t.group) ? bonus.focus : bonus.all;
+      if (t.line) up += houses[t.line] ?? 0;
       up += mods.groupPct[t.group] ?? 0;
       if (up) scaleTotals(r.out, pct(up), true);
       addYield(total, r.out);
@@ -463,6 +503,9 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
     total.gold *= pct(comfort.pct);
     total.culture *= pct(comfort.pct);
   }
+  // a house at war with the throne
+  const war = warPenalty(s, c);
+  if (war < 1) scaleTotals(total, war, true);
   total.science += Math.floor(c.pop / 2000);
   total.gold += Math.floor(c.pop / 2500);
   total.culture += 1 + Math.floor(c.pop / 4000);
@@ -514,9 +557,9 @@ export function constructionQueue(s: GameState, c: City): { d: District; i: numb
   return out;
 }
 
-/** Spend a turn's production; returns names of slots finished. */
-export function build(s: GameState, c: City, prod: number): string[] {
-  const done: string[] = [];
+/** Spend a turn's production; returns the slots finished. */
+export function build(s: GameState, c: City, prod: number): { text: string; type: string }[] {
+  const done: { text: string; type: string }[] = [];
   let left = prod;
   for (const { d, i } of constructionQueue(s, c)) {
     if (left <= 0) break;
@@ -533,7 +576,7 @@ export function build(s: GameState, c: City, prod: number): string[] {
     if (st.progress >= t.build.prod - 1e-9) {
       st.built = true;
       if (t.id === 'harbour' || t.id === 'shipyard') invalidateMarkets();
-      done.push(`${t.name} in ${d.name}`);
+      done.push({ text: `${t.name} in ${d.name}`, type: t.id });
     }
   }
   return done;

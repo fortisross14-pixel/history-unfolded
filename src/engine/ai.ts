@@ -47,6 +47,18 @@ import {
   opinion,
 } from './diplomacy.ts';
 import { DEPOSITS, GOODS } from '../data/goods.ts';
+import {
+  assignGovernor,
+  giveTrinket,
+  governorOf,
+  grantHonours,
+  honoursCost,
+  powerOf,
+  rulerOf,
+  trinketsOf,
+  yieldThrone,
+} from './dynasty.ts';
+import type { Line } from '../data/slots.ts';
 import { isHousing, MIN_HOUSING } from '../data/slots.ts';
 import {
   buildShip,
@@ -412,11 +424,11 @@ const QUARTERS: Record<string, (string | null)[]> = {
     'workshop',
     'houses',
     'smithy',
-    'guild-hall',
+    'armoury',
     'workshop',
     'houses',
     'factory',
-    'armoury',
+    'engineers',
   ],
   market: [
     'market',
@@ -426,7 +438,7 @@ const QUARTERS: Record<string, (string | null)[]> = {
     'guild-hall',
     'mint',
     'houses',
-    'stock-exchange',
+    'counting-house',
     'bank',
   ],
   civic: [
@@ -438,7 +450,7 @@ const QUARTERS: Record<string, (string | null)[]> = {
     'monument',
     'houses',
     'printing-house',
-    'cathedral',
+    'temple',
   ],
 };
 const QUARTER_ORDER = ['research', 'industry', 'market', 'civic', 'research'];
@@ -504,24 +516,31 @@ function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[
 function addBoosters(s: GameState, civ: Civ, c: City, d: District) {
   const centre = isCentre(d);
   const types = d.slots.map(x => x.type);
+  const bases = (line: string) =>
+    types.filter(t => t && SLOT_TYPES[t].line === line && SLOT_TYPES[t].role === 'base').length;
   for (const b of Object.values(SLOT_TYPES)) {
-    if (!b.boost || types.includes(b.id)) continue;
+    const role = b.role;
+    if (!b.boost && (!role || role === 'base')) continue;
+    if (types.includes(b.id)) continue;
     if (slotProblem(s, civ.id, c.hex, centre, b.id, d.id)) continue;
-    const targets = types.filter(t => t && b.boost!.of.includes(t)).length;
-    if (targets < (b.boost.mul ? 3 : 2)) continue;
+    const targets = b.boost
+      ? types.filter(t => t && b.boost!.of.includes(t)).length
+      : bases(b.line!);
+    if (targets < (role === 'support' || b.boost ? 2 : 3)) continue;
     if (Object.keys(b.inputs ?? {}).some(g => (marketStock(s, c)[g] ?? 0) < 10)) continue;
     const houses = types.filter(t => isHousing(t)).length;
+    const keep = (t: string) => {
+      const o = SLOT_TYPES[t];
+      if (!o || o.fixed) return true;
+      if (o.role && o.role !== 'base') return true;
+      if (o.boost) return true;
+      if (isHousing(t) && houses <= MIN_HOUSING) return true;
+      // the bases this booster (or another one here) works on stay
+      if (b.boost ? b.boost.of.includes(t) : o.line === b.line) return true;
+      return false;
+    };
     let at = types.findIndex((t, i) => !t && i !== 4);
-    if (at < 0)
-      at = types.findIndex(
-        t =>
-          t &&
-          !b.boost!.of.includes(t) &&
-          !SLOT_TYPES[t]?.boost &&
-          !SLOT_TYPES[t]?.fixed &&
-          !(isHousing(t) && houses <= MIN_HOUSING) &&
-          !Object.values(SLOT_TYPES).some(o => o.boost?.of.includes(t) && types.includes(o.id)),
-      );
+    if (at < 0) at = types.findIndex(t => t && !keep(t));
     if (at >= 0) {
       setSlot(s, d.id, at, b.id);
       return;
@@ -603,6 +622,65 @@ function planDistricts(s: GameState, civ: Civ, c: City) {
   }
 }
 
+/**
+ * The houses: trinkets to the house that already favours their line (the throne when it is
+ * weak), the biggest settlements to the throne until it holds about half the realm, the rest to
+ * the house whose line they work most, and honours for any house close to rising.
+ */
+function aiDynasties(s: GameState, civ: Civ) {
+  if (!civ.dynasties?.length) return;
+  const ruler = rulerOf(civ);
+  const power = powerOf(s, civ);
+  for (const t of [...civ.trinkets]) {
+    const best = [...civ.dynasties].sort(
+      (a, b) =>
+        trinketsOf(b, t.line) - trinketsOf(a, t.line) || a.trinkets.length - b.trinkets.length,
+    )[0];
+    const to = power.get(ruler.id)!.share < 0.4 ? ruler : best;
+    giveTrinket(s, civ.id, t.id, to.id);
+  }
+  if ((s.turn + civ.id) % 5 === 0 && civ.dynasties.length > 1 && !civ.civilWar) {
+    const mine = s.cities.filter(c => c.civId === civ.id).sort((a, b) => b.pop - a.pop);
+    const total = mine.reduce((a, c) => a + c.pop, 0);
+    let held = 0;
+    const given = new Map<number, number>();
+    for (const c of mine) {
+      if (held < total * 0.5) {
+        if (governorOf(s, c)?.id !== ruler.id) assignGovernor(s, civ.id, c.id, ruler.id);
+        held += c.pop;
+        continue;
+      }
+      // what this settlement works most
+      const lines: Record<string, number> = {};
+      for (const d of s.districts)
+        if (d.cityId === c.id)
+          for (const x of d.slots)
+            if (x.type && SLOT_TYPES[x.type].line) {
+              const l = SLOT_TYPES[x.type].line!;
+              lines[l] = (lines[l] ?? 0) + 1;
+            }
+      const top = Object.entries(lines).sort((a, b) => b[1] - a[1])[0]?.[0] as Line | undefined;
+      // the house that favours this line, spread so no one house grows too heavy
+      const others = civ.dynasties.filter(d => d.id !== ruler.id);
+      const score = (d: (typeof others)[number]) =>
+        (top ? trinketsOf(d, top) * 2 : 0) - ((given.get(d.id) ?? 0) / Math.max(1, total)) * 20;
+      const pick = [...others].sort((a, b) => score(b) - score(a))[0];
+      if (!pick) continue;
+      given.set(pick.id, (given.get(pick.id) ?? 0) + c.pop);
+      if (governorOf(s, c)?.id !== pick.id) assignGovernor(s, civ.id, c.id, pick.id);
+    }
+  }
+  for (const d of civ.dynasties)
+    if (d.id !== ruler.id && d.unrest >= 60 && civ.gold >= honoursCost(s, civ) + 40)
+      grantHonours(s, civ.id, d.id);
+  // a war it is losing badly is given up
+  if (civ.civilWar && s.turn - civ.civilWar.since >= 4) {
+    const rebel = civ.dynasties.find(d => d.id === civ.civilWar!.rebel);
+    if (rebel && power.get(rebel.id)!.share > power.get(ruler.id)!.share * 1.5)
+      yieldThrone(s, civ.id);
+  }
+}
+
 /** Raise the best town to a city once it has towns around it to feed it; then a metropolis. */
 function planUpgrades(s: GameState, civ: Civ, cities: City[]) {
   const towns = cities.filter(c => c.tier === 'town');
@@ -637,6 +715,7 @@ export function aiTurn(s: GameState, civ: Civ) {
   const settlersOut = mine().some(f => f.kind === 'settlers');
   for (const c of cities) planDistricts(s, civ, c);
   if ((s.turn + civ.id) % 4 === 0) planUpgrades(s, civ, cities);
+  aiDynasties(s, civ);
   // one town at a time is left to grow into a city: no settlers or levies from it
   const towns = cities.filter(c => c.tier === 'town');
   const ranked = cities.filter(c => c.tier !== 'town');

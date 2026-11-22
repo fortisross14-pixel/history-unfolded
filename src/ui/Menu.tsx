@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MAP_SIZES, MAP_TYPES } from '../engine/mapgen.ts';
 import { randomSeed } from '../engine/rng.ts';
 import type { GameSettings, Level3, MapSize, MapType } from '../engine/types.ts';
-import { hasSave } from './save.ts';
+import { deleteGame, listGames } from './save.ts';
 import { artUrl } from '../render/art.ts';
 
 const L3 = (labels: [string, string, string]) =>
@@ -13,7 +13,7 @@ export function Menu({
   onContinue,
 }: {
   onStart: (s: GameSettings) => void;
-  onContinue: () => void;
+  onContinue: (id?: string) => void;
 }) {
   const [type, setType] = useState<MapType>('random');
   const [size, setSize] = useState<MapSize>('standard');
@@ -25,6 +25,7 @@ export function Menu({
   const [mountains, setMtn] = useState<Level3>('normal');
   const [seed, setSeed] = useState<number>(randomSeed());
   const [name, setName] = useState('');
+  const [games, setGames] = useState(listGames);
   const [turnLimit, setTurnLimit] = useState(400);
 
   const select = <T extends string>(
@@ -57,10 +58,33 @@ export function Menu({
       <div className="menu-card">
         <h1>History Unfolded</h1>
         <p className="subtitle">Every people starts the same. What they become is up to you.</p>
-        {hasSave() && (
-          <button className="primary wide" onClick={onContinue}>
-            Continue saved game
-          </button>
+        {games.length > 0 && (
+          <div className="saves">
+            <button className="primary wide" onClick={() => onContinue(games[0].id)}>
+              Continue: {games[0].civ}, turn {games[0].turn}
+            </button>
+            {games.length > 1 && (
+              <div className="save-list">
+                {games.slice(1).map(g => (
+                  <span key={g.id} className="save-row">
+                    <button onClick={() => onContinue(g.id)}>
+                      {g.civ} · {g.mapType} · turn {g.turn}
+                    </button>
+                    <button
+                      className="x small"
+                      title="Delete this game"
+                      onClick={() => {
+                        deleteGame(g.id);
+                        setGames(listGames());
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         )}
         <h2>New game</h2>
         <div className="map-types">

@@ -23,7 +23,11 @@ export function App() {
           saveGame(g);
           setGame(g);
         }}
-        onContinue={() => setGame(loadGame())}
+        onContinue={id => {
+          const r = loadGame(id);
+          if (r.warning) alert(r.warning);
+          if (r.state) setGame(r.state);
+        }}
       />
     );
   }

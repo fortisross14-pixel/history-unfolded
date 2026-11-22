@@ -20,6 +20,14 @@ import type { Assets } from './assets.ts';
 
 export const R = 36; // hex radius in world pixels at zoom 1
 
+export interface Insets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+export const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+
 export interface Camera {
   x: number;
   y: number;
@@ -98,10 +106,13 @@ export class MapRenderer {
     return [w * R, h * R];
   }
 
-  centerOn(s: GameState, hex: number) {
+  /** Put `hex` in the middle of the part of the screen the interface does not cover. */
+  centerOn(s: GameState, hex: number, ins: Insets = NO_INSETS) {
     const [x, y] = centerUnit({ w: s.map.w, h: s.map.h }, hex);
-    this.cam.x = x * R - this.viewW / 2 / this.cam.zoom;
-    this.cam.y = y * R - this.viewH / 2 / this.cam.zoom;
+    const cxs = ins.left + (this.viewW - ins.left - ins.right) / 2;
+    const cys = ins.top + (this.viewH - ins.top - ins.bottom) / 2;
+    this.cam.x = x * R - cxs / this.cam.zoom;
+    this.cam.y = y * R - cys / this.cam.zoom;
   }
 
   hexAtScreen(s: GameState, sx: number, sy: number): number {
@@ -110,9 +121,13 @@ export class MapRenderer {
     return hexAtUnit({ w: s.map.w, h: s.map.h }, wx / R, wy / R);
   }
 
+  /** true once a finger has touched the map: zoom stops before hexes get too small to tap */
+  coarse = false;
+
   zoomAt(sx: number, sy: number, factor: number) {
     const z0 = this.cam.zoom;
-    const z1 = Math.min(2.2, Math.max(0.35, z0 * factor));
+    const minZ = this.coarse ? 0.55 : 0.3;
+    const z1 = Math.min(2.4, Math.max(minZ, z0 * factor));
     const wx = this.cam.x + sx / z0,
       wy = this.cam.y + sy / z0;
     this.cam.zoom = z1;
@@ -120,13 +135,18 @@ export class MapRenderer {
     this.cam.y = wy - sy / z1;
   }
 
-  clamp(s: GameState) {
+  /** Keep the map on screen; a map smaller than the view is centred; covered edges can scroll clear. */
+  clamp(s: GameState, ins: Insets = NO_INSETS) {
     const [W, H] = this.worldSize(s);
-    const vw = this.viewW / this.cam.zoom,
-      vh = this.viewH / this.cam.zoom;
-    const m = 120;
-    this.cam.x = Math.min(Math.max(this.cam.x, -m), Math.max(-m, W - vw + m));
-    this.cam.y = Math.min(Math.max(this.cam.y, -m), Math.max(-m, H - vh + m));
+    const z = this.cam.zoom;
+    const fit = (pos: number, world: number, view: number, lo: number, hi: number) => {
+      const visible = (view - lo - hi) / z;
+      if (world <= visible) return (world - visible) / 2 - lo / z;
+      const m = 80 / z;
+      return Math.min(Math.max(pos, -m - lo / z), world - view / z + m + hi / z);
+    };
+    this.cam.x = fit(this.cam.x, W, this.viewW, ins.left, ins.right);
+    this.cam.y = fit(this.cam.y, H, this.viewH, ins.top, ins.bottom);
   }
 
   draw(s: GameState, civId: number, ov: Overlay) {

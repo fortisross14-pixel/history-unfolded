@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
 import {
@@ -37,7 +37,7 @@ import {
 } from '../engine/game.ts';
 import type { GameState } from '../engine/types.ts';
 import type { Assets } from '../render/assets.ts';
-import type { Overlay } from '../render/mapRenderer.ts';
+import type { Insets, Overlay } from '../render/mapRenderer.ts';
 import { BattleDialog } from './BattleDialog.tsx';
 import { CityDialog } from './CityDialog.tsx';
 import { CityPanel } from './CityPanel.tsx';
@@ -63,6 +63,7 @@ type Sel =
   | null;
 type Dialog =
   | { kind: 'research' }
+  | { kind: 'report' }
   | { kind: 'culture' }
   | { kind: 'city'; cityId: number; hex?: number }
   | { kind: 'designs'; open?: number | 'new' }
@@ -91,11 +92,47 @@ export function Game({
   const [dialog, setDialog] = useState<Dialog>(null);
   const [center, setCenter] = useState<{ hex: number; n: number } | null>(null);
   const toastId = useRef(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(true);
+  const topRef = useRef<HTMLElement>(null);
+  const sideRef = useRef<HTMLElement>(null);
+  const turnRef = useRef<HTMLDivElement>(null);
+  const [insets, setInsets] = useState<Insets>({ top: 0, right: 0, bottom: 0, left: 0 });
+  // the map keeps the selected thing in the part of the screen the interface leaves free
+  useLayoutEffect(() => {
+    const vw = window.innerWidth,
+      vh = window.innerHeight;
+    const top = topRef.current?.getBoundingClientRect().bottom ?? 0;
+    const side = sideRef.current?.getBoundingClientRect();
+    const turn = turnRef.current?.getBoundingClientRect();
+    const phone = vw < 700;
+    const hasPanel = !!side && side.height > 20;
+    const next: Insets = {
+      top: Math.round(top),
+      right: !phone && hasPanel ? Math.round(vw - side!.left) : 0,
+      bottom: Math.round(
+        phone && hasPanel ? vh - Math.min(side!.top, turn?.top ?? vh) : turn ? vh - turn.top : 0,
+      ),
+      left: 0,
+    };
+    if (next.top !== insets.top || next.right !== insets.right || next.bottom !== insets.bottom)
+      setInsets(next);
+  });
+  // the first centring happened before the panels were measured: redo it once they are
+  const recentred = useRef(false);
+  useEffect(() => {
+    if (recentred.current || (!insets.bottom && !insets.right)) return;
+    recentred.current = true;
+    const f = sel?.kind === 'formation' ? formation(game, sel.id) : undefined;
+    if (f) setCenter({ hex: f.hex, n: Date.now() });
+  }, [insets]);
+  const endArmed = useRef(false);
 
   const toast = useCallback((text: string, bad = false) => {
     const id = ++toastId.current;
-    setToasts(t => [...t.slice(-4), { id, text, bad }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), bad ? 5000 : 3800);
+    setToasts(t => [...t.slice(-5), { id, text, bad }]);
+    // bad news stays until tapped; the rest fades
+    if (!bad) setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
   }, []);
   const report = (r: Result) => {
     if (r.msg) toast(r.msg, !r.ok);
@@ -143,9 +180,26 @@ export function Game({
     };
   });
 
+  const [busy, setBusy] = useState(false);
+  const [lastReport, setLastReport] = useState<string[]>([]);
   const doEndTurn = () => {
+    if (busy) return;
+    setBusy(true);
+    setArmed(-1);
+    // let the "peoples move" banner paint before the AI thinks
+    setTimeout(() => {
+      try {
+        runEndTurn();
+      } finally {
+        setBusy(false);
+      }
+    }, 30);
+  };
+  const runEndTurn = () => {
     const events = endTurn(game);
-    saveGame(game);
+    setLastReport(events);
+    const saved = saveGame(game);
+    if (!saved.ok) toast(`Autosave failed: ${saved.reason}`, true);
     events.forEach(e =>
       toast(e, /declared war on the|captured .* from|attacked/.test(e) && e.includes(me.name)),
     );
@@ -192,25 +246,39 @@ export function Game({
     }
   };
 
-  const onClick = (hex: number) => {
+  /** On touch the first tap on a target only previews (route or battle); the second one acts. */
+  const [armed, setArmed] = useState(-1);
+  const confirmTap = (hex: number, touch: boolean, act: () => void) => {
+    if (touch && armed !== hex) {
+      setArmed(hex);
+      setHover(hex);
+      return;
+    }
+    setArmed(-1);
+    act();
+  };
+  const onClick = (hex: number, touch = false) => {
     const mineHere = formationsAt(game, hex).filter(f => f.civId === me.id);
     const cityHere = cityAt(game, hex);
+    if (armed >= 0 && armed !== hex) setArmed(-1);
     // troops board an own ship next to them; ships sail into own ports
     if (mySelF && hex !== mySelF.hex && !enemyAt(hex)) {
       if (mySelF.kind !== 'fleet' && isWaterHex(game, hex) && shipFor(game, mySelF, hex))
-        return moveTo(hex);
-      if (mySelF.kind === 'fleet' && isPort(game, me.id, hex)) return moveTo(hex);
+        return confirmTap(hex, touch, () => moveTo(hex));
+      if (mySelF.kind === 'fleet' && isPort(game, me.id, hex))
+        return confirmTap(hex, touch, () => moveTo(hex));
     }
     // with a unit selected, clicking an adjacent enemy attacks; clicking open ground moves
     if (mySelF && hex !== mySelF.hex) {
-      if (enemyAt(hex) && canAttack(game, mySelF.id, hex).target) return doAttack(hex);
+      if (enemyAt(hex) && canAttack(game, mySelF.id, hex).target)
+        return confirmTap(hex, touch, () => doAttack(hex));
       if (
         !mineHere.length &&
         !(cityHere && cityHere.civId === me.id) &&
         !enemyAt(hex) &&
         game.civs[me.id].explored[hex]
       )
-        return moveTo(hex);
+        return confirmTap(hex, touch, () => moveTo(hex));
     }
     const here = formationsAt(game, hex).filter(f => f.civId === me.id || vis[hex]);
     if (here.length) {
@@ -232,21 +300,46 @@ export function Game({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || dialog) return;
-      if (e.key === 'Enter') {
+      const tag = (e.target as HTMLElement).tagName;
+      if (e.key === 'Escape' && dialog && dialog.kind !== 'war') {
+        setDialog(null);
+        return;
+      }
+      // held keys repeat; modifiers belong to the browser; focused controls keep their keys
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (
+        ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(tag) ||
+        (e.target as HTMLElement).isContentEditable
+      )
+        return;
+      if (dialog || proposal || me.culture.choosing || busy) return;
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (key === 'Enter') {
         e.preventDefault();
+        // ask once when units still wait for orders
+        if (idle().length && !endArmed.current) {
+          endArmed.current = true;
+          setTimeout(() => (endArmed.current = false), 2500);
+          toast(
+            `${idle().length} unit${idle().length > 1 ? 's' : ''} still without orders: press Enter again to end the turn.`,
+          );
+          return;
+        }
+        endArmed.current = false;
         doEndTurn();
-      } else if (e.key === ' ' || e.key === 'n') {
+      } else if (key === ' ' || key === 'n') {
         e.preventDefault();
         selectNext();
-      } else if (e.key === 'Escape') setSel(null);
-      else if (e.key === 'f' && mySelF) report(fortify(game, mySelF.id));
-      else if (e.key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
-      else if (e.key === 'd') setDialog({ kind: 'designs' });
-      else if (e.key === 'k') setDialog({ kind: 'culture' });
-      else if (e.key === 't') setDialog({ kind: 'research' });
-      else if (e.key === 'r' && mySelF) report(buildRoad(game, mySelF.id));
-      else if (e.key === 'c' && selCity && selCity.civId === me.id)
+      } else if (key === 'Escape') {
+        setSel(null);
+        setArmed(-1);
+      } else if (key === 'f' && mySelF) report(fortify(game, mySelF.id));
+      else if (key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
+      else if (key === 'd') setDialog({ kind: 'designs' });
+      else if (key === 'k') setDialog({ kind: 'culture' });
+      else if (key === 't') setDialog({ kind: 'research' });
+      else if (key === 'r' && mySelF) report(buildRoad(game, mySelF.id));
+      else if (key === 'c' && selCity && selCity.civId === me.id)
         setDialog({ kind: 'city', cityId: selCity.id });
     };
     window.addEventListener('keydown', onKey);
@@ -282,10 +375,14 @@ export function Game({
   }, [sel, hover, version, battlePreview]);
 
   const research_ = me.researching ? TECHS[me.researching] : null;
-  const culturePerTurn = Math.round(
-    game.cities
-      .filter(c => c.civId === me.id)
-      .reduce((a, c) => a + cityEconomy(game, c).total.culture, 0),
+  const culturePerTurn = useMemo(
+    () =>
+      Math.round(
+        game.cities
+          .filter(c => c.civId === me.id)
+          .reduce((a, c) => a + cityEconomy(game, c).total.culture, 0),
+      ),
+    [version],
   );
   const myCities = game.cities.filter(c => c.civId === me.id);
   const idleCount = idle().length;
@@ -360,10 +457,11 @@ export function Game({
           onClick={onClick}
           onMove={h => (mySelF ? moveTo(h) : onClick(h))}
           onHover={setHover}
+          insets={insets}
         />
       </div>
 
-      <header className="topbar">
+      <header className={`topbar ${menuOpen ? 'menu-open' : ''}`} ref={topRef}>
         <span className="civ-name">
           <span className="swatch" style={{ background: me.color }} />
           {me.name}
@@ -390,17 +488,25 @@ export function Game({
             ''
           )}
         </button>
-        <span className="ident-bar">
+        <button
+          className="more-btn"
+          onClick={() => setMenuOpen(o => !o)}
+          aria-expanded={menuOpen}
+          aria-label="More"
+        >
+          ☰
+        </button>
+        <span className="ident-bar secondary">
           {identity(me)
             .slice(0, 2)
             .map(i => (
               <TagChip key={i.tag} tag={i.tag} />
             ))}
         </span>
-        <button onClick={() => setDialog({ kind: 'designs' })} title="D">
+        <button className="secondary" onClick={() => setDialog({ kind: 'designs' })} title="D">
           ⚔ Unit designs ({me.designs.length})
         </button>
-        <button onClick={() => setDialog({ kind: 'peoples' })}>
+        <button className="secondary" onClick={() => setDialog({ kind: 'peoples' })}>
           👥 Peoples
           {wars ? (
             <b className="war-pill">
@@ -410,19 +516,29 @@ export function Game({
             ''
           )}
         </button>
-        <span className="muted">
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'report' })}
+          disabled={!lastReport.length}
+          title="What happened last turn"
+        >
+          📜 Last turn
+        </button>
+        <span className="muted secondary">
           {myCities.length} {myCities.length === 1 ? 'city' : 'cities'}
         </span>
         <span className="spacer" />
         <button
+          className="secondary"
           onClick={() => {
-            saveGame(game);
-            toast('Saved.');
+            const r = saveGame(game, true);
+            toast(r.ok ? 'Saved.' : `Could not save: ${r.reason}.`, !r.ok);
           }}
         >
           Save
         </button>
         <button
+          className="secondary"
           onClick={() => {
             saveGame(game);
             onQuit();
@@ -432,7 +548,21 @@ export function Game({
         </button>
       </header>
 
-      <aside className="side">
+      <aside className={`side ${sheetOpen ? '' : 'peek'} ${sel ? 'has-sel' : ''}`} ref={sideRef}>
+        {sel && (
+          <div className="side-bar">
+            <button
+              className="sheet-handle"
+              onClick={() => setSheetOpen(o => !o)}
+              aria-label={sheetOpen ? 'Shrink panel' : 'Expand panel'}
+            >
+              <span />
+            </button>
+            <button className="x panel-close" onClick={() => setSel(null)} aria-label="Close">
+              ×
+            </button>
+          </div>
+        )}
         {selF && (
           <FormationPanel
             game={game}
@@ -516,8 +646,19 @@ export function Game({
         )}
       </aside>
 
+      {armed >= 0 && mySelF && (
+        <div className="armed-bar" role="status">
+          <span>
+            {enemyAt(armed) ? 'Tap the enemy again to attack' : 'Tap the hex again to go there'}
+          </span>
+          <button className="primary" onClick={() => onClick(armed, false)}>
+            {enemyAt(armed) ? 'Attack' : 'Go'}
+          </button>
+          <button onClick={() => setArmed(-1)}>Cancel</button>
+        </div>
+      )}
       {battlePreview ? (
-        <div className="hover-info">
+        <div className="hover-info preview-box">
           <div className="panel preview">
             {'problem' in battlePreview ? (
               <p className="bad">{battlePreview.problem}</p>
@@ -557,22 +698,56 @@ export function Game({
         )
       )}
 
-      <div className="turn-box">
+      {busy && (
+        <div className="busy" role="status" aria-live="polite">
+          The peoples move…
+        </div>
+      )}
+      <div className="turn-box" ref={turnRef}>
         <button className="next" onClick={selectNext} disabled={!idleCount}>
           {idleCount ? `Next unit (${idleCount})` : 'All units ordered'}
         </button>
-        <button className="end-turn" onClick={doEndTurn}>
+        <button className="end-turn" onClick={doEndTurn} disabled={busy}>
           End turn ⏎
         </button>
       </div>
 
-      <div className="toasts">
+      <div className="toasts" role="status" aria-live="polite">
         {toasts.map(t => (
-          <div key={t.id} className={`toast ${t.bad ? 'bad' : ''}`}>
+          <button
+            key={t.id}
+            className={`toast ${t.bad ? 'bad' : ''}`}
+            onClick={() => setToasts(x => x.filter(y => y.id !== t.id))}
+            title="Dismiss"
+          >
+            {t.bad ? '⚠ ' : ''}
             {t.text}
-          </div>
+          </button>
         ))}
       </div>
+      {dialog?.kind === 'report' && (
+        <div className="modal-back" onClick={() => setDialog(null)}>
+          <div
+            className="modal report"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Last turn"
+            onClick={e => e.stopPropagation()}
+          >
+            <header>
+              <h2>Turn {game.turn - 1}</h2>
+              <button className="x" onClick={() => setDialog(null)} aria-label="Close">
+                ×
+              </button>
+            </header>
+            <ul className="report-list">
+              {lastReport.map((e, i) => (
+                <li key={i}>{e}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {dialog?.kind === 'designs' && (
         <DesignsDialog

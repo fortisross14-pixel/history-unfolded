@@ -4,7 +4,7 @@
  */
 import { CITY_NAMES, CIV_PRESETS } from '../data/civs.ts';
 import { DEPOSITS } from '../data/goods.ts';
-import { isWater } from '../data/terrain.ts';
+import { isWater, type ReliefId, type TerrainId, type VegetationId } from '../data/terrain.ts';
 import { DEFAULT_LOADOUT, isNavalLoadout, ITEMS, SLOTS, type Loadout } from '../data/items.ts';
 import { TECHS, TECH_LIST } from '../data/techs.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
@@ -974,14 +974,121 @@ export function cohortUpkeep(c: Cohort): number {
 
 // ---------------------------------------------------------------- save / load
 
-export function serialize(s: GameState): string {
-  return JSON.stringify(s);
+// ---------------------------------------------------------------- save format
+
+const TER: TerrainId[] = [
+  'ocean',
+  'coast',
+  'lake',
+  'grassland',
+  'plains',
+  'desert',
+  'tundra',
+  'snow',
+];
+const REL: ReliefId[] = ['flat', 'hills', 'mountains'];
+const VEG: VegetationId[] = ['none', 'forest', 'jungle', 'marsh'];
+const enc = <T extends string>(xs: T[], ids: T[]) =>
+  xs.map(x => String.fromCharCode(97 + ids.indexOf(x))).join('');
+const dec = <T extends string>(str: string, ids: T[]) =>
+  Array.from(str, ch => ids[ch.charCodeAt(0) - 97]);
+function bits(xs: number[]): string {
+  const bytes = new Uint8Array(Math.ceil(xs.length / 8));
+  xs.forEach((v, i) => v && (bytes[i >> 3] |= 1 << (i & 7)));
+  let out = '';
+  for (const b of bytes) out += String.fromCharCode(b);
+  return btoa(out);
+}
+function unbits(b64: string, n: number): number[] {
+  const raw = atob(b64);
+  return Array.from({ length: n }, (_, i) => (raw.charCodeAt(i >> 3) >> (i & 7)) & 1);
 }
 
+/**
+ * Saves are versioned. Each entry upgrades a save from version k to k + 1; keep them forever.
+ * Versions before MIN_SAVE_VERSION came from development builds and are not loadable.
+ */
+const MIGRATIONS: Record<number, (d: GameState) => GameState> = {};
+export const MIN_SAVE_VERSION = 5;
+
+/** Compact JSON: terrain as strings, explored and roads as bitsets, no generation-only data. */
+export function serialize(s: GameState): string {
+  const N = s.map.w * s.map.h;
+  const map = {
+    ...s.map,
+    terrain: enc(s.map.terrain, TER),
+    relief: enc(s.map.relief, REL),
+    vegetation: enc(s.map.vegetation, VEG),
+    elevation: [],
+    riverTo: s.map.riverTo.flatMap((t, i) => (t >= 0 ? [i, t] : [])),
+    river: s.map.river.flatMap((v, i) => (v ? [i, v] : [])),
+  };
+  const civs = s.civs.map(c => ({ ...c, explored: bits(c.explored) }));
+  return JSON.stringify({ format: 2, n: N, state: { ...s, map, civs, roads: bits(s.roads) } });
+}
+
+export class SaveError extends Error {}
+
 export function deserialize(json: string): GameState {
-  const s = JSON.parse(json) as GameState;
-  if (s.version !== SAVE_VERSION) throw new Error(`Save version ${s.version} is not supported.`);
+  const raw = JSON.parse(json);
+  let s: GameState;
+  if (raw && raw.format === 2) {
+    const st = raw.state,
+      N = raw.n as number;
+    const riverTo = new Array<number>(N).fill(-1),
+      river = new Array<number>(N).fill(0);
+    for (let k = 0; k < st.map.riverTo.length; k += 2)
+      riverTo[st.map.riverTo[k]] = st.map.riverTo[k + 1];
+    for (let k = 0; k < st.map.river.length; k += 2) river[st.map.river[k]] = st.map.river[k + 1];
+    s = {
+      ...st,
+      map: {
+        ...st.map,
+        terrain: dec(st.map.terrain, TER),
+        relief: dec(st.map.relief, REL),
+        vegetation: dec(st.map.vegetation, VEG),
+        riverTo,
+        river,
+      },
+      civs: st.civs.map((c: Civ & { explored: string }) => ({
+        ...c,
+        explored: unbits(c.explored as unknown as string, N),
+      })),
+      roads: unbits(st.roads, N),
+    };
+  } else s = raw as GameState; // plain JSON from earlier builds
+  if (typeof s.version !== 'number') throw new SaveError('This is not a History Unfolded save.');
+  if (s.version > SAVE_VERSION)
+    throw new SaveError('This save comes from a newer version of the game.');
+  if (s.version < MIN_SAVE_VERSION)
+    throw new SaveError('This save comes from an early test version and cannot be loaded.');
+  while (s.version < SAVE_VERSION) s = MIGRATIONS[s.version]({ ...s, version: s.version });
+  validate(s);
   return s;
+}
+
+/** Refuse saves whose pieces do not fit together; quietly drop references to removed content. */
+function validate(s: GameState) {
+  const N = s.map.w * s.map.h;
+  const sizes = [
+    s.map.terrain.length,
+    s.map.relief.length,
+    s.map.vegetation.length,
+    s.map.river.length,
+    s.roads.length,
+  ];
+  if (sizes.some(n => n !== N) || s.civs.some(c => c.explored.length !== N))
+    throw new SaveError('The save is damaged (map data does not fit).');
+  if (
+    s.map.terrain.some(t => !t) ||
+    s.formations.some(f => f.hex < 0 || f.hex >= N) ||
+    s.cities.some(c => c.hex < 0 || c.hex >= N)
+  )
+    throw new SaveError('The save is damaged.');
+  for (const c of s.civs) c.techs = c.techs.filter(t => TECHS[t]);
+  for (const f of s.formations)
+    for (const co of f.cohorts)
+      for (const k of SLOTS) if (!ITEMS[co.loadout[k]]) co.loadout[k] = DEFAULT_LOADOUT[k];
 }
 
 export const defaultCivCount = (size: keyof typeof MAP_SIZES) => MAP_SIZES[size].civs;

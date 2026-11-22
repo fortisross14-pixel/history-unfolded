@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Icon } from './icons.tsx';
 import { DEPOSITS, GOODS, SPECIAL_MIN } from '../data/goods.ts';
 import {
   GROUPS,
@@ -360,7 +361,9 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                   className={`locked ${dSel === 'locked' ? 'on' : ''}`}
                   onClick={() => setDSel('locked')}
                 >
-                  <b>🔒</b>
+                  <b>
+                    <Icon name="lock" />
+                  </b>
                   <small>{cap + k < DISTRICT_CAP.city ? 'City' : 'Metropolis'}</small>
                 </button>
               ))}

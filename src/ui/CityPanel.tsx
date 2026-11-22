@@ -1,4 +1,5 @@
 import { governorOf } from '../engine/dynasty.ts';
+import { Icon } from './icons.tsx';
 import { DISTRICT_CAP, marketCities, marketStock, TIER_NAME } from '../engine/economy.ts';
 import { useState } from 'react';
 import {
@@ -149,21 +150,21 @@ export function CityPanel({
           </p>
           <div className="actions">
             <button className="primary" onClick={onOpen}>
-              City &amp; districts…
+              <Icon name="city" /> City &amp; districts…
             </button>
             <button
               disabled={!canLevy}
               onClick={onLevy}
               title={canLevy ? '' : `Needs ${MIN_CITY_POP + LEVY_PEOPLE} people`}
             >
-              Raise levy (5 cohorts, 500 people)
+              <Icon name="flag" /> Raise levy (5 cohorts, 500 people)
             </button>
             <button
               disabled={c.pop - SETTLERS_PEOPLE < MIN_CITY_POP}
               onClick={onSettlers}
               title={`Settlers take ${SETTLERS_PEOPLE} people (with families) to found a new city`}
             >
-              Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
+              <Icon name="people" /> Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
             </button>
           </div>
           {(!canLevy || c.pop - SETTLERS_PEOPLE < MIN_CITY_POP) && (

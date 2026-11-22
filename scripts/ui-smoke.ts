@@ -47,7 +47,7 @@ await page.evaluate(() => {
   hu.game.civs[0].culture.points = 200;
   hu.bump();
 });
-await page.click('.research-btn:has-text("🎭")');
+await page.click('.research-btn.culture-btn');
 await page.waitForSelector('.modal.culture');
 await page.click('.cnode.can:has-text("Star Lore")');
 await page.click('.cnode.can:has-text("Solar Calendar")');

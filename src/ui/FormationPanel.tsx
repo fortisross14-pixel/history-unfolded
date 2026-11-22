@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Icon } from './icons.tsx';
 import { ITEMS, SLOTS } from '../data/items.ts';
 import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
 import {
@@ -300,7 +301,7 @@ export function FormationPanel(p: Props) {
             }
             onClick={() => design && p.onAssign(selected, design.id)}
           >
-            Equip as {design?.name ?? '…'}
+            <Icon name="equip" /> Equip as {design?.name ?? '…'}
           </button>
           {!supply && (
             <p className="muted small">
@@ -316,7 +317,7 @@ export function FormationPanel(p: Props) {
             disabled={!selected.length || selected.length === f.cohorts.length}
             onClick={() => p.onSplit(selected)}
           >
-            Split off {selected.length || ''}
+            <Icon name="split" /> Split off {selected.length || ''}
           </button>
           {f.kind === 'settlers' && (
             <button
@@ -325,7 +326,7 @@ export function FormationPanel(p: Props) {
               title={foundWhy ?? 'Found a city here (B)'}
               onClick={p.onFound}
             >
-              Found city
+              <Icon name="flag" /> Found city
             </button>
           )}
           {f.kind !== 'fleet' && f.aboard === undefined && (
@@ -338,11 +339,11 @@ export function FormationPanel(p: Props) {
                   : 'Lay a road on this hex (R). Uses the remaining moves.'
               }
             >
-              Build road
+              <Icon name="road" /> Build road
             </button>
           )}
           <button onClick={p.onFortify} title="F">
-            {f.fortified ? 'Wake' : 'Fortify'}
+            <Icon name="fortify" /> {f.fortified ? 'Wake' : 'Fortify'}
           </button>
           {f.path.length > 0 && <button onClick={p.onClearOrders}>Cancel orders</button>}
           {(() => {

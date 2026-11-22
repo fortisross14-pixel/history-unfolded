@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { GOODS } from '../data/goods.ts';
 import { artUrl } from '../render/art.ts';
+import { hasIcon, Icon } from './icons.tsx';
 
 const BASE = `${import.meta.env.BASE_URL}sprites/`;
 
@@ -43,7 +44,13 @@ export function Ico({
       k={`icon/${name}`}
       size={size}
       className="ico"
-      fallback={<span className="ico-glyph">{fallback}</span>}
+      fallback={
+        hasIcon(name) ? (
+          <Icon name={name} size={size} className="ico" />
+        ) : (
+          <span className="ico-glyph">{fallback}</span>
+        )
+      }
     />
   );
 }

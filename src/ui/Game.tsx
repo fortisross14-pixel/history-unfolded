@@ -58,6 +58,7 @@ import { answerProposal, ledgerOf, proposeDeal } from '../engine/diplomacy.ts';
 import { playerEvent, resolveEvent } from '../engine/events.ts';
 import { absorb, giveGift } from '../engine/independents.ts';
 import { EventDialog } from './EventDialog.tsx';
+import { Icon } from './icons.tsx';
 import { CultureDialog, KeepDialog, TagChip } from './CultureDialog.tsx';
 import { resolveUpheaval, startUpheaval, takeNode } from '../engine/culture.ts';
 import { cityEconomy, constructionQueue } from '../engine/economy.ts';
@@ -334,7 +335,7 @@ export function Game({
     const calm = events.filter(e => !urgent(e));
     events.filter(urgent).forEach(e => toast(e, true));
     if (calm.length <= 2) calm.forEach(e => toast(e));
-    else toast(`${calm.length} things happened. 📜 Last turn has the full story.`);
+    else toast(`${calm.length} things happened. Last turn has the full story.`);
     bump();
     lastTodo.current = '';
     // a house has risen: the choice of side cannot wait in the to-do list
@@ -616,31 +617,66 @@ export function Game({
       </div>
 
       <header className={`topbar ${menuOpen ? 'menu-open' : ''}`} ref={topRef}>
+        <span className="crest" style={{ ['--civ' as string]: me.color }} aria-hidden>
+          <Icon name="crown" />
+        </span>
         <span className="civ-name">
           <span className="swatch" style={{ background: me.color }} />
           {me.name}
         </span>
-        <span>
+        <span className="turn-count">
           Turn <b>{game.turn}</b>
           <small className="muted">/{game.settings.turnLimit ?? 400}</small>
         </span>
-        <span title="Gold">⛁ {Math.floor(me.gold)}</span>
-        <button className="research-btn" onClick={() => setDialog({ kind: 'research' })}>
-          {research_ ? (
-            <>
-              🔬 {research_.name} {Math.floor(me.science)}/{techCost(game, me, research_.id)}
-            </>
-          ) : (
-            <>🔬 Choose research</>
-          )}
+        <span className="stat" title="Gold">
+          <Icon name="gold" /> {Math.floor(me.gold)}
+        </span>
+        <button
+          className="research-btn tracker"
+          onClick={() => setDialog({ kind: 'research' })}
+          title="Research (T)"
+        >
+          <span className="trk-ico">
+            <Icon name="research" />
+          </span>
+          <span className="trk-body">
+            <small className="trk-label">Research</small>
+            <b className="trk-name">{research_ ? research_.name : 'Choose research'}</b>
+            {research_ && (
+              <>
+                <span className="trk-bar">
+                  <i
+                    style={{
+                      width: `${Math.min(100, (me.science / techCost(game, me, research_.id)) * 100)}%`,
+                    }}
+                  />
+                </span>
+                <small className="trk-num">
+                  {Math.floor(me.science)} / {techCost(game, me, research_.id)}
+                </small>
+              </>
+            )}
+          </span>
         </button>
-        <button className="research-btn" onClick={() => setDialog({ kind: 'culture' })} title="K">
-          🎭 {Math.floor(me.culture.points)} (+{culturePerTurn})
-          {me.culture.upheaval ? (
-            <b className="war-pill">{DOMAINS[me.culture.upheaval.domain].upheaval}</b>
-          ) : (
-            ''
-          )}
+        <button
+          className="research-btn tracker culture-btn"
+          onClick={() => setDialog({ kind: 'culture' })}
+          title="Culture (K)"
+        >
+          <span className="trk-ico">
+            <Icon name="culture" />
+          </span>
+          <span className="trk-body">
+            <small className="trk-label">Culture</small>
+            <b className="trk-name">
+              {Math.floor(me.culture.points)} <small>(+{culturePerTurn})</small>
+            </b>
+            {me.culture.upheaval ? (
+              <b className="war-pill">{DOMAINS[me.culture.upheaval.domain].upheaval}</b>
+            ) : (
+              ''
+            )}
+          </span>
         </button>
         <button
           className="more-btn"
@@ -648,7 +684,7 @@ export function Game({
           aria-expanded={menuOpen}
           aria-label="More"
         >
-          ☰
+          <Icon name="menu" />
         </button>
         <span className="ident-bar secondary">
           {identity(me)
@@ -658,14 +694,15 @@ export function Game({
             ))}
         </span>
         <button className="secondary" onClick={() => setDialog({ kind: 'designs' })} title="D">
-          ⚔ Designs ({me.designs.length})
+          <Icon name="designs" /> Designs ({me.designs.length})
         </button>
         <button
           className="secondary"
           onClick={() => setDialog({ kind: 'dynasties' })}
           title="Dynasties (Y)"
         >
-          👑<span className="wide-only"> House {rulerOf(me).name}</span>
+          <Icon name="dynasties" />
+          <span className="wide-only"> House {rulerOf(me).name}</span>
           {me.civilWar ? (
             <b className="war-pill">civil war</b>
           ) : me.dynasties.some(d => d.unrest >= 60) ? (
@@ -681,10 +718,11 @@ export function Game({
           onClick={() => setDialog({ kind: 'goods' })}
           title="Goods per turn (G)"
         >
-          📦 Goods{goodsShort ? <b className="war-pill">{goodsShort} short</b> : ''}
+          <Icon name="goods" /> Goods
+          {goodsShort ? <b className="war-pill">{goodsShort} short</b> : ''}
         </button>
         <button className="secondary" onClick={() => setDialog({ kind: 'peoples' })}>
-          👥 Peoples
+          <Icon name="peoples" /> Peoples
           {wars ? (
             <b className="war-pill">
               {wars} war{wars > 1 ? 's' : ''}
@@ -699,22 +737,25 @@ export function Game({
           disabled={!lastReport.length}
           title="What happened last turn"
         >
-          📜<span className="wide-only"> Last turn</span>
+          <Icon name="report" />
+          <span className="wide-only"> Last turn</span>
         </button>
-        <span className="muted secondary wide-only">
-          {myCities.length} {myCities.length === 1 ? 'settlement' : 'settlements'}
+        <span className="muted secondary wide-only stat">
+          <Icon name="cities" /> {myCities.length}{' '}
+          {myCities.length === 1 ? 'settlement' : 'settlements'}
         </span>
         <span className="spacer" />
         <button
-          className="secondary"
+          className="secondary round"
           onClick={() => setDialog({ kind: 'keys' })}
           title="Keys (?)"
           aria-label="Keys and help"
         >
-          ?
+          <Icon name="help" />
         </button>
         <button
-          className="secondary"
+          className="secondary round"
+          aria-label={muted ? 'Sound off' : 'Sound on'}
           onClick={() => {
             setMuted(!muted);
             setMute(!muted);
@@ -722,7 +763,7 @@ export function Game({
           aria-pressed={!muted}
           title={muted ? 'Sound off' : 'Sound on'}
         >
-          {muted ? '🔇' : '🔊'}
+          <Icon name={muted ? 'mute' : 'sound'} />
         </button>
         <button
           className="secondary"
@@ -921,8 +962,10 @@ export function Game({
         >
           {todos.length ? nextLabel(todos, lastTodo.current, sel) : 'All done'}
         </button>
-        <button className="end-turn" onClick={doEndTurn} disabled={busy}>
-          End turn ⏎
+        <button className="end-turn" onClick={doEndTurn} disabled={busy} title="End turn (Enter)">
+          <Icon name="end-turn" className="end-ico" />
+          <b>End turn</b>
+          {todos.length ? <small>{todos.length} to do</small> : <small>All done</small>}
         </button>
       </div>
 

@@ -45,11 +45,16 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   A front line screens archers who keep shooting; cavalry flanks enemies without horse; spears
   stop charges; armour is strong or weak against each damage type. Preview before attacking,
   report after.
-- **Districts**: every hex within 2 of a city can hold a district, a 3×3 grid of buildings you
-  design and name: a "Farm" of pigs, cattle, grain and a woodlot, a "Northern Mine" of mines
-  around an infirmary, a "Financial District" of banks. Buildings need workers and something in
-  reach (forest, flat land, a deposit), boost their neighbours, and are built by the city's
-  production. Save layouts as blueprints. Houses give room to grow.
+- **Towns, cities, one metropolis**: every settlement is one hex, at least a hex apart, and you
+  grow by founding many towns. A town holds 2 districts and may farm, cut wood and mine its land;
+  with 6,000 people it can become a city (4 districts, bonuses to every building, most of all
+  research and industry) at the cost of its farms and mines; one city can become the people's
+  metropolis (6 districts). Towns in a market feed its cities.
+- **Districts**: 3×3 grids of buildings you design and name: a "Farm" of pigs, cattle, grain and
+  a woodlot, a "Northern Mine" of mines around an infirmary, a research quarter of schools and
+  libraries (buildings of a kind gain from each other). Buildings need workers and something on
+  the settlement's land (forest, flat land, a deposit), boost their neighbours, and are built by
+  its production. Save layouts as blueprints. Houses give room to grow.
 - **Roads and markets**: lay roads with any formation (half a move per hex along them). Cities
   joined by road or river share one store; an enemy on the road cuts it.
 - **War and peace, cities falling**: declare war, capture cities by breaking their guard,

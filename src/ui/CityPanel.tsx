@@ -1,6 +1,8 @@
-import { marketCities, marketStock } from '../engine/economy.ts';
+import { DISTRICT_CAP, marketCities, marketStock, TIER_NAME } from '../engine/economy.ts';
 import { useState } from 'react';
 import {
+  growthCost,
+  upgradeInfo,
   hasSlot,
   SHIP_CREW,
   cityGuard,
@@ -40,7 +42,7 @@ export function CityPanel({
         <div>
           <h2>{c.name}</h2>
           <div className="muted">
-            {civ.name} · founded turn {c.founded}
+            {TIER_NAME[c.tier]} · {civ.name} · founded turn {c.founded}
           </div>
         </div>
       </div>
@@ -53,6 +55,25 @@ export function CityPanel({
                 <td>{c.pop.toLocaleString()} people</td>
               </tr>
               <tr>
+                <td>Districts</td>
+                <td>
+                  {game.districts.filter(d => d.cityId === c.id).length}/{DISTRICT_CAP[c.tier]}
+                  {(() => {
+                    const u = upgradeInfo(game, c);
+                    if (!u.to) return null;
+                    return (
+                      <span className="muted">
+                        {' '}
+                        ·{' '}
+                        {u.problem
+                          ? `a ${u.to} at ${u.pop.toLocaleString()} people`
+                          : `ready to become a ${u.to}`}
+                      </span>
+                    );
+                  })()}
+                </td>
+              </tr>
+              <tr>
                 <td>Food</td>
                 <td>
                   {y.food} grown, {y.eat} eaten →{' '}
@@ -60,7 +81,10 @@ export function CityPanel({
                     {y.surplus >= 0 ? '+' : ''}
                     {y.surplus}
                   </b>{' '}
-                  ({c.food}/10 to grow by 250)
+                  ({Math.floor(c.food)}/{growthCost(game, c)} to grow by 250)
+                  {y.surplus < 0 && marketCities(game, c).length > 1 && (
+                    <span className="muted"> · towns in its market send food</span>
+                  )}
                 </td>
               </tr>
               <tr>
@@ -96,7 +120,7 @@ export function CityPanel({
                   .slice(1)
                   .map(x => x.name)
                   .join(', ')} by road or river.`
-              : 'Not linked to other cities: build roads to share goods.'}
+              : 'Not linked to other settlements: build roads to share goods and food.'}
           </p>
           <div className="actions">
             <button className="primary" onClick={onOpen}>

@@ -20,7 +20,6 @@ import { distance, neighbors, within } from '../src/engine/hex.ts';
 import { isPassableLand } from '../src/engine/mapgen.ts';
 import type { Formation } from '../src/engine/types.ts';
 import { fleetCapacity, formationMoves, oceanGoing } from '../src/engine/units.ts';
-import { districtSites } from '../src/engine/economy.ts';
 
 let failures = 0;
 const check = (cond: unknown, what: string) => {
@@ -239,7 +238,6 @@ if (other !== undefined) {
   const after = marketCities(s, second).length;
   console.log(`     ports: market before harbour ${before}, after ${after}`);
   check(after >= before, 'a harbour can join markets by sea');
-  void districtSites;
   void territory;
   void placeDistrict;
 }

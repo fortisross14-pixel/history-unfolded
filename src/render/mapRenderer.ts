@@ -4,7 +4,6 @@
  */
 import { GOODS, DEPOSITS } from '../data/goods.ts';
 import { fx, Motion, reducedMotion } from './fx.ts';
-import { GROUPS, SLOT_TYPES } from '../data/slots.ts';
 import { TERRAIN, isWater } from '../data/terrain.ts';
 import { depositVisible, pathTurns, territory, visibleHexes } from '../engine/game.ts';
 import {
@@ -178,12 +177,8 @@ export class MapRenderer {
       if (civ.explored[i]) e++;
       if (s.roads[i]) r = (r * 17 + i) | 0;
     }
-    let d = 0;
-    for (const x of s.districts)
-      for (let k = 0; k < 9; k++)
-        d = (d * 7 + (x.slots[k].type ? 1 : 0) + (x.slots[k].built ? 2 : 0) + x.hex) | 0;
     const c = s.cities.map(x => `${x.hex}:${x.civId}`).join(',');
-    return `${civId}|${v}|${e}|${r}|${d}|${c}|${civ.techs.length}|${s.map.vegetation.length}`;
+    return `${civId}|${v}|${e}|${r}|${c}|${civ.techs.length}|${s.map.vegetation.length}`;
   }
 
   draw(s: GameState, civId: number, ov: Overlay) {
@@ -554,37 +549,6 @@ export class MapRenderer {
         ctx.stroke();
       }
 
-      // 5c. districts: a little 3×3 grid in group colours
-      for (const d of s.districts) {
-        if (!known(d.hex)) continue;
-        if (s.cities.some(c => c.hex === d.hex)) continue;
-        const x0 = cx(d.hex) - R * 0.33,
-          y0 = cy(d.hex) - R * 0.3;
-        const k = R * 0.22;
-        ctx.fillStyle = 'rgba(250,243,225,0.85)';
-        ctx.strokeStyle = INK;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(x0 - 3, y0 - 3, k * 3 + 6, k * 3 + 6, 4);
-        ctx.fill();
-        ctx.stroke();
-        d.slots.forEach((st, i) => {
-          ctx.globalAlpha = st.built ? 1 : 0.35;
-          ctx.fillStyle = st.type
-            ? GROUPS[SLOT_TYPES[st.type].group].color
-            : 'rgba(180,160,120,0.35)';
-          ctx.fillRect(x0 + (i % 3) * k + 1, y0 + Math.floor(i / 3) * k + 1, k - 2, k - 2);
-        });
-        ctx.globalAlpha = 1;
-        if (zoom > 0.8) {
-          ctx.fillStyle = INK;
-          ctx.font = `600 ${R * 0.22}px Georgia, serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillText(d.name, cx(d.hex), y0 + k * 3 + 5);
-        }
-      }
-
       // 6. deposits
       for (const i of onScreen) {
         if (!known(i) || !depositVisible(s, civId, i)) continue;
@@ -715,11 +679,13 @@ export class MapRenderer {
         const x = cx(c.hex),
           y = cy(c.hex);
         const coastal = neighbors(g, c.hex).some(n => m.terrain[n] === 'coast');
-        const sizeKey = c.pop >= 8000 ? 'city' : c.pop >= 3000 ? 'town' : 'outpost';
+        // the picture follows the settlement's rank; a small town is still a village
+        const tier = c.tier ?? 'town';
+        const sizeKey = tier === 'town' ? (c.pop >= 3000 ? 'town' : 'outpost') : 'city';
         const big =
-          c.pop >= 15000
+          tier === 'metropolis'
             ? 'metropolis'
-            : c.pop >= 8000
+            : tier === 'city'
               ? 'city'
               : c.pop >= 3000
                 ? 'town'
@@ -729,7 +695,7 @@ export class MapRenderer {
           img[artCity] ? artCity : `city:${coastal ? 'port' : 'city'}-${sizeKey}`,
           x,
           y + R * 0.45,
-          R * 1.55,
+          tier === 'town' ? R * 1.35 : tier === 'city' ? R * 1.6 : R * 1.8,
         );
         cityBanners.push(() =>
           this.banner(

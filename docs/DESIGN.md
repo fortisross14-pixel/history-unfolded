@@ -232,17 +232,38 @@ armies at the same cost beat pure ones: 6 swords and 4 archers hold 10 swords fo
 
 ## 7. Cities, districts and buildings
 
-### 7.1 Cities
+### 7.1 Settlements: towns, cities and the metropolis (as built)
 
-- Founded by a **Settlers** formation (5 cohorts of civilians; sending them out costs a city 1,000 people with families). The city centre
-  occupies one hex and claims the ring around it; borders grow with culture.
-- A city has **population** (in units of 1,000 people for display), **food**, **housing**, and
-  **labour** (people available to work slots).
-- Every hex inside the city's work radius (2, later 3) can hold **one district**.
+You grow by founding many small towns, not by growing a few huge cities.
+
+- **One hex each.** A settlement is founded by Settlers and occupies a single hex. It works its
+  **land**: its own hex and the six around it. Settlements may not touch: at least one hex
+  between them, so neighbouring towns share up to two land hexes; a shared hex belongs to the
+  older settlement. Founding a town within 3 hexes of one of your own lays a track to it, so
+  clusters of towns form one market from the start.
+- **Ranks.** Districts are slots inside the settlement, each a 3×3 grid (§7.2):
+
+| Rank | Districts | Rural buildings | Bonus to buildings | Needs |
+|---|---|---|---|---|
+| Town | 2 (the centre with the town hall + 1) | farms, woodlots, mines, docks | — | founding |
+| City | 4 | none: the towns around supply them | +15%, research and industry +35% | 6,000 people, 150 gold, 10 stone, 30 wood |
+| Metropolis | 6 (one per people) | none | +30%, research and industry +70% | 15,000 people, 400 gold, 30 stone, 50 wood |
+
+- **Becoming a city pulls down every rural building** (farming, forestry, extraction groups):
+  those districts must be redesigned as quarters. A town's open land feeds a few people
+  (subsistence); a city's does not.
+- **Towns feed cities.** Settlements short of food draw on the surplus of the others in their
+  market (joined by road, river or sea), shared out in proportion. A town that feeds a city grows
+  more slowly.
+- **Themed districts.** Every building gains 5% for each other building of its group in the same
+  district, up to +30% (not rural or housing). A district with a university, library, school and
+  printing house is a research quarter worth more than the same buildings spread out. A
+  district's label follows what it holds (Research quarter, Market quarter, Farmland…).
+- Old saves load with every settlement as a town that keeps its centre and oldest district.
 
 ### 7.2 Districts: the 3×3 grid
 
-- A **district** is placed on a hex and has **9 slots** in a 3×3 grid.
+- A **district** sits inside a settlement and has **9 slots** in a 3×3 grid.
 - The player **designs** it: picks a slot type for each of the 9 cells, names it, and it gets
   built slot by slot (each slot has its own build cost and time).
 - **Slot types** are unlocked by research and culture, e.g.:
@@ -266,13 +287,13 @@ The player's examples are just designs:
 
 ### 7.3 Rules that make design interesting (as built)
 
-1. **Reach.** A slot can use anything on its district's hex and the six hexes around it: forest
+1. **Reach.** A slot can use anything on its settlement's land (its hex and its six neighbours): forest
    for woodlots, flat open land for grain fields, hills for sheep, a coast or lake for fishing
    docks, a deposit for mines. So a "Farm" on grassland next to a forest can hold pigs, cattle,
    grain and a woodlot.
 2. **Capacity.** Deposit slots run at full rate for richness × 2 slots of that type in the
-   district, then at half rate. Land slots run at full rate for two slots per matching hex in
-   reach. A deposit feeds **one** district: the one standing on it, otherwise the older one.
+   settlement, then at half rate. Land slots run at full rate for two slots per matching hex of
+   its land. A deposit belongs to the settlement whose land it lies on.
    Deposits also boost their farm: wheat or rice under grain fields, cattle under pastures,
    fish under docks.
 3. **Adjacency inside the grid** (up, down, left, right). An infirmary in the centre touches

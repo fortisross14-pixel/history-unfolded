@@ -1,4 +1,4 @@
-import { districtAt } from '../engine/economy.ts';
+import { landOf } from '../engine/economy.ts';
 import { within } from '../engine/hex.ts';
 import { DEPOSITS } from '../data/goods.ts';
 import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
@@ -28,11 +28,10 @@ export function HexPanel({
     );
   }
   const d = depositVisible(game, civId, hex) ? m.deposit[hex] : null;
-  const dist = districtAt(game, hex);
-  const home = !dist
-    ? game.cities.find(c => c.civId === civId && within({ w: m.w, h: m.h }, c.hex, 2).includes(hex))
-    : undefined;
-  const openFor = dist ? game.cities.find(c => c.id === dist.cityId && c.civId === civId) : home;
+  // the settlement whose land this is (its hex or one next to it)
+  const worker = game.cities.find(c => landOf(game, c).includes(hex));
+  const openFor = worker && worker.civId === civId ? worker : undefined;
+  void within;
   const owner = territory(game)[hex];
   const parts = [
     TERRAIN[m.terrain[hex]].name,
@@ -82,12 +81,12 @@ export function HexPanel({
               <td>Half a move along roads</td>
             </tr>
           )}
-          {dist && (
+          {worker && (
             <tr>
-              <td>District</td>
+              <td>Worked by</td>
               <td>
-                {dist.name} ({dist.slots.filter(x => x.built).length}/
-                {dist.slots.filter(x => x.type).length} built)
+                {worker.name}
+                {worker.civId !== civId ? ` (${game.civs[worker.civId].name})` : ''}
               </td>
             </tr>
           )}
@@ -95,7 +94,7 @@ export function HexPanel({
       </table>
       {onOpenDistrict && openFor && (
         <button className="primary" onClick={() => onOpenDistrict(openFor.id)}>
-          {dist ? 'Open district' : `Lay out a district (${openFor.name})`}
+          Open {openFor.name}
         </button>
       )}
     </div>

@@ -88,11 +88,15 @@ export interface Formation {
   aboard?: number;
 }
 
+/** Town: 2 districts, farms and mines allowed. City: 4, no rural buildings. Metropolis: 6, one per civ. */
+export type Tier = 'town' | 'city' | 'metropolis';
+
 export interface City {
   id: number;
   civId: number;
   name: string;
   hex: number;
+  tier: Tier;
   /** people */
   pop: number;
   food: number;
@@ -167,7 +171,7 @@ export interface SlotState {
   paid: boolean;
 }
 
-/** A district: a named 3×3 grid of slots on one hex, belonging to a city. */
+/** A district: a named 3×3 grid of slots inside a settlement (all on the settlement's hex). */
 export interface District {
   id: number;
   cityId: number;

@@ -1,32 +1,57 @@
 /**
- * City economy: districts and their slots, workers, housing, construction, and markets.
+ * Settlement economy: districts and their slots, workers, housing, construction, and markets.
  *
- * A slot can use anything within reach of its district (the district hex and its six
- * neighbours). Slots that rely on a deposit run at full rate for richness × 2 slots of that type
- * in the district, then at half rate; slots that rely on land run at full rate for two slots per
- * matching hex in reach. Cities join into a market when a road or river links them; a market's
- * cities pay for things from one shared store.
+ * A settlement is one hex. It works its land: its own hex and the six around it (a hex next to
+ * two settlements belongs to the older one). Towns hold 2 districts, cities 4, a metropolis 6;
+ * only towns keep farms, woodlots and mines. Slots that rely on a deposit run at full rate for
+ * richness × 2 slots of that type, then at half rate; slots that rely on land run at full rate
+ * for two slots per matching hex. Settlements join into a market when a road, river or port
+ * links them; a market pays for things from one shared store, and towns feed its cities.
  */
 import { DEPOSITS } from '../data/goods.ts';
-import { gridNeighbors, SLOT_TYPES, type SlotType, type Yield } from '../data/slots.ts';
+import {
+  gridNeighbors,
+  isRural,
+  SLOT_TYPES,
+  type SlotGroup,
+  type SlotType,
+  type Yield,
+} from '../data/slots.ts';
 import { isWater, RELIEF, VEGETATION } from '../data/terrain.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
 import { hexFood } from './mapgen.ts';
-import type { City, District, GameState, SlotState } from './types.ts';
+import type { City, District, GameState, SlotState, Tier } from './types.ts';
 import { civMods, pct } from './mods.ts';
 
-export const DISTRICT_RADIUS = 2;
 export const WORKER_SHARE = 0.5;
+
+/** Districts each kind of settlement can hold. */
+export const DISTRICT_CAP: Record<Tier, number> = { town: 2, city: 4, metropolis: 6 };
+export const TIER_NAME: Record<Tier, string> = {
+  town: 'Town',
+  city: 'City',
+  metropolis: 'Metropolis',
+};
+/** Output bonus for every building, and the extra for research and industry. */
+export const TIER_BONUS: Record<Tier, { all: number; focus: number }> = {
+  town: { all: 0, focus: 0 },
+  city: { all: 15, focus: 35 },
+  metropolis: { all: 30, focus: 70 },
+};
+const FOCUS: SlotGroup[] = ['services', 'craft'];
+/** A building gains this much per other building of its group in its district, up to the cap. */
+export const SYNERGY_PCT = 5;
+export const SYNERGY_CAP = 30;
 
 const gridOf = (s: GameState): Grid => ({ w: s.map.w, h: s.map.h });
 
 export const cityDistricts = (s: GameState, c: City) =>
   s.districts
     .filter(d => d.cityId === c.id)
-    .sort((a, b) => (a.hex === c.hex ? -1 : b.hex === c.hex ? 1 : a.id - b.id));
-export const districtAt = (s: GameState, hex: number) => s.districts.find(d => d.hex === hex);
-export const isCentre = (s: GameState, d: District) =>
-  s.cities.some(c => c.id === d.cityId && c.hex === d.hex);
+    .sort((a, b) => (isCentre(a) ? -1 : isCentre(b) ? 1 : a.id - b.id));
+/** The centre district holds the town hall. */
+export const isCentre = (d: District) => d.slots.some(x => x.type === 'town-hall');
+export const cityAtHex = (s: GameState, hex: number) => s.cities.find(c => c.hex === hex);
 
 export const emptySlot = (type: string | null = null): SlotState => ({
   type,
@@ -35,46 +60,49 @@ export const emptySlot = (type: string | null = null): SlotState => ({
   paid: false,
 });
 
-/** True when another district already works the deposit on `depHex`. */
-const districtIndex = new WeakMap<District[], { n: number; byHex: Map<number, District> }>();
-/** Districts by hex, rebuilt when the list changes length. */
-function districtsByHex(s: GameState): Map<number, District> {
-  let ix = districtIndex.get(s.districts);
-  if (!ix || ix.n !== s.districts.length) {
-    ix = { n: s.districts.length, byHex: new Map(s.districts.map(d => [d.hex, d])) };
-    districtIndex.set(s.districts, ix);
-  }
-  return ix.byHex;
-}
-
-/** True when another district already works the deposit on `depHex`. */
-function claimedElsewhere(s: GameState, depHex: number, kind: string, districtId: number): boolean {
-  const byHex = districtsByHex(s);
-  const uses = (d: District) =>
-    d.slots.some(x => x.type && SLOT_TYPES[x.type]?.needs?.deposit?.includes(kind));
-  const onHex = byHex.get(depHex);
-  // the district standing on the deposit has first call on it
-  if (onHex) return onHex.id !== districtId && uses(onHex);
-  // otherwise the oldest district in reach that uses it (only the six neighbours can reach)
-  for (const n of neighbors(gridOf(s), depHex)) {
-    const d = byHex.get(n);
-    if (d && d.id !== districtId && d.id < districtId && uses(d)) return true;
-  }
-  return false;
-}
-
 /**
- * Deposits a district can work: visible to the civ, in reach, and not already worked by an
- * older district. districtId = Infinity when planning a district that does not exist yet.
+ * The land a settlement works: its hex and the six around it, less any hex that is nearer
+ * another settlement or equally near an older one.
  */
-function reachDeposits(s: GameState, civId: number, hex: number, districtId = Infinity) {
+const landCache = new WeakMap<GameState, { key: string; byCity: Map<number, number[]> }>();
+export function landOf(s: GameState, c: City): number[] {
+  const key = s.cities.map(x => `${x.id}@${x.hex}`).join(',');
+  let cache = landCache.get(s);
+  if (!cache || cache.key !== key) {
+    cache = { key, byCity: new Map() };
+    landCache.set(s, cache);
+  }
+  let land = cache.byCity.get(c.id);
+  if (!land) {
+    const g = gridOf(s);
+    land = within(g, c.hex, 1).filter(k => {
+      if (k === c.hex) return true;
+      for (const o of s.cities) {
+        if (o === c) continue;
+        const d = distance(g, o.hex, k);
+        if (d === 0 || (d === 1 && o.id < c.id)) return false;
+      }
+      return true;
+    });
+    cache.byCity.set(c.id, land);
+  }
+  return land;
+}
+
+/** The land around a settlement hex (for planning before a city exists, the plain ring). */
+function landAt(s: GameState, hex: number): number[] {
+  const c = cityAtHex(s, hex);
+  return c ? landOf(s, c) : within(gridOf(s), hex, 1);
+}
+
+/** Deposits a settlement can work: on its land and visible to the civ. */
+function reachDeposits(s: GameState, civId: number, hex: number) {
   const out: { kind: string; richness: number; hex: number }[] = [];
-  for (const k of within(gridOf(s), hex, 1)) {
+  for (const k of landAt(s, hex)) {
     const d = s.map.deposit[k];
     if (!d) continue;
     const by = DEPOSITS[d.kind].revealedBy;
     if (by && !s.civs[civId].techs.includes(by)) continue;
-    if (claimedElsewhere(s, k, d.kind, districtId)) continue;
     out.push({ kind: d.kind, richness: d.richness, hex: k });
   }
   return out;
@@ -86,7 +114,7 @@ function landMatches(
   need: NonNullable<NonNullable<SlotType['needs']>['land']>,
 ): number {
   let n = 0;
-  for (const k of within(gridOf(s), hex, 1)) {
+  for (const k of landAt(s, hex)) {
     const m = s.map;
     if (isWater(m.terrain[k])) continue;
     if (need.terrain && !need.terrain.includes(m.terrain[k])) continue;
@@ -111,28 +139,28 @@ export function slotProblem(
   if (t.fixed) return 'Built with the city.';
   if (t.tech && !s.civs[civId].techs.includes(t.tech))
     return `Needs research: ${t.tech.replace('-', ' ')}`;
+  const here = cityAtHex(s, hex);
+  if (here && here.tier !== 'town' && isRural(typeId))
+    return 'Only towns have room for farms, woodlots and mines; the towns around feed the city.';
   const n = t.needs;
   if (!n) return null;
-  if (n.centre && !centre) return 'Only in the city centre.';
-  if (n.notCentre && centre) return 'Not in the city centre.';
+  if (n.centre && !centre) return 'Only in the centre district.';
+  if (n.notCentre && centre) return 'Not in the centre district.';
   if (
     n.water &&
     !within(gridOf(s), hex, 1).some(
       k => s.map.terrain[k] === 'coast' || s.map.terrain[k] === 'lake',
     )
   )
-    return 'Needs a coast or lake next to the district.';
-  if (
-    n.deposit &&
-    !reachDeposits(s, civId, hex, districtId).some(d => n.deposit!.includes(d.kind))
-  ) {
+    return 'Needs a coast or lake next to the settlement.';
+  if (n.deposit && !reachDeposits(s, civId, hex).some(d => n.deposit!.includes(d.kind))) {
     const names = n.deposit.map(k => DEPOSITS[k]?.name ?? k);
-    const any = within(gridOf(s), hex, 1).some(
+    const near = within(gridOf(s), hex, 1).some(
       k => s.map.deposit[k] && n.deposit!.includes(s.map.deposit[k]!.kind),
     );
-    return any
-      ? `That ${names.join('/')} is already worked by another district.`
-      : `Needs ${names.join(' or ')} in reach.`;
+    return near
+      ? `That ${names.join('/')} lies on an older neighbour's land.`
+      : `Needs ${names.join(' or ')} on the settlement's land.`;
   }
   if (n.land && !landMatches(s, hex, n.land)) {
     const parts = [
@@ -140,23 +168,18 @@ export function slotProblem(
       n.land.vegetation?.join('/'),
       n.land.terrain?.join('/'),
     ].filter(Boolean);
-    return `Needs ${parts.join(' ')} land in reach.`;
+    return `Needs ${parts.join(' ')} land around the settlement.`;
   }
+  void districtId;
   return null;
 }
 
 /** How many slots of this type the district runs at full rate. */
-function capacity(
-  s: GameState,
-  civId: number,
-  hex: number,
-  t: SlotType,
-  districtId: number,
-): number {
+function capacity(s: GameState, civId: number, hex: number, t: SlotType): number {
   const n = t.needs;
   if (!n) return Infinity;
   if (n.deposit)
-    return reachDeposits(s, civId, hex, districtId)
+    return reachDeposits(s, civId, hex)
       .filter(d => n.deposit!.includes(d.kind))
       .reduce((a, d) => a + d.richness * 2, 0);
   if (n.land) return landMatches(s, hex, n.land) * 2;
@@ -219,23 +242,34 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
   const slots = new Map<number, SlotReport[]>();
   const districts = cityDistricts(s, c);
 
-  // subsistence: unbuilt land next to the city feeds a few people
+  // subsistence: a town's open land feeds a few people (a city has built over its fields)
   const subsistence = zero();
-  const taken = new Set(districts.map(d => d.hex));
-  for (const k of within(g, c.hex, 1)) {
-    if (taken.has(k) || isWater(s.map.terrain[k]) || s.map.relief[k] === 'mountains') continue;
-    subsistence.food += hexFood(s.map, k);
-    subsistence.prod += (RELIEF[s.map.relief[k]].prod + VEGETATION[s.map.vegetation[k]].prod) * 0.5;
-    const wood = VEGETATION[s.map.vegetation[k]].wood;
-    if (wood) subsistence.goods.wood = (subsistence.goods.wood ?? 0) + wood * 0.5;
-  }
+  if (c.tier === 'town')
+    for (const k of landOf(s, c)) {
+      if (k === c.hex || isWater(s.map.terrain[k]) || s.map.relief[k] === 'mountains') continue;
+      subsistence.food += hexFood(s.map, k) * 0.6;
+      subsistence.prod +=
+        (RELIEF[s.map.relief[k]].prod + VEGETATION[s.map.vegetation[k]].prod) * 0.3;
+      const wood = VEGETATION[s.map.vegetation[k]].wood;
+      if (wood) subsistence.goods.wood = (subsistence.goods.wood ?? 0) + wood * 0.3;
+    }
   addYield(total, subsistence);
+  const bonus = TIER_BONUS[c.tier ?? 'town'];
+  // the land and deposits are shared by all the settlement's districts
+  const used: Record<string, number> = {};
+  const deps = reachDeposits(s, c.civId, c.hex);
+  void g;
 
   for (const d of districts) {
-    const centre = d.hex === c.hex;
+    const centre = isCentre(d);
     const reports: SlotReport[] = [];
-    const used: Record<string, number> = {};
-    const deps = reachDeposits(s, c.civId, d.hex, d.id);
+    // buildings of a kind gather: each gains for every other built one of its group here
+    const groupCount: Record<string, number> = {};
+    for (const x of d.slots)
+      if (x.built && x.type) {
+        const gr = SLOT_TYPES[x.type].group;
+        groupCount[gr] = (groupCount[gr] ?? 0) + 1;
+      }
     for (let i = 0; i < 9; i++) {
       const st = d.slots[i];
       const out = zero();
@@ -244,7 +278,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
         continue;
       }
       const t = SLOT_TYPES[st.type];
-      const problem = t.fixed ? null : slotProblem(s, c.civId, d.hex, centre, st.type, d.id);
+      const problem = t.fixed ? null : slotProblem(s, c.civId, c.hex, centre, st.type, d.id);
       if (problem || !st.built) {
         reports.push({
           problem,
@@ -275,7 +309,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       free -= t.labour;
       for (const [gd, n] of Object.entries(t.inputs ?? {})) inputs[gd] = (inputs[gd] ?? 0) + n;
       used[t.id] = (used[t.id] ?? 0) + 1;
-      const rate = used[t.id] <= capacity(s, c.civId, d.hex, t, d.id) ? 1 : 0.5;
+      const rate = used[t.id] <= capacity(s, c.civId, c.hex, t) ? 1 : 0.5;
       addYield(out, t.out, rate);
       // deposits feed the first richness × 2 slots of this type
       if (t.boost) {
@@ -299,9 +333,13 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
         addYield(out, a.bonus, n);
         if (a.pct) for (const gd of Object.keys(out.goods)) out.goods[gd] *= 1 + (a.pct / 100) * n;
       }
-      // research and culture boost whole groups of buildings
-      const gp = mods.groupPct[t.group];
-      if (gp) scaleTotals(out, pct(gp), true);
+      // a themed district, then the settlement's rank, then research and culture
+      let up = 0;
+      if (!t.fixed && !isRural(t.id) && t.group !== 'residential')
+        up += Math.min(SYNERGY_CAP, SYNERGY_PCT * ((groupCount[t.group] ?? 1) - 1));
+      if (!t.fixed) up += FOCUS.includes(t.group) ? bonus.focus : bonus.all;
+      up += mods.groupPct[t.group] ?? 0;
+      if (up) scaleTotals(out, pct(up), true);
       // granaries reward each neighbouring grain field
       if (t.id === 'granary') {
         const fields = gridNeighbors(i).filter(
@@ -347,9 +385,9 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
 export function constructionQueue(s: GameState, c: City): { d: District; i: number }[] {
   const out: { d: District; i: number }[] = [];
   for (const d of cityDistricts(s, c)) {
-    const centre = d.hex === c.hex;
+    const centre = isCentre(d);
     d.slots.forEach((st, i) => {
-      if (st.type && !st.built && !slotProblem(s, c.civId, d.hex, centre, st.type, d.id))
+      if (st.type && !st.built && !slotProblem(s, c.civId, c.hex, centre, st.type, d.id))
         out.push({ d, i });
     });
   }
@@ -509,27 +547,49 @@ function scaleTotals(t: Totals, k: number, goodsToo: boolean) {
   if (goodsToo) for (const g of Object.keys(t.goods)) t.goods[g] *= k;
 }
 
-export const districtRadius = (s: GameState, civId: number) =>
-  DISTRICT_RADIUS + Math.floor(civMods(s, civId).districtRadius);
-
-/** Hexes a city can put districts on: its own territory within DISTRICT_RADIUS, on land. */
-export function districtSites(s: GameState, c: City, owner: Int16Array): number[] {
-  const g = gridOf(s);
-  return within(g, c.hex, districtRadius(s, c.civId)).filter(
-    k => !isWater(s.map.terrain[k]) && owner[k] === c.civId && nearestCity(s, k)?.id === c.id,
-  );
+/** A district's character, from what is built (or planned) in it. */
+export function districtKind(d: District): string {
+  const n: Record<string, number> = {};
+  for (const x of d.slots)
+    if (x.type && !SLOT_TYPES[x.type].fixed) {
+      const gr = SLOT_TYPES[x.type].group;
+      n[gr] = (n[gr] ?? 0) + 1;
+    }
+  const top = Object.entries(n).sort((a, b) => b[1] - a[1])[0];
+  if (!top) return 'Empty';
+  const names: Record<string, string> = {
+    farming: 'Farmland',
+    forestry: 'Woodland',
+    extraction: 'Mining quarter',
+    craft: 'Industrial quarter',
+    services: 'Research quarter',
+    commerce: 'Market quarter',
+    residential: 'Residential quarter',
+    civic: 'Civic quarter',
+  };
+  return names[top[0]] ?? 'Quarter';
 }
 
-function nearestCity(s: GameState, hex: number): City | undefined {
-  const g = gridOf(s);
-  let best: City | undefined,
-    bd = Infinity;
+/**
+ * Towns feed their market: settlements short of food draw on the surplus of others joined to
+ * them by road, river or sea. Returns each settlement's food balance after sharing.
+ */
+export function shareFood(s: GameState, surplus: Map<number, number>): Map<number, number> {
+  const out = new Map(surplus);
+  const done = new Set<number>();
   for (const c of s.cities) {
-    const d = distance(g, c.hex, hex);
-    if (d < bd) {
-      bd = d;
-      best = c;
+    if (done.has(c.id)) continue;
+    const group = marketCities(s, c);
+    for (const x of group) done.add(x.id);
+    const need = group.reduce((a, x) => a + Math.max(0, -(out.get(x.id) ?? 0)), 0);
+    const spare = group.reduce((a, x) => a + Math.max(0, out.get(x.id) ?? 0), 0);
+    if (!need || !spare) continue;
+    const moved = Math.min(need, spare);
+    for (const x of group) {
+      const v = out.get(x.id) ?? 0;
+      if (v > 0) out.set(x.id, v - (v / spare) * moved);
+      else if (v < 0) out.set(x.id, v + (-v / need) * moved);
     }
   }
-  return best;
+  return out;
 }

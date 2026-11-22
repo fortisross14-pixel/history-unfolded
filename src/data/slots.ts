@@ -1,8 +1,8 @@
 /**
- * District slot types. A district is a 3×3 grid of these on one hex. Each slot needs something
- * within reach (the district's hex and its six neighbours), workers, and production plus goods
- * to build. Neighbouring slots in the grid (up, down, left, right) can boost each other.
- * Numbers are first-pass.
+ * District slot types. A district is a 3×3 grid of these inside a settlement. Each slot needs
+ * something on the settlement's land (its hex and its six neighbours), workers, and production
+ * plus goods to build. Neighbouring slots in the grid (up, down, left, right) can boost each
+ * other. Farming, forestry and extraction are rural: only towns have room for them.
  */
 import type { ReliefId, TerrainId, VegetationId } from './terrain.ts';
 
@@ -26,6 +26,11 @@ export const GROUPS: Record<SlotGroup, { name: string; color: string }> = {
   residential: { name: 'Residential', color: '#b5838d' },
   civic: { name: 'Civic', color: '#6b4a8a' },
 };
+
+/** Groups that work the land: towns only. Cities get these goods from the towns around them. */
+export const RURAL_GROUPS: SlotGroup[] = ['farming', 'forestry', 'extraction'];
+export const isRural = (typeId: string | null) =>
+  !!typeId && RURAL_GROUPS.includes(SLOT_TYPES[typeId]?.group);
 
 /** What a slot yields per turn when built and staffed. Goods are keyed by good id. */
 export interface Yield {

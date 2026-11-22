@@ -1928,3 +1928,59 @@ kbd {
   flex-basis: 100%;
   margin: 2px 0 0;
 }
+
+/* ---------- settlements: rank, district tabs, upgrade ---------- */
+.tier-pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--ink-soft);
+  color: #fff6dc;
+  font:
+    600 12px system-ui,
+    sans-serif;
+  vertical-align: middle;
+}
+.district-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.district-tabs button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 96px;
+  padding: 4px 10px;
+  text-align: left;
+}
+.district-tabs button small {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+.district-tabs button.on {
+  background: linear-gradient(#fff6dc, #f3e2b2);
+  border-color: var(--gold);
+}
+.district-tabs button.add {
+  border-style: dashed;
+}
+.district-tabs button.locked {
+  opacity: 0.6;
+  min-width: 64px;
+}
+.upgrade {
+  padding: 8px 10px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  background: rgba(243, 226, 178, 0.45);
+  margin-bottom: 8px;
+}
+.upgrade p {
+  margin: 0 0 6px;
+}
+.hexmap .hx-name {
+  font-size: 16px;
+}

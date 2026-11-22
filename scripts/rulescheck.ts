@@ -16,8 +16,10 @@ import {
   saveBlueprint,
   setSlot,
   stepCost,
-  territory,
+  canFoundCity,
   trainSettlers,
+  upgradeInfo,
+  upgradeSettlement,
   atWar,
   attack,
   declareWar,
@@ -31,10 +33,12 @@ import { isPassableLand } from '../src/engine/mapgen.ts';
 import { distance, neighbors, within } from '../src/engine/hex.ts';
 import { findPath } from '../src/engine/path.ts';
 import {
+  cityDistricts,
   cityEconomy,
-  districtAt,
-  districtSites,
   invalidateMarkets,
+  isCentre,
+  landOf,
+  shareFood,
   marketCities,
   marketStock,
   slotProblem,
@@ -78,14 +82,17 @@ for (const seed of [1, 2, 3, 42]) {
   const levy1 = mine().find(f => f.name === '1st Levy')!;
   check(levy1.cohorts.length === 5, 'levy has 5 cohorts (500 people)');
 
-  // --- districts: the city centre exists, a farm is laid out next door and gets built
-  const centreD = districtAt(s, capital.hex);
+  // --- districts: the centre exists, a farm district is laid out inside the town and gets built
+  const centreD = cityDistricts(s, capital).find(isCentre);
   check(
     !!centreD && centreD.slots[4].type === 'town-hall' && centreD.slots[4].built,
-    'city centre district with town hall',
+    'centre district with town hall',
   );
-  const sites = districtSites(s, capital, territory(s));
-  check(sites.length > 3, `${sites.length} district sites around the capital`);
+  check(capital.tier === 'town', 'a new settlement is a town');
+  check(
+    landOf(s, capital).includes(capital.hex) && landOf(s, capital).length <= 7,
+    `the town works its hex and the ring around it (${landOf(s, capital).length} hexes)`,
+  );
   const farmSlots = [
     'pig-pen',
     'pig-pen',
@@ -97,8 +104,7 @@ for (const seed of [1, 2, 3, 42]) {
     'cattle-pasture',
     'woodlot',
   ];
-  const site = sites.find(h => h !== capital.hex && !slotProblem(s, me.id, h, false, 'pig-pen'))!;
-  const pd = placeDistrict(s, capital.id, site, 'Farm', farmSlots);
+  const pd = placeDistrict(s, capital.id, 'Farm', farmSlots);
   check(pd.ok, 'place a "Farm" district: ' + pd.msg);
   const farm = s.districts.find(d => d.id === pd.id)!;
   const bp = saveBlueprint(
@@ -108,7 +114,8 @@ for (const seed of [1, 2, 3, 42]) {
     farm.slots.map(x => x.type),
   );
   check(bp.ok && me.blueprints.length === 1, 'save the layout as a blueprint');
-  check(!placeDistrict(s, capital.id, site, 'Again', []).ok, 'one district per hex');
+  check(!placeDistrict(s, capital.id, 'Again', []).ok, 'a town holds two districts');
+  void slotProblem;
   check(!setSlot(s, centreD!.id, 4, 'houses').ok, 'the town hall cannot be replaced');
   // grain next to pigs: the pig pen at index 1 or 3 or 5 or 7 borders the grain field at 4
   capital.stockpile.wood = 50;
@@ -128,6 +135,90 @@ for (const seed of [1, 2, 3, 42]) {
   check(econ.workersUsed <= econ.workers, `workers ${econ.workersUsed}/${econ.workers}`);
   const lim = cityEconomy(s, capital).total.housing;
   check(capital.pop <= lim, `population ${capital.pop} within housing ${lim}`);
+
+  // --- spacing: settlements may not touch, one hex between is fine
+  {
+    const g1 = { w: s.map.w, h: s.map.h };
+    const probe = { ...mine().find(f => f.kind === 'army')!, kind: 'settlers' as const };
+    const next = neighbors(g1, capital.hex).find(h => isPassableLand(s.map, h))!;
+    check(!!canFoundCity(s, { ...probe, hex: next }), 'no town right next to another');
+    const two = within(g1, capital.hex, 2).find(
+      h =>
+        distance(g1, h, capital.hex) === 2 &&
+        isPassableLand(s.map, h) &&
+        !s.cities.some(c => c !== capital && distance(g1, c.hex, h) < 2),
+    );
+    if (two !== undefined)
+      check(canFoundCity(s, { ...probe, hex: two }) === null, 'a town two hexes away is fine');
+  }
+
+  // --- district synergy: a second school in the same district makes each one better
+  {
+    const t = structuredClone(s);
+    const tc = t.cities.find(c => c.id === capital.id)!;
+    const td = cityDistricts(t, tc).find(isCentre)!;
+    t.civs[me.id].techs.push('writing');
+    tc.pop = 20000;
+    const put = (i: number) =>
+      (td.slots[i] = { type: 'school', built: true, progress: 0, paid: true });
+    put(0);
+    const one = cityEconomy(t, tc).slots.get(td.id)![0].out.science;
+    put(2);
+    const two = cityEconomy(t, tc).slots.get(td.id)![0].out.science;
+    check(two > one, `schools together work better (${one} → ${two} science each)`);
+  }
+
+  // --- town to city: needs people, gold and goods; farms give way; room for four districts
+  {
+    const t = structuredClone(s);
+    const tc = t.cities.find(c => c.id === capital.id)!;
+    check(!!upgradeInfo(t, tc).problem, 'a young town cannot become a city yet');
+    tc.pop = 7000;
+    t.civs[me.id].gold = 1000;
+    tc.stockpile.stone = 100;
+    tc.stockpile.wood = 100;
+    const farmD = t.districts.find(d => d.id === pd.id)!;
+    const rural = farmD.slots.filter(x => x.type).length;
+    const up = upgradeSettlement(t, tc.id);
+    check(up.ok && tc.tier === 'city', 'the town becomes a city: ' + up.msg);
+    check(
+      farmD.slots.every(x => !x.type) && rural > 0,
+      `the farm district is cleared (${rural} rural buildings pulled down)`,
+    );
+    check(!!slotProblem(t, me.id, tc.hex, false, 'grain-field'), 'a city cannot lay out fields');
+    check(placeDistrict(t, tc.id, 'Library quarter', []).ok, 'a city takes a third district');
+    check(placeDistrict(t, tc.id, 'Fourth', []).ok, '... and a fourth');
+    check(!placeDistrict(t, tc.id, 'Fifth', []).ok, 'but not a fifth');
+    // one metropolis per people
+    tc.pop = 16000;
+    tc.stockpile.stone = 100;
+    tc.stockpile.wood = 100;
+    check(
+      upgradeSettlement(t, tc.id).ok && tc.tier === 'metropolis',
+      'the city becomes a metropolis',
+    );
+    const other = t.cities.find(c => c.civId !== me.id)!;
+    other.civId = me.id;
+    other.tier = 'city';
+    other.pop = 16000;
+    check(
+      /only one metropolis/.test(upgradeInfo(t, other).problem ?? ''),
+      'a second metropolis is refused',
+    );
+    // towns feed cities in their market
+    const fed = shareFood(
+      t,
+      new Map([
+        [tc.id, -6],
+        [other.id, 10],
+      ]),
+    );
+    const joined = marketCities(t, tc).includes(other);
+    check(
+      !joined || (fed.get(tc.id)! >= 0 && fed.get(other.id)! === 4),
+      'a town in the market covers a city short of food',
+    );
+  }
 
   // --- roads and markets: a second city joined by a road shares its store
   const g0 = { w: s.map.w, h: s.map.h };

@@ -69,12 +69,8 @@ if (!(await page.$('.modal.city-screen'))) throw new Error('the to-do list never
 await page.screenshot({ path: `${out}/3-todo-city.png` });
 await page.waitForSelector('.modal.city-screen');
 await page.screenshot({ path: `${out}/3a-city-screen.png` });
-const hexes = page.locator('.hexmap .hx:not(.off)');
-const nHex = await hexes.count();
-for (let k = 1; k < nHex; k++) {
-  await hexes.nth(k).click();
-  if (await page.$('.new-district')) break;
-}
+// a town has two district tabs: the centre and one free; the rest are locked until it grows
+await page.click('.district-tabs button.add');
 await page.fill('.new-district .design-name', 'Farm');
 await page.click('.new-district button.primary');
 await page.waitForSelector('.grid3');
@@ -93,6 +89,7 @@ await page.fill('.bp-row input', 'Farm');
 await page.click('.bp-row button:has-text("Save")');
 await page.locator('.grid3 .cell').nth(1).click();
 await page.screenshot({ path: `${out}/3b-district.png` });
+if (await page.$('.district-tabs button.add')) throw new Error('a town offered a third district');
 await page.click('.modal.city-screen .x');
 await page.click('button:has-text("Raise levy")');
 await page.waitForTimeout(200);

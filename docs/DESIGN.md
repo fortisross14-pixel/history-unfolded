@@ -671,7 +671,8 @@ The great houses are the thread through the game.
   house by 35; a trinket given calms it by 10.
 - **Civil war** at 100 unrest. **The realm splits.** The player chooses a side: that side keeps
   its settlements, the other houses with theirs, and the alliances. The other house's settlements,
-  with the armies and ships nearest them, become a realm of their own, at war; no treaty ends it.
+  with the armies and ships nearest them and a levy raised in each of them, become a realm of
+  their own, at war; no treaty ends it.
   - Take all their settlements and the war is won at once.
   - After **10 turns** the side with the bigger army takes the throne and the realm is one again.
     The losing house gives up half its trinkets and half its learning.

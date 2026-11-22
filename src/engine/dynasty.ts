@@ -35,6 +35,7 @@ import {
   type Area,
 } from '../data/dynasties.ts';
 import { SLOT_TYPES } from '../data/slots.ts';
+import { DEFAULT_LOADOUT } from '../data/items.ts';
 import { ageOf } from '../data/techs.ts';
 import { invalidateMarkets } from './economy.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
@@ -351,6 +352,27 @@ export function chooseSide(s: GameState, civId: number, side: number): Result {
   for (const c of lost) {
     c.civId = id;
     c.governor = undefined;
+    // the rebel towns rise in arms: a levy of their own people each
+    if (c.pop >= 1500) {
+      c.pop -= 500;
+      s.formations.push({
+        id: s.nextId++,
+        civId: id,
+        name: `${other.name} Levy`,
+        kind: 'army',
+        hex: c.hex,
+        cohorts: Array.from({ length: 5 }, () => ({
+          id: s.nextId++,
+          strength: 100,
+          xp: 0,
+          designId: null,
+          loadout: { ...DEFAULT_LOADOUT },
+        })),
+        moves: 0,
+        path: [],
+        fortified: true,
+      });
+    }
   }
   civ.civilWar = { rebel: other.id, since: s.turn, rival: id };
   for (const d of civ.dynasties) d.unrest = 0;

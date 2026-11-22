@@ -1,9 +1,8 @@
 # History Unfolded
 
-A zero-player history sandbox: 5,000 years of realms, rulers and great people,
-played out like a sports universe. Most events resolve quickly in the
-background; only the biggest moments (Great Wars, Great Discoveries, World
-Revolutions) play out live.
+A turn-based hex strategy game in the civilization-builder mould where every people starts the
+same and the player builds everything: troops from equipment, districts from building slots, and
+a culture from a web of choices. Design: [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## Run
 
@@ -16,47 +15,33 @@ npm run build      # type-check and build
 ## Checks
 
 ```bash
-npm run sim                                   # 5,000-year run, key metrics, time budget
-npm run sim -- --seeds 4                      # summary over several seeds
-npm run sim -- --map earth --start 1444       # Earth map from 1444 (or -3000, 1)
-npm run test:ui                               # renders every page against a simulated world
-npm run test:save -- <saves.json> [years]     # loads an old save, migrates it, keeps simulating
+npm test                     # map generator over every map type and size + core rules
+npm run test:ui -- <outDir>  # drives the built game in headless Chromium and saves screenshots
+                             # (needs `npx vite preview --port 4173` running)
 ```
 
-## How the world works
+## What works now
 
-- **Characters first.** Rulers, heirs, consorts and notables (generals,
-  admirals, explorers, merchants, scholars, prophets, statesmen) share one
-  model: rarity from Common to Generational (at most three Generational alive),
-  two or three traits, a life ambition, deeds, fame, an earned nickname and
-  named legacies ("Reforms of Alaric").
-- **National personality.** Five axes (Ambition, Horizon, Economy, Faith,
-  Order) decide what a realm does, and drift with geography, history and its
-  rulers.
-- **Every number explains itself.** Province development feeds city wealth,
-  manpower and influence; realm totals list each source and modifier.
-- **World Moments.** Great Wars run season by season on a momentum bar with
-  key battles and a peace conference. Breakthroughs spread as waves.
-  Ideological waves press on every connected country.
-- **Seasons and records.** Each century ends with a recap and awards; the
-  record book keeps the all-time bests.
-
-## Maps
-
-- **Earth**: about 600 named regions with terrain, coasts and rivers, built
-  from [Natural Earth](https://www.naturalearthdata.com/) public-domain data by
-  `scripts/build-earth.ts` into `src/data/earth.json`. Start in 3000 BCE, 1 CE
-  or 1444 with real realms, cultures and faiths; rulers are invented.
-- **Fantasy world**: procedural continents, a new world every time.
-
-## Saves
-
-Three browser save slots under one key. Each world carries a schema version;
-`src/engine/save.ts` migrates older saves forward.
+- **Random maps every game**: Continents, Pangaea, Archipelago, Inland Sea, Highlands or Random,
+  with size, sea level, climate, rainfall, resources and mountains settings and a shareable seed.
+  Rivers run downhill to the sea, dead ends become lakes, deposits follow terrain, starts are
+  balanced (food, wood, a metal and horses nearby).
+- **Formations of cohorts**: a cohort is 100 people. Cities raise levies of 5 cohorts (500
+  people taken from the city). Moving onto your own troops merges them (command limit 10
+  cohorts); split any number off.
+- **Equip any cohorts with anything**: weapon, armour, mount and kit per cohort, paid in goods
+  from the city whose territory the troops stand in. Save loadouts as templates. A formation
+  moves at the pace of its slowest cohort.
+- **Starter research** (Tanning, Archery, Horseback Riding, Bronze Working, Iron Working) unlocks
+  equipment and reveals deposits.
+- Fog of war, path preview with turn markers, go-to orders across turns, autosave.
+- Rival peoples found capitals, scout and raise levies (no combat yet).
 
 ## Code
 
-- `src/engine/`: the simulation, one module per system (`simulate.ts` runs a year).
-- `src/ui/`: React pages for the five sections (Map, Realm, Characters,
-  Chronicle, Records) and the detail panels.
-- `scripts/`: the headless sim, the Earth map builder and test scripts.
+- `src/data/`: terrain, goods and deposits, equipment, techs. Balance lives here.
+- `src/engine/`: pure TypeScript rules (no React): map generation, hex math, pathfinding,
+  game actions and turns. Runs headless in the check scripts.
+- `src/render/`: the canvas map renderer and the sprite registry (art in `public/sprites`,
+  from the Age of Sail art set; any art pack with the same keys can replace it).
+- `src/ui/`: React screens and panels.

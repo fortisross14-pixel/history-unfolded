@@ -1,0 +1,29 @@
+import { deserialize, serialize } from '../engine/game.ts';
+import type { GameState } from '../engine/types.ts';
+
+const KEY = 'history-unfolded-forge-save-v1';
+
+export function saveGame(s: GameState) {
+  try {
+    localStorage.setItem(KEY, serialize(s));
+  } catch {
+    /* storage full or blocked: play on */
+  }
+}
+
+export function loadGame(): GameState | null {
+  try {
+    const j = localStorage.getItem(KEY);
+    return j ? deserialize(j) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function hasSave(): boolean {
+  try {
+    return !!localStorage.getItem(KEY);
+  } catch {
+    return false;
+  }
+}

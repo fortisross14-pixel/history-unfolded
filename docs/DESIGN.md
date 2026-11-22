@@ -442,11 +442,14 @@ interface Civ { id: string; name: string; techs: Set<string>; culture: CultureSt
 ### 14.3 What happens to the current code
 
 The current repository is a zero-player history simulator. Very little carries over directly.
-Proposal: archive it on a tag (`v3-archive`) and start a clean `src/` for the new game, keeping
-only the tooling (Vite, TS config, Prettier, the headless-sim script pattern). The Earth map and
+It was removed on this branch (it stays in `main`'s history) and a clean `src/` started, keeping
+only the tooling (Vite, TS config, Prettier, the headless check-script pattern). The Earth map and
 its builder are dropped: maps are procedural only.
 
 ## 15. Milestones
+
+Progress: **M0 done, M1 done, M2 done** (with placeholders: cities work their ring of hexes
+instead of districts, and a 5-tech starter list stands in for the tree).
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -466,11 +469,7 @@ its builder are dropped: maps are procedural only.
 
 ## 16. Open questions
 
-1. Multiplayer: out of scope for now, but turns and determinism are designed so hot-seat or
-   async could come later. Wanted?
-2. How many slot types and items for the first playable? Draft: 10 items, 20 slots.
-3. Art: which formats/sizes are the existing asset packs (hex tiles, sprites, PNG/SVG)? The
-   sprite registry will be shaped to match once they are added.
+None right now.
 
 ## 17. Decisions log
 
@@ -480,3 +479,6 @@ its builder are dropped: maps are procedural only.
 | 2 | National or per-city goods? | Per city. Roads (and later rivers, rail, sea routes) connect cities into a **market** with one shared pool; cutting the link splits it (§8.1). |
 | 3 | Do soldiers cost population? | Yes (§5.2). |
 | 4 | Maps? | Procedural only, many map types, every game different; no Earth map. Art from the owner's asset packs added later through a sprite registry (§4). |
+| 5 | Multiplayer? | No. Single player against AI peoples. |
+| 6 | First playable content? | About 10 equipment items and 20 district slot types. |
+| 7 | Art? | Reuse the Age of Sail art set (parchment, terrain symbols, unit, city and goods sprites) for now. |

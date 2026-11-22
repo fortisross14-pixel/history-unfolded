@@ -1,19 +1,19 @@
 {
   "name": "history-unfolded",
   "private": true,
-  "version": "3.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "sim": "node --no-warnings scripts/sim.ts",
-    "format": "prettier --write src scripts",
+    "check:map": "node --no-warnings scripts/mapcheck.ts",
+    "check:rules": "node --no-warnings scripts/rulescheck.ts",
+    "test": "node --no-warnings scripts/mapcheck.ts && node --no-warnings scripts/rulescheck.ts",
     "test:ui": "node --no-warnings scripts/ui-smoke.ts",
-    "test:save": "node --no-warnings scripts/check-save.ts"
+    "format": "prettier --write src scripts"
   },
   "dependencies": {
-    "lucide-react": "1.25.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

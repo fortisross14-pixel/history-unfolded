@@ -535,6 +535,17 @@ export function aiTurn(s: GameState, civ: Civ) {
     }
 
   // --- formations
+  // troops that walked onto a ship on their way somewhere step back ashore
+  for (const f of mine())
+    if (f.aboard !== undefined && f.kind !== 'fleet' && civ.sea?.cargo !== f.id) {
+      const shore = neighbors(g, f.hex).find(
+        h =>
+          isPassableLand(s.map, h) &&
+          !s.cities.some(c => c.hex === h && c.civId !== civ.id) &&
+          !s.formations.some(o => o.hex === h && o.civId !== civ.id),
+      );
+      if (shore !== undefined && f.moves > 0) orderMove(s, f.id, shore);
+    }
   runSeaTask(s, civ, rng);
   for (const f of mine()) {
     if (!s.formations.includes(f)) continue;

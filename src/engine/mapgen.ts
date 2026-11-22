@@ -485,24 +485,88 @@ function placeStarts(m: MapData, count: number, r: Rng): number[] {
   let first = cands[0];
   for (const i of cands) if (score[i] > score[first]) first = i;
   chosen.push(first);
+  // keep neighbours apart; if the land cannot hold everyone that far apart, close ranks
+  let minGap = Math.max(4, Math.floor(spread * 0.6));
   while (chosen.length < count) {
     let best = -1,
       bv = -Infinity;
     for (const i of cands) {
       let dmin = Infinity;
       for (const c of chosen) dmin = Math.min(dmin, distance(g, i, c));
-      if (dmin < 4) continue;
+      if (dmin < minGap) continue;
       const v = Math.min(dmin, spread * 1.2) / spread + (score[i] / maxS) * 0.5;
       if (v > bv) {
         bv = v;
         best = i;
       }
     }
-    if (best < 0) break;
+    if (best < 0) {
+      if (minGap <= 4) break;
+      minGap--;
+      continue;
+    }
     chosen.push(best);
   }
   for (const s of chosen) balanceStart(m, s, r);
+  evenStarts(m, chosen, r);
   return chosen;
+}
+
+/** What a start is worth: food in reach, open land around it, deposits. */
+export function startValue(m: MapData, s: number): number {
+  const g = { w: m.w, h: m.h };
+  let v = 0;
+  for (const k of within(g, s, 3)) {
+    const d = distance(g, s, k);
+    if (d <= 2) v += hexFood(m, k) + (m.deposit[k] ? 1 : 0);
+    if (isPassableLand(m, k)) v += 0.3;
+  }
+  return v;
+}
+
+/** Lift any start well below the median: soften the poorest land near it, then add food. */
+function evenStarts(m: MapData, starts: number[], r: Rng) {
+  if (starts.length < 2) return;
+  const g = { w: m.w, h: m.h };
+  const vals = starts.map(s => startValue(m, s)).sort((a, b) => a - b);
+  const median = vals[Math.floor(vals.length / 2)];
+  const better: Partial<Record<TerrainId, TerrainId>> = {
+    desert: 'plains',
+    tundra: 'plains',
+    snow: 'tundra',
+  };
+  for (const s of starts) {
+    for (let tries = 0; tries < 30 && startValue(m, s) < median * 0.85; tries++) {
+      const ring = within(g, s, 2).filter(k => k !== s && isPassableLand(m, k));
+      const poor = ring
+        .filter(k => better[m.terrain[k]] || m.vegetation[k] === 'marsh')
+        .sort((a, b) => hexFood(m, a) - hexFood(m, b))[0];
+      if (poor !== undefined) {
+        if (m.vegetation[poor] === 'marsh') m.vegetation[poor] = 'none';
+        else m.terrain[poor] = better[m.terrain[poor]]!;
+        continue;
+      }
+      const plain = ring.find(k => m.terrain[k] === 'plains' && !m.deposit[k]);
+      if (plain !== undefined) {
+        m.terrain[plain] = 'grassland';
+        continue;
+      }
+      const bare = shuffleCopy(
+        r,
+        ring.filter(k => !m.deposit[k] && m.relief[k] !== 'mountains'),
+      );
+      const k = bare.find(k =>
+        validDeposits(m.terrain[k], m.relief[k], m.vegetation[k]).some(d =>
+          ['wheat', 'cattle', 'pigs', 'rice', 'sheep', 'game', 'fish'].includes(d),
+        ),
+      );
+      if (k === undefined) break;
+      const kinds = validDeposits(m.terrain[k], m.relief[k], m.vegetation[k]).filter(d =>
+        ['wheat', 'cattle', 'pigs', 'rice', 'sheep', 'game', 'fish'].includes(d),
+      );
+      m.deposit[k] = { kind: pick(r, kinds), richness: 1 };
+    }
+  }
 }
 
 /** Make sure every start has wood, a food deposit and a metal or horses nearby. */

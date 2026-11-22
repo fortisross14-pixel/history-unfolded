@@ -47,11 +47,16 @@ export const GOODS: Record<string, GoodInfo> = {
   tools: { name: 'Tools', kind: 'made', glyph: 'Tl', color: '#6b6f78' },
   cloth: { name: 'Cloth', kind: 'made', glyph: 'Cl', color: '#b08f6a' },
   leatherwork: { name: 'Leatherwork', kind: 'made', glyph: 'Lw', color: '#8a5a32' },
+  salt: { name: 'Salt', kind: 'raw', glyph: 'Sa', color: '#e4e1da' },
+  paper: { name: 'Paper', kind: 'made', glyph: 'Pa', color: '#efe6cf' },
+  steel: { name: 'Steel', kind: 'made', glyph: 'Sl', color: '#7d8a96' },
+  oil: { name: 'Oil', kind: 'raw', glyph: 'Oi', color: '#262422' },
+  electricity: { name: 'Electricity', kind: 'made', glyph: 'El', color: '#e0c23a' },
 };
 
 /** Goods that serve as comforts: luxuries and the finer made goods. */
 export const isComfort = (g: string) =>
-  GOODS[g]?.kind === 'luxury' || g === 'cloth' || g === 'leatherwork';
+  GOODS[g]?.kind === 'luxury' || g === 'cloth' || g === 'leatherwork' || g === 'salt';
 
 /** Store limit: this much of a good per cell that makes it (and per settlement, for anything). */
 export const STORE_PER_CELL = 8;
@@ -340,5 +345,27 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     yields: { pearls: 1 },
     terrain: ['coast'],
     weight: 1,
+  },
+  salt: {
+    name: 'Salt',
+    by: 'mine',
+    gives: { goods: { salt: 1 } },
+    special: true,
+    yields: { salt: 1 },
+    terrain: ['desert', 'plains', 'tundra'],
+    relief: ['flat', 'hills'],
+    vegetation: ['none'],
+    weight: 2,
+  },
+  oil: {
+    name: 'Oil',
+    by: 'mine',
+    gives: { goods: { oil: 1 } },
+    special: true,
+    yields: { oil: 1 },
+    terrain: ['desert', 'plains', 'tundra', 'grassland'],
+    relief: ['flat'],
+    weight: 2,
+    revealedBy: 'oil-drilling',
   },
 };

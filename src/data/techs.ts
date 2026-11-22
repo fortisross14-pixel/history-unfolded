@@ -10,7 +10,7 @@ import type { Mods } from './mods.ts';
 export interface TechInfo {
   id: string;
   name: string;
-  era: 1 | 2 | 3 | 4;
+  era: 1 | 2 | 3 | 4 | 5;
   cost: number;
   requires: string[];
   /** 20% cheaper for peoples with at least 2 nodes of this culture tag */
@@ -21,7 +21,7 @@ export interface TechInfo {
   gate?: number;
 }
 
-export const ERAS = ['', 'Ancient', 'Classical', 'Medieval', 'Renaissance'];
+export const ERAS = ['', 'Ancient', 'Classical', 'Medieval', 'Renaissance', 'Industrial'];
 
 const t = (
   id: string,
@@ -207,20 +207,63 @@ export const TECH_LIST: TechInfo[] = [
     favoured: 'maritime',
     mods: { sight: 1, coastalPct: 5 },
   }),
-  t('preservation', 'Food Preservation', 4, 320, [], "Food packaging doubles a district's food.", {
-    favoured: 'agrarian',
-  }),
-  t(
-    'steam-power',
-    'Steam Power',
-    4,
-    380,
-    ['metallurgy'],
-    'Factories, pumping stations and steam sawmills double their districts.',
-  ),
   t('star-forts', 'Star Forts', 4, 350, ['gunpowder'], 'Cities hold against guns.', {
     mods: { cityDefensePct: 20 },
   }),
+  t('industrial-age', 'Industrial Age', 4, 500, [], 'Opens the Industrial age.', { gate: 9 }),
+  // ---- industrial: coal and steam, then steel, oil and electricity
+  t(
+    'steam-power',
+    'Steam Power',
+    5,
+    420,
+    [],
+    'Pumping stations and steam sawmills burn coal to double their districts.',
+    { mods: { prodPct: 5 } },
+  ),
+  t(
+    'railways',
+    'Railways',
+    5,
+    480,
+    ['steam-power'],
+    'Railway stations burn coal for production and trade; faster roads.',
+    { favoured: 'mercantile', mods: { roadCost: -0.15 } },
+  ),
+  t('machine-tools', 'Machine Tools', 5, 460, ['steam-power'], 'Industry grows more exact.', {
+    mods: { groupPct: { craft: 15 } },
+  }),
+  t(
+    'preservation',
+    'Food Preservation',
+    5,
+    440,
+    [],
+    "Food packaging salts and tins: doubles a district's food.",
+    {
+      favoured: 'agrarian',
+    },
+  ),
+  t(
+    'oil-drilling',
+    'Oil Drilling',
+    5,
+    500,
+    ['steam-power'],
+    'Reveals oil for mines. Power plants run better on it.',
+  ),
+  t('rifling', 'Rifling', 5, 520, ['machine-tools'], 'Rifles: steel and powder.', {
+    favoured: 'martial',
+  }),
+  t(
+    'electricity',
+    'Electricity',
+    5,
+    600,
+    ['machine-tools'],
+    'Power plants make electricity; factories and research labs run on it.',
+    { favoured: 'rationalist' },
+  ),
 ];
 
 export const TECHS: Record<string, TechInfo> = Object.fromEntries(TECH_LIST.map(x => [x.id, x]));

@@ -265,6 +265,18 @@ const PLANS: Plan[] = [
       boots: 'hobnailed-boots',
     }),
   },
+  {
+    name: 'Riflemen',
+    role: 'ranged',
+    rank: 8,
+    loadout: () => ({
+      ...DEFAULT_LOADOUT,
+      weapon: 'rifle',
+      kit: 'bayonet',
+      armour: 'cuirass',
+      boots: 'hobnailed-boots',
+    }),
+  },
 ];
 
 /** Move one outdated or outclassed group per turn to the best design the market can pay for. */
@@ -422,14 +434,14 @@ const QUARTERS: Record<string, (string | null)[]> = {
   ],
   industry: [
     'workshop',
-    'workshop',
+    'paper-mill',
     'houses',
     'smithy',
-    'armoury',
-    'workshop',
+    'engineers',
+    'power-plant',
     'houses',
     'factory',
-    'engineers',
+    'workshop',
   ],
   market: [
     'market',
@@ -463,8 +475,14 @@ const QUARTER_ORDER = ['research', 'industry', 'market', 'civic', 'research'];
  */
 function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[]; score: number } {
   const ok = (t: string) => !slotProblem(s, civ.id, hex, false, t);
+  // what the realm needs most: strategic goods first, and less of what it already makes plenty of
+  const ledger = ledgerOf(s, civ.id);
   const worth = (g: Record<string, number> | undefined) =>
-    Object.keys(g ?? {}).reduce((a, x) => a + (GOODS[x]?.kind === 'luxury' ? 3 : 2), 0);
+    Object.keys(g ?? {}).reduce((a, x) => {
+      const base = STRATEGIC[x] ?? (GOODS[x]?.kind === 'luxury' ? 3 : 2);
+      const made = ledger[x]?.made ?? 0;
+      return a + base * (made >= 6 ? 0.3 : made >= 3 ? 0.6 : 1);
+    }, 0);
   const specials = ['mine', 'plantation', 'fishing-dock', 'hunting-lodge']
     .filter(ok)
     .map(t => {
@@ -508,6 +526,49 @@ function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[
     'houses',
   ];
   return { slots, score };
+}
+
+/** How much the AI wants a good it does not yet make, before luxuries (3) and the rest (2). */
+const STRATEGIC: Record<string, number> = {
+  iron: 6,
+  coal: 6,
+  oil: 6,
+  copper: 5,
+  tin: 5,
+  saltpeter: 5,
+  gold: 4,
+  silver: 3,
+  salt: 2,
+  stone: 1,
+};
+
+/**
+ * A city's industry quarter built on what its market has: weavers where there is wool,
+ * tanneries for hides, smithies for copper and tin, foundries for coal and iron, paper mills and
+ * workshops for wood; then the engineers' lodge, a power plant and the factory as research allows.
+ */
+function industryPlan(s: GameState, civ: Civ, c: City): (string | null)[] {
+  const l = ledgerOf(s, civ.id);
+  const stock = marketStock(s, c);
+  const has = (g: string, n = 1) => (l[g]?.net ?? 0) >= n || (stock[g] ?? 0) >= 15;
+  const bases: string[] = [];
+  if (has('wool')) bases.push('weaver');
+  if (has('hides')) bases.push('tannery');
+  if (has('copper') && has('tin', 0.5)) bases.push('smithy');
+  if (has('coal') && has('iron')) bases.push('foundry');
+  bases.push('paper-mill', 'workshop', 'workshop', 'workshop');
+  const pick = bases.slice(0, 4);
+  return [
+    pick[0],
+    pick[1],
+    'houses',
+    pick[2],
+    'engineers',
+    has('coal', 2) || has('oil') ? 'power-plant' : pick[3],
+    'houses',
+    'factory',
+    pick[3],
+  ];
 }
 
 /**
@@ -600,6 +661,24 @@ function planDistricts(s: GameState, civ: Civ, c: City) {
       const p = planFor(s, civ, c.hex);
       fillDistrict(s, civ, c, fields, p.slots);
     }
+    // research reveals new seams (iron, coal, oil): now and then a town re-lays its fields
+    if (fields && (s.turn + c.id) % 15 === 0) {
+      const p = planFor(s, civ, c.hex);
+      const count = (slots: (string | null)[], t: string) => slots.filter(x => x === t).length;
+      const main = ['mine', 'plantation', 'fishing-dock', 'hunting-lodge'].find(
+        t => count(p.slots, t) >= 4,
+      );
+      if (
+        main &&
+        count(
+          fields.slots.map(x => x.type),
+          main,
+        ) < 3
+      )
+        p.slots.forEach((t, i) => {
+          if (t && fields.slots[i].type !== t) setSlot(s, fields.id, i, t);
+        });
+    }
     return;
   }
   // a city: its quarters, in order, then fill what research has opened
@@ -613,13 +692,14 @@ function planDistricts(s: GameState, civ: Civ, c: City) {
       CENTRE.map(t => (t === 'granary' ? 'library' : t)),
     );
   const others = ds.filter(d => !isCentre(d));
-  others.forEach((d, k) => fillDistrict(s, civ, c, d, QUARTERS[QUARTER_ORDER[k] ?? 'research']));
+  const planOf = (kind: string) => (kind === 'industry' ? industryPlan(s, civ, c) : QUARTERS[kind]);
+  others.forEach((d, k) => fillDistrict(s, civ, c, d, planOf(QUARTER_ORDER[k] ?? 'research')));
   for (const d of ds) addBoosters(s, civ, c, d);
   if (districtRoom(s, c) > 0) {
     const kind = QUARTER_ORDER[others.length] ?? 'research';
     const r = placeDistrict(s, c.id, `${c.name} ${kind} quarter`, []);
     const d = s.districts.find(x => x.id === r.id);
-    if (d) fillDistrict(s, civ, c, d, QUARTERS[kind]);
+    if (d) fillDistrict(s, civ, c, d, planOf(kind));
   }
 }
 

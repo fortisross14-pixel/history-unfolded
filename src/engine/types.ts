@@ -156,6 +156,8 @@ export interface Civ {
    * Once split, `rival` is the breakaway realm and the war runs CIVIL_WAR_TURNS.
    */
   civilWar?: { rebel: number; since: number; pending?: boolean; rival?: number };
+  /** goods it ran out of last turn (saltpeter: firearms fire at half) */
+  shortOf?: string[];
   /** a realm that broke away in a civil war (from this civ id) */
   splitFrom?: number;
   science: number;

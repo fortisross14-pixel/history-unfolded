@@ -264,9 +264,10 @@ check(
 {
   const t = structuredClone(s);
   const civ = t.civs[me.id];
-  civ.techs.push('scientific-method', 'renaissance-age', 'printing', 'education');
+  civ.techs.push('electricity', 'renaissance-age', 'printing', 'education');
   const tc = t.cities.find(c => c.id === capital.id)!;
   tc.pop = 20000;
+  tc.stockpile.electricity = 20;
   const pd = placeDistrict(t, tc.id, 'Sages', [
     'university',
     'university',

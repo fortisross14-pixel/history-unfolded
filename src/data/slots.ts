@@ -93,6 +93,8 @@ export interface SlotType {
   out: Yield;
   /** goods consumed per turn from the city's market while running */
   inputs?: Record<string, number>;
+  /** a better fuel it burns first when the market has it, and what it then makes */
+  alt?: { inputs: Record<string, number>; out: Yield };
   needs?: Needs;
   /** an extra booster outside the lines: `add` on every yield of each of these in the district */
   boost?: { of: string[]; add: number };
@@ -209,8 +211,9 @@ const list: SlotType[] = [
     labour: 100,
     build: { prod: 40, goods: { wood: 3, iron: 1 } },
     out: {},
+    inputs: { salt: 1 },
     glyph: '▣',
-    note: "Doubles the district's food. One multiplier per district.",
+    note: "Uses a unit of salt a turn: doubles the district's food. One multiplier per district.",
   },
   // ---------------- forestry (towns only)
   {
@@ -260,8 +263,9 @@ const list: SlotType[] = [
     labour: 100,
     build: { prod: 40, goods: { iron: 2, coal: 2 } },
     out: {},
+    inputs: { coal: 1 },
     glyph: '⛭',
-    note: 'Doubles the wood of the district. One multiplier per district.',
+    note: "Burns a unit of coal a turn: doubles the district's wood. One multiplier per district.",
   },
   // ---------------- extraction (towns only)
   {
@@ -286,8 +290,9 @@ const list: SlotType[] = [
     labour: 100,
     build: { prod: 40, goods: { iron: 2, coal: 2 } },
     out: {},
+    inputs: { coal: 1 },
     glyph: '⛽',
-    note: "Doubles what the district's mines dig. One multiplier per district.",
+    note: "Burns a unit of coal a turn: doubles what the district's mines dig. One multiplier per district.",
   },
   // ---------------- services
   {
@@ -353,8 +358,9 @@ const list: SlotType[] = [
     labour: 50,
     build: { prod: 20, goods: { wood: 2 } },
     out: {},
+    inputs: { paper: 0.5 },
     glyph: '📚',
-    note: '+½ to each school, university and observatory in the district.',
+    note: 'Uses half a unit of paper a turn: +½ to each school, university and observatory in the district.',
   },
   {
     id: 'laboratory',
@@ -362,12 +368,13 @@ const list: SlotType[] = [
     group: 'services',
     line: 'research',
     role: 'multiplier',
-    tech: 'scientific-method',
+    tech: 'electricity',
     labour: 100,
-    build: { prod: 50, goods: { stone: 3, iron: 2 } },
+    build: { prod: 50, goods: { steel: 1, stone: 3 } },
     out: {},
+    inputs: { electricity: 1 },
     glyph: '⚗',
-    note: "Doubles the district's science. One multiplier per district.",
+    note: "Uses a unit of electricity a turn: doubles the district's science. One multiplier per district.",
   },
   // ---------------- civic
   {
@@ -445,8 +452,9 @@ const list: SlotType[] = [
     labour: 100,
     build: { prod: 40, goods: { wood: 3, iron: 1 } },
     out: { science: 1 },
+    inputs: { paper: 1 },
     glyph: '⎙',
-    note: "Doubles the district's religion and arts; +1 science. One multiplier per district.",
+    note: "Uses a unit of paper a turn: doubles the district's religion and arts; +1 science. One multiplier per district.",
   },
   {
     id: 'walls',
@@ -621,10 +629,10 @@ const list: SlotType[] = [
     tech: 'metallurgy',
     labour: 150,
     build: { prod: 40, goods: { stone: 3, iron: 2 } },
-    out: { prod: 7 },
+    out: { prod: 2, goods: { steel: 1 } },
     inputs: { coal: 1, iron: 1 },
     glyph: '🔥',
-    note: 'Burns coal and iron for heavy production.',
+    note: 'Burns coal and iron into a unit of steel and 2 production.',
   },
   {
     id: 'factory',
@@ -632,13 +640,13 @@ const list: SlotType[] = [
     group: 'craft',
     line: 'industry',
     role: 'multiplier',
-    tech: 'steam-power',
+    tech: 'electricity',
     labour: 150,
-    build: { prod: 50, goods: { iron: 3, stone: 3 } },
+    build: { prod: 50, goods: { steel: 2, stone: 3 } },
     out: {},
-    inputs: { tools: 1 },
+    inputs: { tools: 1, electricity: 1 },
     glyph: '🏭',
-    note: "Wears out a unit of tools a turn: doubles the district's industry. One multiplier per district.",
+    note: "Wears out a unit of tools and uses a unit of electricity a turn: doubles the district's industry. One multiplier per district.",
   },
   {
     id: 'armoury',
@@ -777,6 +785,49 @@ const list: SlotType[] = [
     out: {},
     glyph: '♛',
     note: 'Great building, one in the realm: every levy of the realm starts a battle seasoned, and the house governing it learns war three times as fast.',
+  },
+  {
+    id: 'paper-mill',
+    name: 'Paper mill',
+    group: 'craft',
+    line: 'industry',
+    role: 'base',
+    tech: 'literature',
+    labour: 100,
+    build: { prod: 14, goods: { wood: 2 } },
+    out: { goods: { paper: 1 } },
+    inputs: { wood: 1 },
+    glyph: '📜',
+    note: 'Pulps a unit of wood into paper, for libraries and printing houses.',
+  },
+  {
+    id: 'power-plant',
+    name: 'Power plant',
+    group: 'craft',
+    line: 'industry',
+    role: 'base',
+    tech: 'electricity',
+    labour: 150,
+    build: { prod: 60, goods: { steel: 3, stone: 4 } },
+    out: { goods: { electricity: 3 } },
+    inputs: { coal: 2 },
+    alt: { inputs: { oil: 1 }, out: { goods: { electricity: 4 } } },
+    glyph: '⚡',
+    note: 'Burns a unit of oil for 4 electricity, or 2 coal for 3 when there is no oil.',
+  },
+  {
+    id: 'railway-station',
+    name: 'Railway station',
+    group: 'commerce',
+    line: 'gold',
+    role: 'base',
+    tech: 'railways',
+    labour: 100,
+    build: { prod: 40, goods: { steel: 2, wood: 4 } },
+    out: { gold: 2, prod: 2 },
+    inputs: { coal: 1 },
+    glyph: '🚂',
+    note: 'Burns a unit of coal a turn: +2 gold, +2 production.',
   },
   // ---------------- residential
   {

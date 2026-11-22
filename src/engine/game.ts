@@ -43,6 +43,7 @@ import {
   marketStock,
   marketTake,
   capStores,
+  powderNeed,
   slotProblem,
 } from './economy.ts';
 import { isRural, SLOT_TYPES } from '../data/slots.ts';
@@ -991,6 +992,15 @@ export function endTurn(s: GameState): string[] {
     upkeep = Math.round(upkeep * pct(civMods(s, civ.id).upkeepPct));
     civ.gold += gold - upkeep;
     if (civ.gold < 0) civ.gold = 0;
+    // firearms burn powder each turn; a realm out of it fires at half
+    const powder = powderNeed(s, civ.id);
+    const cap0 = mine[0];
+    civ.shortOf = [];
+    if (powder > 0 && cap0) {
+      const have = marketStock(s, cap0).saltpeter ?? 0;
+      if (have < powder) civ.shortOf.push('saltpeter');
+      marketTake(s, cap0, { saltpeter: Math.min(have, powder) });
+    }
     // stores hold only so much: what does not fit is lost
     capStores(s, civ.id, econ);
     if (!civ.researching) civ.researching = nextResearch(s, civ);
@@ -1524,13 +1534,13 @@ function battleInputs(s: GameState, f: Formation, hex: number) {
       name: `${s.civs[f.civId].name} ${f.name}`,
       cohorts: f.cohorts,
       morale: formationMorale(f) + am.morale,
-      boost: boost(am, true, attHome),
+      boost: dryPowder(s, f, boost(am, true, attHome)),
     },
     def: {
       name: defName,
       cohorts: defCohorts,
       morale: (df ? formationMorale(df) + (city ? 15 : 0) : 45) + dm.morale,
-      boost: boost(dm, false, defHome),
+      boost: df ? dryPowder(s, df, boost(dm, false, defHome)) : boost(dm, false, defHome),
     },
     ctx: {
       map: s.map,
@@ -1562,6 +1572,15 @@ export function cityWalls(s: GameState, c: City): { walls: number; guard: number
 
 const cohortSiege = (c: Cohort) => SLOTS.reduce((a, k) => a + (ITEMS[c.loadout[k]].siege ?? 0), 0);
 
+/** Short of powder, a formation's firearms fire at half: its ranged strength drops by their share. */
+function dryPowder<T extends { ranged: number }>(s: GameState, f: Formation, b: T): T {
+  if (!s.civs[f.civId].shortOf?.includes('saltpeter')) return b;
+  const guns = f.cohorts.filter(c => SLOTS.some(k => ITEMS[c.loadout[k]]?.powder)).length;
+  const ranged = f.cohorts.filter(c => cohortRanged(c)).length;
+  if (!guns || !ranged) return b;
+  return { ...b, ranged: b.ranged * (1 - 0.5 * (guns / ranged)) };
+}
+
 /** Cohorts per new levy. */
 export const levySize = (s: GameState, civId: number) =>
   LEVY_COHORTS + Math.floor(civMods(s, civId).levyCohorts);
@@ -1577,7 +1596,7 @@ export const territoryRadius = (s: GameState, civId: number) =>
   TERRITORY_RADIUS + Math.floor(civMods(s, civId).territoryRadius);
 
 /** Later eras cost more than their listed base (indexed by era, 1..4). */
-const ERA_COST = [1, 1.3, 1.6, 2, 4.5];
+const ERA_COST = [1, 1.3, 1.6, 2, 4.5, 3.5];
 
 /** Research cost after culture leanings and bonuses. */
 export function techCost(s: GameState, civ: Civ, id: string): number {

@@ -35,6 +35,7 @@ import { distance, neighbors, within } from '../src/engine/hex.ts';
 import { findPath } from '../src/engine/path.ts';
 import {
   capStores,
+  powderNeed,
   cityDistricts,
   cityEconomy,
   civGoods,
@@ -247,6 +248,31 @@ for (const seed of [1, 2, 3, 42]) {
       civGoods(t, me.id).wool?.traded === -3 && civGoods(t, buyer.id).wool?.traded === 3,
       'selling 3 wool a turn: −3 for us, +3 for them',
     );
+    // a power plant burns oil first (4 electricity), else coal (3)
+    t.civs[me.id].techs.push('electricity');
+    fill(['power-plant']);
+    for (const c of t.cities) if (c.civId === me.id) c.stockpile = { oil: 5, coal: 5 };
+    check(
+      Math.abs(sum('electricity') - 4) < 1e-6,
+      `oil in the market: 4 electricity (${sum('electricity')})`,
+    );
+    for (const c of t.cities) if (c.civId === me.id) c.stockpile = { coal: 5 };
+    check(
+      Math.abs(sum('electricity') - 3) < 1e-6,
+      `coal only: 3 electricity (${sum('electricity')})`,
+    );
+    // firearms burn powder by the turn
+    const gunner = t.formations.find(f => f.civId === me.id && f.kind === 'army')!;
+    for (const co of gunner.cohorts) co.loadout = { ...co.loadout, weapon: 'musket' };
+    check(
+      powderNeed(t, me.id) ===
+        Math.round(gunner.cohorts.reduce((a, c) => a + 0.25 * (c.strength / 100), 0) * 10) / 10,
+      `musketeers burn ${powderNeed(t, me.id)} saltpeter a turn`,
+    );
+    check(
+      (civGoods(t, me.id).saltpeter?.used ?? 0) >= powderNeed(t, me.id),
+      'powder shows in the goods ledger',
+    );
     // the goods ledger: made − used + traded
     const lg = civGoods(t, me.id);
     check(
@@ -276,7 +302,10 @@ for (const seed of [1, 2, 3, 42]) {
     const t = structuredClone(s);
     const tc = t.cities.find(c => c.id === capital.id)!;
     const td = t.districts.find(d => d.id === pd.id)!;
-    t.civs[me.id].techs.push('education', 'philosophy', 'scientific-method');
+    t.civs[me.id].techs.push('education', 'philosophy', 'electricity');
+    // the library reads paper, the lab runs on electricity
+    tc.stockpile.paper = 10;
+    tc.stockpile.electricity = 10;
     tc.pop = 20000;
     const put = (i: number, type: string | null) =>
       (td.slots[i] = type

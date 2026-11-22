@@ -33,6 +33,7 @@ import { distance, neighbors, within, type Grid } from './hex.ts';
 import { hexFood } from './mapgen.ts';
 import type { City, District, GameState, SlotState, Tier } from './types.ts';
 import { civMods, pct } from './mods.ts';
+import { ITEMS } from '../data/items.ts';
 import { lineBonus, warPenalty } from './dynasty.ts';
 
 export const WORKER_SHARE = 0.5;
@@ -371,17 +372,22 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
         reports.push({ problem: null, staffed: false, rate: 0, out, idle: 'No workers' });
         continue;
       }
+      // a better fuel first (oil in a power plant), else what it usually burns
+      const has = (want: Record<string, number>) =>
+        Object.entries(want).every(([gd, n]) => (stock[gd] ?? 0) - (inputs[gd] ?? 0) >= n);
+      const useAlt = !!t.alt && has(t.alt.inputs);
+      const need = useAlt ? t.alt!.inputs : (t.inputs ?? {});
       // short of what it burns: it limps along at a third, using nothing
-      const short = Object.entries(t.inputs ?? {}).filter(
+      const short = Object.entries(need).filter(
         ([gd, n]) => (stock[gd] ?? 0) - (inputs[gd] ?? 0) < n,
       );
       free -= t.labour;
       if (!short.length)
-        for (const [gd, n] of Object.entries(t.inputs ?? {})) inputs[gd] = (inputs[gd] ?? 0) + n;
+        for (const [gd, n] of Object.entries(need)) inputs[gd] = (inputs[gd] ?? 0) + n;
       used[t.id] = (used[t.id] ?? 0) + 1;
       let rate = used[t.id] <= capacity(s, c.civId, c.hex, t) ? 1 : 0.5;
       if (short.length) rate /= 3;
-      addYield(out, t.out, rate);
+      addYield(out, useAlt ? t.alt!.out : t.out, rate);
       // what lies on the land: one deposit per building, in turn
       let note: string | undefined;
       const w = workable(s, c.civId, c.hex, t.id, typeCount[t.id] ?? 0);
@@ -805,6 +811,8 @@ export function civGoods(s: GameState, civId: number): Record<string, GoodLine> 
     for (const [g, n] of Object.entries(e.inputs)) line(g).used += n;
     for (const [g, n] of Object.entries(c.stockpile)) if (n > 0) line(g).stock += n;
   }
+  const powder = powderNeed(s, civId);
+  if (powder) line('saltpeter').used += powder;
   for (const t of s.treaties) {
     if (t.kind !== 'trade' || (t.a !== civId && t.b !== civId)) continue;
     const give = t.a === civId ? t.aGives : t.bGives;
@@ -859,4 +867,16 @@ export function capStores(s: GameState, civId: number, econ?: Map<number, CityEc
     const k = lim / n;
     for (const c of mine) if (c.stockpile[g]) c.stockpile[g] *= k;
   }
+}
+
+/** Saltpeter a realm's firearms burn as powder each turn. */
+export function powderNeed(s: GameState, civId: number): number {
+  let n = 0;
+  for (const f of s.formations) {
+    if (f.civId !== civId) continue;
+    for (const c of f.cohorts)
+      for (const k of Object.keys(c.loadout) as (keyof typeof c.loadout)[])
+        n += (ITEMS[c.loadout[k]]?.powder ?? 0) * (c.strength / 100);
+  }
+  return Math.round(n * 10) / 10;
 }

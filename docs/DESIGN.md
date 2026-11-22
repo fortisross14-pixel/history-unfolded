@@ -419,6 +419,23 @@ would pay and starts from the best bid. Peoples value goods by their own balance
 turn is dear, a steady surplus piling up is cheap. AI peoples offer to sell what you run short
 of, or to buy what you have to spare. A seller who cannot deliver is remembered for it.
 
+### 8.0b Goods through the ages (as built)
+
+About 28 goods are in play, and they arrive over time:
+
+| Age | New goods | Where from | Spent on, every turn | Spent on, once |
+|---|---|---|---|---|
+| Ancient | wood, stone, hides, wool, salt, copper, tin, horses, gold, silver; luxuries (ivory, furs, spices, silk, dyes, wine, sugar, pearls, whale oil) | woodcutters, mines, pastures, plantations, lodges, boats | workshops (wood), smithies (copper, tin), tanneries (hides), weavers (wool), mints (gold), comforts (luxuries, salt) | buildings, gear (bronze, horses) |
+| Classical | iron; paper | mines (Iron Working); paper mills | libraries (paper) | iron gear |
+| Medieval | coal, saltpeter; cloth, leatherwork, tools | mines (Mineralogy, Alchemy); weavers, tanneries, smithies | city hearths (coal or wood), comforts (cloth, leatherwork) | — |
+| Renaissance | steel | foundries (coal, iron) | printing houses (paper), firearms (saltpeter as powder) | guns |
+| Industrial | oil, electricity | mines (Oil Drilling); power plants (oil, else coal) | railway stations (coal), steam pumps and sawmills (coal), power plants (oil or coal), factories (tools, electricity), research labs (electricity), food packaging (salt) | rifles (steel), factories, plants and stations (steel) |
+
+- **Powder**: arquebuses, muskets, field guns and rifles burn saltpeter each turn (a quarter of a
+  unit per cohort, half for guns). A realm out of it fires its firearms at half strength.
+- Short of what it burns, a building runs at a third; a city without fuel loses 15%.
+- Uranium waits for a Modern age, not built yet.
+
 ### 8.1 Cities, roads and markets (as built)
 
 - Every city has its **own store**. What its districts produce goes there.
@@ -557,13 +574,14 @@ contact with very different cultures, low stability).
 
 ### 10.1 As built
 
-- **Four ages, one small tree each** (Ancient 13 techs, Classical 16, Medieval 15, Renaissance
-  12). Prerequisites only link techs of the same age, and most techs have none, so an age's techs
+- **Five ages, one small tree each** (Ancient 13 techs, Classical 16, Medieval 15, Renaissance
+  12, Industrial 7: Steam Power, Railways, Machine Tools, Food Preservation, Oil Drilling, Rifling,
+  Electricity). Prerequisites only link techs of the same age, and most techs have none, so an age's techs
   can be taken in almost any order. Each age ends in a **gate tech** (Classical Age, Medieval
   Age, Renaissance Age) that opens once a people knows about two thirds of the age (9, 11, 10
   techs: any of them) and unlocks the next age. Skipped techs stay available later. The research
   screen shows only the ages reached, current age first; later ages stay hidden.
-- Base costs scale by age (×1.3, ×1.6, ×2, ×4.5: science grows with population, so the last age
+- Base costs scale by age (×1.3, ×1.6, ×2, ×4.5, ×3.5 on larger bases: science grows with population, so the last age
   must cost far more to last). In AI test games the leading people has about 47 techs by
   turn 200 and the whole tree around turn 320–330 of 400 (`scripts/pace.ts`). Science is stored
   even while nothing is being researched.
@@ -633,27 +651,38 @@ The great houses are the thread through the game.
 
 - **One house rules from the start.** Once the realm has 3 settlements, two more rise in the
   Classical age, a fourth in the Medieval, a fifth in the Renaissance (at most 5).
-- **Every settlement has a governor house** (the throne by default). Assign them from the
-  Houses screen (Y) or the settlement panel.
-- **Trinkets**: a finished building of a line has a 12% chance to yield a trinket of that line
-  (an astrolabe, a miner's lamp, a ledger of debts…). Give trinkets to houses: each adds +10% to
-  its line in the settlements the house governs; the ruling house lends half of its trinkets to
-  the whole realm. A house specialised in research governing research cities is very strong.
-- **Power and unrest**: a house's power is the people it governs, plus 500 per trinket. A house
-  that outweighs the throne grows restless (faster the bigger the gap; a throne under a third of
-  the realm makes everyone restless); one close to it grumbles; the rest calm down. Taking a
-  settlement from a house offends it (+10). **Honours** at court (15 gold per settlement) calm a
+- **Traits and levels.** Each house is born with 2 points in one area and 1 in another. Areas are
+  the building lines (food, wood, mining, science, religion and arts, money, industry) and war.
+  A house's **level** in an area runs 0 to 10: its traits, plus **experience** from governing
+  (a settlement fully given to a line teaches 1 a turn; 40 make a level), plus its **trinkets**.
+  A level-2 research house put in a military town, given war trophies, slowly becomes a war house.
+- **Governors.** Every settlement is governed by a house (the throne by default), from the Houses
+  screen (Y) or the settlement panel. Each level adds +10% to its line where the house governs;
+  the ruling house lends half of its levels to the whole realm. War levels season the levies
+  raised there (+1 battle per 3 levels) and muster more guards.
+- **Trinkets** come from building (12% per finished building of a line), from **great
+  buildings** (always two of their line), from **captured settlements** (a treasure of what the
+  place was known for) and from **broken armies** (a war trophy, 25% when the enemy loses 300+).
+  The **War College** (Medieval, one per realm) seasons every levy of the realm and teaches its
+  governing house war three times as fast.
+- **Power and unrest.** Power is the people a house governs, plus 300 per level. A house that
+  outweighs the throne grows restless (at most 12 a turn); one close to it grumbles; the rest calm
+  down. Taking a settlement from a house offends it (+10). Honours (15 gold per settlement) calm a
   house by 35; a trinket given calms it by 10.
-- **Civil war** at 100 unrest: the rebel house's settlements make half, the others a tenth less.
-  After 8 turns the war is decided by the people each side governs (the rebels' trinkets and the
-  throne's armies count). If the rebels win they take the throne and half the old house's
-  trinkets; if they lose, their trinkets return to the treasury and their settlements to the
-  throne. The throne can also yield at once to spare the realm.
-- **Democracy** (politics, after Constitution): the houses become parties. Assignment is free
-  (no offence), the party governing the most people leads, unrest grows at a quarter of the rate,
-  and trinkets count for 40%.
-- AI peoples keep about half the realm under the throne, give the rest to the house that favours
-  each settlement's line, honour restless houses, and yield a war they are losing badly.
+- **Civil war** at 100 unrest. **The realm splits.** The player chooses a side: that side keeps
+  its settlements, the other houses with theirs, and the alliances. The other house's settlements,
+  with the armies and ships nearest them, become a realm of their own, at war; no treaty ends it.
+  - Take all their settlements and the war is won at once.
+  - After **10 turns** the side with the bigger army takes the throne and the realm is one again.
+    The losing house gives up half its trinkets and half its learning.
+  - Armies **within 90–110%** of each other: **stalemate**. Two realms remain, at peace.
+  - The throne can yield at any time. A choice left open defaults to the throne; AI thrones stand
+    with themselves.
+- **Democracy** (politics, after Constitution): the houses become parties. Assignment is free,
+  the party governing the most people leads, unrest grows at a quarter of the rate, and levels
+  count for 40%.
+- AI peoples keep about half the realm under the throne, give the rest to the house strongest in
+  each settlement's line, honour restless houses, and yield a civil war when outgunned two to one.
 
 ## 12. Victory and game length
 

@@ -57,11 +57,11 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   mining, wood, culture, gold and industry, with the multipliers late. Buildings need workers and something on
   the settlement's land (forest, flat land, a deposit), boost their neighbours, and are built by
   its production. Save layouts as blueprints. Houses give room to grow.
-- **Dynasties**: one ruling house at first, up to five as the ages turn. Houses govern
-  settlements and specialise through trinkets found while building (+10% to their line where
-  they govern; the throne lends half to all). A house that outweighs the throne grows restless
-  and may rise in civil war for the crown; honours calm it. Under Democracy houses become
-  parties: freer and safer, but weaker.
+- **Dynasties**: one ruling house at first, up to five as the ages turn. Houses are born with
+  traits and grow levels (0–10) by governing settlements of a line and through trinkets from
+  building, great buildings, conquest and battle. A house that outweighs the throne may rise:
+  the realm splits, you pick a side, and after 10 turns the bigger army takes the throne (or a
+  stalemate leaves two realms). Under Democracy houses become parties.
 - **Building lines**: base buildings, a support (+½ to each base), one modern multiplier per
   district (×2) and one great building per realm (+200%): Royal Granaries, King's Mine,
   Cathedral, Academy of Sciences, Stock exchange, Ironworks, Royal Forest.
@@ -69,6 +69,9 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   wheat, fish and forest add more, cattle bring leather and sheep wool. Special goods (coal,
   iron, gold, sugar, spices, furs, whales, pearls…) need three of the working building in one
   district, then add up: eight mines by coal dig eight coal a turn.
+- **Five ages, about 28 goods**: coal and saltpeter in the Medieval age, steel in the
+  Renaissance, oil and electricity in the Industrial age. Railways burn coal, power plants oil or
+  coal, factories and labs electricity, firearms powder.
 - **Goods by the turn**: settlements consume luxuries as comforts, cities burn coal or wood,
   smithies, tanneries, weavers, mints and foundries work goods up; what runs out lowers yields.
   The Goods screen (G) shows made, used, traded and net per good and sells a surplus by the turn

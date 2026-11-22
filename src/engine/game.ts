@@ -1391,8 +1391,8 @@ export const levySize = (s: GameState, civId: number) =>
 export const territoryRadius = (s: GameState, civId: number) =>
   TERRITORY_RADIUS + Math.floor(civMods(s, civId).territoryRadius);
 
-/** Later eras cost more than their listed base. */
-const ERA_COST = [1, 1.5, 2, 2.5, 3];
+/** Later eras cost more than their listed base (indexed by era, 1..4). */
+const ERA_COST = [1, 1.5, 2, 3, 6];
 
 /** Research cost after culture leanings and bonuses. */
 export function techCost(s: GameState, civ: Civ, id: string): number {

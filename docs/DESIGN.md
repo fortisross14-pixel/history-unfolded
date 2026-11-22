@@ -195,6 +195,15 @@ The player *can* find an overwhelming combination; we only make sure it has a na
 
 Numbers are data, not code (§12), so tuning is a spreadsheet job.
 
+**Balance pass (as built).** `scripts/battles.ts` (and `--late`) fights every army against
+every other. The early circle it aims for: spears beat riders (they blunt the charge and keep
+hurting horsemen in melee in proportion to how much of the enemy front is mounted), riders beat
+archers and two-handed axemen (charge 6), swords beat spears, and axes are the cheap way to crack
+armour (attack 4, crush) rather than the best weapon outright. A set spear's answer to a charge
+ignores 40% of armour. Late, knights stay strong but cost about twice a pike block; longbows hit
+harder than crossbows (7) without needing iron, crossbows pierce more (40% against 20%). Mixed
+armies at the same cost beat pure ones: 6 swords and 4 archers hold 10 swords for far less tin.
+
 ### 6.4 Naval (as built)
 
 - **Ship designs** use the same designer as troops, with four slots: **Hull** (dugout, galley,
@@ -448,8 +457,9 @@ contact with very different cultures, low stability).
 ### 10.1 As built
 
 - **57 techs in 4 eras** (Ancient 13, Classical 16, Medieval 16, Renaissance 12). Each has a
-  base cost scaled by era (×1.5, ×2, ×2.5, ×3). In AI test games a people reaches about 35 techs
-  by turn 200 and 50 by turn 300.
+  base cost scaled by era (×1.5, ×2, ×3, ×6: science grows with population, so the last era has
+  to cost far more to last). In AI test games the leading people has about 44 techs by turn 200,
+  55 by turn 300 and the full tree around turn 340 of 400 (`scripts/pace.ts`).
 - Techs unlock **equipment** (iron swords, composite bows, longbows, crossbows, pikes, lances,
   arquebuses, muskets, field guns, kite shields, pavises, iron helmets, great helms, chain mail,
   plate, cuirasses, hobnailed boots, heavy and barded horses, siege ladders, bayonets),
@@ -496,8 +506,12 @@ contact with very different cultures, low stability).
 - **8–10 civs per game, all identical at start**: same starting units (1 Settlers, 1 levy of
   5 cohorts, 1 Scout), same tech, empty culture web. Only name, colour and leader portrait differ.
   Players may pick a name/colour/banner.
-- Start positions are balanced by the map generator (comparable food, at least one strategic
-  deposit within 6 hexes).
+- Start positions are balanced by the map generator: every start gets wood, a food deposit and
+  copper or stone plus horses nearby; starts keep at least 0.6 of an even spread apart; and any
+  start below 85% of the median value (food within 2 hexes, deposits, open land within 3) is
+  lifted by softening poor land, greening plains and adding food. `scripts/mapcheck.ts` checks
+  the poorest start against the median over 120 maps (worst about 0.63, mostly peninsulas that
+  have the sea instead).
 - **AI personalities** are not built in. Each AI gets a few **leanings** (e.g. "likes the sea",
   "likes order") that only weight its early culture picks, then its own tags drive the rest.
 - **AI design of troops and districts:** the AI picks from a library of sensible loadout

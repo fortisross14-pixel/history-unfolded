@@ -792,6 +792,27 @@ In 320-turn AI games each realm met one or two crises, from mid-game on, mostly 
 schism: AI realms keep food and gold in hand, so famine and debt are the player's own risks.
 Next: world crises that touch several peoples at once (a continental plague).
 
+## 12d. Age policies (as built)
+
+Every age brings one question the realm keeps answering, as a lever with three positions on the
+Nation screen (O): two sides that each give and cost, and a balanced middle with no effect. A
+lever can be moved again 10 turns after it was last moved. Earlier levers stay in force, so a
+late realm pulls five; the new one is shown on the age card. Kept deliberately small: no new
+screens, no new resources, every effect stated in one line.
+
+| Age | Policy | Left | Right |
+| --- | --- | --- | --- |
+| Ancient | Way of Life | Migratory: settlers −25% people, +1 sight, growth −10% | Settled: growth +10%, food +5%, settlers +25% people |
+| Classical | Revenue | Light Taxes: growth +10%, culture +5%, gold −10% | Heavy Taxes: gold +15%, houses +1 unrest/turn, debt less likely |
+| Medieval | Feudal Balance | Noble Autonomy: houses −1 unrest/turn, levies −1 cohort | Royal Authority: levies +1 cohort, +1 guard, houses +1.5 unrest/turn |
+| Renaissance | Trade Policy | Mercantilism: production +10%, gold +5%, culture −5%, plague less likely | Free Trade: gold +10%, science +10%, plague more likely |
+| Industrial | Labour | Laissez-faire: production +15%, strikes far more likely | Welfare: growth +10%, gold −10%, strikes half as likely |
+
+AI peoples review their levers every 5 turns from their own situation (few settlements →
+migratory; restless houses → autonomy; crowding → mercantilism; many factories → welfare).
+Policies are the per-age system of the Dynamic Ages plan in its simplest form; the plague events
+of the event pools were retired so plague exists once, as the crisis.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

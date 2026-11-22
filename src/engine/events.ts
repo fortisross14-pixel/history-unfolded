@@ -610,6 +610,8 @@ function rollEvent(s: GameState, civ: Civ, r: Rng): PendingEvent | null {
   const met = civ.met.map(id => s.civs[id]).filter(o => o.alive);
   const options: { e: HistoryEvent; ctx: EventCtx; w: number }[] = [];
   for (const e of HISTORY_EVENTS) {
+    // sickness is now the Plague crisis (crises.ts): one plague, not three
+    if (e.id === 'plague') continue;
     const ctx: EventCtx = {};
     if (e.needs.includes('city')) ctx.city = pick(r, cities);
     if (e.needs.includes('other'))

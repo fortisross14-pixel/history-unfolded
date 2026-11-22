@@ -2344,3 +2344,36 @@ input.rename {
 .crisis-line {
   margin: 4px 0 8px;
 }
+
+/* age policies: one three-way lever per age */
+.policies {
+  display: grid;
+  gap: 8px;
+}
+.policy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--iv-line-soft);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.policy-lever {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+}
+.policy-lever button {
+  min-height: 40px;
+  padding: 4px 6px;
+}
+.policy-lever button.on {
+  background: var(--iv-teal);
+  color: var(--iv-on-teal);
+  border-color: var(--iv-teal-edge);
+}
+@media (pointer: coarse) {
+  .policy-lever button {
+    min-height: 48px;
+  }
+}

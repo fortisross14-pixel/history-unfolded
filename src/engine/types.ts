@@ -138,6 +138,8 @@ export interface Civ {
   /** last turn each crisis struck, and the earliest turn the next may */
   crisisLast?: Record<string, number>;
   crisisNext?: number;
+  /** age policies (data/policies.ts): lever position −1, 0 (balanced) or +1, and when moved */
+  policies?: Record<string, { pos: number; since: number }>;
   /** national directions taken (data/paths.ts), in order */
   paths?: string[];
   /** an age (2 or 4) whose national direction is still to be chosen */

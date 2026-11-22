@@ -922,6 +922,8 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
     const options: { e: EventDef; sub: Subject; w: number }[] = [];
     for (const e of EVENTS) {
       if (e.followUp) continue;
+      // sickness is now the Plague crisis (crises.ts): one plague, not three
+      if (e.id === 'plague') continue;
       if (s.turn - lastTurn(e.id) < e.cooldown) continue;
       const sub = e.subject(s, civ, r);
       if (!sub || !ctxOf(s, civ, sub)) continue;

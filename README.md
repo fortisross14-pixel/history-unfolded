@@ -84,6 +84,8 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   Renaissance; Diplomatic and Scientific in the Industrial age. Progress on the Victory screen (V).
 - **National directions**: on entering the Classical age and the Renaissance, choose a lasting
   direction with an edict (Nation screen, O); some are alternate developments earned by history.
+- **Age policies**: one three-way lever per age (way of life, revenue, feudal balance, trade,
+  labour) on the Nation screen; each side gives and costs, the middle is balanced.
 - **Crises**: famine, debt, plague, schism and strikes grow out of the realm's own state (crowding,
   hunger, overspending, religious tension, factories); each changes play for a while and has
   several ways out. The Nation screen shows the pressures building.

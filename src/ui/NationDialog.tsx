@@ -12,6 +12,8 @@ import {
 import type { Civ, GameState } from '../engine/types.ts';
 import { VICTORIES } from '../engine/victory.ts';
 import { activeCrisis, crisisRisks } from '../engine/crises.ts';
+import { POLICY_COOLDOWN, POLICY_LIST, sideOf } from '../data/policies.ts';
+import { openPolicies, policyProblem, positionOf, setPolicy } from '../engine/policies.ts';
 
 /**
  * The nation: the directions taken, their edicts, and a direction still to choose. Opened as the
@@ -40,6 +42,8 @@ export function NationDialog({
   const opened = age ? VICTORIES.filter(v => v.opensAt === age) : [];
   const crisis = activeCrisis(game, civ);
   const risks = crisisRisks(game, civ);
+  // on an age card only the policy that age opens; otherwise every open lever
+  const levers = age ? POLICY_LIST.filter(p => p.age === age) : openPolicies(civ);
   return (
     <div className="modal-back" onClick={onClose}>
       <div
@@ -52,7 +56,7 @@ export function NationDialog({
         <header>
           <h2>
             {age ? `Entering the ${ERAS[age]} Age` : 'Nation'}{' '}
-            <small>{age ? sys?.system : 'directions, legacies and edicts'}</small>
+            <small>{age ? sys?.system : 'policies, directions and edicts'}</small>
           </h2>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
@@ -106,6 +110,58 @@ export function NationDialog({
               {locked.map(p => (
                 <PathCard key={p.id} p={p} civ={civ} locked />
               ))}
+            </div>
+          </>
+        )}
+
+        {levers.length > 0 && (
+          <>
+            <h3>{age ? 'A new policy' : 'Policies'}</h3>
+            <p className="muted small">
+              {age
+                ? 'Every age brings one question your realm keeps answering. Earlier policies stay in force.'
+                : `One lever per age. The middle is balanced; each side gives and costs. A lever can be moved again ${POLICY_COOLDOWN} turns after it was last moved.`}
+            </p>
+            <div className="policies">
+              {levers.map(p => {
+                const pos = positionOf(civ, p.id);
+                const why = policyProblem(game, civ, p.id);
+                const side = sideOf(p, pos);
+                return (
+                  <section key={p.id} className="policy">
+                    <div className="policy-head">
+                      <b>{p.name}</b> <small className="muted">{p.question}</small>
+                    </div>
+                    <div className="policy-lever" role="radiogroup" aria-label={p.name}>
+                      {([-1, 0, 1] as const).map(v => (
+                        <button
+                          key={v}
+                          role="radio"
+                          aria-checked={pos === v}
+                          className={pos === v ? 'on' : ''}
+                          disabled={pos !== v && !!why}
+                          title={
+                            why ??
+                            (v === -1 ? p.left.effects : v === 1 ? p.right.effects : 'No effect')
+                          }
+                          onClick={() => pos !== v && report(setPolicy(game, civ.id, p.id, v))}
+                        >
+                          {v === -1 ? p.left.name : v === 1 ? p.right.name : 'Balanced'}
+                        </button>
+                      ))}
+                    </div>
+                    <small>
+                      {side ? side.effects : 'Balanced: no effect.'}
+                      {why && pos !== 0 ? ` ${why}` : ''}
+                    </small>
+                    {!side && (
+                      <small className="muted">
+                        {p.left.name}: {p.left.effects}. {p.right.name}: {p.right.effects}.
+                      </small>
+                    )}
+                  </section>
+                );
+              })}
             </div>
           </>
         )}

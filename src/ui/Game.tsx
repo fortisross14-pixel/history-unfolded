@@ -792,7 +792,7 @@ export function Game({
           onClick={() => setDialog({ kind: 'victory' })}
           title="Victory: the ways to win (V)"
         >
-          <Icon name="laurel" /> Victory
+          <Icon name="target" /> Victory
           {rivalHold ? <b className="war-pill">{rivalHold} close</b> : ''}
         </button>
         <button

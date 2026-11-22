@@ -63,6 +63,8 @@ import { difficultyOf, yieldFactor } from './difficulty.ts';
 import { victoryTurn } from './victory.ts';
 import { aiPathTurn, enterAge } from './paths.ts';
 import { crisisTurn } from './crises.ts';
+import { aiPolicyTurn, policyTurn } from './policies.ts';
+import { settlerFactor } from '../data/policies.ts';
 import { realmEventTurn, settleRealmEvent } from './realmEvents.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
@@ -1144,6 +1146,9 @@ export function endTurn(s: GameState): string[] {
     // hard times that grow out of the realm's own state
     const cr = crisisTurn(s, civ);
     if (civ.isPlayer) events.push(...cr);
+    // age policies pull on the noble houses; AI peoples review their levers
+    policyTurn(s, civ);
+    if (!civ.isPlayer) aiPolicyTurn(s, civ);
   }
   events.push(...diplomacyTurn(s));
   events.push(...historyTurn(s));
@@ -1736,7 +1741,12 @@ export const levySize = (s: GameState, civId: number) =>
 export const housingLevyExtra = (s: GameState, c: City) =>
   Math.min(3, Math.floor(housingCells(s, c).spare / 2));
 export const settlersCost = (s: GameState, c: City) =>
-  Math.round((SETTLERS_PEOPLE * Math.max(0.6, 1 - 0.1 * housingCells(s, c).spare)) / 50) * 50;
+  Math.round(
+    (SETTLERS_PEOPLE *
+      Math.max(0.6, 1 - 0.1 * housingCells(s, c).spare) *
+      settlerFactor(s.civs[c.civId])) /
+      50,
+  ) * 50;
 export const territoryRadius = (s: GameState, civId: number) =>
   TERRITORY_RADIUS + Math.floor(civMods(s, civId).territoryRadius);
 

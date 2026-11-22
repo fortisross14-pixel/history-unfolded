@@ -6,6 +6,7 @@
  * pressure reaches 1), the chance is shown, and fixing the cause ends some crises early.
  */
 import { ageOf } from '../data/techs.ts';
+import { pressureFactor } from '../data/policies.ts';
 import { canStartUpheaval, startUpheaval, UPHEAVAL_AT } from './culture.ts';
 import { difficultyOf } from './difficulty.ts';
 import { cityDistricts } from './economy.ts';
@@ -344,6 +345,12 @@ export const CRISES: CrisisDef[] = [
   },
 ];
 
+/** A crisis's pressure on a realm, after its age policies (free trade spreads plague…). */
+export function pressureOf(s: GameState, civ: Civ, def: CrisisDef) {
+  const p = def.pressure(s, civ);
+  return { value: p.value * pressureFactor(civ, def.id), why: p.why };
+}
+
 export const CRISIS: Record<string, CrisisDef> = Object.fromEntries(CRISES.map(c => [c.id, c]));
 
 /** The crisis a realm is in, with what drives it, how long it lasts and what it can do. */
@@ -356,7 +363,7 @@ export function activeCrisis(s: GameState, civ: Civ) {
     def,
     state: st,
     left: Math.max(0, st.until - s.turn),
-    why: def.pressure(s, civ).why,
+    why: pressureOf(s, civ, def).why,
     choices: def.responses.map(r => ({
       label: r.label,
       effect: r.effect(s, civ),
@@ -371,7 +378,7 @@ export function activeCrisis(s: GameState, civ: Civ) {
 export function crisisRisks(s: GameState, civ: Civ) {
   const a = age(civ);
   return CRISES.filter(d => a >= d.ages[0] && a <= d.ages[1])
-    .map(d => ({ def: d, ...d.pressure(s, civ) }))
+    .map(d => ({ def: d, ...pressureOf(s, civ, d) }))
     .filter(r => r.value >= 0.6)
     .sort((x, y) => y.value - x.value);
 }
@@ -436,7 +443,7 @@ export function crisisTurn(s: GameState, civ: Civ): string[] {
   for (const def of CRISES) {
     if (a < def.ages[0] || a > def.ages[1]) continue;
     if (s.turn - (civ.crisisLast?.[def.id] ?? -Infinity) < 60) continue;
-    const p = def.pressure(s, civ);
+    const p = pressureOf(s, civ, def);
     if (p.value < 1 || r() > chance) continue;
     civ.crisis = { id: def.id, since: s.turn, until: s.turn + def.turns };
     log(s, civ.id, `${def.name} strikes the ${civ.name}.`);

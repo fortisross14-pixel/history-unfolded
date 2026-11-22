@@ -4,6 +4,7 @@ import { addMods, ZERO_MODS, type Mods } from '../data/mods.ts';
 import { TECHS } from '../data/techs.ts';
 import { PATHS } from '../data/paths.ts';
 import { CRISIS_MODS } from '../data/crisisMods.ts';
+import { policySides } from '../data/policies.ts';
 import type { Civ, GameState } from './types.ts';
 
 const cache = new WeakMap<Civ, { key: string; mods: Mods }>();
@@ -42,7 +43,11 @@ export const UPHEAVAL_PENALTY: Partial<Mods> = {
 export function civMods(s: GameState, civId: number): Mods {
   const civ = s.civs[civId];
   const c = civ.culture;
-  const key = `${civ.techs.length}|${c.taken.length}|${c.legacy.length}|${c.upheaval ? c.upheaval.domain : ''}|${civ.paths?.length ?? 0}|${civ.crisis ? civ.crisis.id + (civ.crisis.eased ? 'e' : '') : ''}`;
+  const key = `${civ.techs.length}|${c.taken.length}|${c.legacy.length}|${c.upheaval ? c.upheaval.domain : ''}|${civ.paths?.length ?? 0}|${civ.crisis ? civ.crisis.id + (civ.crisis.eased ? 'e' : '') : ''}|${Object.entries(
+    civ.policies ?? {},
+  )
+    .map(([k, v]) => k + v.pos)
+    .join()}`;
   const hit = cache.get(civ);
   if (hit && hit.key === key) return hit.mods;
   const m = ZERO_MODS();
@@ -61,6 +66,8 @@ export function civMods(s: GameState, civId: number): Mods {
   // a crisis changes play while it lasts; eased, by half
   if (civ.crisis && CRISIS_MODS[civ.crisis.id])
     addMods(m, CRISIS_MODS[civ.crisis.id], civ.crisis.eased ? 0.5 : 1);
+  // age policies: the side each lever sits on
+  for (const side of policySides(civ)) addMods(m, side.mods);
   cache.set(civ, { key, mods: m });
   return m;
 }

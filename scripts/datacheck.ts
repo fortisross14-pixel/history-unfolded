@@ -38,8 +38,10 @@ const unlocks = (id: string) =>
   SLOT_LIST.filter(s => s.tech === id).length +
   (TECHS[id].mods ? 1 : 0) +
   Object.values(DEPOSITS).filter(d => d.revealedBy === id).length;
+// national projects (Scientific victory) are steps toward the win, not unlocks
 for (const t of TECH_LIST)
-  if (t.gate === undefined && !unlocks(t.id)) errs.push(`tech ${t.id} unlocks nothing`);
+  if (t.gate === undefined && !t.project && !unlocks(t.id))
+    errs.push(`tech ${t.id} unlocks nothing`);
 // ages: prerequisites stay inside an age; every age after the first has one gate, and it can be met
 for (const t of TECH_LIST)
   for (const r of t.requires)

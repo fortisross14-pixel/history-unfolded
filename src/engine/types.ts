@@ -118,6 +118,16 @@ export interface Civ {
   isPlayer: boolean;
   /** a free people: one city, never expands; can be befriended, allied, absorbed or conquered */
   independent?: boolean;
+  /** last turn's output, for the dominance victories: wealth made (GDP) and culture */
+  stats?: { gdp: number; culture: number };
+  /** national directions taken (data/paths.ts), in order */
+  paths?: string[];
+  /** an age (2 or 4) whose national direction is still to be chosen */
+  pathDue?: 2 | 4;
+  /** last turn each direction's edict was issued */
+  edicts?: Record<string, number>;
+  /** settlements taken in war, for the Age of Conquest */
+  captured?: number;
   techs: string[];
   researching: string | null;
   /** a later tech the player aims for; research follows its prerequisites */
@@ -327,7 +337,14 @@ export interface GameState {
   treaties: Treaty[];
   proposals: Proposal[];
   /** set when the game is decided */
-  ended?: { winner: number; reason: 'conquest' | 'score' | 'defeat' };
+  ended?: {
+    winner: number;
+    reason: 'conquest' | 'score' | 'defeat' | 'cultural' | 'economic' | 'diplomatic' | 'scientific';
+  };
+  /** a people holding a victory's goal, and since when (victories that must be held) */
+  holding?: Record<string, { civId: number; since: number }>;
+  /** the age the player just entered: shows the "Entering the age" card until closed */
+  ageCard?: number;
   districts: District[];
   /** 1 where a road runs, per hex */
   roads: number[];

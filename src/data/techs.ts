@@ -19,6 +19,8 @@ export interface TechInfo {
   note: string;
   /** an age gate: needs this many techs of its own age, and opens the next age */
   gate?: number;
+  /** a national project of the Scientific victory: the order it comes in (1–3) */
+  project?: number;
 }
 
 export const ERAS = ['', 'Ancient', 'Classical', 'Medieval', 'Renaissance', 'Industrial'];
@@ -268,6 +270,42 @@ export const TECH_LIST: TechInfo[] = [
     ['machine-tools'],
     'Power plants make electricity; factories and research labs run on it.',
     { favoured: 'rationalist' },
+  ),
+  // ---- the Scientific victory: three national projects once every Industrial tech is known
+  t(
+    'great-observatory',
+    'Great Observatory',
+    5,
+    900,
+    [
+      'steam-power',
+      'railways',
+      'machine-tools',
+      'preservation',
+      'oil-drilling',
+      'rifling',
+      'electricity',
+    ],
+    'National project 1 of 3 toward the Scientific victory: the heavens measured.',
+    { project: 1 },
+  ),
+  t(
+    'transcontinental-telegraph',
+    'Transcontinental Telegraph',
+    5,
+    1100,
+    ['great-observatory'],
+    'National project 2 of 3 toward the Scientific victory: news at the speed of light.',
+    { project: 2 },
+  ),
+  t(
+    'powered-flight',
+    'First Powered Flight',
+    5,
+    1300,
+    ['transcontinental-telegraph'],
+    'National project 3 of 3: completing it wins the Scientific victory.',
+    { project: 3 },
   ),
 ];
 

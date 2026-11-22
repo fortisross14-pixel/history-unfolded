@@ -5,7 +5,7 @@
 import { CITY_NAMES, CIV_PRESETS, INDEPENDENT_PRESETS } from '../data/civs.ts';
 import { independentTurn } from './independents.ts';
 import { historyTurn } from './events.ts';
-import { DEPOSITS } from '../data/goods.ts';
+import { DEPOSITS, GOODS } from '../data/goods.ts';
 import { isWater, type ReliefId, type TerrainId, type VegetationId } from '../data/terrain.ts';
 import { DEFAULT_LOADOUT, isNavalLoadout, ITEMS, SLOTS, type Loadout } from '../data/items.ts';
 import { AGE_GATE, ageOf, ageTechs, ERAS, TECHS, TECH_LIST } from '../data/techs.ts';
@@ -60,6 +60,8 @@ import {
 } from './dynasty.ts';
 import { AREA_NAMES, type Area } from '../data/dynasties.ts';
 import { difficultyOf, yieldFactor } from './difficulty.ts';
+import { victoryTurn } from './victory.ts';
+import { aiPathTurn, enterAge } from './paths.ts';
 import { realmEventTurn, settleRealmEvent } from './realmEvents.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
@@ -1075,6 +1077,14 @@ export function endTurn(s: GameState): string[] {
     }
     // stores hold only so much: what does not fit is lost
     capStores(s, civ.id, econ);
+    // what the realm made this turn, for the dominance victories
+    let gdp = gold * yf;
+    for (const e of econ.values()) {
+      gdp += e.total.prod + Math.max(0, e.surplus) * 0.25;
+      for (const [k, n] of Object.entries(e.total.goods))
+        gdp += n * (GDP_WEIGHT[GOODS[k]?.kind ?? 'raw'] ?? 1);
+    }
+    civ.stats = { gdp: Math.round(gdp), culture: Math.round(culture * yf) };
     if (!civ.researching) civ.researching = nextResearch(s, civ);
     // science is stored even while nothing is chosen, so choosing late costs nothing
     civ.science += science * yf;
@@ -1087,6 +1097,7 @@ export function endTurn(s: GameState): string[] {
         civ.researching = null;
         if (t.gate !== undefined) {
           log(s, civ.id, `The ${civ.name} enter the ${ERAS[t.era + 1]} age.`);
+          enterAge(s, civ, t.era + 1);
           if (civ.isPlayer)
             events.push(
               `A new age: the ${ERAS[t.era + 1]}. ${ageTechs(t.era + 1).length} new techs to research.`,
@@ -1105,6 +1116,8 @@ export function endTurn(s: GameState): string[] {
     if (civ.isPlayer) events.push(...msgs);
     const dyn = dynastyTurn(s, civ);
     if (civ.isPlayer) events.push(...dyn);
+    // AI peoples choose their national direction and issue edicts
+    if (!civ.isPlayer) aiPathTurn(s, civ);
   }
   events.push(...diplomacyTurn(s));
   events.push(...historyTurn(s));
@@ -1126,7 +1139,7 @@ export function endTurn(s: GameState): string[] {
     const ev = realmEventTurn(s, me);
     if (ev) events.push(`A matter for the throne: ${ev}.`);
   }
-  checkVictory(s);
+  events.push(...checkVictory(s));
   return events;
 }
 
@@ -1480,24 +1493,36 @@ export function score(s: GameState, civId: number): number {
 
 export const DEFAULT_TURN_LIMIT = 400;
 
-/** Decide the game: last people standing, or best score at the turn limit. */
-export function checkVictory(s: GameState) {
-  if (s.ended) return;
+/** Goods by kind, as wealth in the GDP: made goods are worth most. */
+const GDP_WEIGHT: Record<string, number> = { food: 0.5, raw: 1, luxury: 2, made: 3 };
+
+/**
+ * Decide the game: last people standing, a held dominance goal, the Scientific projects, or
+ * best score at the turn limit. Returns lines for the player (rivals close to winning).
+ */
+export function checkVictory(s: GameState): string[] {
+  if (s.ended) return [];
   const me = player(s);
   if (!me.alive) {
     s.ended = { winner: -1, reason: 'defeat' };
-    return;
+    return [];
   }
   // free peoples do not count: the game is between the great peoples
   const alive = s.civs.filter(c => c.alive && !c.independent);
   if (alive.length === 1) {
     s.ended = { winner: alive[0].id, reason: 'conquest' };
-    return;
+    return [];
+  }
+  const v = victoryTurn(s);
+  if (v.winner) {
+    s.ended = { winner: v.winner.civId, reason: v.winner.kind };
+    return v.news;
   }
   if (s.turn >= (s.settings.turnLimit ?? DEFAULT_TURN_LIMIT)) {
     const best = alive.sort((x, y) => score(s, y.id) - score(s, x.id))[0];
     s.ended = { winner: best.id, reason: 'score' };
   }
+  return v.news;
 }
 
 // ---------------------------------------------------------------- battle
@@ -1949,6 +1974,7 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
 }
 
 function captureCity(s: GameState, c: City, by: Formation): string {
+  s.civs[by.civId].captured = (s.civs[by.civId].captured ?? 0) + 1;
   const old = s.civs[c.civId];
   const civ = s.civs[by.civId];
   c.civId = by.civId;

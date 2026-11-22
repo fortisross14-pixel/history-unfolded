@@ -2222,3 +2222,110 @@ input.rename {
     grid-template-columns: 1fr;
   }
 }
+
+/* victory: every way to win, with progress bars for you and the leading rival */
+.modal.victory {
+  width: min(680px, 100%);
+}
+.victory-list {
+  display: grid;
+  gap: 10px;
+  max-height: 64vh;
+  overflow-y: auto;
+}
+.victory-row {
+  border: 1px solid var(--iv-line-soft);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.victory-row h3 {
+  margin: 0 0 2px;
+  font-size: 15px;
+}
+.victory-row h3 small {
+  font-weight: normal;
+  color: var(--iv-muted);
+  margin-left: 6px;
+}
+.victory-row.locked {
+  opacity: 0.72;
+}
+.victory-row .warn {
+  color: var(--iv-bad);
+  font-weight: 600;
+}
+.vbar {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 2px 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.vbar-who {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vbar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--iv-sunk);
+  overflow: hidden;
+}
+.vbar-fill {
+  display: block;
+  height: 100%;
+  background: var(--iv-teal);
+}
+.vbar.rival .vbar-fill {
+  background: var(--iv-bronze);
+}
+.vbar-text {
+  grid-column: 2;
+  color: var(--iv-muted);
+}
+
+/* nation: the "Entering the age" card, national directions and edicts */
+.modal.nation {
+  width: min(760px, 100%);
+}
+.modal.nation h3 {
+  margin: 12px 0 4px;
+  font-size: 15px;
+}
+.age-text {
+  font-style: italic;
+  margin: 4px 0 8px;
+}
+.path-choices,
+.path-taken {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  max-height: 56vh;
+  overflow-y: auto;
+}
+.path-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 10px;
+  border: 1px solid var(--iv-line-soft);
+  border-radius: 8px;
+  min-height: 48px;
+}
+.path-card.locked {
+  opacity: 0.6;
+}
+.path-card .path-effects {
+  color: var(--iv-teal);
+  font-weight: 600;
+}
+.path-alt {
+  font-weight: normal;
+  font-size: 11px;
+  color: var(--iv-bronze);
+  margin-left: 4px;
+}

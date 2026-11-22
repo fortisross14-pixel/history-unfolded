@@ -2,6 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { fx } from '../render/fx.ts';
 import { isMuted, setMuted, sound } from './sound.ts';
 import { difficultyOf } from '../engine/difficulty.ts';
+import { VICTORY } from '../engine/victory.ts';
+import { VictoryDialog } from './VictoryDialog.tsx';
+import { NationDialog } from './NationDialog.tsx';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
 import {
@@ -85,6 +88,8 @@ type Dialog =
   | { kind: 'designs'; open?: number | 'new' }
   | { kind: 'peoples' }
   | { kind: 'goods' }
+  | { kind: 'victory' }
+  | { kind: 'nation'; age?: number }
   | { kind: 'dynasties' }
   | { kind: 'realm-event' }
   | { kind: 'battle'; report: BattleReport }
@@ -138,6 +143,8 @@ const KEYS: [string, string][] = [
   ['U', 'Unit designs'],
   ['P', 'Peoples and diplomacy'],
   ['G', 'Goods: made, used and traded per turn'],
+  ['V', 'Victory: the ways to win and who is closest'],
+  ['O', 'Nation: national directions and their edicts'],
   ['Y', 'Dynasties: houses, governors, trinkets'],
   ['Esc', 'Close a window, or clear the selection'],
   ['?', 'This list'],
@@ -251,6 +258,12 @@ export function Game({
         label: 'Choose research',
         go: () => setDialog({ kind: 'research' }),
       });
+    if (me.pathDue)
+      out.push({
+        key: 'nation',
+        label: 'Choose a national direction',
+        go: () => setDialog({ kind: 'nation' }),
+      });
     const ev = pendingRealmEvent(game, me);
     if (ev)
       out.push({
@@ -358,6 +371,11 @@ export function Game({
     lastTodo.current = '';
     // a house has risen: the choice of side cannot wait in the to-do list
     if (me.civilWar?.pending) setDialog({ kind: 'dynasties' });
+    // a new age: its card comes first, with the national direction when one is due
+    else if (game.ageCard) {
+      setDialog({ kind: 'nation', age: game.ageCard });
+      game.ageCard = undefined;
+    }
     // a new event is shown once; closed, it waits in the to-do list
     else if (game.realmEvents?.pending?.turn === game.turn) setDialog({ kind: 'realm-event' });
     if (!selectNext()) setSel(null);
@@ -502,6 +520,8 @@ export function Game({
       else if (key === 'u') setDialog({ kind: 'designs' });
       else if (key === 'p') setDialog({ kind: 'peoples' });
       else if (key === 'g') setDialog({ kind: 'goods' });
+      else if (key === 'v') setDialog({ kind: 'victory' });
+      else if (key === 'o') setDialog({ kind: 'nation' });
       else if (key === 'y') setDialog({ kind: 'dynasties' });
       else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
       else if (key === 'k') setDialog({ kind: 'culture' });
@@ -563,6 +583,8 @@ export function Game({
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
 
   const proposal = game.proposals.find(p => p.to === me.id);
+  // a rival holding a victory goal: shown on the Victory button
+  const rivalHold = Object.values(game.holding ?? {}).filter(h => h.civId !== me.id).length;
   const pendingEvent = playerEvent(game);
   if (game.ended || !me.alive) {
     const e = game.ended;
@@ -574,6 +596,9 @@ export function Game({
           <h1>{won ? 'Victory' : me.alive ? 'The age is over' : 'Your people are no more'}</h1>
           <p className="subtitle">
             Turn {game.turn}. {won && e?.reason === 'conquest' ? `The ${me.name} stand alone.` : ''}
+            {e && e.reason !== 'score' && e.reason !== 'conquest' && e.reason !== 'defeat'
+              ? `${won ? `The ${me.name}` : `The ${game.civs[e.winner].name}`} win the ${VICTORY[e.reason].name} victory.`
+              : ''}
             {e?.reason === 'score'
               ? `The ${game.civs[e.winner].name} are remembered as the greatest people of the age.`
               : ''}
@@ -733,6 +758,22 @@ export function Game({
           ) : (
             ''
           )}
+        </button>
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'nation' })}
+          title="Nation: national directions and edicts (O)"
+        >
+          <Icon name="flag" /> Nation
+          {me.pathDue ? <b className="war-pill">choose</b> : ''}
+        </button>
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'victory' })}
+          title="Victory: the ways to win (V)"
+        >
+          <Icon name="laurel" /> Victory
+          {rivalHold ? <b className="war-pill">{rivalHold} close</b> : ''}
         </button>
         <button
           className="secondary"
@@ -1137,6 +1178,16 @@ export function Game({
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'nation' && (
+        <NationDialog
+          game={game}
+          civ={me}
+          age={dialog.age}
+          report={r => report(r as Result)}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'victory' && <VictoryDialog game={game} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'goods' && (
         <GoodsDialog
           game={game}

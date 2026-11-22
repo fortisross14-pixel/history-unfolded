@@ -725,13 +725,50 @@ rivals end weaker on Discovery than on Veteran. A 3-seed, 180-turn sweep gave ri
 285 / 296 / 309 and 17 / 36 / 48 wars. Planned next: early-war warnings on Discovery, smarter
 combined arms and deal reading on Veteran.
 
-## 12. Victory and game length
+## 12. Victory and game length (as built)
 
-- Turn limit (default 400), with a score at the end.
-- **Conquest:** hold every other civ's original capital.
-- **Cultural ascendancy:** your tags dominate X% of the world's population (cultural pressure).
-- **Science:** complete the last-era project (kept simple).
-- Victory types can be toggled in game setup.
+Victories open by age, per people (each people's own age, never the first to arrive). A
+dominance goal must be held 10 turns; everyone is warned when someone starts holding one, and the
+Victory screen (V) shows each goal's progress for you and the leading rival.
+
+| Victory | Opens | Goal |
+| --- | --- | --- |
+| Conquest | Ancient (always) | Be the last great people standing (free peoples do not count) |
+| Cultural domination | Renaissance | 40% of the world's culture each turn, held 10 turns |
+| Economic dominance | Renaissance | 50% of world GDP each turn, held 10 turns |
+| Diplomatic federation | Industrial | A league of you and your allies with over half the world's people, you its largest member, held 10 turns |
+| Scientific | Industrial | Every Industrial tech, then three national projects: Great Observatory, Transcontinental Telegraph, First Powered Flight |
+| Score | turn limit (default 400) | Best score: people, settlements, techs, culture |
+
+GDP per turn = gold + production + goods made (food ×0.5, raw ×1, luxury ×2, made ×3) + a
+quarter of the food surplus. The world economy counts free peoples; culture shares count great
+peoples only. In three 400-turn AI test games the endings were Cultural (turn 236), Scientific
+(turn 389) and Score. Planned: victory toggles at setup.
+
+## 12b. Dynamic ages: national directions (as built, first slice)
+
+Every age shows an "Entering the age" card: the age's new system, the victories it opens, and a
+direction to choose when one is due. On entering the Classical age and the Renaissance a people
+chooses a **national direction**: a lasting legacy (its bonuses stay all game, half again as
+strong when the people holds its culture tag) and an **edict** with a cooldown. The Nation
+screen (O) lists them.
+
+| Age | Direction | Legacy | Edict |
+| --- | --- | --- | --- |
+| Classical | Merchant Republic (republican) | +12% gold, +5% culture, +10% upkeep | Convene the Senate: houses −20 unrest |
+| Classical | Centralized Monarchy (absolutist) | +1 levy cohort, +1 guard, −10% upkeep, −5% gold | Royal Levy |
+| Classical | Imperial Bureaucracy (rationalist) | +10% science, +5% gold, faster roads | Census and Tax: 5 gold per 1,000 people, houses +10 unrest |
+| Renaissance | Chartered Companies (maritime) | +15% coastal yields, +10% naval, +5% gold | Charter a Company: 25 gold per port |
+| Renaissance | Colonial Administration (expansionist) | +15% growth, +10% housing | Colonial Charter: free settlers |
+| Renaissance | Religious Reform (devout) | +15% culture, −10% culture costs | Reformation Sermons: +25 culture, houses −10 unrest |
+| Renaissance | Commercial Renaissance (alternate, mercantile) | +20% gold, +10% production | Great Fair: +60 gold, +10 culture |
+| Renaissance | Age of Conquest (alternate, martial) | +10% attack, +15% siege, +1 morale | Muster the Hosts: two levies |
+
+Alternate developments are offered only to a people whose history fits: a quarter of world GDP
+for the Commercial Renaissance, a settlement taken in war for the Age of Conquest. AI peoples
+choose by culture and their own seeded taste, and issue edicts when they pay. Next: one new
+system per age (tribal settlement, feudal obligations, labour and unrest) and crises driven by
+the realm's state.
 
 ## 13. Core screens and flows
 

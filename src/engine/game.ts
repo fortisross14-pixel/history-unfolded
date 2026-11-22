@@ -5,14 +5,27 @@
 import { CITY_NAMES, CIV_PRESETS } from '../data/civs.ts';
 import { DEPOSITS } from '../data/goods.ts';
 import { DEFAULT_LOADOUT, ITEMS, SLOTS, type Loadout } from '../data/items.ts';
-import { RELIEF, VEGETATION, TERRAIN } from '../data/terrain.ts';
 import { TECHS, TECH_LIST } from '../data/techs.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
-import { generateMap, hexFood, isPassableLand, MAP_SIZES } from './mapgen.ts';
+import { generateMap, isPassableLand, MAP_SIZES } from './mapgen.ts';
 import { findPath } from './path.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
 import type { City, Civ, Cohort, Design, Formation, GameSettings, GameState } from './types.ts';
 import { aiTurn } from './ai.ts';
+import {
+  build,
+  cityDistricts,
+  cityEconomy,
+  districtAt,
+  districtSites,
+  emptySlot,
+  marketCities,
+  marketSpend,
+  marketStock,
+  slotProblem,
+} from './economy.ts';
+import { SLOT_TYPES } from '../data/slots.ts';
+import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
 import {
   capOf,
@@ -30,7 +43,7 @@ import {
   SETTLER_COHORTS,
 } from './units.ts';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
 export const MIN_CITY_DISTANCE = 4;
@@ -62,6 +75,8 @@ export function newGame(settings: GameSettings): GameState {
     nextId: 1,
     log: [],
     wars: [],
+    districts: [],
+    roads: new Array(map.w * map.h).fill(0),
   };
   for (let i = 0; i < civCount; i++) {
     const preset = CIV_PRESETS[i];
@@ -76,6 +91,7 @@ export function newGame(settings: GameSettings): GameState {
       gold: 20,
       explored: new Array(map.w * map.h).fill(0),
       designs: [],
+      blueprints: [],
       cityNames: 0,
       levies: 0,
       met: [],
@@ -268,6 +284,14 @@ export function passable(s: GameState, f: Formation): (hex: number) => boolean {
   return h => !foreign.has(h);
 }
 
+/** Moving along a road (from one road hex to the next) costs half a move, whatever the ground. */
+export function stepCost(s: GameState, f: Formation, from: number, to: number): number {
+  const base = enterCost(s.map, f, to);
+  if (!isFinite(base)) return base;
+  if (s.roads[from] && s.roads[to]) return 0.5;
+  return base;
+}
+
 export function planPath(s: GameState, f: Formation, target: number): number[] | null {
   const civ = s.civs[f.civId];
   const pass = passable(s, f);
@@ -275,7 +299,7 @@ export function planPath(s: GameState, f: Formation, target: number): number[] |
     if (!pass(to)) return Infinity;
     // unexplored hexes are assumed passable at base cost until seen
     if (!civ.explored[to]) return 1;
-    return enterCost(s.map, f, to);
+    return stepCost(s, f, from, to);
   });
 }
 
@@ -301,7 +325,7 @@ export function advance(s: GameState, f: Formation): Result {
   let merged: string | undefined;
   while (f.path.length && f.moves > 0) {
     const next = f.path[0];
-    const cost = enterCost(s.map, f, next);
+    const cost = stepCost(s, f, f.hex, next);
     if (!isFinite(cost) || !passable(s, f)(next)) {
       f.path = [];
       return fail('The way is blocked.');
@@ -434,9 +458,22 @@ export function foundCity(s: GameState, fid: number): Result {
     food: 0,
     founded: s.turn,
     guard: 1,
-    stockpile: { wood: 8, hides: 4, stone: 3 },
+    stockpile: { wood: 10, hides: 4, stone: 4 },
   };
   s.cities.push(c);
+  // the city centre is a district of its own, with the town hall in the middle
+  const centre: District = {
+    id: s.nextId++,
+    cityId: c.id,
+    hex: c.hex,
+    name: `${name} centre`,
+    slots: Array.from({ length: 9 }, () => emptySlot()),
+  };
+  centre.slots[4] = { type: 'town-hall', built: true, progress: 0, paid: true };
+  // a district already on this hex (from an older city) is cleared
+  s.districts = s.districts.filter(d => d.hex !== c.hex);
+  s.districts.push(centre);
+  s.roads[c.hex] = 1;
   s.formations = s.formations.filter(x => x.id !== f.id);
   s.map.vegetation[f.hex] = 'none';
   updateExplored(s, civ.id);
@@ -453,39 +490,30 @@ export function levy(s: GameState, cityId: number): Result {
   c.pop -= LEVY_PEOPLE;
   const f = addFormation(s, c.civId, 'army', c.hex, LEVY_COHORTS, nextLevyName(s, c.civId));
   f.moves = 0;
+  if (hasSlot(s, c, 'barracks')) for (const co of f.cohorts) co.xp = 1;
   log(s, c.civId, `${c.name} raised the ${f.name} (500 people).`);
   return ok(`${f.name} raised in ${c.name}.`);
 }
 
-/** Per-turn output of a city working its ring (placeholder until districts). */
+/** Food a city must store to grow by 250 people: bigger cities grow more slowly. */
+export const growthCost = (c: City) => 10 + Math.floor(c.pop / 1000) * 8;
+
+/** Per-turn summary of a city (see economy.ts for the slot-by-slot detail). */
 export function cityYield(s: GameState, c: City) {
-  const g = gridOf(s);
-  let food = 0,
-    prod = 0;
-  const goods: Record<string, number> = {};
-  const add = (k: string, n: number) => {
-    goods[k] = (goods[k] ?? 0) + n;
+  const e = cityEconomy(s, c);
+  return {
+    food: e.total.food,
+    eat: e.eat,
+    surplus: e.surplus,
+    prod: e.total.prod,
+    goods: e.total.goods,
+    science: e.total.science,
+    gold: e.total.gold,
+    housing: e.total.housing,
+    workers: e.workers,
+    workersUsed: e.workersUsed,
+    inputs: e.inputs,
   };
-  for (const k of within(g, c.hex, CITY_RADIUS)) {
-    const m = s.map;
-    if (m.relief[k] === 'mountains') continue;
-    food += hexFood(m, k);
-    prod +=
-      TERRAIN[m.terrain[k]].prod + RELIEF[m.relief[k]].prod + VEGETATION[m.vegetation[k]].prod;
-    const wood = VEGETATION[m.vegetation[k]].wood;
-    if (wood) add('wood', wood);
-    if (m.deposit[k] && depositVisible(s, c.civId, k)) {
-      const d = m.deposit[k]!;
-      for (const [good, n] of Object.entries(DEPOSITS[d.kind].yields)) {
-        if (good === 'grain' || good === 'fish' || good === 'meat') food += n * d.richness;
-        else add(good, n * d.richness);
-      }
-    }
-  }
-  const eat = Math.ceil(c.pop / 1000) * 2;
-  const science = 1 + Math.floor(c.pop / 1500);
-  const gold = 1 + Math.floor(c.pop / 2000);
-  return { food, eat, surplus: food - eat, prod, goods, science, gold };
 }
 
 // ---------------------------------------------------------------- refit
@@ -497,6 +525,7 @@ export type RefitPreview =
       problem: null;
       city: City;
       far: boolean;
+      armoury: boolean;
       cost: Record<string, number>;
       refund: Record<string, number>;
       missing: { good: string; need: number; have: number }[];
@@ -517,8 +546,9 @@ export function refitPreview(
   const c = supplyingCity(s, f.civId, f.hex);
   if (!c) return { problem: 'Refit only inside your territory, near one of your cities.' };
   const g = gridOf(s);
-  const far = distance(g, c.hex, f.hex) > CITY_RADIUS;
-  const mul = far ? 1.5 : 1;
+  const armoury = hasSlot(s, c, 'armoury');
+  const far = !armoury && distance(g, c.hex, f.hex) > CITY_RADIUS;
+  const mul = (far ? 1.5 : 1) * (armoury ? 0.8 : 1);
   const cost: Record<string, number> = {},
     refund: Record<string, number> = {};
   const ids = new Set(cohortIds);
@@ -530,10 +560,11 @@ export function refitPreview(
   }
   for (const k of Object.keys(cost)) cost[k] = Math.ceil(cost[k]);
   for (const k of Object.keys(refund)) refund[k] = Math.floor(refund[k]);
+  const stock = marketStock(s, c);
   const missing = Object.entries(cost)
-    .filter(([k, n]) => (c.stockpile[k] ?? 0) < n)
-    .map(([k, n]) => ({ good: k, need: n, have: c.stockpile[k] ?? 0 }));
-  return { city: c, far, cost, refund, missing, problem: null };
+    .filter(([k, n]) => (stock[k] ?? 0) < n)
+    .map(([k, n]) => ({ good: k, need: n, have: stock[k] ?? 0 }));
+  return { city: c, far, armoury, cost, refund, missing, problem: null };
 }
 
 export function refit(s: GameState, fid: number, cohortIds: number[], to: Loadout): Result {
@@ -545,7 +576,7 @@ export function refit(s: GameState, fid: number, cohortIds: number[], to: Loadou
     );
   const f = formation(s, fid)!;
   const ids = new Set(cohortIds);
-  for (const [k, n] of Object.entries(p.cost)) p.city.stockpile[k] = (p.city.stockpile[k] ?? 0) - n;
+  if (!marketSpend(s, p.city, p.cost)) return fail('The market cannot pay for it.');
   for (const [k, n] of Object.entries(p.refund))
     if (n > 0) p.city.stockpile[k] = (p.city.stockpile[k] ?? 0) + n;
   let n = 0;
@@ -652,16 +683,23 @@ export function endTurn(s: GameState): string[] {
     let science = 0,
       gold = 0;
     for (const c of s.cities.filter(x => x.civId === civ.id)) {
-      const y = cityYield(s, c);
-      science += y.science;
-      gold += y.gold;
-      for (const [k, n] of Object.entries(y.goods)) c.stockpile[k] = (c.stockpile[k] ?? 0) + n;
-      c.food += y.surplus;
-      // food stored turns into people; starvation shrinks the city
-      if (c.food >= 10) {
-        c.food -= 10;
-        c.pop += 250;
+      const e = cityEconomy(s, c);
+      science += e.total.science;
+      gold += e.total.gold;
+      for (const [k, n] of Object.entries(e.total.goods))
+        c.stockpile[k] = (c.stockpile[k] ?? 0) + n;
+      marketSpend(s, c, e.inputs);
+      c.food += e.surplus;
+      // food stored turns into people while there is housing; starvation shrinks the city
+      const need = growthCost(c);
+      if (c.food >= need) {
+        if (c.pop + 250 <= e.total.housing) {
+          c.food -= need;
+          c.pop += 250;
+        } else c.food = need;
       }
+      for (const done of build(s, c, e.total.prod))
+        if (civ.isPlayer) events.push(`${c.name}: ${done} finished.`);
       if (c.food < -5) {
         c.food = 0;
         c.pop = Math.max(MIN_CITY_POP, c.pop - 250);
@@ -764,7 +802,7 @@ export function reachable(s: GameState, f: Formation): Set<number> {
     if (left <= 0) continue;
     for (const n of neighbors(g, cur)) {
       if (!pass(n)) continue;
-      const c = s.civs[f.civId].explored[n] ? enterCost(s.map, f, n) : Infinity;
+      const c = s.civs[f.civId].explored[n] ? stepCost(s, f, cur, n) : Infinity;
       if (!isFinite(c)) continue;
       const rem = Math.max(0, left - c);
       if ((best.get(n) ?? -1) < rem) {
@@ -783,12 +821,14 @@ export function pathTurns(s: GameState, f: Formation, path: number[]): number[] 
   let left = f.moves,
     turn = 0;
   const out: number[] = [];
+  let prev = f.hex;
   for (const h of path) {
     if (left <= 0) {
       turn++;
       left = full;
     }
-    const c = s.civs[f.civId].explored[h] ? enterCost(s.map, f, h) : 1;
+    const c = s.civs[f.civId].explored[h] ? stepCost(s, f, prev, h) : 1;
+    prev = h;
     left = Math.max(0, left - c);
     out.push(turn);
   }
@@ -1081,3 +1121,121 @@ export function trainSettlers(s: GameState, cityId: number): Result {
   log(s, c.civId, `${c.name} sent out settlers.`);
   return ok(`Settlers leave ${c.name}.`);
 }
+
+// ---------------------------------------------------------------- districts
+
+export const hasSlot = (s: GameState, c: City, type: string) =>
+  cityDistricts(s, c).some(d => d.slots.some(x => x.built && x.type === type));
+
+/** Lay out a new district on a hex near the city. Slots are built one by one by the city. */
+export function placeDistrict(
+  s: GameState,
+  cityId: number,
+  hex: number,
+  name: string,
+  slots: (string | null)[],
+): Result & { id?: number } {
+  const c = city(s, cityId);
+  if (!c) return fail('No such city.');
+  if (districtAt(s, hex)) return fail('There is already a district there.');
+  if (!districtSites(s, c, territory(s)).includes(hex))
+    return fail(`Not a site for ${c.name}: pick its own land within 2 hexes.`);
+  const d: District = {
+    id: s.nextId++,
+    cityId,
+    hex,
+    name: name.trim().slice(0, 28) || 'District',
+    slots: Array.from({ length: 9 }, (_, i) =>
+      emptySlot(slots[i] && !SLOT_TYPES[slots[i]!]?.fixed ? slots[i] : null),
+    ),
+  };
+  s.districts.push(d);
+  return { ok: true, msg: `${d.name} laid out.`, id: d.id };
+}
+
+/** Change one slot. A built slot that is replaced is demolished (a quarter of its goods back). */
+export function setSlot(s: GameState, districtId: number, i: number, type: string | null): Result {
+  const d = s.districts.find(x => x.id === districtId);
+  if (!d || i < 0 || i > 8) return fail('No such slot.');
+  const cur = d.slots[i];
+  if (cur.type && SLOT_TYPES[cur.type]?.fixed) return fail('The town hall stays.');
+  if (type && SLOT_TYPES[type]?.fixed) return fail('Cannot build that.');
+  if (cur.type === type) return ok();
+  const c = city(s, d.cityId)!;
+  if (cur.type && (cur.built || cur.paid)) {
+    for (const [k, n] of Object.entries(SLOT_TYPES[cur.type].build.goods ?? {}))
+      c.stockpile[k] = (c.stockpile[k] ?? 0) + Math.floor(n * (cur.built ? 0.25 : 1));
+  }
+  d.slots[i] = emptySlot(type);
+  if (type) {
+    const why = slotProblem(s, c.civId, d.hex, d.hex === c.hex, type, d.id);
+    if (why) return ok(`${SLOT_TYPES[type].name} planned, but: ${why}`);
+  }
+  return ok();
+}
+
+export function renameDistrict(s: GameState, districtId: number, name: string): Result {
+  const d = s.districts.find(x => x.id === districtId);
+  if (!d || !name.trim()) return fail('Invalid name.');
+  d.name = name.trim().slice(0, 28);
+  return ok();
+}
+
+export function removeDistrict(s: GameState, districtId: number): Result {
+  const d = s.districts.find(x => x.id === districtId);
+  if (!d) return fail('No such district.');
+  const c = city(s, d.cityId);
+  if (c && c.hex === d.hex) return fail('The city centre cannot be removed.');
+  for (let i = 0; i < 9; i++) setSlot(s, d.id, i, null);
+  s.districts = s.districts.filter(x => x !== d);
+  return ok(`${d.name} cleared.`);
+}
+
+/** Replace every slot of a district with a blueprint's layout (the town hall stays). */
+export function applyBlueprint(s: GameState, districtId: number, bp: Blueprint): Result {
+  const d = s.districts.find(x => x.id === districtId);
+  if (!d) return fail('No such district.');
+  for (let i = 0; i < 9; i++) {
+    if (d.slots[i].type && SLOT_TYPES[d.slots[i].type!]?.fixed) continue;
+    setSlot(s, d.id, i, bp.slots[i]);
+  }
+  return ok(`${bp.name} applied to ${d.name}.`);
+}
+
+export function saveBlueprint(
+  s: GameState,
+  civId: number,
+  name: string,
+  slots: (string | null)[],
+): Result {
+  const civ = s.civs[civId];
+  const n = name.trim().slice(0, 28);
+  if (!n) return fail('Name the blueprint.');
+  const clean = slots.map(t => (t && !SLOT_TYPES[t]?.fixed ? t : null));
+  const ex = civ.blueprints.find(b => b.name.toLowerCase() === n.toLowerCase());
+  if (ex) ex.slots = clean;
+  else civ.blueprints.push({ id: s.nextId++, name: n, slots: clean });
+  return ok(`Blueprint "${n}" saved.`);
+}
+
+export function deleteBlueprint(s: GameState, civId: number, id: number) {
+  const civ = s.civs[civId];
+  civ.blueprints = civ.blueprints.filter(b => b.id !== id);
+}
+
+// ---------------------------------------------------------------- roads
+
+/** Troops or settlers lay a road on the hex they stand on; it takes their remaining moves. */
+export function buildRoad(s: GameState, fid: number): Result {
+  const f = formation(s, fid);
+  if (!f) return fail('No such formation.');
+  if (s.roads[f.hex]) return fail('There is a road here already.');
+  if (!isPassableLand(s.map, f.hex)) return fail('No road can be built here.');
+  if (f.moves <= 0) return fail('No moves left this turn.');
+  s.roads[f.hex] = 1;
+  f.moves = 0;
+  f.path = [];
+  return ok('Road built.');
+}
+
+export { marketCities, marketStock };

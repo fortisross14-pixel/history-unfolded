@@ -25,6 +25,17 @@ import {
   advance,
 } from './game.ts';
 import { distance, neighbors, within } from './hex.ts';
+import { SLOT_TYPES } from '../data/slots.ts';
+import {
+  cityDistricts,
+  cityEconomy,
+  constructionQueue,
+  districtAt,
+  districtSites,
+  slotProblem,
+} from './economy.ts';
+import { placeDistrict, setSlot, territory } from './game.ts';
+import type { City } from './types.ts';
 import { hexFood, isPassableLand } from './mapgen.ts';
 import { hashSeed, mulberry32, type Rng } from './rng.ts';
 import type { Civ, Formation, GameState } from './types.ts';
@@ -171,6 +182,120 @@ function pathNextTo(s: GameState, f: Formation, target: number): number[] | null
   return best;
 }
 
+// slot types the AI likes, most wanted first (for a hex where they are valid)
+const PRIORITY = [
+  'copper-mine',
+  'tin-mine',
+  'iron-mine',
+  'horse-stud',
+  'quarry',
+  'woodlot',
+  'grain-field',
+  'cattle-pasture',
+  'fishing-dock',
+  'pig-pen',
+  'hunting-lodge',
+  'plantation',
+  'gold-mine',
+  'silver-mine',
+  'sheep-run',
+];
+const CENTRE = [
+  'houses',
+  'market',
+  'houses',
+  'workshop',
+  null,
+  'school',
+  'granary',
+  'armoury',
+  'barracks',
+];
+
+/** Fill a district plan for this hex: what is worth building there, two of each at most. */
+function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[]; score: number } {
+  const slots: (string | null)[] = new Array(9).fill(null);
+  let score = 0,
+    k = 0,
+    mines = 0;
+  const order = [0, 1, 2, 3, 5, 6, 7, 8];
+  for (const t of PRIORITY) {
+    if (slotProblem(s, civ.id, hex, false, t)) continue;
+    const n = t.endsWith('mine') || t === 'quarry' ? 3 : 2;
+    for (let j = 0; j < n && k < order.length; j++) {
+      slots[order[k++]] = t;
+      score += t.endsWith('mine') ? 3 : 1;
+      if (t.endsWith('mine') || t === 'quarry') mines++;
+    }
+  }
+  slots[4] =
+    mines >= 2 && !slotProblem(s, civ.id, hex, false, 'infirmary')
+      ? 'infirmary'
+      : k < 8
+        ? 'houses'
+        : null;
+  while (k < order.length)
+    slots[order[k++]] = !slotProblem(s, civ.id, hex, false, 'pig-pen') ? 'pig-pen' : 'houses';
+  return { slots, score };
+}
+
+function planDistricts(s: GameState, civ: Civ, c: City) {
+  const outer = cityDistricts(s, c).filter(d => d.hex !== c.hex);
+  // the city centre fills in once there is a district bringing in goods
+  const centre = districtAt(s, c.hex);
+  if (outer.length && centre && centre.slots.every((x, i) => i === 4 || !x.type)) {
+    CENTRE.forEach((t, i) => {
+      if (t && !slotProblem(s, civ.id, c.hex, true, t)) setSlot(s, centre.id, i, t);
+    });
+  }
+  if (outer.length && constructionQueue(s, c).length > 3) return;
+  const e = cityEconomy(s, c);
+  // out of room: a residential quarter
+  if (outer.length && c.pop + 500 >= e.total.housing) {
+    const site = districtSites(s, c, territory(s)).find(h => !districtAt(s, h));
+    const homes = [
+      'houses',
+      'market',
+      'houses',
+      'school',
+      'houses',
+      'market',
+      'houses',
+      'houses',
+      'houses',
+    ];
+    if (site !== undefined) placeDistrict(s, c.id, site, `${c.name} houses`, homes);
+    return;
+  }
+  // only plan more work when there are people to do it
+  if (outer.length && e.workers - e.workersUsed < 500) return;
+  let best = -1,
+    bp: (string | null)[] = [],
+    bv = 0;
+  const hasWood = outer.some(d => d.slots.some(x => x.type === 'woodlot'));
+  for (const h of districtSites(s, c, territory(s))) {
+    if (districtAt(s, h)) continue;
+    const p = planFor(s, civ, h);
+    // the first district should bring in wood
+    const v = p.score + (!hasWood && p.slots.includes('woodlot') ? 5 : 0);
+    if (v > bv) {
+      bv = v;
+      best = h;
+      bp = p.slots;
+    }
+  }
+  if (best >= 0) {
+    const main = bp.find(t => t && t !== 'houses' && t !== 'infirmary');
+    placeDistrict(
+      s,
+      c.id,
+      best,
+      `${c.name} ${main ? SLOT_TYPES[main].name.toLowerCase() + 's' : 'quarter'}`,
+      bp,
+    );
+  }
+}
+
 export function aiTurn(s: GameState, civ: Civ) {
   const g = gridOf(s);
   const rng = mulberry32(hashSeed(s.settings.map.seed, s.turn * 131 + civ.id));
@@ -180,6 +305,7 @@ export function aiTurn(s: GameState, civ: Civ) {
 
   // --- cities: settlers first while small, then levies
   const settlersOut = mine().some(f => f.kind === 'settlers');
+  for (const c of cities) planDistricts(s, civ, c);
   for (const c of cities) {
     const armies = mine().filter(f => f.kind === 'army' && f.name !== 'Scouts').length;
     if (!settlersOut && cities.length < 4 && s.turn > 6 && c.pop >= 3000) trainSettlers(s, c.id);

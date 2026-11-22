@@ -107,6 +107,7 @@ export interface Civ {
   /** 1 = explored, per hex */
   explored: number[];
   designs: Design[];
+  blueprints: Blueprint[];
   cityNames: number;
   /** levies raised so far, for naming */
   levies: number;
@@ -116,6 +117,32 @@ export interface Civ {
   /** enemy people killed / own people lost in battle, for the record */
   kills: number;
   losses: number;
+}
+
+/** One cell of a district's 3×3 grid. */
+export interface SlotState {
+  type: string | null;
+  built: boolean;
+  /** production put in so far */
+  progress: number;
+  /** goods for construction already paid */
+  paid: boolean;
+}
+
+/** A district: a named 3×3 grid of slots on one hex, belonging to a city. */
+export interface District {
+  id: number;
+  cityId: number;
+  hex: number;
+  name: string;
+  slots: SlotState[];
+}
+
+/** A saved district layout the player can place again. */
+export interface Blueprint {
+  id: number;
+  name: string;
+  slots: (string | null)[];
 }
 
 export interface War {
@@ -141,4 +168,7 @@ export interface GameState {
   nextId: number;
   log: LogEntry[];
   wars: War[];
+  districts: District[];
+  /** 1 where a road runs, per hex */
+  roads: number[];
 }

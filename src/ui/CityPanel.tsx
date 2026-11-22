@@ -1,3 +1,4 @@
+import { marketCities, marketStock } from '../engine/economy.ts';
 import {
   cityGuard,
   cityYield,
@@ -14,12 +15,14 @@ export function CityPanel({
   mine,
   onLevy,
   onSettlers,
+  onOpen,
 }: {
   game: GameState;
   c: City;
   mine: boolean;
   onLevy: () => void;
   onSettlers: () => void;
+  onOpen: () => void;
 }) {
   const y = cityYield(game, c);
   const civ = game.civs[c.civId];
@@ -78,14 +81,21 @@ export function CityPanel({
           </table>
           <h3>Store</h3>
           <p>
-            <Goods goods={c.stockpile} empty="empty" />
+            <Goods goods={marketStock(game, c)} empty="empty" />
           </p>
           <p className="muted small">
-            Each city keeps its own goods. Roads joining cities into one market come with districts.
+            {marketCities(game, c).length > 1
+              ? `Shared with ${marketCities(game, c)
+                  .slice(1)
+                  .map(x => x.name)
+                  .join(', ')} by road or river.`
+              : 'Not linked to other cities: build roads to share goods.'}
           </p>
           <div className="actions">
+            <button className="primary" onClick={onOpen}>
+              City &amp; districts…
+            </button>
             <button
-              className="primary"
               disabled={!canLevy}
               onClick={onLevy}
               title={canLevy ? '' : `Needs ${MIN_CITY_POP + LEVY_PEOPLE} people`}
@@ -101,7 +111,8 @@ export function CityPanel({
             </button>
           </div>
           <p className="muted small">
-            The city works the hexes next to it. Designing districts comes next.
+            {y.workersUsed.toLocaleString()} of {y.workers.toLocaleString()} workers busy · room for{' '}
+            {y.housing.toLocaleString()} people.
           </p>
         </>
       ) : (

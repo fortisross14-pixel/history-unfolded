@@ -4,6 +4,7 @@ import type { BattleReport } from '../engine/combat.ts';
 import {
   assignDesign,
   attack,
+  buildRoad,
   canAttack,
   cityAt,
   declareWar,
@@ -31,6 +32,7 @@ import type { GameState } from '../engine/types.ts';
 import type { Assets } from '../render/assets.ts';
 import type { Overlay } from '../render/mapRenderer.ts';
 import { BattleDialog } from './BattleDialog.tsx';
+import { CityDialog } from './CityDialog.tsx';
 import { CityPanel } from './CityPanel.tsx';
 import { DesignsDialog } from './DesignsDialog.tsx';
 import { FormationPanel } from './FormationPanel.tsx';
@@ -47,6 +49,7 @@ type Sel =
   | null;
 type Dialog =
   | { kind: 'research' }
+  | { kind: 'city'; cityId: number; hex?: number }
   | { kind: 'designs'; open?: number | 'new' }
   | { kind: 'peoples' }
   | { kind: 'battle'; report: BattleReport }
@@ -218,6 +221,9 @@ export function Game({
       else if (e.key === 'f' && mySelF) report(fortify(game, mySelF.id));
       else if (e.key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
       else if (e.key === 'd') setDialog({ kind: 'designs' });
+      else if (e.key === 'r' && mySelF) report(buildRoad(game, mySelF.id));
+      else if (e.key === 'c' && selCity && selCity.civId === me.id)
+        setDialog({ kind: 'city', cityId: selCity.id });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -372,6 +378,7 @@ export function Game({
               selF.path = [];
               bump();
             }}
+            onRoad={() => report(buildRoad(game, selF.id))}
           />
         )}
         {selCity && (
@@ -388,6 +395,7 @@ export function Game({
                 if (f) setSel({ kind: 'formation', id: f.id });
               }
             }}
+            onOpen={() => setDialog({ kind: 'city', cityId: selCity.id })}
             onSettlers={() => {
               const r = report(trainSettlers(game, selCity.id));
               if (r.ok) {
@@ -399,7 +407,14 @@ export function Game({
             }}
           />
         )}
-        {sel?.kind === 'hex' && <HexPanel game={game} hex={sel.hex} civId={me.id} />}
+        {sel?.kind === 'hex' && (
+          <HexPanel
+            game={game}
+            hex={sel.hex}
+            civId={me.id}
+            onOpenDistrict={cityId => setDialog({ kind: 'city', cityId, hex: sel.hex })}
+          />
+        )}
         {!sel && (
           <div className="panel">
             <h2>Orders</h2>
@@ -527,6 +542,18 @@ export function Game({
             </div>
           </div>
         </div>
+      )}
+      {dialog?.kind === 'city' && (
+        <CityDialog
+          game={game}
+          c={game.cities.find(x => x.id === dialog.cityId)!}
+          startHex={dialog.hex}
+          report={report}
+          onClose={() => {
+            setDialog(null);
+            bump();
+          }}
+        />
       )}
       {dialog?.kind === 'battle' && (
         <BattleDialog report={dialog.report} onClose={() => setDialog(null)} />

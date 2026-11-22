@@ -205,7 +205,7 @@ Milestone 4; early game uses simple embark-on-coast rules.
 
 ### 7.1 Cities
 
-- Founded by a **Settlers** formation (a special levy of civilians, 2 cohorts). The city centre
+- Founded by a **Settlers** formation (5 cohorts of civilians; sending them out costs a city 1,000 people with families). The city centre
   occupies one hex and claims the ring around it; borders grow with culture.
 - A city has **population** (in units of 1,000 people for display), **food**, **housing**, and
   **labour** (people available to work slots).
@@ -235,31 +235,47 @@ The player's examples are just designs:
 - **"Northern Mine"**: 4 × Coal mine, 4 × Iron mine, 1 × Infirmary (boosts adjacent mines).
 - **"Financial District"**: 6 × Bank, 3 × Stock exchange.
 
-### 7.3 Rules that make design interesting
+### 7.3 Rules that make design interesting (as built)
 
-1. **Hex requirements.** Extraction slots need the matching deposit or terrain on the hex
-   (iron mine needs iron; pasture needs grassland/plains; woodlot needs forest). Richness 1–3
-   caps how many slots of that type produce at full rate (richness × 2 full-rate slots,
-   the rest at 50%).
-2. **Adjacency inside the grid.** Some slots buff orthogonally adjacent slots. An infirmary
-   placed in the centre touches 4 mines (+15% each); placed in a corner it touches 2. Banks next
-   to a stock exchange earn more. Pig pens next to a grain field eat the grain locally (cheaper
-   feed). This small puzzle is where layouts become a skill.
-3. **Labour.** Each slot needs workers (e.g. mine 200 people, bank 50). Unstaffed slots produce
-   nothing. Residential slots and food decide how many workers a city has, so a city full of
-   mines needs farms and housing somewhere.
-4. **Inputs and outputs.** Most slots consume and produce goods per turn (smithy: iron + coal →
-   tools; armoury: lets refits happen here and cuts equipment cost 20%).
-5. **District-level tags.** A district with ≥ 5 slots of one group gets a tag (Agricultural,
-   Industrial, Financial, Residential…) that some culture nodes and techs reward.
+1. **Reach.** A slot can use anything on its district's hex and the six hexes around it: forest
+   for woodlots, flat open land for grain fields, hills for sheep, a coast or lake for fishing
+   docks, a deposit for mines. So a "Farm" on grassland next to a forest can hold pigs, cattle,
+   grain and a woodlot.
+2. **Capacity.** Deposit slots run at full rate for richness × 2 slots of that type in the
+   district, then at half rate. Land slots run at full rate for two slots per matching hex in
+   reach. A deposit feeds **one** district: the one standing on it, otherwise the older one.
+   Deposits also boost their farm: wheat or rice under grain fields, cattle under pastures,
+   fish under docks.
+3. **Adjacency inside the grid** (up, down, left, right). An infirmary in the centre touches
+   4 mines (+15% each), in a corner 2. Pig pens next to a grain field +1 food; a granary +1 food
+   per neighbouring grain field; markets +1 gold per neighbouring market, bank or houses; banks
+   +1 per neighbouring bank and +2 next to a stock exchange; schools +1 science next to houses;
+   workshops +1 production next to woodlots or quarries.
+4. **Workers.** Half of a city's people can work. Each slot needs workers (mine 200, farm 100,
+   bank 50, houses none). Slots are staffed in order (city centre first); the rest stand idle.
+5. **Housing.** The town hall houses 3,000 and each Houses slot 1,000 more. A full city stops
+   growing. Growth also needs more food the bigger the city is.
+6. **Construction.** Each slot costs production and usually goods (wood, stone). The city puts
+   its production into planned slots in order; a slot whose goods the market cannot pay is
+   skipped until it can. Unbuilt land next to the city still feeds a few people and gives a
+   little wood, so a new city is never stuck.
+7. **Inputs.** Workshops burn 1 wood a turn for 3 production. Armouries make equipping near
+   the city 20% cheaper and drop the +50% distance cost. Barracks give new levies one battle of
+   experience.
+8. **District-level tags** (later): a district with ≥ 5 slots of one group gets a tag that culture
+   nodes and techs can reward.
+
+About 25 slot types exist now across farming, forestry, extraction, craft, services, commerce
+and residential, with banks, stock exchanges, iron and coal mines and infirmaries behind research.
 
 ### 7.4 Blueprints and editing
 
-- Save designs as **blueprints** ("Farm", "Northern Mine"). Placing a blueprint on a hex shows
-  which slots are invalid there before you commit.
-- **Edit a built district** at any time: changed slots are demolished (refund 25%) and rebuilt.
-  The rest keep working.
-- City-centre hex has its own fixed 3×3 grid with a palace/town-hall slot in the middle.
+- Save any district layout as a **blueprint** ("Farm", "Northern Mine") and apply it to a new
+  or existing district. Slots that do not fit the new hex are kept but flagged with the reason
+  and never built until they fit.
+- **Edit a built district** at any time: a replaced slot is demolished (a quarter of its goods
+  back) and the new one is queued. The rest keep working.
+- The city centre is a district of its own with the town hall fixed in the middle.
 
 ## 8. Economy and goods
 
@@ -273,26 +289,20 @@ The player's examples are just designs:
 - **Happiness/stability:** luxuries, culture alignment and war weariness. Feeds unrest and is
   one of the triggers of upheaval (§9.4).
 
-### 8.1 Cities, roads and markets
+### 8.1 Cities, roads and markets (as built)
 
-- Every city has its **own stockpile**. What its districts produce goes there; what its
-  districts, levies and refits consume comes from there.
-- **Roads** are built hex by hex (by worker formations, or automatically between cities once
-  *Road Building* is known). When two cities are joined by an unbroken road (or river, or later
-  railway / sea route through friendly ports), they become one **market**.
-- A **market** is a group of connected cities that **share one pooled stockpile**. In the UI a
-  market shows as a coloured network with a single goods list. Isolated cities are markets of
-  one.
-- **Breaking a connection splits the market.** An enemy formation standing on a road hex, a
-  pillaged road or a blockaded port cuts the link; the pool is split back between the cities
-  (by each city's share of recent production). This makes roads real military targets.
-- **Moving goods between separate markets** (your own unconnected cities, or other civs) needs
-  **trade routes/caravans**: slow, limited capacity per turn, and can be raided.
-- **Formations draw from the market they are in.** A formation inside your territory uses the
-  market of the nearest connected city; an army far from roads cannot refit and takes supply
-  attrition. Armouries only help in cities of the same market.
-- Later techs/culture extend reach: *Paved Roads* (faster), *Canals*, *Railways* (bigger
-  movement and instant market joins), *Merchant Marine* (sea routes join coastal markets).
+- Every city has its **own store**. What its districts produce goes there.
+- **Roads**: any formation can lay a road on the hex it stands on (it uses the rest of its
+  moves). City hexes always count as road. Moving from one road hex to the next costs half a
+  move, whatever the ground.
+- **Markets**: cities of the same people joined by an unbroken chain of road, river or city
+  hexes form one **market**, and pay for everything from the **pooled store** of all its
+  cities (the city's own goods first). Isolated cities are markets of one.
+- **Cutting a market**: an enemy army you are at war with standing on a road or river hex
+  breaks the link at once; the cities pay from their own stores again until the link is back.
+- Equipping troops, building slots and workshop inputs all draw from the market.
+- Later: caravans between separate markets, pillaging, *Paved Roads*, *Canals*, *Railways*,
+  sea routes between friendly ports.
 
 ## 9. Culture: the culture web
 
@@ -463,10 +473,10 @@ its builder are dropped: maps are procedural only.
 
 ## 15. Milestones
 
-Progress: **M0–M3 done** (with placeholders: cities work their ring of hexes instead of
-districts, and a 5-tech starter list stands in for the tree). Unit designs (§5.4) replaced the
-earlier per-cohort loadout picking. Settlers, war and peace, and city capture came with M3.
-Next: **M4, cities and districts.**
+Progress: **M0–M4 done.** Unit designs (§5.4) replaced the earlier per-cohort loadout picking.
+Settlers, war and peace, and city capture came with M3. M4 brought districts, workers, housing,
+construction, blueprints, roads and markets. A starter tech list (about 8 techs) still stands in
+for the full tree. Next: **M5, the research tree.**
 
 | # | Milestone | Done when |
 |---|---|---|

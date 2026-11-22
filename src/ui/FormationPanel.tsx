@@ -31,6 +31,7 @@ interface Props {
   onFortify: () => void;
   onRename: (name: string) => void;
   onClearOrders: () => void;
+  onRoad: () => void;
 }
 
 export function FormationPanel(p: Props) {
@@ -274,6 +275,17 @@ export function FormationPanel(p: Props) {
               Found city
             </button>
           )}
+          <button
+            onClick={p.onRoad}
+            disabled={!!game.roads[f.hex] || f.moves <= 0}
+            title={
+              game.roads[f.hex]
+                ? 'There is a road here'
+                : 'Lay a road on this hex (R). Uses the remaining moves.'
+            }
+          >
+            Build road
+          </button>
           <button onClick={p.onFortify} title="F">
             {f.fortified ? 'Wake' : 'Fortify'}
           </button>

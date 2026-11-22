@@ -11,6 +11,13 @@ import {
   orderMove,
   player,
   assignDesign,
+  endWar,
+  placeDistrict,
+  saveBlueprint,
+  setSlot,
+  stepCost,
+  territory,
+  trainSettlers,
   atWar,
   attack,
   declareWar,
@@ -21,7 +28,16 @@ import {
 } from '../src/engine/game.ts';
 
 import { isPassableLand } from '../src/engine/mapgen.ts';
-import { neighbors } from '../src/engine/hex.ts';
+import { distance, neighbors, within } from '../src/engine/hex.ts';
+import { findPath } from '../src/engine/path.ts';
+import {
+  cityEconomy,
+  districtAt,
+  districtSites,
+  marketCities,
+  marketStock,
+  slotProblem,
+} from '../src/engine/economy.ts';
 import type { GameState } from '../src/engine/types.ts';
 import { formationMoves, groupCohorts, outdated, people } from '../src/engine/units.ts';
 
@@ -60,6 +76,106 @@ for (const seed of [1, 2, 3, 42]) {
   const capital = cityAt(s, settlers.hex)!;
   const levy1 = mine().find(f => f.name === '1st Levy')!;
   check(levy1.cohorts.length === 5, 'levy has 5 cohorts (500 people)');
+
+  // --- districts: the city centre exists, a farm is laid out next door and gets built
+  const centreD = districtAt(s, capital.hex);
+  check(
+    !!centreD && centreD.slots[4].type === 'town-hall' && centreD.slots[4].built,
+    'city centre district with town hall',
+  );
+  const sites = districtSites(s, capital, territory(s));
+  check(sites.length > 3, `${sites.length} district sites around the capital`);
+  const farmSlots = [
+    'pig-pen',
+    'pig-pen',
+    'pig-pen',
+    'pig-pen',
+    'grain-field',
+    'pig-pen',
+    'cattle-pasture',
+    'cattle-pasture',
+    'woodlot',
+  ];
+  const site = sites.find(h => h !== capital.hex && !slotProblem(s, me.id, h, false, 'pig-pen'))!;
+  const pd = placeDistrict(s, capital.id, site, 'Farm', farmSlots);
+  check(pd.ok, 'place a "Farm" district: ' + pd.msg);
+  const farm = s.districts.find(d => d.id === pd.id)!;
+  const bp = saveBlueprint(
+    s,
+    me.id,
+    'Farm',
+    farm.slots.map(x => x.type),
+  );
+  check(bp.ok && me.blueprints.length === 1, 'save the layout as a blueprint');
+  check(!placeDistrict(s, capital.id, site, 'Again', []).ok, 'one district per hex');
+  check(!setSlot(s, centreD!.id, 4, 'houses').ok, 'the town hall cannot be replaced');
+  // grain next to pigs: the pig pen at index 1 or 3 or 5 or 7 borders the grain field at 4
+  capital.stockpile.wood = 50;
+  for (let t = 0; t < 25; t++) endTurn(s);
+  const built = farm.slots.filter(x => x.built).length;
+  check(built >= 3, `${built} farm slots built after 25 turns`);
+  const econ = cityEconomy(s, capital);
+  const rep = econ.slots.get(farm.id)!;
+  const pigNextToGrain = [1, 3, 5, 7].find(
+    i => farm.slots[i].built && farm.slots[i].type === 'pig-pen' && farm.slots[4].built,
+  );
+  if (pigNextToGrain !== undefined) {
+    const lone = [0, 2].find(i => farm.slots[i].built && farm.slots[i].type === 'pig-pen');
+    if (lone !== undefined && rep[lone].staffed && rep[pigNextToGrain].staffed)
+      check(rep[pigNextToGrain].out.food > rep[lone].out.food, 'pigs next to grain make more food');
+  }
+  check(econ.workersUsed <= econ.workers, `workers ${econ.workersUsed}/${econ.workers}`);
+  const lim = cityEconomy(s, capital).total.housing;
+  check(capital.pop <= lim, `population ${capital.pop} within housing ${lim}`);
+
+  // --- roads and markets: a second city joined by a road shares its store
+  const g0 = { w: s.map.w, h: s.map.h };
+  const far = within(g0, capital.hex, 5).find(
+    h =>
+      distance(g0, h, capital.hex) === 4 &&
+      isPassableLand(s.map, h) &&
+      !s.cities.some(c => distance(g0, c.hex, h) < 4) &&
+      !s.formations.some(f => f.hex === h),
+  );
+  if (far !== undefined) {
+    const settlers2 = (trainSettlers(s, capital.id), mine().find(f => f.kind === 'settlers'));
+    if (!settlers2) capital.pop += 3000;
+    const st2 =
+      settlers2 ?? (trainSettlers(s, capital.id), mine().find(f => f.kind === 'settlers'))!;
+    st2.hex = far;
+    check(foundCity(s, st2.id).ok, 'second city founded');
+    const second = cityAt(s, far)!;
+    const path = findPath(g0, capital.hex, far, (_a, b) =>
+      isPassableLand(s.map, b) ? 1 : Infinity,
+    )!;
+    const before = marketCities(s, second).length;
+    for (const h of path) s.roads[h] = 1;
+    check(
+      marketCities(s, second).length >= 2 && before >= 1,
+      `road joins ${second.name} to ${capital.name}'s market`,
+    );
+    second.stockpile = {};
+    capital.stockpile.hides = 7;
+    check((marketStock(s, second).hides ?? 0) >= 7, 'the second city sees the shared store');
+    // marching along the road costs half a move per hex
+    const walker = mine().find(f => f.kind === 'army')!;
+    check(stepCost(s, walker, path[0], path[1]) === 0.5, 'road step costs half a move');
+    // an enemy at war standing on the road cuts the market
+    const foe = s.civs.find(c => c.id !== me.id)!;
+    declareWar(s, me.id, foe.id);
+    const cut = path[Math.floor(path.length / 2)];
+    const blocker = s.formations.find(f => f.civId === foe.id && f.kind === 'army')!;
+    const oldHex = blocker.hex;
+    blocker.hex = cut;
+    const riverLink = s.map.river[cut] === 1;
+    if (!path.some(h => s.map.river[h]))
+      check(
+        marketCities(s, second).length === 1 || riverLink,
+        'an enemy on the road splits the market',
+      );
+    blocker.hex = oldHex;
+    endWar(s, me.id, foe.id);
+  }
 
   // raise a second levy and merge it by moving onto the first
   check(levy(s, capital.id).ok, 'raise 2nd levy');

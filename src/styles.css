@@ -797,3 +797,186 @@ table.stats td:first-child {
 .preview p {
   margin: 4px 0;
 }
+
+/* ---------- city screen ---------- */
+.city-screen {
+  width: min(1320px, 100%);
+}
+.city-screen header small {
+  display: block;
+  margin-top: 2px;
+}
+.city-body {
+  display: grid;
+  grid-template-columns: 300px 1fr 330px;
+  gap: 14px;
+}
+@media (max-width: 1100px) {
+  .city-body {
+    grid-template-columns: 1fr;
+  }
+}
+.hexmap {
+  width: 100%;
+  background: var(--paper-2);
+  border-radius: 10px;
+}
+.hx {
+  cursor: pointer;
+}
+.hx polygon {
+  stroke: rgba(74, 50, 30, 0.35);
+  stroke-width: 1;
+}
+.hx.off {
+  opacity: 0.45;
+}
+.hx.on polygon {
+  stroke: var(--gold);
+  stroke-width: 3;
+}
+.hx-glyph {
+  font-size: 16px;
+  fill: #5b4632;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.hx-glyph.small {
+  font-size: 12px;
+}
+.hx-dep {
+  font:
+    bold 9px system-ui,
+    sans-serif;
+  fill: #fff;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.hx-name {
+  font:
+    italic 10px Georgia,
+    serif;
+  fill: var(--ink);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.queue {
+  padding-left: 18px;
+  margin: 4px 0;
+}
+.queue li {
+  margin-bottom: 6px;
+}
+.bar span.good {
+  background: var(--good);
+}
+.district .row {
+  margin-bottom: 8px;
+}
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.cell {
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+  border-width: 2px;
+  border-style: dashed;
+  background: rgba(255, 250, 240, 0.7);
+}
+.cell.built {
+  border-style: solid;
+  background: linear-gradient(#fffaf0, #f1e4c6);
+}
+.cell.on {
+  outline: 3px solid var(--gold);
+}
+.cell.bad small {
+  color: var(--bad);
+}
+.cell small {
+  color: var(--ink-soft);
+}
+.cell-out {
+  color: var(--ink) !important;
+}
+.cell-glyph {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 3px;
+}
+.bp-row {
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.bp-row input {
+  flex: 1;
+  min-width: 120px;
+}
+.new-district {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.palette {
+  max-height: 70vh;
+  overflow: auto;
+}
+.pal-group {
+  margin: 10px 0 4px;
+}
+.pal-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pal {
+  display: flex;
+  gap: 8px;
+  text-align: left;
+  padding: 5px 7px;
+  align-items: flex-start;
+}
+.pal span {
+  display: flex;
+  flex-direction: column;
+}
+.pal.on {
+  outline: 2px solid var(--gold);
+}
+.pal.locked {
+  opacity: 0.6;
+}
+.yield .goods {
+  gap: 2px 6px;
+}
+.pal small,
+.cell small {
+  display: block;
+}
+.pal .goods,
+.cell .goods,
+.queue .goods {
+  display: inline-flex;
+}
+.pal .good-icon,
+.cell .good-icon {
+  height: 14px !important;
+}
+.pal .good-glyph,
+.cell .good-glyph {
+  height: 14px !important;
+  min-width: 14px !important;
+  font-size: 7px !important;
+}

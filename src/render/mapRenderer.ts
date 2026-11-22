@@ -3,6 +3,7 @@
  * washes, ink coastlines and rivers, terrain symbols, deposits, borders, fog, cities, formations.
  */
 import { GOODS, DEPOSITS } from '../data/goods.ts';
+import { GROUPS, SLOT_TYPES } from '../data/slots.ts';
 import { TERRAIN, isWater } from '../data/terrain.ts';
 import { depositVisible, pathTurns, territory, visibleHexes } from '../engine/game.ts';
 import { centerUnit, hexAtUnit, neighbors, pixelSizeUnit, type Grid } from '../engine/hex.ts';
@@ -285,6 +286,61 @@ export class MapRenderer {
         sprite(`marsh-${Math.floor(hash(i, 6) * 4)}`, x, y + R * 0.4, R * 0.9);
       } else if (ter === 'desert' && rel === 'flat' && hash(i, 7) > 0.75) {
         sprite(`rocks-${Math.floor(hash(i, 8) * 3)}`, x, y + R * 0.3, R * 0.6);
+      }
+    }
+
+    // 5b. roads
+    ctx.lineCap = 'round';
+    for (const pass of [0, 1]) {
+      ctx.strokeStyle = pass === 0 ? 'rgba(74,50,30,0.75)' : 'rgba(214,186,140,0.95)';
+      ctx.lineWidth = pass === 0 ? 4.5 : 2;
+      ctx.beginPath();
+      for (const i of onScreen) {
+        if (!known(i) || !s.roads[i]) continue;
+        let linked = false;
+        for (const n of neighbors(g, i)) {
+          if (!s.roads[n] || !known(n)) continue;
+          linked = true;
+          if (n < i) continue;
+          ctx.moveTo(cx(i), cy(i));
+          ctx.lineTo(cx(n), cy(n));
+        }
+        if (!linked) {
+          ctx.moveTo(cx(i) - R * 0.2, cy(i));
+          ctx.lineTo(cx(i) + R * 0.2, cy(i));
+        }
+      }
+      ctx.stroke();
+    }
+
+    // 5c. districts: a little 3×3 grid in group colours
+    for (const d of s.districts) {
+      if (!known(d.hex)) continue;
+      if (s.cities.some(c => c.hex === d.hex)) continue;
+      const x0 = cx(d.hex) - R * 0.33,
+        y0 = cy(d.hex) - R * 0.3;
+      const k = R * 0.22;
+      ctx.fillStyle = 'rgba(250,243,225,0.85)';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x0 - 3, y0 - 3, k * 3 + 6, k * 3 + 6, 4);
+      ctx.fill();
+      ctx.stroke();
+      d.slots.forEach((st, i) => {
+        ctx.globalAlpha = st.built ? 1 : 0.35;
+        ctx.fillStyle = st.type
+          ? GROUPS[SLOT_TYPES[st.type].group].color
+          : 'rgba(180,160,120,0.35)';
+        ctx.fillRect(x0 + (i % 3) * k + 1, y0 + Math.floor(i / 3) * k + 1, k - 2, k - 2);
+      });
+      ctx.globalAlpha = 1;
+      if (zoom > 0.8) {
+        ctx.fillStyle = INK;
+        ctx.font = `600 ${R * 0.22}px Georgia, serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(d.name, cx(d.hex), y0 + k * 3 + 5);
       }
     }
 

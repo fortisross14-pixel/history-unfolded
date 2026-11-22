@@ -32,6 +32,35 @@ await page.click('button:has-text("Found city")');
 await page.waitForTimeout(200);
 if (!(await page.$('.modal.research'))) await page.click('.research-btn');
 await page.click('.tech:has-text("Archery")');
+// city screen: lay out a "Farm" district and fill a few slots
+await page.click('button:has-text("City & districts")');
+await page.waitForSelector('.modal.city-screen');
+await page.screenshot({ path: `${out}/3a-city-screen.png` });
+const hexes = page.locator('.hexmap .hx:not(.off)');
+const nHex = await hexes.count();
+for (let k = 1; k < nHex; k++) {
+  await hexes.nth(k).click();
+  if (await page.$('.new-district')) break;
+}
+await page.fill('.new-district .design-name', 'Farm');
+await page.click('.new-district button.primary');
+await page.waitForSelector('.grid3');
+const pick = async (i: number, name: string) => {
+  await page.locator('.grid3 .cell').nth(i).click();
+  const b = page.locator('.pal:not(.locked)', { hasText: name }).first();
+  if (await b.count()) await b.click();
+};
+await pick(4, 'Grain field');
+await pick(1, 'Pig pen');
+await pick(3, 'Pig pen');
+await pick(5, 'Pig pen');
+await pick(7, 'Woodlot');
+await pick(0, 'Cattle pasture');
+await page.fill('.bp-row input', 'Farm');
+await page.click('.bp-row button:has-text("Save")');
+await page.locator('.grid3 .cell').nth(1).click();
+await page.screenshot({ path: `${out}/3b-district.png` });
+await page.click('.modal.city-screen .x');
 await page.click('button:has-text("Raise levy")');
 await page.waitForTimeout(200);
 await page.screenshot({ path: `${out}/3-city-levy.png` });

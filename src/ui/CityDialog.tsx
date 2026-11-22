@@ -169,7 +169,66 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
             setDSel(d);
             setCell(k);
           }}
-        />
+        >
+          {mineD && cell !== null && sel && (
+            <div className="plot-picker" onClick={ev => ev.stopPropagation()}>
+              <div className="plot-head">
+                <b>
+                  {mineD.name} · plot {cell + 1}
+                </b>
+                <span className="muted small">
+                  {sel.t
+                    ? `${sel.t.name}${sel.st.built ? '' : ` · being built (${Math.round(Math.min(1, sel.st.progress / Math.max(1, sel.t.build.prod)) * 100)}%)`}`
+                    : 'Empty: choose what to build'}
+                </span>
+                <button className="x" onClick={() => setCell(null)} aria-label="Close">
+                  ×
+                </button>
+              </div>
+              {sel.t?.fixed ? (
+                <p className="muted small">The town hall stays.</p>
+              ) : (
+                <div className="plot-options">
+                  {sel.t && (
+                    <button
+                      className="plot-opt clear"
+                      onClick={() => act(setSlot(game, mineD.id, cell, null))}
+                    >
+                      <span className="cell-glyph">✕</span>
+                      <span>{sel.st.built ? 'Demolish' : 'Clear'}</span>
+                    </button>
+                  )}
+                  {SLOT_LIST.filter(
+                    t =>
+                      t.id !== sel.st.type &&
+                      !slotProblem(game, c.civId, mineD.hex, centre, t.id, mineD.id),
+                  ).map(t => (
+                    <button
+                      key={t.id}
+                      className="plot-opt"
+                      title={t.note}
+                      onClick={() => act(setSlot(game, mineD.id, cell, t.id))}
+                    >
+                      <Art
+                        k={`building/${t.id}`}
+                        size={30}
+                        fallback={
+                          <span
+                            className="cell-glyph"
+                            style={{ background: GROUPS[t.group].color }}
+                          >
+                            {t.glyph}
+                          </span>
+                        }
+                      />
+                      <span>{t.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </CityScene>
         <div className="city-body">
           {/* ---------------- hexes */}
           <section className="city-hexes">

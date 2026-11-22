@@ -2462,3 +2462,66 @@ input.rename {
   width: 100%;
   text-align: center;
 }
+
+/* the city screen's stage: big, with the plot picker over it */
+.city-scene {
+  height: clamp(320px, 56vh, 640px);
+}
+.city-scene-over {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  bottom: 52px;
+  width: min(340px, calc(100% - 20px));
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+.plot-picker {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  background: rgba(247, 241, 227, 0.96);
+  border: 1px solid var(--iv-line);
+  border-radius: 10px;
+  box-shadow: var(--iv-shadow);
+  padding: 8px;
+}
+.plot-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.plot-head .x {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+}
+.plot-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 4px;
+  overflow-y: auto;
+}
+.plot-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 6px;
+  text-align: left;
+  font-size: 13px;
+}
+.plot-opt.clear {
+  color: var(--iv-bad);
+}
+@media (max-width: 700px) {
+  .city-scene-over {
+    top: auto;
+    bottom: 48px;
+    max-height: 55%;
+    width: calc(100% - 20px);
+  }
+}

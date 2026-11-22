@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SLOT_TYPES } from '../data/slots.ts';
 import { cityDistricts, DISTRICT_CAP, isCentre } from '../engine/economy.ts';
 import { freeDistrictHexes } from '../engine/game.ts';
@@ -18,6 +18,7 @@ export function CityScene({
   selected,
   cell,
   onPick,
+  children,
 }: {
   game: GameState;
   c: City;
@@ -25,6 +26,8 @@ export function CityScene({
   selected?: number;
   cell: number | null;
   onPick: (district: number | 'new', cell: number | null) => void;
+  /** shown over the scene: the picker for the chosen plot */
+  children?: ReactNode;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<CityScene3D | null>(null);
@@ -105,6 +108,7 @@ export function CityScene({
       >
         Whole settlement
       </button>
+      {children && <div className="city-scene-over">{children}</div>}
       <span className="city-scene-hint small">
         {ordered.length} of {DISTRICT_CAP[c.tier]} districts · click a plot · drag to turn
       </span>

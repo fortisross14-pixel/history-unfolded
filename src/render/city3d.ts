@@ -178,7 +178,39 @@ export function house(
   g.add(p);
   box(p, w, h, d, wall);
   add(p, prism(w + 0.05, roofH, d + 0.05), roof, 0, h, 0);
+  // a door and windows on the front, a window on each side: small, but they make it a house
+  if (w >= 0.18 && h >= 0.1) {
+    box(p, Math.min(0.07, w * 0.2), h * 0.55, 0.012, '#5a3f28', 0, 0, d / 2 + 0.004);
+    if (w >= 0.3)
+      for (const sx of [-1, 1])
+        box(p, 0.05, 0.045, 0.012, '#3d4f5c', sx * w * 0.3, h * 0.5, d / 2 + 0.004);
+    if (d >= 0.2)
+      for (const sx of [-1, 1])
+        box(p, 0.012, 0.045, 0.05, '#3d4f5c', sx * (w / 2 + 0.004), h * 0.5, 0);
+  }
   return p;
+}
+
+/** Life on a built plot in the close view: townsfolk, a barrel or crates, a lamp post. */
+export function props(g: THREE.Object3D, ground: string, r: Rng) {
+  const paved = ground === C.paved || ground === C.dirt || ground === C.earth;
+  const people = paved ? 1 + Math.floor(r() * 3) : r() < 0.5 ? 1 : 0;
+  const tunic = ['#7a5a9a', '#2f6a60', '#b5583b', '#c79a3e', '#5a86a8', '#6f8f45'];
+  for (let k = 0; k < people; k++) {
+    const x = (r() - 0.5) * 0.8,
+      z = 0.3 + r() * 0.15;
+    cyl(g, 0.018, 0.022, 0.06, tunic[Math.floor(r() * tunic.length)], x, 0, z, 6);
+    ball(g, 0.016, '#e6c9a8', x, 0.075, z);
+  }
+  if (paved && r() < 0.6)
+    cyl(g, 0.03, 0.03, 0.06, C.wood, -0.38 + r() * 0.1, 0, -0.38 + r() * 0.1, 7);
+  if (paved && r() < 0.4)
+    for (let k = 0; k < 2; k++)
+      box(g, 0.06, 0.06, 0.06, k ? C.wheat2 : C.wood, 0.36 - k * 0.07, 0, 0.38);
+  if (paved && r() < 0.35) {
+    cyl(g, 0.006, 0.006, 0.2, C.black, 0.42, 0, -0.42, 4);
+    ball(g, 0.018, '#f3d28a', 0.42, 0.21, -0.42);
+  }
 }
 export function tree(
   g: THREE.Object3D,
@@ -809,6 +841,8 @@ export class CityScene3D {
   private world = new THREE.Group();
   private tops: THREE.Object3D[] = [];
   private frame = new THREE.Group();
+  private hover = new THREE.Group();
+  private hoverKey = '';
   private ang = 0.7;
   private zoom = 8;
   /** where the camera looks: a district, or the whole settlement */
@@ -857,6 +891,18 @@ export class CityScene3D {
       });
     this.scene.add(this.frame);
     this.frame.visible = false;
+    // the plot under the pointer: a pale frame
+    for (const [w, d, x, z] of [
+      [1.06, 0.03, 0, 0.51],
+      [1.06, 0.03, 0, -0.51],
+      [0.03, 1.06, 0.51, 0],
+      [0.03, 1.06, -0.51, 0],
+    ])
+      add(this.hover, new THREE.BoxGeometry(w, 0.02, d), '#fbf7ee', x, 0.015, z, {
+        emissive: '#777766',
+      });
+    this.scene.add(this.hover);
+    this.hover.visible = false;
     this.bindInput();
     this.ro = new ResizeObserver(() => this.render());
     this.ro.observe(host);
@@ -889,7 +935,8 @@ export class CityScene3D {
     } else {
       const [x, z] = this.posOf(district);
       this.target.set(x, 0, z);
-      this.zoom = 6;
+      // the district fills the stage: its 3×3 plots up close
+      this.zoom = 4.4;
     }
     this.render();
   }
@@ -990,6 +1037,7 @@ export class CityScene3D {
             ? scaffold
             : (builderFor(s.type) ?? generic(s.group));
       const ground = make(t, rr) || C.grass;
+      if (s?.type && s.built) props(t, ground, rr);
       const top = add(t, new THREE.BoxGeometry(TILE, 0.06, TILE), ground, 0, -0.03, 0);
       top.castShadow = false;
       add(t, new THREE.BoxGeometry(TILE, 0.1, TILE), C.slab, 0, -0.11, 0).castShadow = false;
@@ -1003,19 +1051,26 @@ export class CityScene3D {
   }
 
   private select(sel?: { district: number; slot: number | null }) {
-    if (!sel || sel.slot === null) {
-      this.frame.visible = false;
+    this.place(this.frame, sel);
+  }
+
+  /** Put a frame round one plot (or hide it). */
+  private place(frame: THREE.Group, sel?: { district: number; slot: number | null } | null) {
+    if (
+      !sel ||
+      sel.slot === null ||
+      !this.world.children.some(o => o.userData.index === sel.district)
+    ) {
+      frame.visible = false;
       return;
     }
-    const g = this.world.children.find(o => o.userData.index === sel.district);
-    if (!g) return;
     const [x, z] = this.posOf(sel.district);
     const k = sel.slot;
     const local = new THREE.Vector3(((k % 3) - 1) * PITCH, 0.01, (Math.floor(k / 3) - 1) * PITCH);
     local.applyAxisAngle(new THREE.Vector3(0, 1, 0), TURN[sel.district]);
-    this.frame.position.set(x + local.x, 0.01, z + local.z);
-    this.frame.rotation.y = TURN[sel.district];
-    this.frame.visible = true;
+    frame.position.set(x + local.x, 0.01, z + local.z);
+    frame.rotation.y = TURN[sel.district];
+    frame.visible = true;
   }
 
   /** draw once, on the next frame */
@@ -1054,7 +1109,19 @@ export class CityScene3D {
       el.setPointerCapture(e.pointerId);
     });
     el.addEventListener('pointermove', e => {
-      if (!down) return;
+      if (!down) {
+        // highlight the plot under the pointer (mouse only: a finger has no hover)
+        if (e.pointerType !== 'mouse') return;
+        const pk = this.hit(e);
+        const key = pk && pk.slot !== null ? `${pk.district}:${pk.slot}` : '';
+        if (key !== this.hoverKey) {
+          this.hoverKey = key;
+          this.place(this.hover, key ? pk : null);
+          el.style.cursor = key ? 'pointer' : 'grab';
+          this.render();
+        }
+        return;
+      }
       const dx = e.clientX - down.x;
       if (Math.abs(dx) > 4) moved = true;
       if (moved) {
@@ -1078,6 +1145,11 @@ export class CityScene3D {
   }
 
   private pick(e: PointerEvent) {
+    const pk = this.hit(e);
+    if (pk) this.onPick(pk);
+  }
+
+  private hit(e: PointerEvent): Pick | undefined {
     const rect = this.renderer.domElement.getBoundingClientRect();
     const p = new THREE.Vector2(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -1086,7 +1158,6 @@ export class CityScene3D {
     const ray = new THREE.Raycaster();
     ray.setFromCamera(p, this.cam);
     const hit = ray.intersectObjects(this.tops, true)[0];
-    const pk = hit?.object.userData.pick as Pick | undefined;
-    if (pk) this.onPick(pk);
+    return hit?.object.userData.pick as Pick | undefined;
   }
 }

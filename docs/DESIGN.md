@@ -394,6 +394,15 @@ field, yard), with homes in the centre as its people grow; no 3×3 grid is shown
 
 ### 7a. The settlement in low-poly 3D (as built)
 
+Two views with two jobs: the world map shows each settlement as an organic little place
+(§7-0); the city screen is the close-up where the player builds. Its 3D stage is large (over
+half the screen), frames the district being edited so its 3×3 plots fill the view, and shows
+each plot's real building in detail: houses with doors and windows, and on built plots
+townsfolk, barrels, crates and lamp posts. Hovering a plot frames it; clicking it opens a picker
+over the scene with what stands there (or its building progress) and every building that can
+go on that plot, plus clear or demolish. The full palette beside it keeps costs, yields and the
+reasons for what cannot be built.
+
 The city screen opens on the settlement in low-poly 3D (three.js, loaded only when a city screen
 opens). The centre district sits in the middle with its town hall; the other districts stand
 around it on a hex-like ring, joined by roads; bare meadow plots with a marker show where

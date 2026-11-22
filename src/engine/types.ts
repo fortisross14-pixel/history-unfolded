@@ -115,7 +115,17 @@ export interface Civ {
   /** AI only: culture tags it leans towards */
   leanings: string[];
   /** AI only: the current military campaign */
-  ai?: { targetCity: number; staging: number; phase: 'gather' | 'march'; since: number };
+  ai?: {
+    targetCity: number;
+    /** land hex next to our city where the armies gather */
+    staging: number;
+    phase: 'gather' | 'march' | 'assault';
+    since: number;
+    /** formations committed to this campaign */
+    members: number[];
+  };
+  /** AI only: formations sent home to heal (they rejoin at 80%) */
+  recovering?: number[];
   /** AI only: a sea crossing in progress (settlers or an army on transports) */
   sea?: {
     fleet: number;
@@ -125,6 +135,10 @@ export interface Civ {
     dest: number;
     stage: 'load' | 'sail' | 'unload';
     since: number;
+    /** enemy city hex an invasion aims at (none for settlers) */
+    target?: number;
+    /** sailing home to unload after a crossing could not be made */
+    abort?: boolean;
   };
   science: number;
   gold: number;
@@ -240,6 +254,11 @@ export interface War {
   a: number;
   b: number;
   since: number;
+  /** people lost in battle, by civ id */
+  dead?: Record<number, number>;
+  /** cities taken, by the civ that took them */
+  taken?: Record<number, number>;
+  lastFight?: number;
 }
 
 export interface LogEntry {

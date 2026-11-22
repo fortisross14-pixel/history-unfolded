@@ -13,7 +13,8 @@
     "test:ui": "node --no-warnings scripts/ui-smoke.ts",
     "format": "prettier --write src scripts",
     "test:mobile": "node --no-warnings scripts/mobile-smoke.ts",
-    "check:perf": "node --no-warnings scripts/perf-smoke.ts 4"
+    "check:perf": "node --no-warnings scripts/perf-smoke.ts 4",
+    "check:ai": "node --no-warnings scripts/aicheck.ts"
   },
   "dependencies": {
     "react": "19.2.8",

@@ -1551,6 +1551,15 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
   };
   applyLosses(f, report.attacker.cohortLoss);
   if (b.df) applyLosses(b.df, report.defender.cohortLoss);
+  const war = s.wars.find(
+    w => (w.a === f.civId && w.b === b.defCivId) || (w.b === f.civId && w.a === b.defCivId),
+  );
+  if (war) {
+    war.dead ??= {};
+    war.dead[f.civId] = (war.dead[f.civId] ?? 0) + report.attacker.lost;
+    war.dead[b.defCivId] = (war.dead[b.defCivId] ?? 0) + report.defender.lost;
+    war.lastFight = s.turn;
+  }
   attCiv.kills += report.defender.lost;
   attCiv.losses += report.attacker.lost;
   defCiv.kills += report.attacker.lost;
@@ -1644,6 +1653,13 @@ function captureCity(s: GameState, c: City, by: Formation): string {
   by.hex = c.hex;
   const msg = `${civ.name} captured ${c.name} from the ${old.name}!`;
   remember(s, old.id, civ.id, 'conquest', 'Took our cities', -30, 0.1);
+  const war = s.wars.find(
+    w => (w.a === civ.id && w.b === old.id) || (w.b === civ.id && w.a === old.id),
+  );
+  if (war) {
+    war.taken ??= {};
+    war.taken[civ.id] = (war.taken[civ.id] ?? 0) + 1;
+  }
   log(s, by.civId, msg);
   return msg;
 }

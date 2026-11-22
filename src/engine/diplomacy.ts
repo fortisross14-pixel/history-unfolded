@@ -201,8 +201,17 @@ export function evaluateOffer(s: GameState, from: number, to: number, o: Offer):
       };
     const mine = powerOfCiv(s, to),
       theirs = powerOfCiv(s, from);
-    // tired of war, afraid of losing, or confident of winning
-    value += length * 1.5 + (theirs / Math.max(1, mine) - 1) * 40;
+    // how the war is going for them (`to`): losses, cities taken, and who is stronger now
+    const myDead = w.dead?.[to] ?? 0,
+      theirDead = w.dead?.[from] ?? 0;
+    const winning = theirDead > myDead * 1.3 + 200 || (w.taken?.[to] ?? 0) > (w.taken?.[from] ?? 0);
+    const losing = myDead > theirDead * 1.3 + 200 || (w.taken?.[from] ?? 0) > (w.taken?.[to] ?? 0);
+    const quiet = w.lastFight !== undefined ? s.turn - w.lastFight >= 15 : length >= 40;
+    value +=
+      length * 0.5 +
+      (winning ? -35 : losing ? 30 : 0) +
+      (quiet ? 15 : 0) +
+      (theirs / Math.max(1, mine) - 1) * 25;
   }
   if (o.pact) {
     if (hasPact(s, from, to))

@@ -45,7 +45,18 @@ import {
   newProposal,
   opinion,
 } from './diplomacy.ts';
-import { buildShip, cityGuard, cityWalls, orderMove, roomOn } from './game.ts';
+import {
+  buildShip,
+  cargoOf,
+  cityGuard,
+  cityWalls,
+  orderMove,
+  passable,
+  refit,
+  roomOn,
+  stepCost,
+} from './game.ts';
+import { findPath } from './path.ts';
 import {
   cityDistricts,
   cityEconomy,
@@ -60,7 +71,15 @@ import type { City } from './types.ts';
 import { hexFood, isPassableLand } from './mapgen.ts';
 import { hashSeed, mulberry32, type Rng } from './rng.ts';
 import type { Civ, Formation, GameState } from './types.ts';
-import { capOf, COHORT_SIZE, isRanged, loadoutProblem, people, power } from './units.ts';
+import {
+  capOf,
+  COHORT_SIZE,
+  isRanged,
+  loadoutProblem,
+  oceanGoing,
+  people,
+  power,
+} from './units.ts';
 
 interface Plan {
   name: string;
@@ -265,12 +284,16 @@ function upgrade(s: GameState, civ: Civ, f: Formation) {
 function chooseCulture(s: GameState, civ: Civ, rng: Rng) {
   const avail = CULTURE_LIST.filter(n => nodeStatus(civ, n).kind === 'available');
   if (!avail.length) return;
-  const score = (n: (typeof CULTURE_LIST)[number]) =>
-    n.tags.filter(t => civ.leanings.includes(t)).length * 3 +
-    (5 - n.tier) * 0.5 +
-    rng() * 2 -
-    nodeCost(s, civ, n) / 60;
-  const best = avail.sort((a, b) => score(b) - score(a))[0];
+  // score each choice once (no random draws inside a sort), then take the best
+  const scored = avail.map(n => ({
+    n,
+    v:
+      n.tags.filter(t => civ.leanings.includes(t)).length * 3 +
+      (5 - n.tier) * 0.5 +
+      rng() * 2 -
+      nodeCost(s, civ, n) / 60,
+  }));
+  const best = scored.reduce((a, b) => (b.v > a.v ? b : a)).n;
   if (civ.culture.points >= nodeCost(s, civ, best)) takeNode(s, civ.id, best.id);
   // the AI calls its own upheaval when a domain is close to boiling
   const hot = DOMAIN_LIST.find(d => civ.culture.tension[d] >= 125);
@@ -485,31 +508,6 @@ export function aiTurn(s: GameState, civ: Civ) {
   // --- diplomacy and war
   aiDiplomacy(s, civ, rng);
   const enemies = s.civs.filter(o => o.alive && o.id !== civ.id && atWar(s, civ.id, o.id));
-  const camp = enemies.length ? planCampaign(s, civ, enemies) : ((civ.ai = undefined), undefined);
-  if (enemies.length && !camp && !civ.sea) {
-    // no enemy city reachable by land: carry the biggest army across the sea
-    const army = mine()
-      .filter(
-        f =>
-          f.kind === 'army' &&
-          f.name !== 'Scouts' &&
-          f.aboard === undefined &&
-          !cities.some(c => c.hex === f.hex && f.fortified),
-      )
-      .sort((a, b) => b.cohorts.length - a.cohorts.length)[0];
-    const target = s.cities.filter(
-      c =>
-        enemies.some(e => e.id === c.civId) &&
-        neighbors(g, c.hex).some(k => s.map.terrain[k] === 'coast'),
-    );
-    if (army && army.cohorts.length >= 6 && target.length)
-      startSeaTask(
-        s,
-        civ,
-        army,
-        target.sort((a, b) => distance(g, a.hex, army.hex) - distance(g, b.hex, army.hex))[0].hex,
-      );
-  }
   // at war with a seafaring people: keep a couple of warships
   if (enemies.some(e => s.formations.some(f => f.civId === e.id && f.kind === 'fleet'))) {
     const war = civ.designs.find(d => d.name === 'Warships');
@@ -530,22 +528,14 @@ export function aiTurn(s: GameState, civ: Civ) {
       if (!centre || cityDistricts(s, c).some(d => d.slots.some(x => x.type === 'shipyard')))
         continue;
       if (slotProblem(s, civ.id, c.hex, true, 'shipyard', centre.id)) continue;
+      // a lake-only harbour leads nowhere
+      if (!neighbors(g, c.hex).some(k => s.map.terrain[k] === 'coast')) continue;
       const i = centre.slots.findIndex(x => !x.type || (x.type === 'barracks' && !x.built));
       if (i >= 0) setSlot(s, centre.id, i, 'shipyard');
     }
 
   // --- formations
-  const garrisoned = new Set<number>();
   runSeaTask(s, civ, rng);
-  // enemy armies close to our cities, found once for all our formations
-  const threats = enemies.length
-    ? s.formations.filter(
-        o =>
-          o.kind === 'army' &&
-          enemies.some(e => e.id === o.civId) &&
-          cities.some(c => distance(g, c.hex, o.hex) <= 3),
-      )
-    : [];
   for (const f of mine()) {
     if (!s.formations.includes(f)) continue;
     if (f.aboard !== undefined || civ.sea?.cargo === f.id || civ.sea?.fleet === f.id) continue;
@@ -555,6 +545,7 @@ export function aiTurn(s: GameState, civ: Civ) {
     }
     equip(s, civ, f);
     if (f.moves > 0 && (s.turn + f.id) % 3 === 0) upgrade(s, civ, f);
+    if (f.kind === 'army' && f.name !== 'Scouts') continue; // see armyOrders
     if (f.kind === 'settlers') {
       // settle on arrival; pick a site if there is no route yet
       if (!f.path.length) {
@@ -593,92 +584,8 @@ export function aiTurn(s: GameState, civ: Civ) {
       advance(s, f);
       continue;
     }
-    // garrison: one army sits in each city
-    const home = cities.find(c => c.hex === f.hex && !garrisoned.has(c.id));
-    if (home && (!enemies.length || cities.length > garrisoned.size + 1 || people(f) < 400)) {
-      garrisoned.add(home.id);
-      // fold a second army on the same hex into the garrison while there is room
-      for (const o of formationsAt(s, f.hex))
-        if (
-          o !== f &&
-          o.civId === civ.id &&
-          o.kind === 'army' &&
-          o.cohorts.length + f.cohorts.length <= capOf(f, s) &&
-          o.name !== 'Scouts'
-        )
-          merge(s, o.id, f.id);
-      f.fortified = true;
-      continue;
-    }
-    const ungarrisoned = cities.find(
-      c =>
-        !garrisoned.has(c.id) &&
-        !formationsAt(s, c.hex).some(x => x.civId === civ.id && x.kind === 'army' && x !== f),
-    );
-    if (!enemies.length) {
-      if (ungarrisoned && f.hex !== ungarrisoned.hex) {
-        f.path = planPath(s, f, ungarrisoned.hex) ?? [];
-        advance(s, f);
-      } else f.fortified = true;
-      continue;
-    }
-    // at war: weakened formations go home to recover
-    if (people(f) < f.cohorts.length * COHORT_SIZE * 0.55 && cities.length) {
-      const c = cities
-        .slice()
-        .sort((a, b) => distance(g, a.hex, f.hex) - distance(g, b.hex, f.hex))[0];
-      if (f.hex !== c.hex) {
-        f.path = planPath(s, f, c.hex) ?? [];
-        advance(s, f);
-      }
-      continue;
-    }
-    // defend: an enemy army close to one of our cities comes first
-    const threat = threats.find(o => distance(g, f.hex, o.hex) <= 6);
-    if (threat) {
-      if (strikeIfGood(s, f, threat.hex)) continue;
-      f.path = pathNextTo(s, f, threat.hex) ?? [];
-      advance(s, f);
-      if (s.formations.includes(f) && f.moves > 0 && distance(g, f.hex, threat.hex) === 1)
-        strikeIfGood(s, f, threat.hex);
-      continue;
-    }
-    // opportunity: an enemy right next to us
-    const adj = neighbors(g, f.hex).find(h =>
-      s.formations.some(o => o.hex === h && enemies.some(e => e.id === o.civId)),
-    );
-    if (adj !== undefined && strikeIfGood(s, f, adj)) continue;
-    if (!camp) continue;
-    const target = s.cities.find(c => c.id === camp.targetCity)!;
-    if (camp.phase === 'gather') {
-      // assemble at the staging city and fold into big formations
-      if (f.hex !== camp.staging) {
-        f.path = planPath(s, f, camp.staging) ?? [];
-        advance(s, f);
-      }
-      if (s.formations.includes(f) && f.hex === camp.staging)
-        for (const o of formationsAt(s, f.hex))
-          if (
-            o !== f &&
-            o.civId === civ.id &&
-            o.kind === 'army' &&
-            o.name !== 'Scouts' &&
-            o.cohorts.length + f.cohorts.length <= capOf(f, s) &&
-            s.formations.includes(o)
-          )
-            merge(s, o.id, f.id);
-      continue;
-    }
-    // march on the target city and assault it
-    if (distance(g, f.hex, target.hex) === 1) {
-      if (!strikeIfGood(s, f, target.hex, 0.75)) f.fortified = true;
-      continue;
-    }
-    f.path = pathNextTo(s, f, target.hex) ?? [];
-    advance(s, f);
-    if (s.formations.includes(f) && f.moves > 0 && distance(g, f.hex, target.hex) === 1)
-      strikeIfGood(s, f, target.hex, 0.75);
   }
+  armyOrders(s, civ, enemies, rng);
 }
 
 /** Attack if the expected exchange favours us (`ratio` < 1 accepts worse trades, for sieges). */
@@ -712,59 +619,301 @@ function cityDefence(s: GameState, cityHex: number): number {
   return p * 1.6; // walls and the city bonus
 }
 
+// ---------------------------------------------------------------- armies
+
+/** Debug trace of AI decisions (not saved). Read it with aiTrace() in diagnostic scripts. */
+const TRACE: { turn: number; civ: number; msg: string }[] = [];
+export function trace(s: GameState, civ: Civ, msg: string) {
+  TRACE.push({ turn: s.turn, civ: civ.id, msg });
+  if (TRACE.length > 2000) TRACE.splice(0, 500);
+}
+export const aiTrace = () => TRACE;
+
+const MIN_PHASE = 3;
+
+/** A free land hex next to `cityHex`, toward `toward`, where armies can gather. */
+function stagingHex(s: GameState, civ: Civ, cityHex: number, toward: number): number {
+  const g = gridOf(s);
+  const opts = neighbors(g, cityHex).filter(
+    h =>
+      isPassableLand(s.map, h) &&
+      !s.cities.some(c => c.hex === h) &&
+      !s.formations.some(o => o.hex === h && o.civId !== civ.id),
+  );
+  opts.sort((a, b) => distance(g, a, toward) - distance(g, b, toward));
+  return opts[0] ?? cityHex;
+}
+
 /**
- * A campaign: pick the softest enemy city we can reach by land, gather the field armies at our
- * nearest city, march once strong enough (or after waiting long enough), regroup if bled white.
+ * Pick the campaign target: the softest enemy city the field armies can reach over land,
+ * from home or from where a member already stands (after a landing).
  */
-function planCampaign(s: GameState, civ: Civ, enemies: Civ[]) {
+function chooseTarget(s: GameState, civ: Civ, enemies: Civ[], members: Formation[]) {
   const g = gridOf(s);
   const cities = s.cities.filter(c => c.civId === civ.id);
-  const field = s.formations.filter(
+  const probe = members[0];
+  let best: { city: (typeof s.cities)[number]; staging: number; v: number } | undefined;
+  for (const c of s.cities) {
+    if (!enemies.some(e => e.id === c.civId)) continue;
+    const home = cities
+      .slice()
+      .sort((a, b) => distance(g, a.hex, c.hex) - distance(g, b.hex, c.hex))[0];
+    const fromField = members
+      .slice()
+      .sort((a, b) => distance(g, a.hex, c.hex) - distance(g, b.hex, c.hex))[0];
+    const start =
+      home && distance(g, home.hex, c.hex) <= distance(g, fromField.hex, c.hex) + 3
+        ? home.hex
+        : fromField.hex;
+    const d = distance(g, start, c.hex);
+    if (d > 20) continue;
+    if (!pathNextTo(s, { ...probe, hex: start }, c.hex)) continue;
+    const v = d * 3 + cityDefence(s, c.hex) / 4;
+    if (!best || v < best.v)
+      best = {
+        city: c,
+        staging:
+          start === fromField.hex && start !== home?.hex ? start : stagingHex(s, civ, start, c.hex),
+        v,
+      };
+  }
+  return best;
+}
+
+/**
+ * Every army each turn. Roles: one garrison per city; wounded armies heal at home until 80%;
+ * enough field armies to cover a threat answer it; the rest are the campaign, which gathers next
+ * to a staging city, marches together, waits until assembled, then assaults the strongest first.
+ * Phases last at least MIN_PHASE turns and switch on separate thresholds, so the AI does not
+ * flip-flop.
+ */
+function armyOrders(s: GameState, civ: Civ, enemies: Civ[], rng: Rng) {
+  const g = gridOf(s);
+  const cities = s.cities.filter(c => c.civId === civ.id);
+  const armies = s.formations.filter(
     f =>
       f.civId === civ.id &&
       f.kind === 'army' &&
       f.name !== 'Scouts' &&
-      !cities.some(c => c.hex === f.hex && f.fortified),
+      f.aboard === undefined &&
+      civ.sea?.cargo !== f.id,
   );
-  if (!cities.length || !field.length) return undefined;
-  let camp = civ.ai;
-  const valid =
-    camp && s.cities.some(c => c.id === camp!.targetCity && enemies.some(e => e.id === c.civId));
-  if (!valid) {
-    const probe = field[0];
-    let best: { city: (typeof s.cities)[number]; staging: number; v: number } | undefined;
-    for (const c of s.cities) {
-      if (!enemies.some(e => e.id === c.civId)) continue;
-      const home = cities
-        .slice()
-        .sort((a, b) => distance(g, a.hex, c.hex) - distance(g, b.hex, c.hex))[0];
-      const d = distance(g, home.hex, c.hex);
-      if (d > 18) continue;
-      if (!pathNextTo(s, { ...probe, hex: home.hex }, c.hex)) continue; // not reachable over land
-      const v = d * 3 + cityDefence(s, c.hex) / 4;
-      if (!best || v < best.v) best = { city: c, staging: home.hex, v };
+  const health = (f: Formation) => people(f) / Math.max(1, f.cohorts.length * COHORT_SIZE);
+  // garrisons: the biggest army standing in each city
+  const garrison = new Set<number>();
+  for (const c of cities) {
+    const here = armies
+      .filter(f => f.hex === c.hex)
+      .sort((a, b) => b.cohorts.length - a.cohorts.length)[0];
+    if (here) {
+      garrison.add(here.id);
+      here.fortified = true;
     }
-    if (!best) return undefined;
+  }
+  const free = () => armies.filter(f => s.formations.includes(f) && !garrison.has(f.id));
+  if (!enemies.length) {
+    civ.ai = undefined;
+    // peace: fill empty cities, fold extra armies into garrisons, else wait
+    for (const c of cities) {
+      if (armies.some(f => garrison.has(f.id) && f.hex === c.hex)) continue;
+      const f = free()
+        .filter(x => !x.path.length)
+        .sort((a, b) => distance(g, a.hex, c.hex) - distance(g, b.hex, c.hex))[0];
+      if (f) {
+        f.path = planPath(s, f, c.hex) ?? [];
+        garrison.add(f.id);
+      }
+    }
+    for (const f of armies) if (s.formations.includes(f) && f.path.length) advance(s, f);
+    for (const f of free()) if (!f.path.length) f.fortified = true;
+    return;
+  }
+
+  // wounded go home and come back at 80%
+  const rec = new Set(civ.recovering ?? []);
+  for (const f of armies) {
+    if (!s.formations.includes(f) || garrison.has(f.id)) continue;
+    if (health(f) < 0.55) rec.add(f.id);
+    else if (health(f) >= 0.8) rec.delete(f.id);
+  }
+  civ.recovering = [...rec].filter(id => armies.some(f => f.id === id));
+  for (const f of free().filter(x => rec.has(x.id))) {
+    const c = cities
+      .slice()
+      .sort((a, b) => distance(g, a.hex, f.hex) - distance(g, b.hex, f.hex))[0];
+    if (c && distance(g, f.hex, c.hex) > 1) {
+      f.path = pathNextTo(s, f, c.hex) ?? [];
+      advance(s, f);
+    } else f.fortified = true;
+  }
+  let field = free().filter(f => !rec.has(f.id));
+
+  // threats: answer each with enough strength, not with everything
+  const threats = s.formations.filter(
+    o =>
+      o.kind === 'army' &&
+      enemies.some(e => e.id === o.civId) &&
+      cities.some(c => distance(g, c.hex, o.hex) <= 3),
+  );
+  const busy = new Set<number>();
+  for (const t of threats) {
+    const need = power(t) * 1.2;
+    let sent = 0;
+    for (const f of field
+      .filter(x => !busy.has(x.id) && distance(g, x.hex, t.hex) <= 7)
+      .sort((a, b) => distance(g, a.hex, t.hex) - distance(g, b.hex, t.hex))) {
+      if (sent >= need) break;
+      busy.add(f.id);
+      sent += power(f);
+      if (distance(g, f.hex, t.hex) === 1) strikeIfGood(s, f, t.hex);
+      else {
+        f.path = pathNextTo(s, f, t.hex) ?? [];
+        advance(s, f);
+        if (s.formations.includes(f) && f.moves > 0 && distance(g, f.hex, t.hex) === 1)
+          strikeIfGood(s, f, t.hex);
+      }
+    }
+  }
+  field = field.filter(f => !busy.has(f.id) && s.formations.includes(f));
+
+  // opportunities next to us
+  for (const f of field) {
+    const adj = neighbors(g, f.hex).find(h =>
+      s.formations.some(
+        o => o.hex === h && o.kind !== 'fleet' && enemies.some(e => e.id === o.civId),
+      ),
+    );
+    if (adj !== undefined && strikeIfGood(s, f, adj)) busy.add(f.id);
+  }
+  field = field.filter(f => !busy.has(f.id) && s.formations.includes(f));
+  if (!field.length) return;
+
+  // the campaign
+  let camp = civ.ai;
+  const target =
+    camp && s.cities.find(c => c.id === camp!.targetCity && enemies.some(e => e.id === c.civId));
+  if (!camp || !target) {
+    const pick = chooseTarget(s, civ, enemies, field);
+    if (!pick) {
+      civ.ai = undefined;
+      // nothing reachable by land: carry the biggest army over the sea
+      if (!civ.sea) {
+        const army = field.slice().sort((a, b) => b.cohorts.length - a.cohorts.length)[0];
+        const coastal = s.cities.filter(
+          c =>
+            enemies.some(e => e.id === c.civId) &&
+            neighbors(g, c.hex).some(k => s.map.terrain[k] === 'coast'),
+        );
+        // weakest reachable shore first; a siege wears the guard down, so half its defence will do
+        coastal.sort((a, b) => cityDefence(s, a.hex) - cityDefence(s, b.hex));
+        if (
+          army.cohorts.length >= 4 &&
+          coastal.length &&
+          power(army) >= cityDefence(s, coastal[0].hex) * 0.5
+        )
+          startSeaTask(s, civ, army, coastal[0].hex);
+      }
+      for (const f of field) f.fortified = true;
+      return;
+    }
     camp = civ.ai = {
-      targetCity: best.city.id,
-      staging: best.staging,
+      targetCity: pick.city.id,
+      staging: pick.staging,
       phase: 'gather',
       since: s.turn,
+      members: [],
     };
+    trace(s, civ, `campaign against ${pick.city.name}, gathering at ${pick.staging}`);
   }
   const c = camp!;
-  const target = s.cities.find(x => x.id === c.targetCity)!;
-  const near = (h: number) =>
-    field.filter(f => distance(g, f.hex, h) <= 2).reduce((a, f) => a + power(f), 0);
-  const need = cityDefence(s, target.hex) * 1.3;
-  if (c.phase === 'gather' && (near(c.staging) >= need || s.turn - c.since > 12)) {
-    c.phase = 'march';
+  const tgt = s.cities.find(x => x.id === c.targetCity)!;
+  c.members = field.map(f => f.id);
+  const members = field;
+  const need = cityDefence(s, tgt.hex) * 1.3;
+  const total = members.reduce((a, f) => a + power(f), 0);
+  const age = s.turn - c.since;
+  const setPhase = (p: typeof c.phase, why: string) => {
+    c.phase = p;
     c.since = s.turn;
-  } else if (c.phase === 'march' && field.reduce((a, f) => a + power(f), 0) < need * 0.5) {
-    c.phase = 'gather';
-    c.since = s.turn;
+    trace(s, civ, `${p} (${why}; strength ${Math.round(total)} vs ${Math.round(need)})`);
+  };
+  if (c.phase === 'gather') {
+    const gathered = members
+      .filter(f => distance(g, f.hex, c.staging) <= 1)
+      .reduce((a, f) => a + power(f), 0);
+    if (age >= MIN_PHASE && (gathered >= need || age > 14))
+      setPhase('march', gathered >= need ? 'strong enough' : 'waited long enough');
+  } else if (age >= MIN_PHASE && total < need * 0.5) setPhase('gather', 'bled white');
+  else if (c.phase === 'march') {
+    const arrived = members.filter(f => distance(g, f.hex, tgt.hex) <= 1).length;
+    if (arrived === members.length || age > 6)
+      setPhase('assault', arrived === members.length ? 'all arrived' : 'stragglers left behind');
   }
-  return c;
+
+  if (c.phase === 'gather') {
+    for (const f of members) {
+      if (distance(g, f.hex, c.staging) > 0) {
+        f.path = planPath(s, f, c.staging) ?? [];
+        advance(s, f);
+      }
+      if (!s.formations.includes(f) || f.hex !== c.staging) continue;
+      for (const o of formationsAt(s, f.hex))
+        if (
+          o !== f &&
+          o.civId === civ.id &&
+          o.kind === 'army' &&
+          o.name !== 'Scouts' &&
+          o.aboard === undefined &&
+          o.cohorts.length + f.cohorts.length <= capOf(f, s) &&
+          s.formations.includes(o)
+        )
+          merge(s, o.id, f.id);
+    }
+    return;
+  }
+  // march (and stragglers during the assault): close in next to the city, then wait
+  for (const f of members) {
+    if (!s.formations.includes(f) || distance(g, f.hex, tgt.hex) === 1) continue;
+    f.path = pathNextTo(s, f, tgt.hex) ?? [];
+    advance(s, f);
+  }
+  if (c.phase === 'assault') {
+    const ready = members
+      .filter(f => s.formations.includes(f) && distance(g, f.hex, tgt.hex) === 1)
+      .sort((a, b) => power(b) - power(a));
+    for (const f of ready) {
+      if (!s.cities.some(x => x.id === tgt.id && x.civId !== civ.id)) break;
+      if (!strikeIfGood(s, f, tgt.hex, 0.7)) f.fortified = true;
+    }
+  }
+  void rng;
+}
+
+/** Can our armies get at one of their cities: by land, or by sea from one of our ports? */
+function canReach(s: GameState, civ: Civ, o: Civ): boolean {
+  const g = gridOf(s);
+  const ours = s.cities.filter(c => c.civId === civ.id);
+  const army = s.formations.find(f => f.civId === civ.id && f.kind === 'army');
+  if (!army || !ours.length) return false;
+  const theirs = s.cities
+    .filter(c => c.civId === o.id)
+    .sort(
+      (a, b) =>
+        Math.min(...ours.map(m => distance(g, m.hex, a.hex))) -
+        Math.min(...ours.map(m => distance(g, m.hex, b.hex))),
+    )
+    .slice(0, 3);
+  for (const c of theirs) {
+    const home = ours
+      .slice()
+      .sort((a, b) => distance(g, a.hex, c.hex) - distance(g, b.hex, c.hex))[0];
+    if (distance(g, home.hex, c.hex) <= 20 && pathNextTo(s, { ...army, hex: home.hex }, c.hex))
+      return true;
+  }
+  const port =
+    ours.some(c => neighbors(g, c.hex).some(k => s.map.terrain[k] === 'coast')) &&
+    civ.techs.includes('sailing');
+  return port && theirs.some(c => neighbors(g, c.hex).some(k => s.map.terrain[k] === 'coast'));
 }
 
 /** War, peace, pacts and alliances, and offers to the player. */
@@ -790,7 +939,7 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
       if (pact && !(op < -60 && mineP > militaryPower(s, o.id) * 3)) return false;
       if (op > 10) return false;
       const need = op < -40 ? 1.1 : op < -15 ? 1.3 : 1.6;
-      return mineP > militaryPower(s, o.id) * need + 5;
+      return mineP > militaryPower(s, o.id) * need + 5 && canReach(s, civ, o);
     });
     if (targets.length)
       declareWar(
@@ -800,14 +949,20 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
       );
   }
 
-  // seek peace when the war goes badly or drags on
+  // seek peace when the war goes badly, or has gone quiet for a long time
   for (const o of enemies) {
     const w = s.wars.find(
       x => (x.a === civ.id && x.b === o.id) || (x.b === civ.id && x.a === o.id),
     )!;
     const length = s.turn - w.since;
-    const losing = mineP < militaryPower(s, o.id) * 0.8;
-    if (length < 10 || !(losing || length >= 25)) continue;
+    const myDead = w.dead?.[civ.id] ?? 0,
+      theirDead = w.dead?.[o.id] ?? 0;
+    const losing =
+      myDead > theirDead * 1.4 + 300 ||
+      (w.taken?.[o.id] ?? 0) > (w.taken?.[civ.id] ?? 0) ||
+      mineP < militaryPower(s, o.id) * 0.6;
+    const quiet = w.lastFight !== undefined ? s.turn - w.lastFight >= 15 : length >= 40;
+    if (length < 10 || !(losing || (quiet && length >= 20))) continue;
     const offer = { give: {}, get: {}, peace: true };
     if (o.isPlayer) {
       if (!pending && length % 5 === 0)
@@ -930,19 +1085,30 @@ function ensureShipDesigns(s: GameState, civ: Civ) {
 }
 
 /** An own port (city with a shipyard) that `f` can walk to, nearest first. */
-function portFor(s: GameState, civ: Civ, f: Formation) {
+/** Own ports (cities with a shipyard on the coast) that `f` can walk to, nearest first. */
+function portsFor(s: GameState, civ: Civ, f: Formation) {
   const g = gridOf(s);
   return s.cities
     .filter(
       c =>
         c.civId === civ.id &&
+        neighbors(g, c.hex).some(k => s.map.terrain[k] === 'coast') &&
         cityDistricts(s, c).some(d => d.slots.some(x => x.built && x.type === 'shipyard')),
     )
     .sort((a, b) => distance(g, a.hex, f.hex) - distance(g, b.hex, f.hex))
-    .find(c => c.hex === f.hex || planPath(s, f, c.hex));
+    .filter(c => c.hex === f.hex || planPath(s, f, c.hex))
+    .slice(0, 3);
 }
 
 /** Where to land: a free land hex next to water. For settlers, a good city site; for armies, next to the target. */
+/** A sea route planned on the true map: the AI's admirals know which waters are open ocean. */
+function seaPath(s: GameState, f: Formation, target: number): number[] | null {
+  const pass = passable(s, f);
+  return findPath(gridOf(s), f.hex, target, (from, to) =>
+    pass(to) ? stepCost(s, f, from, to) : Infinity,
+  );
+}
+
 function pickLanding(
   s: GameState,
   civ: Civ,
@@ -974,26 +1140,46 @@ function pickLanding(
   }
   cands.sort((a, b) => b.v - a.v);
   for (const c of cands.slice(0, 6))
-    if (!fleet || fleet.hex === c.landing || planPath(s, fleet, c.landing)) return c;
+    if (!fleet || fleet.hex === c.landing || seaPath(s, fleet, c.landing)) return c;
   return undefined;
 }
 
 function startSeaTask(s: GameState, civ: Civ, cargo: Formation, targetHex: number | null) {
   if (!civ.techs.includes('sailing')) return;
-  const port = portFor(s, civ, cargo);
-  if (!port) return;
-  const spot = pickLanding(s, civ, cargo, undefined, targetHex, port.hex);
-  if (!spot) return;
-  civ.sea = {
-    fleet: -1,
-    cargo: cargo.id,
-    port: port.hex,
-    landing: spot.landing,
-    dest: spot.dest,
-    stage: 'load',
-    since: s.turn,
-  };
-  cargo.path = [];
+  const g = gridOf(s);
+  const design = civ.designs.find(d => d.name === 'Transports');
+  if (!design) return;
+  // a port only counts if a transport could really sail from it to the landing
+  for (const port of portsFor(s, civ, cargo)) {
+    const berth = neighbors(g, port.hex).find(k => s.map.terrain[k] === 'coast');
+    if (berth === undefined) continue;
+    const probe: Formation = {
+      id: -1,
+      civId: civ.id,
+      name: 'probe',
+      kind: 'fleet',
+      hex: berth,
+      moves: 0,
+      path: [],
+      fortified: false,
+      cohorts: [{ id: -1, strength: 100, xp: 0, designId: design.id, loadout: design.loadout }],
+    };
+    const spot = pickLanding(s, civ, cargo, probe, targetHex, port.hex);
+    if (!spot) continue;
+    civ.sea = {
+      fleet: -1,
+      cargo: cargo.id,
+      port: port.hex,
+      landing: spot.landing,
+      dest: spot.dest,
+      stage: 'load',
+      since: s.turn,
+      target: targetHex ?? undefined,
+    };
+    cargo.path = [];
+    trace(s, civ, `${cargo.name} will cross from ${port.name} to ${spot.dest}`);
+    return;
+  }
 }
 
 /** Step through a sea crossing: get ships, load at the port, sail, land. */
@@ -1004,9 +1190,16 @@ function runSeaTask(s: GameState, civ: Civ, rng: Rng) {
   const g = gridOf(s);
   const cargo = s.formations.find(f => f.id === t.cargo);
   const port = s.cities.find(c => c.hex === t.port && c.civId === civ.id);
-  if (!cargo || !port || s.turn - t.since > 40) {
+  if (!cargo || !port) {
     civ.sea = undefined;
     return;
+  }
+  if (s.turn - t.since > 40 && !t.abort) {
+    if (cargo.aboard === undefined) {
+      civ.sea = undefined;
+      return;
+    }
+    abortCrossing(s, civ, t, 'took too long');
   }
   let fleet = s.formations.find(f => f.id === t.fleet);
   // ships: an idle fleet with room near the port, else build transports
@@ -1029,6 +1222,12 @@ function runSeaTask(s: GameState, civ: Civ, rng: Rng) {
     return;
   }
   if (t.stage === 'load') {
+    // older coastal hulls hold the whole fleet to the shore: refit them while in port
+    const d = civ.designs.find(x => x.name === 'Transports');
+    if (d && ITEMS[d.loadout.armour].ocean && !oceanGoing(fleet) && fleet.aboard === undefined) {
+      const old = fleet.cohorts.filter(c => !ITEMS[c.loadout.armour].ocean).map(c => c.id);
+      if (!cargoOf(s, fleet).length) refit(s, fleet.id, old, d.loadout);
+    }
     if (cargo.aboard === fleet.id) {
       t.stage = 'sail';
     } else {
@@ -1056,18 +1255,25 @@ function runSeaTask(s: GameState, civ: Civ, rng: Rng) {
   }
   if (t.stage === 'sail') {
     if (fleet.hex !== t.landing) {
-      fleet.path = planPath(s, fleet, t.landing) ?? [];
+      fleet.path = seaPath(s, fleet, t.landing) ?? [];
       if (!fleet.path.length) {
-        const spot = pickLanding(
-          s,
-          civ,
-          cargo,
-          fleet,
-          cargo.kind === 'settlers' ? null : null,
-          fleet.hex,
-        );
+        const spot = t.abort
+          ? undefined
+          : pickLanding(s, civ, cargo, fleet, t.target ?? null, fleet.hex);
         if (!spot) {
-          civ.sea = undefined;
+          // no way there: bring the cargo home instead of leaving it at sea
+          if (t.abort) {
+            const alt = neighbors(g, fleet.hex).find(
+              h =>
+                isPassableLand(s.map, h) &&
+                !s.formations.some(o => o.hex === h && o.civId !== civ.id),
+            );
+            if (alt !== undefined) {
+              t.dest = alt;
+              t.landing = fleet.hex;
+              t.stage = 'unload';
+            } else civ.sea = undefined;
+          } else abortCrossing(s, civ, t, 'no sea route');
           return;
         }
         t.landing = spot.landing;
@@ -1095,9 +1301,42 @@ function runSeaTask(s: GameState, civ: Civ, rng: Rng) {
       );
       if (alt !== undefined) orderMove(s, cargo.id, alt);
     }
-    if (cargo.aboard === undefined) civ.sea = undefined;
+    if (cargo.aboard === undefined) {
+      // an invasion that landed carries on as a land campaign against its target
+      const tgt =
+        t.target !== undefined
+          ? s.cities.find(c => c.hex === t.target && c.civId !== civ.id)
+          : undefined;
+      if (tgt && cargo.kind === 'army' && !t.abort) {
+        civ.ai = {
+          targetCity: tgt.id,
+          staging: cargo.hex,
+          phase: 'march',
+          since: s.turn,
+          members: [cargo.id],
+        };
+        trace(s, civ, `landed next to ${tgt.name}`);
+      }
+      civ.sea = undefined;
+    }
   }
   void rng;
+}
+
+/** Turn a crossing around: sail back to the port and land the cargo there. */
+function abortCrossing(s: GameState, civ: Civ, t: NonNullable<Civ['sea']>, why: string) {
+  const g = gridOf(s);
+  const berth = neighbors(g, t.port).find(k => isWater(s.map.terrain[k]));
+  trace(s, civ, `crossing abandoned: ${why}`);
+  t.abort = true;
+  t.since = s.turn;
+  if (berth === undefined) {
+    civ.sea = undefined;
+    return;
+  }
+  t.landing = berth;
+  t.dest = t.port;
+  t.stage = 'sail';
 }
 
 /** Fleets not on a crossing: warships hunt nearby enemy ships; transports wait in port. */

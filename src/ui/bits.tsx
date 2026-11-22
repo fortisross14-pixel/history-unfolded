@@ -52,9 +52,17 @@ export function Goods({
   );
 }
 
-export function UnitPortrait({ sprite, color }: { sprite: string; color: string }) {
+export function UnitPortrait({
+  sprite,
+  color,
+  small,
+}: {
+  sprite: string;
+  color: string;
+  small?: boolean;
+}) {
   return (
-    <span className="portrait" style={{ borderColor: color }}>
+    <span className={`portrait ${small ? 'small' : ''}`} style={{ borderColor: color }}>
       <img src={`${BASE}units/${sprite}.png`} alt="" />
     </span>
   );

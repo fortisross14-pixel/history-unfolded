@@ -16,6 +16,7 @@ npm run build      # type-check and build
 
 ```bash
 npm test                     # map generator over every map type and size + core rules
+node --no-warnings scripts/battles.ts   # matchup table of army compositions (balance)
 npm run test:ui -- <outDir>  # drives the built game in headless Chromium and saves screenshots
                              # (needs `npx vite preview --port 4173` running)
 ```
@@ -29,13 +30,20 @@ npm run test:ui -- <outDir>  # drives the built game in headless Chromium and sa
 - **Formations of cohorts**: a cohort is 100 people. Cities raise levies of 5 cohorts (500
   people taken from the city). Moving onto your own troops merges them (command limit 10
   cohorts); split any number off.
-- **Equip any cohorts with anything**: weapon, armour, mount and kit per cohort, paid in goods
-  from the city whose territory the troops stand in. Save loadouts as templates. A formation
-  moves at the pace of its slowest cohort.
+- **Unit designs**: name a unit type (Hoplites, Foot Falcons…) and give it a weapon, shield,
+  helmet, body armour, footwear, ride and kit. Then pick any number of cohorts in a formation
+  and equip them as that design, paid in goods from the nearby city. 500 people can be
+  200 Foot Falcons and 300 Hornets. A formation moves at the pace of its slowest cohort.
+- **Battles where the mix matters**: volleys, cavalry charges, three melee rounds and morale.
+  A front line screens archers who keep shooting; cavalry flanks enemies without horse; spears
+  stop charges; armour is strong or weak against each damage type. Preview before attacking,
+  report after.
+- **War and peace, cities falling**: declare war, capture cities by breaking their guard,
+  eliminate peoples. Send settlers to found new cities.
 - **Starter research** (Tanning, Archery, Horseback Riding, Bronze Working, Iron Working) unlocks
   equipment and reveals deposits.
 - Fog of war, path preview with turn markers, go-to orders across turns, autosave.
-- Rival peoples found capitals, scout and raise levies (no combat yet).
+- Rival peoples expand, design and equip their own troops, garrison cities and go to war.
 
 ## Code
 

@@ -68,103 +68,118 @@ civilizations look, fight or think alike, and each got that way through its own 
 - **Goods on the map.** Deposits are what you can *extract*. Districts turn them into goods
   (§7). Trade routes and roads move goods between your cities.
 
-## 5. Units: formations, cohorts and loadouts
+## 5. Units: designs, cohorts and formations
 
 ### 5.1 The model
 
-- A **formation** is what you see on the map: one counter on one hex.
-- A formation contains **cohorts**. One cohort = **100 people**.
-- Each cohort has a **loadout**: one item per equipment slot.
-- A formation's stats come from its cohorts. The UI shows cohorts grouped by identical loadout,
-  e.g. `Formation "Northern Host" — 10 cohorts (1,000 men): 2 × [Bow, Leather], 8 × [Spear, Plate, Shield]`.
+- A **unit design** is a named unit type the player creates: a name ("Hoplites", "Foot Falcons",
+  "Iron Wall") plus one item in every equipment slot. Designs belong to the civilization, not to a
+  city or a formation, and there is no limit on how many you keep.
+- A **cohort** is **100 people**. Each cohort is assigned to one design and carries that design's
+  gear.
+- A **formation** is what you see on the map: one counter on one hex, made of cohorts.
+- **The combination is what is powerful.** A levy of 500 can become 200 *Foot Falcons*
+  (spear and shield) and 300 *Hornets* (javelins). The formation's strength comes from how its
+  designs work together in battle (§6), not from any single design.
+- The formation panel groups cohorts by design, e.g.
+  `"Northern Host" — 10 cohorts (1,000 people): 6 × Hoplites, 4 × Longbows`.
 
 ### 5.2 Raising troops
 
 - A city **levies** a new formation of **5 cohorts (500 people)**. These come out of the city's
-  population: a levy costs the city one population unit (or the equivalent) and the people only
-  return if the formation is disbanded at home.
-- A fresh levy has the **default loadout**: `[Improvised weapon, No armour, On foot]`.
-- Later techs raise levy size (Conscription → 8 cohorts) and the formation cap (§5.4).
+  population and only return when the troops heal at home or are disbanded there.
+- A fresh levy carries no gear (improvised weapons). It shows as *Levy* until assigned a design.
+- Later techs raise levy size (Conscription → 8 cohorts) and the formation cap (§5.5).
 
 ### 5.3 Equipment slots
 
 | Slot | Examples (by era) | What it mostly affects |
 |---|---|---|
-| **Weapon** | club, spear, sword, axe, bow, crossbow, pike, arquebus, musket, rifle | attack, range, damage type |
-| **Armour** | leather, bronze scale, chain, plate, ivory lamellar, padded, cuirass | defence by damage type, weight |
-| **Mount** | on foot, horse, camel, elephant, later wagons/trucks | movement, charge, upkeep |
-| **Kit** (optional) | shield, banner, field medics, siege tools, rope & grapples | special modifiers |
+| **Weapon** | club, sling, javelins, spear, bow, axe, sword, crossbow, pike, musket | attack, ranged or melee, damage type, anti-charge |
+| **Shield** | wicker, hide, bronze, kite, pavise | protection, mostly against missiles; not with two-handed weapons |
+| **Helmet** | leather cap, bronze helmet, great helm | protection against crushing blows, morale |
+| **Body armour** | padded, leather, bronze scale, ivory lamellar, chain, plate | protection by damage type, weight |
+| **Footwear** | sandals, marching boots | morale, crossing rough ground faster |
+| **Ride** | on foot, horse, camel, elephant, later wagons and trucks | movement, charge, flanking, upkeep |
+| **Kit** | scouting gear, war banner, field medics, siege tools | special effects for the cohort or the whole formation |
 
-The player's examples all work: `[Bow, Plate]`, `[Musket, Horse, Ivory armour]`. Some combos are
-blocked by hard rules only when they are physically silly (e.g. a pike on a camel is allowed but
-gets a heavy penalty; a two-handed weapon with a shield is not allowed). The aim is very few
-"not allowed" rules and many "allowed, but here is the trade-off" rules.
+Very few combinations are forbidden; the only hard rule so far is no shield with a two-handed
+weapon (bow, axe). Everything else is "allowed, but here is the trade-off": weight slows foot
+troops, horses are poor in forest and marsh, heavy gear costs scarce metals.
 
-Each item has:
+Each item has a tech requirement (if any), a goods cost per cohort, gold upkeep per turn, weight,
+and its combat numbers: attack and damage type (*cut, pierce, crush, missile*), protection per
+damage type, charge, anti-charge, morale, movement, sight.
 
-- **Tech requirement** (e.g. Bow needs *Archery*).
-- **Goods cost per cohort** to equip (Bow: 2 Wood; Plate: 3 Iron + 1 Coal; Horse: 1 Horses
-  resource *and* ongoing food upkeep; Ivory armour: 2 Ivory).
-- **Upkeep** per turn (mounts and gunpowder weapons cost more).
-- **Weight**, which affects movement and fatigue.
-- **Damage type** (weapons): *cut, pierce, crush, missile, fire*. **Protection** (armour) vs each type.
+### 5.4 Designing and assigning
 
-### 5.4 Merge and split
+- **Unit designs screen:** name the design, pick an item per slot, see the per-cohort numbers
+  (role, melee, ranged, charge, anti-charge, protection by type, morale, moves, upkeep, gear
+  cost). Save, save as new, or retire it.
+- **Assigning:** in a formation, choose how many cohorts of each group to select (e.g. 2 of the
+  5 levy cohorts), pick a design, see the goods it will cost from the nearest city, and equip.
+  Only slots that change are paid for; gear taken off returns 50% to the city's store.
+- **Editing a design** does not re-arm troops in the field. Their cohorts show as *outdated*
+  until they are equipped again (paying only for the difference).
+- Equipping is done inside your own territory, paid from the city whose territory the formation
+  stands in (+50% away from the city itself), and uses the formation's remaining moves.
+  Later, an Armoury district slot makes this cheaper and roads let a whole market pay (§8.1).
+- The AI uses the same system: it creates its own designs from what it has researched
+  (spear levies, javelineers, archers, swordsmen, riders) and splits its levies about 60/40
+  between front line and ranged.
 
-- Moving a formation onto a hex with another of your formations **merges** them (one-click
-  confirm, or always-merge setting). Cohorts and their loadouts are kept as they were.
-- A formation has a **command cap** in cohorts (start 10, raised by tech and by culture choices
-  like *Professional Officer Corps*). Merging past the cap is refused, and the UI offers a split
-  instead.
-- **Split** at any time: drag cohorts into a new formation on the same hex, or "split by loadout".
-- Movement of a formation = movement of its **slowest** cohort. This is what makes mixed
-  formations a real trade-off (horse archers + plate infantry = slow horse archers).
+### 5.5 Merge and split
 
-### 5.5 Re-equipping ("refit")
+- Moving a formation onto a hex with another of your formations **merges** them. Cohorts keep
+  their designs.
+- A formation has a **command cap** in cohorts (start 10, raised later by tech and culture).
+  Merging past the cap is refused; split first.
+- **Split** any selected cohorts into a new formation on the same hex.
+- A formation moves at the pace of its **slowest** cohort (horse archers with heavy infantry are
+  slow horse archers).
 
-- Open a formation and **assign loadouts to any number of cohorts**: pick 2, 8 or all 10 and
-  give them bows → 200, 800 or 1,000 bowmen.
-- **Replace anything:** weapons, armour, shields, mounts, tools and kit, on any subset of
-  cohorts. Refitting needs the goods in the **market** the formation stands in (§8.1) and happens:
-  - instantly-ish (1 turn) in or next to a city with an **Armoury** slot in one of its districts,
-  - slowly (3 turns, +50% cost) anywhere in your own territory,
-  - not at all in enemy territory (except swapping to items the formation already carries).
-- Old equipment goes back to that market's stockpile at 50% value.
-- **Loadout templates.** Save named templates ("Iron Wall": Pike + Plate + Shield) and apply
-  them to cohorts in one click. Templates are per player and also become the vocabulary the AI
-  uses when it designs its own troops.
+### 5.6 Experience, casualties and healing
 
-### 5.6 Experience and casualties
-
-- Cohorts lose **strength** (0–100 people) in combat. Damaged cohorts can be merged into each
-  other ("consolidate") or reinforced in friendly territory, which takes population again.
-- Experience is tracked per cohort, so a veteran cohort keeps its veterancy when moved between
-  formations. Re-equipping keeps experience but costs a small temporary drill penalty.
+- Cohorts lose **strength** (0–100 people) in combat. A cohort cut below 20 is lost.
+- Each battle survived gives a cohort experience: up to +30% punch and a steadier formation.
+- Wounded cohorts heal in your territory, taking the missing people from the nearest city (troops
+  are population). Field medics heal faster and also outside your territory.
 
 ## 6. Combat
 
-Kept close to the genre standard so it stays readable: one attack per formation per turn,
-combat odds preview before attacking, results applied at once.
+One attack per formation per turn (it uses all moves), an expected-result preview before you
+commit, the result applied at once with a battle report.
 
-### 6.1 Resolution (per engagement)
+### 6.1 Resolution
 
-1. **Ranged phase.** Cohorts with ranged weapons on both sides fire first. Missile damage
-   vs the target's missile protection.
-2. **Charge phase.** Mounted cohorts with a charge value hit; pikes/spears in the defender get
-   an anti-charge bonus.
-3. **Melee phase.** Everyone left fights. Each cohort's damage is split by damage type and
-   reduced by the defender's protection against that type.
-4. **Morale check.** A side that loses more than its morale threshold retreats one hex (or is
-   routed if it cannot retreat).
+1. **Volleys.** Ranged cohorts on both sides shoot. Archers behind a front line are harder to hit.
+   Forest and jungle give the defender cover.
+2. **Charge.** Attacking cavalry charges, unless the defender is on rough ground or behind walls.
+   Spears in the defender's front blunt the charge and wound the riders. A formation with no front
+   line takes a heavier charge.
+3. **Melee, up to 3 rounds.** Infantry and cavalry form the **front**. While a front stands, enemy
+   blows rarely reach the ranged cohorts behind it, and those **keep shooting every round
+   (screened fire)**. Ranged cohorts with no front are caught and fight hand to hand badly.
+   A side with cavalry against a side without it **flanks** (+30%) on open ground.
+4. **Morale** after every phase: a formation breaks once its losses pass its morale (30% base,
+   more with war banners, bronze helmets, sandals and veterans). The side that breaks first
+   loses: a broken defender falls back one hex (or is destroyed if surrounded), and the attacker
+   moves in. Otherwise the battle is indecisive.
 
-Each phase pairs cohorts by role (front line / ranged / mounted) so that a formation with only
-two bow cohorts gets *some* ranged fire but not a full volley.
+Damage of each type is reduced by the target's protection against that type, so armour that
+shrugs off arrows can still fold under axes. Defenders gain from hills (25%), cover, fortifying
+(20%) and city walls (35%). Formations that only shoot (all ranged) exchange volleys and never
+close.
 
-### 6.2 Modifiers
+### 6.2 Cities, war and peace
 
-Terrain (forest helps defenders and hurts mounts; hills help ranged), river crossing, fortifications,
-flanking (adjacent friendly formations), supply (out of supply = attrition), weight vs terrain
-(plate in marshes or jungle is bad), weather/season (optional later), culture bonuses (§9).
+- A city with no army in it is defended by its **guard** of townsfolk with spears (more in bigger
+  cities). Assaults wear the guard down; it recovers 10% a turn. Breaking it with melee troops
+  **captures the city** (it loses a quarter of its people).
+- A people with no cities and no settlers is eliminated.
+- Attacking a people you are at peace with asks you to **declare war** first. Peace can be
+  offered after 6 turns of war; the AI refuses while it feels much stronger.
+- The AI declares war when it is much stronger than a neighbour it has met.
 
 ### 6.3 Why there is no single best build
 
@@ -448,8 +463,10 @@ its builder are dropped: maps are procedural only.
 
 ## 15. Milestones
 
-Progress: **M0 done, M1 done, M2 done** (with placeholders: cities work their ring of hexes
-instead of districts, and a 5-tech starter list stands in for the tree).
+Progress: **M0–M3 done** (with placeholders: cities work their ring of hexes instead of
+districts, and a 5-tech starter list stands in for the tree). Unit designs (§5.4) replaced the
+earlier per-cohort loadout picking. Settlers, war and peace, and city capture came with M3.
+Next: **M4, cities and districts.**
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -481,4 +498,5 @@ None right now.
 | 4 | Maps? | Procedural only, many map types, every game different; no Earth map. Art from the owner's asset packs added later through a sprite registry (§4). |
 | 5 | Multiplayer? | No. Single player against AI peoples. |
 | 6 | First playable content? | About 10 equipment items and 20 district slot types. |
+| 8 | How are troops customised? | Through named **unit designs** with a full kit (weapon, shield, helmet, armour, footwear, ride, kit). Cohorts are assigned to designs; the mix of designs in a formation is what makes it strong. |
 | 7 | Art? | Reuse the Age of Sail art set (parchment, terrain symbols, unit, city and goods sprites) for now. |

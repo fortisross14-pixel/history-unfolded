@@ -20,10 +20,7 @@ export function loadGame(): GameState | null {
   }
 }
 
+/** True only for a save this version can load (older saves are ignored). */
 export function hasSave(): boolean {
-  try {
-    return !!localStorage.getItem(KEY);
-  } catch {
-    return false;
-  }
+  return loadGame() !== null;
 }

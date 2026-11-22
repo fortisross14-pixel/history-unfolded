@@ -10,16 +10,20 @@ import {
   newGame,
   orderMove,
   player,
-  refit,
-  refitPreview,
+  assignDesign,
+  atWar,
+  attack,
+  declareWar,
+  previewBattle,
+  saveDesign,
   serialize,
   setResearch,
-  split,
 } from '../src/engine/game.ts';
 
 import { isPassableLand } from '../src/engine/mapgen.ts';
+import { neighbors } from '../src/engine/hex.ts';
 import type { GameState } from '../src/engine/types.ts';
-import { formationMoves } from '../src/engine/units.ts';
+import { formationMoves, groupCohorts, outdated, people } from '../src/engine/units.ts';
 
 let failures = 0;
 const check = (cond: unknown, what: string) => {
@@ -73,39 +77,113 @@ for (const seed of [1, 2, 3, 42]) {
   const toCap = orderMove(s, scouts.id, levy1.hex);
   check(!toCap.ok, 'merge past the command cap is refused');
 
-  // split 2 cohorts and give them spears
-  const two = levy1.cohorts.slice(0, 2).map(c => c.id);
-  const sp = split(s, levy1.id, two, 'Spears');
-  check(sp.ok && levy1.cohorts.length === 8, 'split 2 cohorts off');
-  const spears = s.formations.find(f => f.id === sp.id)!;
-  // walk back into the capital's territory if needed
-  if (levy1.hex !== capital.hex) {
-    endTurn(s);
-    orderMove(s, spears.id, capital.hex);
+  // design two unit types and split one 500-man levy between them: 200 + 300
+  capital.pop += 2000;
+  const lv = levy(s, capital.id);
+  const levy3 = mine().find(f => f.name === '3rd Levy');
+  if (!levy3)
+    console.log(
+      lv.msg,
+      mine().map(f => f.name),
+    );
+  capital.stockpile = { wood: 20, hides: 20, stone: 10 };
+  check(!!levy3 && levy3.cohorts.length === 5, 'third levy raised in the capital');
+  const hop = saveDesign(s, me.id, 'Foot Falcons', {
+    ...DEFAULT_LOADOUT,
+    weapon: 'spear',
+    shield: 'hide-shield',
+    armour: 'padded',
+    boots: 'sandals',
+  });
+  const sl = saveDesign(s, me.id, 'Stone Hail', {
+    ...DEFAULT_LOADOUT,
+    weapon: 'sling',
+    armour: 'padded',
+  });
+  check(hop.ok && sl.ok, 'two designs saved: ' + hop.msg + ' / ' + sl.msg);
+  const dup = saveDesign(s, me.id, 'foot falcons', DEFAULT_LOADOUT);
+  check(!dup.ok, 'duplicate design names refused');
+  const locked = saveDesign(s, me.id, 'Bowmen', { ...DEFAULT_LOADOUT, weapon: 'bow' });
+  check(!locked.ok, 'bow design needs Archery: ' + locked.msg);
+  const twoH = saveDesign(s, me.id, 'X', {
+    ...DEFAULT_LOADOUT,
+    weapon: 'sling',
+    shield: 'hide-shield',
+  });
+  check(twoH.ok, 'sling with shield is allowed');
+  const ids = levy3!.cohorts.map(c => c.id);
+  const a1 = assignDesign(s, levy3!.id, ids.slice(0, 2), hop.id!);
+  const a2 = assignDesign(s, levy3!.id, ids.slice(2), sl.id!);
+  check(a1.ok && a2.ok, `200 Foot Falcons + 300 Stone Hail: ${a1.msg} ${a2.msg}`);
+  const groups = groupCohorts(levy3!);
+  check(
+    groups.length === 2 &&
+      groups.some(g => g.cohorts.length === 2) &&
+      groups.some(g => g.cohorts.length === 3),
+    'formation shows two groups (2 and 3 cohorts)',
+  );
+  check((capital.stockpile.wood ?? 0) < 20, 'gear was paid from the city store');
+  // editing a design marks equipped cohorts as outdated until re-equipped
+  saveDesign(
+    s,
+    me.id,
+    'Foot Falcons',
+    { ...DEFAULT_LOADOUT, weapon: 'spear', shield: 'wicker-shield' },
+    hop.id,
+  );
+  check(
+    outdated(
+      me,
+      groups.find(g => g.designId === hop.id)!,
+    ),
+    'edited design: equipped cohorts flagged outdated',
+  );
+
+  // --- combat: declare war on a neighbour and attack its capital guard
+  const enemyCity = s.cities.find(c => c.civId !== me.id)!;
+  const enemy = s.civs[enemyCity.civId];
+  const g = { w: s.map.w, h: s.map.h };
+  const spot = neighbors(g, enemyCity.hex).find(
+    n => isPassableLand(s.map, n) && !formationsAt(s, n).length && !s.cities.some(c => c.hex === n),
+  );
+  if (spot !== undefined) {
+    levy3!.hex = spot;
+    levy3!.moves = 2;
+    // empty the city so the guard defends
+    s.formations = s.formations.filter(f => !(f.hex === enemyCity.hex && f.civId === enemy.id));
+    const peace = attack(s, levy3!.id, enemyCity.hex);
+    check(!peace.ok, 'cannot attack while at peace: ' + peace.msg);
+    check(declareWar(s, me.id, enemy.id).ok && atWar(s, me.id, enemy.id), 'war declared');
+    const pv = previewBattle(s, levy3!.id, enemyCity.hex);
+    check(!!pv && pv.lines.length > 0, 'battle preview: ' + pv?.lines.join(' | '));
+    const before = people(levy3!);
+    const r = attack(s, levy3!.id, enemyCity.hex);
+    check(r.ok && !!r.report, 'attack resolves: ' + r.report?.lines.join(' | '));
+    check(
+      !s.formations.includes(levy3!) || people(levy3!) <= before,
+      'attacker took losses or died',
+    );
+    check(levy3!.moves === 0, 'attacking uses all moves');
+    // keep attacking with fresh troops until the city falls
+    for (let k = 0; k < 6 && enemyCity.civId === enemy.id; k++) {
+      const f = s.formations.find(x => x.id === levy3!.id) ?? levy3!;
+      if (!s.formations.includes(f)) break;
+      f.moves = 2;
+      for (const c of f.cohorts) c.strength = 100;
+      if (f.hex === enemyCity.hex) break;
+      attack(s, f.id, enemyCity.hex);
+    }
+    check(
+      enemyCity.civId === me.id,
+      `${enemyCity.name} captured (now ${s.civs[enemyCity.civId].name})`,
+    );
+    check(
+      !enemy.alive ||
+        s.cities.some(c => c.civId === enemy.id) ||
+        s.formations.some(f => f.civId === enemy.id && f.kind === 'settlers'),
+      'elimination is consistent',
+    );
   }
-  capital.stockpile.wood = 10;
-  const prev = refitPreview(
-    s,
-    spears.id,
-    spears.cohorts.map(c => c.id),
-    { ...DEFAULT_LOADOUT, weapon: 'spear' },
-  );
-  check(
-    prev.problem === null && prev.cost.wood >= 2,
-    `refit preview costs wood (${JSON.stringify(prev.problem ?? (prev as { cost: unknown }).cost)})`,
-  );
-  const rf = refit(
-    s,
-    spears.id,
-    spears.cohorts.map(c => c.id),
-    { ...DEFAULT_LOADOUT, weapon: 'spear' },
-  );
-  check(
-    rf.ok && spears.cohorts.every(c => c.loadout.weapon === 'spear'),
-    'refit: 200 spearmen ' + rf.msg,
-  );
-  const bad = refit(s, spears.id, [spears.cohorts[0].id], { ...DEFAULT_LOADOUT, weapon: 'bow' });
-  check(!bad.ok, 'bow is locked before Archery: ' + bad.msg);
 
   // research and a few turns
   check(setResearch(s, me.id, 'archery').ok, 'research Archery');
@@ -131,6 +209,29 @@ for (const seed of [1, 2, 3, 42]) {
   check(okHexes, 'all formations on passable land');
   const mixed = s.formations.some(f => formationsAt(s, f.hex).some(o => o.civId !== f.civId));
   check(!mixed, 'no hex shared between peoples');
+
+  // a long game with the AI: no crashes, invariants hold
+  for (let t = 0; t < 150; t++) endTurn(s);
+  const bad2 = s.formations.filter(f => !isPassableLand(s.map, f.hex) || f.cohorts.length === 0);
+  check(!bad2.length, `after turn ${s.turn}: ${s.formations.length} formations, all valid`);
+  check(
+    !s.formations.some(f => formationsAt(s, f.hex).some(o => o.civId !== f.civId)),
+    'still no hex shared between peoples',
+  );
+  check(
+    s.formations.every(f => f.cohorts.every(c => c.strength > 0 && c.strength <= 100)),
+    'cohort strengths within 1..100',
+  );
+  const aiCities = s.cities.filter(c => c.civId !== me.id).length;
+  const aiDesigns = s.civs.filter(c => !c.isPlayer).reduce((n, c) => n + c.designs.length, 0);
+  const equipped = s.formations
+    .filter(f => f.civId !== me.id)
+    .flatMap(f => f.cohorts)
+    .filter(c => c.designId !== null).length;
+  console.log(
+    `     AI: ${aiCities} cities, ${aiDesigns} designs, ${equipped} equipped cohorts, wars so far: ${s.log.filter(e => e.text.includes('declared war')).length}, battles: ${s.log.filter(e => e.text.startsWith('Battle')).length}`,
+  );
+  check(aiCities > 0 && aiDesigns > 0, 'AI expands and designs troops');
 
   const back = deserialize(serialize(s));
   check(back.turn === s.turn && back.formations.length === s.formations.length, 'save round-trip');

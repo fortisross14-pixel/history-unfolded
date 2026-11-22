@@ -24,6 +24,8 @@ export interface Overlay {
   hoverHex?: number;
   reach?: Set<number>;
   path?: number[];
+  /** adjacent enemy the selected formation would attack */
+  target?: number;
 }
 
 const INK = '#4a321e';
@@ -394,6 +396,17 @@ export class MapRenderer {
       ctx.stroke();
     }
 
+    if (ov.target !== undefined) {
+      ctx.strokeStyle = '#b3261e';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([8, 5]);
+      this.hexPath(cx(ov.target), cy(ov.target), R * 0.9);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(179,38,30,0.12)';
+      ctx.fill();
+    }
+
     // 11. cities
     for (const c of s.cities) {
       if (!known(c.hex)) continue;
@@ -500,6 +513,17 @@ export class MapRenderer {
         ctx.arc(bx + R * 0.42, by, R * 0.08, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+      }
+      if (top.kind === 'army') {
+        const full = top.cohorts.length * 100;
+        const have = top.cohorts.reduce((a, c) => a + c.strength, 0);
+        const bw = R * 0.42,
+          bh = R * 0.07;
+        ctx.fillStyle = 'rgba(43,26,12,0.7)';
+        ctx.fillRect(bx, by + R * 0.37, bw, bh);
+        const k = have / Math.max(1, full);
+        ctx.fillStyle = k > 0.66 ? '#5fae4f' : k > 0.33 ? '#d9a531' : '#c0392b';
+        ctx.fillRect(bx, by + R * 0.37, bw * k, bh);
       }
       if (fs.length > 1) {
         ctx.fillStyle = '#2b1a0c';

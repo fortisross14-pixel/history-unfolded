@@ -8,7 +8,13 @@ export interface TechInfo {
 }
 
 export const TECH_LIST: TechInfo[] = [
-  { id: 'tanning', name: 'Tanning', cost: 12, requires: [], note: 'Leather armour.' },
+  {
+    id: 'tanning',
+    name: 'Tanning',
+    cost: 12,
+    requires: [],
+    note: 'Leather armour, caps, marching boots, medics.',
+  },
   { id: 'archery', name: 'Archery', cost: 16, requires: [], note: 'Bow.' },
   {
     id: 'horseback-riding',
@@ -22,7 +28,7 @@ export const TECH_LIST: TechInfo[] = [
     name: 'Bronze Working',
     cost: 28,
     requires: [],
-    note: 'Bronze sword, bronze scale.',
+    note: 'Bronze sword, axe, helmet, shield, scale armour.',
   },
   {
     id: 'iron-working',

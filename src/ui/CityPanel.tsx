@@ -1,4 +1,10 @@
-import { cityYield, LEVY_PEOPLE, MIN_CITY_POP } from '../engine/game.ts';
+import {
+  cityGuard,
+  cityYield,
+  LEVY_PEOPLE,
+  MIN_CITY_POP,
+  SETTLERS_PEOPLE,
+} from '../engine/game.ts';
 import type { City, GameState } from '../engine/types.ts';
 import { Goods } from './bits.tsx';
 
@@ -7,11 +13,13 @@ export function CityPanel({
   c,
   mine,
   onLevy,
+  onSettlers,
 }: {
   game: GameState;
   c: City;
   mine: boolean;
   onLevy: () => void;
+  onSettlers: () => void;
 }) {
   const y = cityYield(game, c);
   const civ = game.civs[c.civId];
@@ -55,6 +63,12 @@ export function CityPanel({
                 <td>+{y.gold}/turn</td>
               </tr>
               <tr>
+                <td>Guard</td>
+                <td>
+                  {cityGuard(c).length} cohorts of townsfolk, {Math.round(c.guard * 100)}% ready
+                </td>
+              </tr>
+              <tr>
                 <td>Goods</td>
                 <td>
                   <Goods goods={y.goods} empty="none" /> per turn
@@ -78,6 +92,13 @@ export function CityPanel({
             >
               Raise levy (5 cohorts, 500 people)
             </button>
+            <button
+              disabled={c.pop - SETTLERS_PEOPLE < MIN_CITY_POP}
+              onClick={onSettlers}
+              title={`Settlers take ${SETTLERS_PEOPLE} people (with families) to found a new city`}
+            >
+              Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
+            </button>
           </div>
           <p className="muted small">
             The city works the hexes next to it. Designing districts comes next.
@@ -85,7 +106,8 @@ export function CityPanel({
         </>
       ) : (
         <p className="muted">
-          A foreign city of about {(Math.round(c.pop / 500) * 500).toLocaleString()} people.
+          Guard {Math.round(c.guard * 100)}% ready. A foreign city of about{' '}
+          {(Math.round(c.pop / 500) * 500).toLocaleString()} people.
         </p>
       )}
     </div>

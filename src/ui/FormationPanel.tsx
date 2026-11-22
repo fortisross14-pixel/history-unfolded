@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { ITEMS } from '../data/items.ts';
+import { useEffect, useMemo, useState } from 'react';
+import { ITEMS, SLOTS } from '../data/items.ts';
 import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
-import { canFoundCity, formationsAt, supplyingCity } from '../engine/game.ts';
+import { canFoundCity, formationsAt, refitPreview, supplyingCity } from '../engine/game.ts';
 import type { Formation, GameState } from '../engine/types.ts';
 import {
   capOf,
@@ -10,15 +10,20 @@ import {
   formationSprite,
   formationStats,
   groupCohorts,
+  groupName,
+  outdated,
   people,
+  ROLE_NAMES,
+  spriteForLoadout,
 } from '../engine/units.ts';
-import { UnitPortrait } from './bits.tsx';
+import { Goods, UnitPortrait } from './bits.tsx';
 
 interface Props {
   game: GameState;
   f: Formation;
   mine: boolean;
-  onEquip: (cohortIds: number[]) => void;
+  onAssign: (cohortIds: number[], designId: number) => void;
+  onDesigns: (open?: number | 'new') => void;
   onSplit: (cohortIds: number[]) => void;
   onMerge: (otherId: number) => void;
   onSelect: (fid: number) => void;
@@ -28,42 +33,39 @@ interface Props {
   onClearOrders: () => void;
 }
 
-export function FormationPanel({
-  game,
-  f,
-  mine,
-  onEquip,
-  onSplit,
-  onMerge,
-  onSelect,
-  onFound,
-  onFortify,
-  onRename,
-  onClearOrders,
-}: Props) {
+export function FormationPanel(p: Props) {
+  const { game, f, mine } = p;
+  const civ = game.civs[f.civId];
   const groups = groupCohorts(f);
-  const [pick, setPick] = useState<Record<string, number>>(() =>
-    Object.fromEntries(groups.map(g => [g.key, g.cohorts.length])),
-  );
+  const allPicked = () => Object.fromEntries(groups.map(g => [g.key, g.cohorts.length]));
+  const [pick, setPick] = useState<Record<string, number>>(allPicked);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(f.name);
-  // everything starts selected: the usual order is "equip them all" or "split some off"
-  const allPicked = () => Object.fromEntries(groups.map(g => [g.key, g.cohorts.length]));
+  const [designId, setDesignId] = useState<number | null>(null);
+  // a new selection or a new cohort count resets the picks to "everyone"
   useEffect(() => {
     setPick(allPicked());
     setName(f.name);
     setEditing(false);
-  }, [f.id, f.cohorts.length]);
+  }, [f.id, f.cohorts.length, groups.length]);
 
   const selected = groups.flatMap(g => g.cohorts.slice(0, pick[g.key] ?? 0).map(c => c.id));
   const stats = formationStats(f);
-  const civ = game.civs[f.civId];
   const others = formationsAt(game, f.hex).filter(o => o.id !== f.id && o.civId === f.civId);
   const supply = supplyingCity(game, f.civId, f.hex);
   const m = game.map;
   const foundWhy = f.kind === 'settlers' ? canFoundCity(game, f) : null;
   const setAll = (n: 'all' | 'none') =>
     setPick(Object.fromEntries(groups.map(g => [g.key, n === 'all' ? g.cohorts.length : 0])));
+  const design = civ.designs.find(d => d.id === designId) ?? null;
+  const preview = useMemo(
+    () => (design && selected.length ? refitPreview(game, f.id, selected, design.loadout) : null),
+    [design, selected.join(','), game.turn, f.hex],
+  );
+  const missing = new Set(
+    preview && preview.problem === null ? preview.missing.map(x => x.good) : [],
+  );
+  const roles = new Set(f.cohorts.map(c => cohortStats(c.loadout).role));
 
   return (
     <div className="panel formation">
@@ -74,7 +76,7 @@ export function FormationPanel({
             <form
               onSubmit={e => {
                 e.preventDefault();
-                onRename(name);
+                p.onRename(name);
                 setEditing(false);
               }}
             >
@@ -84,7 +86,7 @@ export function FormationPanel({
                 maxLength={32}
                 onChange={e => setName(e.target.value)}
                 onBlur={() => {
-                  onRename(name);
+                  p.onRename(name);
                   setEditing(false);
                 }}
               />
@@ -95,10 +97,9 @@ export function FormationPanel({
             </h2>
           )}
           <div className="muted">
-            {civ.name} · {f.kind === 'settlers' ? 'Settlers' : 'Troops'} ·{' '}
-            {people(f).toLocaleString()} people · {f.cohorts.length}/{capOf(f)} cohorts
+            {civ.name} · {people(f).toLocaleString()} people · {f.cohorts.length}/{capOf(f)} cohorts
           </div>
-          <div className="muted">
+          <div className="muted small">
             Moves {f.moves}/{formationMoves(f)} · {TERRAIN[m.terrain[f.hex]].name}
             {m.relief[f.hex] !== 'flat' ? `, ${RELIEF[m.relief[f.hex]].name}` : ''}
             {m.vegetation[f.hex] !== 'none' ? `, ${VEGETATION[m.vegetation[f.hex]].name}` : ''}
@@ -114,13 +115,27 @@ export function FormationPanel({
           <span title="Total ranged strength">🏹 {stats.ranged}</span>
           <span title="Total charge">🐎 {stats.charge}</span>
           <span title="Average protection">🛡 {stats.protection}</span>
-          <span title="Gold per turn">⛁ {stats.upkeep}/turn</span>
+          <span title="Losses (%) it can take before breaking">✊ {stats.morale}%</span>
+          <span title="Gold per turn">⛁ {stats.upkeep}</span>
+        </div>
+      )}
+      {f.kind === 'army' && f.cohorts.length > 1 && (
+        <div className="combo muted small">
+          {[...roles].map(r => ROLE_NAMES[r]).join(' + ')}
+          {roles.has('ranged') &&
+            !roles.has('infantry') &&
+            !roles.has('cavalry') &&
+            ' · no front line: archers will be caught in melee'}
+          {roles.has('ranged') &&
+            (roles.has('infantry') || roles.has('cavalry')) &&
+            ' · front line screens the archers'}
+          {roles.has('cavalry') && ' · cavalry charges and flanks'}
         </div>
       )}
 
       <div className="groups">
         <div className="groups-head">
-          <span>Cohorts by equipment</span>
+          <span>{f.kind === 'settlers' ? 'Families' : 'Cohorts by design'}</span>
           {mine && f.cohorts.length > 1 && (
             <span className="links">
               <button className="link" onClick={() => setAll('all')}>
@@ -136,25 +151,37 @@ export function FormationPanel({
           const st = cohortStats(g.loadout);
           const k = pick[g.key] ?? 0;
           const str = g.cohorts.reduce((s, c) => s + c.strength, 0);
+          const old = outdated(civ, g);
+          const gear = SLOTS.map(s => ITEMS[g.loadout[s]]).filter(it => !it.empty);
           return (
             <div key={g.key} className={`group ${k ? 'picked' : ''}`}>
+              {f.kind === 'army' && (
+                <UnitPortrait sprite={spriteForLoadout(g.loadout)} color={civ.color} small />
+              )}
               <div className="group-main">
-                <b>{g.cohorts.length} ×</b>{' '}
-                {f.kind === 'settlers'
-                  ? 'Civilians'
-                  : [g.loadout.weapon, g.loadout.armour, g.loadout.mount, g.loadout.kit]
-                      .filter(
-                        id =>
-                          !['no-armour', 'no-kit', 'foot'].includes(id) || id === g.loadout.weapon,
-                      )
-                      .map(id => ITEMS[id].name)
-                      .join(' · ')}
+                <b>
+                  {g.cohorts.length} × {groupName(civ, g, f.kind)}
+                </b>
+                {old && (
+                  <span className="badge" title="The design changed since these were equipped">
+                    outdated
+                  </span>
+                )}
                 <div className="muted small">
-                  {str} people · melee {st.melee}
-                  {st.ranged ? ` · ranged ${st.ranged}` : ''} · moves {st.moves}
+                  {f.kind === 'army'
+                    ? gear.length
+                      ? gear.map(it => it.name).join(', ')
+                      : 'No gear'
+                    : ''}
+                </div>
+                <div className="muted small">
+                  {str} people
+                  {f.kind === 'army'
+                    ? ` · ${ROLE_NAMES[st.role].toLowerCase()} · melee ${st.melee}${st.ranged ? ` · ranged ${st.ranged}` : ''} · moves ${st.moves}`
+                    : ''}
                 </div>
               </div>
-              {mine && (
+              {mine && f.cohorts.length > 1 && (
                 <div className="stepper" title="How many of these cohorts to select">
                   <button disabled={k <= 0} onClick={() => setPick({ ...pick, [g.key]: k - 1 })}>
                     −
@@ -173,21 +200,67 @@ export function FormationPanel({
         })}
       </div>
 
-      {mine && (
-        <div className="actions">
-          {f.kind === 'army' && (
-            <button
-              className="primary"
-              disabled={!selected.length || !supply}
-              title={!supply ? 'Re-equip inside your territory' : ''}
-              onClick={() => onEquip(selected)}
+      {mine && f.kind === 'army' && (
+        <div className="assign">
+          <div className="row">
+            <span className="assign-label">
+              Make {selected.length ? `${selected.length * 100}` : 'the selected'} into
+            </span>
+            <select
+              value={designId ?? ''}
+              onChange={e => setDesignId(e.target.value ? Number(e.target.value) : null)}
             >
-              Equip {selected.length ? `${selected.length * 100} people` : 'selected'}…
+              <option value="">— pick a design —</option>
+              {civ.designs.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <button onClick={() => p.onDesigns('new')} title="Design a new unit type">
+              New…
             </button>
+          </div>
+          {preview && preview.problem !== null && <p className="bad small">{preview.problem}</p>}
+          {preview && preview.problem === null && (
+            <p className="small">
+              Pay <Goods goods={preview.cost} empty="nothing" missing={missing} /> from{' '}
+              {preview.city.name}
+              {preview.far ? ' (+50% away from the city)' : ''}
+              {Object.values(preview.refund).some(n => n > 0) && (
+                <>
+                  {' '}
+                  · get back <Goods goods={preview.refund} />
+                </>
+              )}
+            </p>
           )}
           <button
+            className="primary"
+            disabled={
+              !design ||
+              !selected.length ||
+              !preview ||
+              preview.problem !== null ||
+              preview.missing.length > 0
+            }
+            onClick={() => design && p.onAssign(selected, design.id)}
+          >
+            Equip as {design?.name ?? '…'}
+          </button>
+          {!supply && (
+            <p className="muted small">
+              Outside your territory: troops can only be equipped near your cities.
+            </p>
+          )}
+        </div>
+      )}
+
+      {mine && (
+        <div className="actions">
+          <button
             disabled={!selected.length || selected.length === f.cohorts.length}
-            onClick={() => onSplit(selected)}
+            onClick={() => p.onSplit(selected)}
           >
             Split off {selected.length || ''}
           </button>
@@ -196,18 +269,15 @@ export function FormationPanel({
               className="primary"
               disabled={!!foundWhy}
               title={foundWhy ?? 'Found a city here (B)'}
-              onClick={onFound}
+              onClick={p.onFound}
             >
               Found city
             </button>
           )}
-          <button onClick={onFortify} title="F">
+          <button onClick={p.onFortify} title="F">
             {f.fortified ? 'Wake' : 'Fortify'}
           </button>
-          {f.path.length > 0 && <button onClick={onClearOrders}>Cancel orders</button>}
-          {!supply && f.kind === 'army' && (
-            <p className="muted small">Outside your territory: cannot re-equip here.</p>
-          )}
+          {f.path.length > 0 && <button onClick={p.onClearOrders}>Cancel orders</button>}
           {foundWhy && f.kind === 'settlers' && <p className="muted small">{foundWhy}</p>}
         </div>
       )}
@@ -217,13 +287,13 @@ export function FormationPanel({
           <div className="muted small">Also on this hex:</div>
           {others.map(o => (
             <div key={o.id} className="other">
-              <button className="link" onClick={() => onSelect(o.id)}>
+              <button className="link" onClick={() => p.onSelect(o.id)}>
                 {o.name} ({o.cohorts.length})
               </button>
               {mine && o.kind === f.kind && (
                 <button
                   disabled={o.cohorts.length + f.cohorts.length > capOf(o)}
-                  onClick={() => onMerge(o.id)}
+                  onClick={() => p.onMerge(o.id)}
                 >
                   Merge
                 </button>
@@ -234,7 +304,7 @@ export function FormationPanel({
       )}
       {mine && (
         <p className="hint">
-          Right-click (or click a hex) to move. Moving onto your own troops merges them.
+          Click a hex to move, an adjacent enemy to attack. Moving onto your own troops merges them.
         </p>
       )}
     </div>

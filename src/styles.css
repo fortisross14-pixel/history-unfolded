@@ -624,3 +624,176 @@ table.stats td:first-child {
     font-size: 14px;
   }
 }
+
+/* ---------- designs, battles, peoples ---------- */
+.portrait.small {
+  width: 36px;
+  height: 36px;
+  border-width: 2px;
+}
+.portrait.small img {
+  height: 34px;
+  margin-top: 4px;
+}
+.group .portrait.small {
+  flex: none;
+}
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: #e8c56a;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.combo {
+  margin: 6px 0 0;
+  font-style: italic;
+}
+.assign {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px dashed var(--edge);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.assign .row {
+  flex-wrap: wrap;
+}
+.assign select {
+  flex: 1;
+  min-width: 120px;
+}
+.assign p {
+  margin: 0;
+}
+.assign-label {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.designs {
+  width: min(1180px, 100%);
+}
+.designs-body {
+  display: grid;
+  grid-template-columns: 200px 1fr 290px;
+  gap: 14px;
+}
+@media (max-width: 980px) {
+  .designs-body {
+    grid-template-columns: 1fr;
+  }
+}
+.design-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.design-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 6px 8px;
+}
+.design-row span {
+  display: flex;
+  flex-direction: column;
+}
+.design-row small {
+  color: var(--ink-soft);
+}
+.design-row.on {
+  outline: 2px solid var(--gold);
+  background: linear-gradient(#fff6dc, #f3e2b2);
+}
+.name-row {
+  margin-bottom: 4px;
+}
+.design-name {
+  flex: 1;
+  font:
+    600 18px Georgia,
+    serif;
+  padding: 8px 10px;
+}
+.design-editor .items {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+.design-editor .item {
+  min-height: 62px;
+}
+.battle {
+  width: min(620px, 100%);
+}
+.battle-sides {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.battle-side {
+  background: var(--paper-2);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.vs {
+  font:
+    italic 600 18px Georgia,
+    serif;
+  color: var(--ink-soft);
+}
+.bar {
+  height: 6px;
+  background: #cdb98e;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--bad);
+}
+.battle-lines {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+.battle-lines li {
+  margin: 3px 0;
+}
+.peoples {
+  width: min(760px, 100%);
+}
+.peoples-table td {
+  vertical-align: middle;
+  padding: 6px;
+}
+.peoples-table td:first-child {
+  width: auto;
+}
+.war-pill {
+  margin-left: 6px;
+  background: var(--bad);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+.confirm {
+  width: min(460px, 100%);
+}
+.confirm .row {
+  margin-top: 12px;
+}
+.preview h2 {
+  font-size: 15px;
+}
+.preview p {
+  margin: 4px 0;
+}

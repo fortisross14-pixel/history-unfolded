@@ -11,25 +11,34 @@ import { distance, neighbors, within, type Grid } from './hex.ts';
 import { generateMap, hexFood, isPassableLand, MAP_SIZES } from './mapgen.ts';
 import { findPath } from './path.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
-import type { City, Civ, Cohort, Formation, GameSettings, GameState } from './types.ts';
+import type { City, Civ, Cohort, Design, Formation, GameSettings, GameState } from './types.ts';
+import { aiTurn } from './ai.ts';
+import { resolveBattle, type BattleReport } from './combat.ts';
 import {
   capOf,
   COHORT_SIZE,
   enterCost,
   formationMoves,
   formationSight,
+  formationMorale,
+  isRanged,
   LEVY_COHORTS,
+  power as powerOf,
   loadoutProblem,
+  people,
   refitCost,
+  SETTLER_COHORTS,
 } from './units.ts';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
 export const MIN_CITY_DISTANCE = 4;
 export const LEVY_PEOPLE = LEVY_COHORTS * COHORT_SIZE;
 export const MIN_CITY_POP = 1000;
 export const START_CITY_POP = 2000;
+export const SETTLED_CITY_POP = 1200;
+export const SETTLERS_PEOPLE = 1000;
 
 export type Result = { ok: true; msg?: string } | { ok: false; msg: string };
 const ok = (msg?: string): Result => ({ ok: true, msg });
@@ -52,6 +61,7 @@ export function newGame(settings: GameSettings): GameState {
     formations: [],
     nextId: 1,
     log: [],
+    wars: [],
   };
   for (let i = 0; i < civCount; i++) {
     const preset = CIV_PRESETS[i];
@@ -65,18 +75,30 @@ export function newGame(settings: GameSettings): GameState {
       science: 0,
       gold: 20,
       explored: new Array(map.w * map.h).fill(0),
-      templates: [],
+      designs: [],
       cityNames: 0,
+      levies: 0,
+      met: [],
+      alive: true,
+      kills: 0,
+      losses: 0,
     };
     s.civs.push(civ);
     const start = map.starts[i];
     const g = gridOf(s);
     const free = neighbors(g, start).filter(k => isPassableLand(map, k));
     const spot = (n: number) => free[n % Math.max(1, free.length)] ?? start;
-    addFormation(s, civ.id, 'settlers', start, 2, 'Settlers');
+    addFormation(s, civ.id, 'settlers', start, SETTLER_COHORTS, 'Settlers');
     addFormation(s, civ.id, 'army', spot(0), LEVY_COHORTS, nextLevyName(s, civ.id));
     const scout = addFormation(s, civ.id, 'army', spot(1), 1, 'Scouts');
-    scout.cohorts[0].loadout = { ...DEFAULT_LOADOUT, kit: 'scouting-gear' };
+    const scoutDesign: Design = {
+      id: s.nextId++,
+      name: 'Scouts',
+      loadout: { ...DEFAULT_LOADOUT, kit: 'scouting-gear' },
+    };
+    civ.designs.push(scoutDesign);
+    scout.cohorts[0].loadout = { ...scoutDesign.loadout };
+    scout.cohorts[0].designId = scoutDesign.id;
     scout.moves = formationMoves(scout);
     if (!civ.isPlayer) {
       const settlers = s.formations.find(f => f.civId === civ.id && f.kind === 'settlers')!;
@@ -113,11 +135,11 @@ function addFormation(
 }
 
 function newCohort(s: GameState, loadout: Loadout = DEFAULT_LOADOUT): Cohort {
-  return { id: s.nextId++, strength: COHORT_SIZE, xp: 0, loadout: { ...loadout } };
+  return { id: s.nextId++, strength: COHORT_SIZE, xp: 0, designId: null, loadout: { ...loadout } };
 }
 
 function nextLevyName(s: GameState, civId: number): string {
-  const n = s.formations.filter(f => f.civId === civId && /Levy$/.test(f.name)).length + 1;
+  const n = ++s.civs[civId].levies;
   const suf =
     n % 10 === 1 && n % 100 !== 11
       ? 'st'
@@ -194,8 +216,18 @@ export function visibleHexes(s: GameState, civId: number): Uint8Array {
 
 export function updateExplored(s: GameState, civId: number) {
   const v = visibleHexes(s, civId);
-  const e = s.civs[civId].explored;
+  const civ = s.civs[civId];
+  const e = civ.explored;
   for (let i = 0; i < v.length; i++) if (v[i]) e[i] = 1;
+  // meeting another people: seeing one of their formations or cities
+  const seen = (other: number) => {
+    if (other === civId || civ.met.includes(other)) return;
+    civ.met.push(other);
+    s.civs[other].met.includes(civId) || s.civs[other].met.push(civId);
+    log(s, civId, `${civ.name} and the ${s.civs[other].name} have met.`);
+  };
+  for (const f of s.formations) if (v[f.hex]) seen(f.civId);
+  for (const c of s.cities) if (v[c.hex]) seen(c.civId);
 }
 
 /** A deposit is shown only once its revealing tech is known. */
@@ -398,9 +430,10 @@ export function foundCity(s: GameState, fid: number): Result {
     civId: civ.id,
     name,
     hex: f.hex,
-    pop: START_CITY_POP,
+    pop: s.cities.some(x => x.civId === civ.id) ? SETTLED_CITY_POP : START_CITY_POP,
     food: 0,
     founded: s.turn,
+    guard: 1,
     stockpile: { wood: 8, hides: 4, stone: 3 },
   };
   s.cities.push(c);
@@ -527,19 +560,64 @@ export function refit(s: GameState, fid: number, cohortIds: number[], to: Loadou
   return ok(`${n * COHORT_SIZE} people re-equipped.`);
 }
 
-export function saveTemplate(s: GameState, civId: number, name: string, loadout: Loadout): Result {
+// ---------------------------------------------------------------- unit designs
+
+/** Create or update a named unit design. Cohorts already equipped keep their gear until re-equipped. */
+export function saveDesign(
+  s: GameState,
+  civId: number,
+  name: string,
+  loadout: Loadout,
+  id?: number,
+): Result & { id?: number } {
   const civ = s.civs[civId];
-  const n = name.trim().slice(0, 24);
-  if (!n) return fail('Name the template.');
-  const ex = civ.templates.find(t => t.name === n);
-  if (ex) ex.loadout = { ...loadout };
-  else civ.templates.push({ name: n, loadout: { ...loadout } });
-  return ok(`Template "${n}" saved.`);
+  const n = name.trim().slice(0, 28);
+  if (!n) return fail('Give the design a name.');
+  const problem = loadoutProblem(loadout, civ.techs);
+  if (problem) return fail(problem);
+  if (civ.designs.some(d => d.name.toLowerCase() === n.toLowerCase() && d.id !== id))
+    return fail(`You already have a design called ${n}.`);
+  const ex = id !== undefined ? civ.designs.find(d => d.id === id) : undefined;
+  if (ex) {
+    ex.name = n;
+    ex.loadout = { ...loadout };
+    return {
+      ok: true,
+      msg: `${n} updated. Re-equip cohorts to give them the new gear.`,
+      id: ex.id,
+    };
+  }
+  const d: Design = { id: s.nextId++, name: n, loadout: { ...loadout } };
+  civ.designs.push(d);
+  return { ok: true, msg: `${n} designed.`, id: d.id };
 }
 
-export function deleteTemplate(s: GameState, civId: number, name: string) {
+export function deleteDesign(s: GameState, civId: number, id: number): Result {
   const civ = s.civs[civId];
-  civ.templates = civ.templates.filter(t => t.name !== name);
+  const d = civ.designs.find(x => x.id === id);
+  if (!d) return fail('No such design.');
+  civ.designs = civ.designs.filter(x => x.id !== id);
+  // cohorts keep their gear but lose the name
+  for (const f of s.formations) for (const c of f.cohorts) if (c.designId === id) c.designId = null;
+  return ok(`${d.name} retired.`);
+}
+
+/** Equip the selected cohorts as the given design (paying only for gear they do not have). */
+export function assignDesign(
+  s: GameState,
+  fid: number,
+  cohortIds: number[],
+  designId: number,
+): Result {
+  const f = formation(s, fid);
+  if (!f) return fail('No such formation.');
+  const d = s.civs[f.civId].designs.find(x => x.id === designId);
+  if (!d) return fail('No such design.');
+  const r = refit(s, fid, cohortIds, d.loadout);
+  if (!r.ok) return r;
+  const ids = new Set(cohortIds);
+  for (const c of f.cohorts) if (ids.has(c.id)) c.designId = d.id;
+  return ok(`${cohortIds.length * COHORT_SIZE} people are now ${d.name}.`);
 }
 
 // ---------------------------------------------------------------- research
@@ -562,10 +640,15 @@ export function setResearch(s: GameState, civId: number, techId: string): Result
 export function endTurn(s: GameState): string[] {
   const events: string[] = [];
   const me = player(s);
+  const logStart = s.log.length;
   // AI acts after the player, in the same turn
-  for (const civ of s.civs) if (!civ.isPlayer) aiTurn(s, civ);
+  for (const civ of s.civs) if (!civ.isPlayer && civ.alive) aiTurn(s, civ);
+  // tell the player about anything the AI did to them
+  for (const e of s.log.slice(logStart))
+    if (e.civId !== me.id && e.text.includes(me.name)) events.push(e.text);
 
   for (const civ of s.civs) {
+    if (!civ.alive) continue;
     let science = 0,
       gold = 0;
     for (const c of s.cities.filter(x => x.civId === civ.id)) {
@@ -605,10 +688,10 @@ export function endTurn(s: GameState): string[] {
     }
   }
 
+  heal(s);
+  for (const c of s.cities) c.guard = Math.min(1, c.guard + 0.1);
   s.turn++;
-  for (const f of s.formations) {
-    f.moves = formationMoves(f);
-  }
+  for (const f of s.formations) f.moves = formationMoves(f);
   // standing orders carry on at the start of the new turn
   for (const f of [...s.formations]) {
     if (f.civId === me.id && f.path.length && s.formations.includes(f)) {
@@ -621,41 +704,34 @@ export function endTurn(s: GameState): string[] {
   return events;
 }
 
+/**
+ * Wounded cohorts recover: inside your territory they are topped up from the nearest city's
+ * people (troops are population); outside it only field medics help.
+ */
+function heal(s: GameState) {
+  for (const f of s.formations) {
+    if (f.kind !== 'army') continue;
+    const medics = f.cohorts.some(c => c.loadout.kit === 'field-medics');
+    const home = supplyingCity(s, f.civId, f.hex);
+    for (const c of f.cohorts) {
+      if (c.strength >= COHORT_SIZE) continue;
+      if (home) {
+        const want = Math.min(COHORT_SIZE - c.strength, medics ? 20 : 10);
+        const take = Math.min(want, Math.max(0, home.pop - MIN_CITY_POP));
+        // medics return wounded to the ranks before new recruits are needed
+        const free = medics ? Math.ceil(want / 2) : 0;
+        c.strength += Math.min(want, free + take);
+        home.pop -= Math.max(0, Math.min(want, free + take) - free);
+      } else if (medics) {
+        c.strength = Math.min(COHORT_SIZE, c.strength + 5);
+      }
+    }
+  }
+}
+
 /** Gold per turn: equipment upkeep only, so plain levies cost nothing. */
 export function cohortUpkeep(c: Cohort): number {
   return SLOTS.reduce((u, k) => u + ITEMS[c.loadout[k]].upkeep, 0);
-}
-
-// ---------------------------------------------------------------- a very simple AI (explore, raise levies)
-
-function aiTurn(s: GameState, civ: Civ) {
-  const g = gridOf(s);
-  const rng = mulberry32(hashSeed(s.settings.map.seed, s.turn * 131 + civ.id));
-  for (const f of s.formations.filter(x => x.civId === civ.id)) {
-    if (f.name === 'Scouts') {
-      if (!f.path.length) {
-        // head for the nearest unexplored hex
-        let best = -1,
-          bd = Infinity;
-        for (const k of within(g, f.hex, 8)) {
-          if (civ.explored[k] || !isPassableLand(s.map, k)) continue;
-          const d = distance(g, f.hex, k) + rng() * 2;
-          if (d < bd) {
-            bd = d;
-            best = k;
-          }
-        }
-        if (best >= 0) f.path = planPath(s, f, best) ?? [];
-      }
-      advance(s, f);
-    }
-  }
-  for (const c of s.cities.filter(x => x.civId === civ.id)) {
-    const garrison = s.formations.filter(
-      f => f.civId === civ.id && f.kind === 'army' && f.name !== 'Scouts',
-    ).length;
-    if (c.pop >= 3500 && garrison < 3) levy(s, c.id);
-  }
 }
 
 // ---------------------------------------------------------------- save / load
@@ -717,4 +793,291 @@ export function pathTurns(s: GameState, f: Formation, path: number[]): number[] 
     out.push(turn);
   }
   return out;
+}
+
+// ---------------------------------------------------------------- war and peace
+
+export const atWar = (s: GameState, a: number, b: number) =>
+  s.wars.some(w => (w.a === a && w.b === b) || (w.a === b && w.b === a));
+
+export function declareWar(s: GameState, a: number, b: number): Result {
+  if (a === b || atWar(s, a, b)) return fail('Already at war.');
+  s.wars.push({ a, b, since: s.turn });
+  const msg = `The ${s.civs[a].name} declared war on the ${s.civs[b].name}!`;
+  log(s, a, msg);
+  return ok(msg);
+}
+
+export function endWar(s: GameState, a: number, b: number) {
+  s.wars = s.wars.filter(w => !((w.a === a && w.b === b) || (w.a === b && w.b === a)));
+  log(s, a, `The ${s.civs[a].name} and the ${s.civs[b].name} made peace.`);
+}
+
+/** Total fighting power of a civ (rough, for the AI and the peoples screen). */
+export function militaryPower(s: GameState, civId: number): number {
+  let p = 0;
+  for (const f of s.formations) if (f.civId === civId) p += powerOf(f);
+  return Math.round(p);
+}
+
+/** The player offers peace. The AI takes it once the war has dragged on and is not going its way. */
+export function offerPeace(s: GameState, from: number, to: number): Result {
+  const w = s.wars.find(x => (x.a === from && x.b === to) || (x.a === to && x.b === from));
+  if (!w) return fail('You are not at war.');
+  const length = s.turn - w.since;
+  const theirs = militaryPower(s, to),
+    mine = militaryPower(s, from);
+  if (length < 6)
+    return fail(
+      `The ${s.civs[to].name} want this war to run its course (${6 - length} more turns).`,
+    );
+  if (theirs > mine * 1.6 && length < 20)
+    return fail(`The ${s.civs[to].name} feel strong and refuse.`);
+  endWar(s, from, to);
+  return ok(`Peace with the ${s.civs[to].name}.`);
+}
+
+// ---------------------------------------------------------------- battle
+
+/** What stands on a hex for an attacker: the strongest formation, else a city's own guard. */
+export function defenderAt(s: GameState, hex: number): { f?: Formation; city?: City } {
+  const fs = formationsAt(s, hex).filter(f => f.kind === 'army');
+  const city = cityAt(s, hex);
+  const f = fs.sort((a, b) => people(b) - people(a))[0];
+  return { f, city };
+}
+
+/** The city guard: townsfolk with spears and hide shields, more of them in bigger cities. */
+export function cityGuard(c: City): Cohort[] {
+  const n = 3 + Math.floor(c.pop / 2000);
+  return Array.from({ length: n }, (_, i) => ({
+    id: -1 - i,
+    strength: Math.max(1, Math.round(COHORT_SIZE * c.guard)),
+    xp: 0,
+    designId: null,
+    loadout: { ...DEFAULT_LOADOUT, weapon: 'spear', shield: 'hide-shield' },
+  }));
+}
+
+export interface AttackCheck {
+  problem?: string;
+  needsWar?: number;
+  target?: { f?: Formation; city?: City; civId: number };
+}
+
+export function canAttack(s: GameState, fid: number, hex: number): AttackCheck {
+  const f = formation(s, fid);
+  if (!f) return { problem: 'No such formation.' };
+  if (f.kind !== 'army') return { problem: 'Settlers do not fight.' };
+  const { f: df, city } = defenderAt(s, hex);
+  const civilians = formationsAt(s, hex).filter(x => x.kind === 'settlers' && x.civId !== f.civId);
+  const civId = df?.civId ?? city?.civId ?? civilians[0]?.civId;
+  if (civId === undefined || civId === f.civId) return { problem: 'Nothing to attack there.' };
+  if (distance(gridOf(s), f.hex, hex) !== 1) return { problem: 'Move next to them first.' };
+  if (f.moves <= 0) return { problem: 'No moves left this turn.' };
+  if (!atWar(s, f.civId, civId)) return { needsWar: civId, target: { f: df, city, civId } };
+  return { target: { f: df, city, civId } };
+}
+
+function battleInputs(s: GameState, f: Formation, hex: number) {
+  const { f: df, city } = defenderAt(s, hex);
+  const defCivId = df?.civId ?? city!.civId;
+  const defCohorts = df ? df.cohorts : cityGuard(city!);
+  const defName = df ? `${s.civs[defCivId].name} ${df.name}` : `${city!.name} guard`;
+  const volleyOnly = f.cohorts.every(c => cohortRanged(c));
+  return {
+    att: {
+      name: `${s.civs[f.civId].name} ${f.name}`,
+      cohorts: f.cohorts,
+      morale: formationMorale(f),
+    },
+    def: {
+      name: defName,
+      cohorts: defCohorts,
+      morale: df ? formationMorale(df) + (city ? 15 : 0) : 45,
+    },
+    ctx: { map: s.map, hex, fortified: !!df?.fortified, city: !!city, volleyOnly },
+    df,
+    city,
+    defCivId,
+  };
+}
+const cohortRanged = (c: Cohort) => isRanged(c.loadout);
+
+/** Expected result with average luck, without changing anything. */
+export function previewBattle(s: GameState, fid: number, hex: number): BattleReport | null {
+  const f = formation(s, fid);
+  if (!f) return null;
+  const chk = canAttack(s, fid, hex);
+  if (chk.problem || !chk.target || (!chk.target.f && !chk.target.city)) return null;
+  const b = battleInputs(s, f, hex);
+  const clone = (cs: Cohort[]) => cs.map(c => ({ ...c }));
+  return resolveBattle(
+    { ...b.att, cohorts: clone(b.att.cohorts) },
+    { ...b.def, cohorts: clone(b.def.cohorts) },
+    { ...b.ctx, rng: () => 0.5 },
+  );
+}
+
+/** Attack an adjacent hex. Applies losses, retreats, captures. */
+export function attack(s: GameState, fid: number, hex: number): Result & { report?: BattleReport } {
+  const f = formation(s, fid);
+  if (!f) return fail('No such formation.');
+  const chk = canAttack(s, fid, hex);
+  if (chk.problem) return fail(chk.problem);
+  if (chk.needsWar !== undefined)
+    return fail(`You are at peace with the ${s.civs[chk.needsWar].name}.`);
+  const g = gridOf(s);
+  const attCiv = s.civs[f.civId];
+  f.fortified = false;
+  f.path = [];
+
+  // undefended civilians are simply taken
+  if (!chk.target!.f && !chk.target!.city) {
+    const victims = formationsAt(s, hex).filter(x => x.civId !== f.civId);
+    s.formations = s.formations.filter(x => !victims.includes(x));
+    f.moves = 0;
+    f.hex = hex;
+    const msg = `${attCiv.name} ${f.name} scattered the ${s.civs[chk.target!.civId].name} settlers.`;
+    log(s, f.civId, msg);
+    checkElimination(s);
+    updateExplored(s, f.civId);
+    return ok(msg);
+  }
+
+  const b = battleInputs(s, f, hex);
+  const rng = mulberry32(hashSeed(s.settings.map.seed, s.turn * 7919 + f.id * 31 + hex));
+  const report = resolveBattle(b.att, b.def, { ...b.ctx, rng });
+  const defCiv = s.civs[b.defCivId];
+
+  const applyLosses = (fm: Formation, loss: Record<number, number>) => {
+    for (const c of fm.cohorts) {
+      c.strength = Math.max(0, c.strength - (loss[c.id] ?? 0));
+      if (c.strength > 0) c.xp += 1;
+    }
+    // cohorts cut below a fifth of their men are folded into the survivors
+    const lost = fm.cohorts.filter(c => c.strength < 20);
+    fm.cohorts = fm.cohorts.filter(c => c.strength >= 20);
+    if (!fm.cohorts.length) s.formations = s.formations.filter(x => x !== fm);
+    return lost.length;
+  };
+  applyLosses(f, report.attacker.cohortLoss);
+  if (b.df) applyLosses(b.df, report.defender.cohortLoss);
+  attCiv.kills += report.defender.lost;
+  attCiv.losses += report.attacker.lost;
+  defCiv.kills += report.attacker.lost;
+  defCiv.losses += report.defender.lost;
+  f.moves = 0;
+
+  let result = '';
+  const attackerAlive = s.formations.includes(f);
+  const defenderAlive = b.df ? s.formations.includes(b.df) : false;
+  if (!b.df && b.city) {
+    b.city.guard = Math.max(
+      0,
+      b.city.guard * (1 - report.defender.lost / Math.max(1, report.defender.start)),
+    );
+  }
+  if (report.outcome === 'defender-broke' && b.df && defenderAlive) {
+    // retreat away from the attacker, or be cut down if there is nowhere to go
+    const pass = passable(s, b.df);
+    const options = neighbors(g, hex).filter(
+      n =>
+        n !== f.hex &&
+        pass(n) &&
+        isFinite(enterCost(s.map, b.df!, n)) &&
+        !formationsAt(s, n).some(x => x.civId === b.df!.civId && x.kind === 'army'),
+    );
+    options.sort((x, y) => distance(g, y, f.hex) - distance(g, x, f.hex));
+    if (options.length && !b.city) {
+      b.df.hex = options[0];
+      b.df.fortified = false;
+      b.df.path = [];
+      result = `${b.def.name} fell back.`;
+    } else if (b.city) {
+      result = `${b.def.name} was driven from the walls.`;
+      // the garrison is broken but stays in the city; a second assault will meet the city guard
+      b.df.fortified = false;
+      b.df.moves = 0;
+    } else {
+      s.formations = s.formations.filter(x => x !== b.df);
+      result = `${b.def.name} had nowhere to run and was destroyed.`;
+    }
+  } else if (report.outcome === 'defender-broke' && !b.df && b.city && attackerAlive) {
+    // city guard broken: the city falls to troops that can hold it
+    if (f.cohorts.some(c => !cohortRanged(c))) {
+      result = captureCity(s, b.city, f);
+    } else {
+      result = `${b.city.name}'s guard is shaken, but archers cannot take a city.`;
+    }
+  } else if (report.outcome === 'attacker-broke') {
+    result = `${b.att.name} was thrown back.`;
+  } else if (!defenderAlive && b.df) {
+    result = `${b.def.name} was destroyed.`;
+  } else {
+    result = report.outcome === 'skirmish' ? 'An exchange of volleys.' : 'Neither side gave way.';
+  }
+  // advance into an emptied hex (not into a city still holding out)
+  if (
+    attackerAlive &&
+    report.outcome !== 'attacker-broke' &&
+    !b.ctx.volleyOnly &&
+    !formationsAt(s, hex).some(x => x.civId !== f.civId) &&
+    (!cityAt(s, hex) || cityAt(s, hex)!.civId === f.civId)
+  ) {
+    f.hex = hex;
+  }
+  if (!attackerAlive) result += ` ${b.att.name} was destroyed.`;
+  report.lines.push(result);
+  log(
+    s,
+    f.civId,
+    `Battle: ${b.att.name} attacked ${b.def.name} — lost ${report.attacker.lost}, killed ${report.defender.lost}. ${result}`,
+  );
+  checkElimination(s);
+  updateExplored(s, f.civId);
+  updateExplored(s, b.defCivId);
+  return { ok: true, msg: result, report };
+}
+
+function captureCity(s: GameState, c: City, by: Formation): string {
+  const old = s.civs[c.civId];
+  const civ = s.civs[by.civId];
+  c.civId = by.civId;
+  c.pop = Math.max(MIN_CITY_POP, Math.round((c.pop * 0.75) / 50) * 50);
+  // civilians in the city are lost
+  s.formations = s.formations.filter(x => !(x.hex === c.hex && x.civId === old.id));
+  by.hex = c.hex;
+  const msg = `${civ.name} captured ${c.name} from the ${old.name}!`;
+  log(s, by.civId, msg);
+  return msg;
+}
+
+/** A people with no cities and no settlers is gone; its troops scatter. */
+export function checkElimination(s: GameState) {
+  for (const civ of s.civs) {
+    if (!civ.alive) continue;
+    const hasCity = s.cities.some(c => c.civId === civ.id);
+    const hasSettlers = s.formations.some(f => f.civId === civ.id && f.kind === 'settlers');
+    if (hasCity || hasSettlers) continue;
+    civ.alive = false;
+    s.formations = s.formations.filter(f => f.civId !== civ.id);
+    s.wars = s.wars.filter(w => w.a !== civ.id && w.b !== civ.id);
+    log(s, civ.id, `The ${civ.name} are no more.`);
+  }
+}
+
+// ---------------------------------------------------------------- settlers
+
+/** Send out settlers: 1,000 people (500 settlers with their families) leave the city. */
+export function trainSettlers(s: GameState, cityId: number): Result {
+  const c = city(s, cityId);
+  if (!c) return fail('No such city.');
+  if (c.pop - SETTLERS_PEOPLE < MIN_CITY_POP)
+    return fail(`${c.name} needs ${MIN_CITY_POP + SETTLERS_PEOPLE} people to send out settlers.`);
+  c.pop -= SETTLERS_PEOPLE;
+  const f = addFormation(s, c.civId, 'settlers', c.hex, SETTLER_COHORTS, 'Settlers');
+  f.moves = 0;
+  log(s, c.civId, `${c.name} sent out settlers.`);
+  return ok(`Settlers leave ${c.name}.`);
 }

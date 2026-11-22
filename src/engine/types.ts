@@ -51,7 +51,18 @@ export interface Cohort {
   id: number;
   /** people, 0..100 */
   strength: number;
+  /** battles survived */
   xp: number;
+  /** the unit design this cohort was equipped as; null = plain levy */
+  designId: number | null;
+  /** the gear it actually carries (may lag behind an edited design until re-equipped) */
+  loadout: Loadout;
+}
+
+/** A named unit type the player designs once and assigns cohorts to: "Hoplites", "Foot Falcons". */
+export interface Design {
+  id: number;
+  name: string;
   loadout: Loadout;
 }
 
@@ -80,11 +91,8 @@ export interface City {
   food: number;
   stockpile: Record<string, number>;
   founded: number;
-}
-
-export interface Template {
-  name: string;
-  loadout: Loadout;
+  /** city guard readiness 0..1; battered by assaults, recovers each turn */
+  guard: number;
 }
 
 export interface Civ {
@@ -98,8 +106,22 @@ export interface Civ {
   gold: number;
   /** 1 = explored, per hex */
   explored: number[];
-  templates: Template[];
+  designs: Design[];
   cityNames: number;
+  /** levies raised so far, for naming */
+  levies: number;
+  /** civ ids this civ has met */
+  met: number[];
+  alive: boolean;
+  /** enemy people killed / own people lost in battle, for the record */
+  kills: number;
+  losses: number;
+}
+
+export interface War {
+  a: number;
+  b: number;
+  since: number;
 }
 
 export interface LogEntry {
@@ -118,4 +140,5 @@ export interface GameState {
   formations: Formation[];
   nextId: number;
   log: LogEntry[];
+  wars: War[];
 }

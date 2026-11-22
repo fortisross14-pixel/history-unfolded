@@ -40,7 +40,7 @@ export const UPHEAVAL_PENALTY: Partial<Mods> = {
 export function civMods(s: GameState, civId: number): Mods {
   const civ = s.civs[civId];
   const c = civ.culture;
-  const key = `${civ.techs.length}|${c.taken.join(',')}|${c.legacy.join(',')}|${c.upheaval ? c.upheaval.domain : ''}`;
+  const key = `${civ.techs.length}|${c.taken.length}|${c.legacy.length}|${c.upheaval ? c.upheaval.domain : ''}`;
   const hit = cache.get(civ);
   if (hit && hit.key === key) return hit.mods;
   const m = ZERO_MODS();

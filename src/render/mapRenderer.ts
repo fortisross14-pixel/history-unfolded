@@ -516,7 +516,7 @@ export class MapRenderer {
     // 13. formations (only where this civ can see)
     const byHex = new Map<number, typeof s.formations>();
     for (const f of s.formations) {
-      if (!vis[f.hex]) continue;
+      if (!vis[f.hex] || f.aboard !== undefined) continue;
       if (!byHex.has(f.hex)) byHex.set(f.hex, []);
       byHex.get(f.hex)!.push(f);
     }
@@ -531,7 +531,7 @@ export class MapRenderer {
         oy = hasCity ? -R * 0.1 : R * 0.42;
       if (fs.length > 1) {
         const other = fs.find(f => f !== top)!;
-        sprite(`unit:${formationSprite(other)}`, x + ox + R * 0.28, y + oy - R * 0.05, R * 0.85);
+        sprite(spriteKey(formationSprite(other)), x + ox + R * 0.28, y + oy - R * 0.05, R * 0.85);
       }
       const color = s.civs[top.civId].color;
       // base disc
@@ -546,9 +546,38 @@ export class MapRenderer {
         ctx.ellipse(x + ox, y + oy, R * 0.5, R * 0.17, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
-      sprite(`unit:${formationSprite(top)}`, x + ox, y + oy, R * 1.15);
+      sprite(
+        spriteKey(formationSprite(top)),
+        x + ox,
+        y + oy + (top.kind === 'fleet' ? R * 0.1 : 0),
+        top.kind === 'fleet' ? R * 1.35 : R * 1.15,
+      );
+      // troops aboard a fleet: a small badge
+      const aboard =
+        top.kind === 'fleet'
+          ? s.formations.filter(o => o.aboard === top.id).reduce((a, o) => a + o.cohorts.length, 0)
+          : 0;
+      if (aboard) {
+        ctx.fillStyle = '#fff6dc';
+        ctx.strokeStyle = '#2b1a0c';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(x + ox + R * 0.5, y + oy - R * 0.55, R * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#2b1a0c';
+        ctx.font = `bold ${R * 0.2}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`⚔${aboard}`, x + ox + R * 0.5, y + oy - R * 0.54);
+      }
       // banner: civ colour with cohort count
-      const label = top.kind === 'settlers' ? '⌂' : String(top.cohorts.length);
+      const label =
+        top.kind === 'settlers'
+          ? '⌂'
+          : top.kind === 'fleet'
+            ? `⛵${top.cohorts.length}`
+            : String(top.cohorts.length);
       const bx = x + ox - R * 0.62,
         by = y + oy - R * 1.3;
       ctx.fillStyle = color;
@@ -620,6 +649,8 @@ export class MapRenderer {
     ctx.closePath();
   }
 }
+
+const spriteKey = (sp: string) => (sp.startsWith('ship:') ? sp : `unit:${sp}`);
 
 /** Neighbours in fixed direction order (E, NE, NW, W, SW, SE), -1 off the map. */
 function neighborsByDir(g: Grid, i: number): number[] {

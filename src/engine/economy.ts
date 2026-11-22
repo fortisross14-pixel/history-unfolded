@@ -359,6 +359,7 @@ export function build(s: GameState, c: City, prod: number): string[] {
     left -= put;
     if (st.progress >= t.build.prod - 1e-9) {
       st.built = true;
+      if (t.id === 'harbour' || t.id === 'shipyard') invalidateMarkets();
       done.push(`${t.name} in ${d.name}`);
     }
   }
@@ -381,20 +382,73 @@ function connectorSet(s: GameState, civId: number): Uint8Array {
   return ok;
 }
 
-/** Cities of the same civ joined by roads or rivers, including `c` itself. */
+/** Cities with a harbour or shipyard trade by sea with each other's ports. */
+const hasPort = (s: GameState, c: City) =>
+  cityDistricts(s, c).some(d =>
+    d.slots.some(x => x.built && (x.type === 'harbour' || x.type === 'shipyard')),
+  );
+
+/**
+ * Cities of the same civ joined by roads or rivers, including `c` itself. Ports also join over
+ * water (coast; open ocean once the Compass is known). Enemy armies or fleets cut the links.
+ */
+const marketCache = new WeakMap<GameState, { key: string; groups: Map<number, City[]> }>();
+let marketVersion = 0;
+/** Call when roads, cities, ports or wars change: market links are recomputed on next use. */
+export function invalidateMarkets() {
+  marketVersion++;
+}
+
+/** Market links are worked out once per turn, or again after something changes them. */
 export function marketCities(s: GameState, c: City): City[] {
+  const key = `${s.turn}|${marketVersion}`;
+  let cache = marketCache.get(s);
+  if (!cache || cache.key !== key) {
+    cache = { key, groups: new Map() };
+    marketCache.set(s, cache);
+  }
+  let group = cache.groups.get(c.id);
+  if (!group) {
+    group = marketCitiesUncached(s, c);
+    for (const x of group) cache.groups.set(x.id, group);
+  }
+  if (group[0] === c) return group;
+  return [c, ...group.filter(x => x !== c)];
+}
+
+function marketCitiesUncached(s: GameState, c: City): City[] {
   const g = gridOf(s);
   const ok = connectorSet(s, c.civId);
-  const seen = new Uint8Array(g.w * g.h);
+  const N = g.w * g.h;
+  const ports = new Set(s.cities.filter(x => x.civId === c.civId && hasPort(s, x)).map(x => x.hex));
+  const ocean = s.civs[c.civId].techs.includes('compass');
+  const sea = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    const t = s.map.terrain[i];
+    if (t === 'coast' || t === 'lake' || (ocean && t === 'ocean')) sea[i] = 1;
+  }
+  for (const f of s.formations)
+    if (
+      f.civId !== c.civId &&
+      s.wars.some(w => (w.a === c.civId && w.b === f.civId) || (w.b === c.civId && w.a === f.civId))
+    )
+      sea[f.hex] = 0;
+  const seen = new Uint8Array(N);
   const stack = [c.hex];
   seen[c.hex] = 1;
   while (stack.length) {
     const h = stack.pop()!;
-    for (const n of neighbors(g, h))
-      if (ok[n] && !seen[n]) {
+    const fromSea = sea[h] === 1 && !ok[h];
+    for (const n of neighbors(g, h)) {
+      if (seen[n]) continue;
+      const land = ok[n] && !fromSea;
+      const toSea = sea[n] && (fromSea || ports.has(h));
+      const intoPort = fromSea && ports.has(n);
+      if (land || toSea || intoPort) {
         seen[n] = 1;
         stack.push(n);
       }
+    }
   }
   return s.cities
     .filter(x => x.civId === c.civId && seen[x.hex])

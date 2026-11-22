@@ -4,7 +4,8 @@
  */
 import { CITY_NAMES, CIV_PRESETS } from '../data/civs.ts';
 import { DEPOSITS } from '../data/goods.ts';
-import { DEFAULT_LOADOUT, ITEMS, SLOTS, type Loadout } from '../data/items.ts';
+import { isWater } from '../data/terrain.ts';
+import { DEFAULT_LOADOUT, isNavalLoadout, ITEMS, SLOTS, type Loadout } from '../data/items.ts';
 import { TECHS, TECH_LIST } from '../data/techs.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
 import { generateMap, isPassableLand, MAP_SIZES } from './mapgen.ts';
@@ -29,6 +30,7 @@ import { tagCounts as tagCountsOf } from './mods.ts';
 import {
   build,
   cityDistricts,
+  invalidateMarkets,
   cityEconomy,
   districtAt,
   districtSites,
@@ -51,6 +53,8 @@ import {
   isRanged,
   LEVY_COHORTS,
   power as powerOf,
+  fleetCapacity,
+  loadoutCost,
   loadoutProblem,
   people,
   refitCost,
@@ -187,6 +191,80 @@ function nextLevyName(s: GameState, civId: number): string {
   return `${n}${suf} Levy`;
 }
 
+function nextFleetName(s: GameState, civId: number): string {
+  const n = s.formations.filter(f => f.civId === civId && f.kind === 'fleet').length + 1;
+  const suf =
+    n % 10 === 1 && n % 100 !== 11
+      ? 'st'
+      : n % 10 === 2 && n % 100 !== 12
+        ? 'nd'
+        : n % 10 === 3 && n % 100 !== 13
+          ? 'rd'
+          : 'th';
+  return `${n}${suf} Fleet`;
+}
+
+/** Build a ship of a naval design in a city with a shipyard; it takes 50 crew from the city. */
+export function buildShip(s: GameState, cityId: number, designId: number): Result {
+  const c = city(s, cityId);
+  if (!c) return fail('No such city.');
+  const civ = s.civs[c.civId];
+  const d = civ.designs.find(x => x.id === designId);
+  if (!d || !d.naval) return fail('Pick a ship design.');
+  if (!hasSlot(s, c, 'shipyard')) return fail(`${c.name} needs a shipyard.`);
+  const problem = loadoutProblem(d.loadout, civ.techs);
+  if (problem) return fail(problem);
+  if (c.pop - SHIP_CREW < MIN_CITY_POP) return fail(`${c.name} is too small to crew a ship.`);
+  const g = gridOf(s);
+  const water = neighbors(g, c.hex).filter(
+    k => isWaterHex(s, k) && !formationsAt(s, k).some(o => o.civId !== c.civId),
+  );
+  if (!water.length) return fail('No free water next to the city.');
+  const spot =
+    water.find(k =>
+      s.formations.some(
+        o =>
+          o.kind === 'fleet' &&
+          o.civId === c.civId &&
+          o.hex === k &&
+          o.cohorts.length < capOf(o, s),
+      ),
+    ) ?? water[0];
+  if (!marketSpend(s, c, loadoutCost(d.loadout))) return fail(`${c.name} cannot pay for the ship.`);
+  c.pop -= SHIP_CREW;
+  const ship: Cohort = {
+    id: s.nextId++,
+    strength: COHORT_SIZE,
+    xp: 0,
+    designId: d.id,
+    loadout: { ...d.loadout },
+  };
+  const host = s.formations.find(
+    o =>
+      o.kind === 'fleet' && o.civId === c.civId && o.hex === spot && o.cohorts.length < capOf(o, s),
+  );
+  if (host) host.cohorts.push(ship);
+  else {
+    const f: Formation = {
+      id: s.nextId++,
+      civId: c.civId,
+      name: nextFleetName(s, c.civId),
+      kind: 'fleet',
+      hex: spot,
+      cohorts: [ship],
+      moves: 0,
+      path: [],
+      fortified: false,
+    };
+    s.formations.push(f);
+  }
+  log(s, c.civId, `${c.name} launched a ${d.name}.`);
+  updateExplored(s, c.civId);
+  return ok(`${d.name} launched from ${c.name}.`);
+}
+
+export const SHIP_CREW = 50;
+
 export function log(s: GameState, civId: number, text: string) {
   s.log.push({ turn: s.turn, civId, text });
   if (s.log.length > 300) s.log.splice(0, s.log.length - 300);
@@ -276,17 +354,57 @@ export function depositVisible(s: GameState, civId: number, hex: number): boolea
 
 // ---------------------------------------------------------------- movement
 
+// ---------------------------------------------------------------- ships and cargo
+
+export const isWaterHex = (s: GameState, h: number) => isWater(s.map.terrain[h]);
+/** Formations carried by a fleet. */
+export const cargoOf = (s: GameState, fleet: Formation) =>
+  s.formations.filter(o => o.aboard === fleet.id);
+/** Free cohort places on a fleet. */
+export const roomOn = (s: GameState, fleet: Formation) =>
+  fleetCapacity(fleet) - cargoOf(s, fleet).reduce((a, o) => a + o.cohorts.length, 0);
+/** An own fleet on `hex` with room for `f`. */
+export function shipFor(s: GameState, f: Formation, hex: number): Formation | undefined {
+  return s.formations.find(
+    o =>
+      o.kind === 'fleet' &&
+      o.civId === f.civId &&
+      o.hex === hex &&
+      o !== f &&
+      roomOn(s, o) >= f.cohorts.length,
+  );
+}
+/** An own coastal city a fleet can sail into. */
+export function isPort(s: GameState, civId: number, hex: number): boolean {
+  const c = cityAt(s, hex);
+  return !!c && c.civId === civId && neighbors(gridOf(s), hex).some(k => isWaterHex(s, k));
+}
+
+/** Remove a formation; a fleet takes its cargo down with it. */
+export function removeFormation(s: GameState, f: Formation) {
+  const lost = f.kind === 'fleet' ? cargoOf(s, f) : [];
+  s.formations = s.formations.filter(x => x !== f && !lost.includes(x));
+}
+
 /** Can `f` end its move on `hex`? Returns the formation it would merge into, or a reason. */
 export function arrival(
   s: GameState,
   f: Formation,
   hex: number,
-): { mergeWith?: Formation; blocked?: string } {
+): { mergeWith?: Formation; embark?: Formation; blocked?: string } {
   const there = formationsAt(s, hex).filter(o => o.id !== f.id);
   if (there.some(o => o.civId !== f.civId)) return { blocked: 'Another people holds that hex.' };
   const c = cityAt(s, hex);
   if (c && c.civId !== f.civId) return { blocked: 'A foreign city.' };
-  const same = there.filter(o => o.kind === f.kind);
+  const water = isWaterHex(s, hex);
+  if (f.kind !== 'fleet' && water) {
+    const ship = shipFor(s, f, hex);
+    return ship ? { embark: ship } : { blocked: 'No ship there with room for them.' };
+  }
+  if (f.kind === 'fleet' && !water && !isPort(s, f.civId, hex))
+    return { blocked: 'Ships stay on water or in your ports.' };
+  if (water && f.kind !== 'fleet') return {};
+  const same = there.filter(o => o.kind === f.kind && o.aboard === undefined);
   if (!same.length) return {};
   const fits = same.find(o => o.cohorts.length + f.cohorts.length <= capOf(o, s));
   if (!fits)
@@ -304,10 +422,19 @@ export function passable(s: GameState, f: Formation): (hex: number) => boolean {
   return h => !foreign.has(h);
 }
 
-/** Moving along a road (from one road hex to the next) costs half a move, whatever the ground. */
+/**
+ * Cost of one step. Roads: half a move. Ships move on water and into own ports. Troops board
+ * an own ship with room, or land from one, at the cost of all their moves.
+ */
 export function stepCost(s: GameState, f: Formation, from: number, to: number): number {
+  if (f.kind === 'fleet') {
+    if (!isWaterHex(s, to)) return isPort(s, f.civId, to) ? 1 : Infinity;
+    return enterCost(s.map, f, to);
+  }
+  if (isWaterHex(s, to)) return shipFor(s, f, to) ? Math.max(1, formationMoves(f)) : Infinity;
   const base = enterCost(s.map, f, to);
   if (!isFinite(base)) return base;
+  if (isWaterHex(s, from)) return Math.max(1, formationMoves(f)); // landing
   if (s.roads[from] && s.roads[to]) return Math.max(0.2, 0.5 + civMods(s, f.civId).roadCost);
   return base;
 }
@@ -317,8 +444,8 @@ export function planPath(s: GameState, f: Formation, target: number): number[] |
   const pass = passable(s, f);
   return findPath(gridOf(s), f.hex, target, (from, to) => {
     if (!pass(to)) return Infinity;
-    // unexplored hexes are assumed passable at base cost until seen
-    if (!civ.explored[to]) return 1;
+    // unexplored hexes are assumed passable at base cost until seen (on land, or water for ships)
+    if (!civ.explored[to]) return isWaterHex(s, to) === (f.kind === 'fleet') ? 1 : Infinity;
     return stepCost(s, f, from, to);
   });
 }
@@ -351,24 +478,32 @@ export function advance(s: GameState, f: Formation): Result {
       return fail('The way is blocked.');
     }
     const last = f.path.length === 1;
-    if (last) {
-      const end = arrival(s, f, next);
-      if (end.blocked) {
-        f.path = [];
-        return fail(end.blocked);
-      }
+    const end = last ? arrival(s, f, next) : undefined;
+    if (end?.blocked) {
+      f.path = [];
+      return fail(end.blocked);
     }
     // a formation can always enter a hex if it has any movement left (it then stops)
     f.moves = Math.max(0, f.moves - cost);
+    const from = f.hex;
     f.hex = next;
     f.path.shift();
-    updateExplored(s, f.civId);
-    if (last) {
-      const end = arrival(s, f, next);
-      if (end.mergeWith) merged = mergeInto(s, f, end.mergeWith);
+    if (f.kind === 'fleet') for (const o of cargoOf(s, f)) o.hex = next;
+    else if (isWaterHex(s, next)) {
+      f.aboard = shipFor(s, f, next)?.id;
+      f.moves = 0;
+    } else {
+      // stepping onto land always leaves the ship (also from a ship docked in port)
+      if (isWaterHex(s, from)) f.moves = 0;
+      f.aboard = undefined;
     }
+    // troops at war can cut (or reopen) roads and sea lanes as they move
+    if (s.wars.some(w => w.a === f.civId || w.b === f.civId)) invalidateMarkets();
+    updateExplored(s, f.civId);
+    if (end?.mergeWith) merged = mergeInto(s, f, end.mergeWith);
+    if (end?.embark) merged = `${f.name} boarded ${end.embark.name}.`;
     // re-plan if the terrain just revealed makes the rest of the path impossible
-    if (f.path.length && !isFinite(enterCost(s.map, f, f.path[0]))) {
+    if (f.path.length && !isFinite(stepCost(s, f, f.hex, f.path[0]))) {
       const target = f.path[f.path.length - 1];
       f.path = planPath(s, f, target) ?? [];
     }
@@ -379,6 +514,7 @@ export function advance(s: GameState, f: Formation): Result {
 /** `a` joins `b`: cohorts keep their loadouts, the result moves at the slower pace. */
 export function mergeInto(s: GameState, a: Formation, b: Formation): string {
   b.cohorts.push(...a.cohorts);
+  for (const o of cargoOf(s, a)) o.aboard = b.id;
   b.moves = Math.min(b.moves, a.moves);
   b.path = [];
   s.formations = s.formations.filter(x => x.id !== a.id);
@@ -412,6 +548,11 @@ export function split(
   const moving = f.cohorts.filter(c => ids.has(c.id));
   if (!moving.length) return fail('Pick at least one cohort.');
   if (moving.length === f.cohorts.length) return fail('Leave at least one cohort behind.');
+  if (f.kind === 'fleet') {
+    const left = { ...f, cohorts: f.cohorts.filter(c => !ids.has(c.id)) };
+    if (fleetCapacity(left) < cargoOf(s, f).reduce((x, o) => x + o.cohorts.length, 0))
+      return fail('Land the troops first: the rest of the fleet could not carry them.');
+  }
   f.cohorts = f.cohorts.filter(c => !ids.has(c.id));
   const n: Formation = {
     id: s.nextId++,
@@ -421,7 +562,13 @@ export function split(
     cohorts: moving,
     path: [],
     fortified: false,
-    name: name ?? (f.kind === 'settlers' ? 'Settlers' : nextLevyName(s, f.civId)),
+    name:
+      name ??
+      (f.kind === 'settlers'
+        ? 'Settlers'
+        : f.kind === 'fleet'
+          ? nextFleetName(s, f.civId)
+          : nextLevyName(s, f.civId)),
     moves: 0,
   };
   n.moves = Math.min(f.moves, formationMoves(n));
@@ -494,6 +641,7 @@ export function foundCity(s: GameState, fid: number): Result {
   s.districts = s.districts.filter(d => d.hex !== c.hex);
   s.districts.push(centre);
   s.roads[c.hex] = 1;
+  invalidateMarkets();
   s.formations = s.formations.filter(x => x.id !== f.id);
   s.map.vegetation[f.hex] = 'none';
   updateExplored(s, civ.id);
@@ -562,7 +710,14 @@ export function refitPreview(
 ): RefitPreview {
   const f = formation(s, fid);
   if (!f) return { problem: 'No such formation.' };
-  if (f.kind !== 'army') return { problem: 'Settlers carry no weapons.' };
+  if (f.kind === 'settlers') return { problem: 'Settlers carry no weapons.' };
+  if ((f.kind === 'fleet') !== !!ITEMS[to.armour]?.naval)
+    return {
+      problem: f.kind === 'fleet' ? 'Ships take ship designs.' : 'Troops take troop designs.',
+    };
+  if (f.aboard !== undefined) return { problem: 'Land the troops first.' };
+  if (f.kind === 'fleet' && !isWaterHex(s, f.hex) && !isPort(s, f.civId, f.hex))
+    return { problem: 'Ships refit in port or near home.' };
   const civ = s.civs[f.civId];
   const problem = loadoutProblem(to, civ.techs);
   if (problem) return { problem };
@@ -635,13 +790,19 @@ export function saveDesign(
   if (ex) {
     ex.name = n;
     ex.loadout = { ...loadout };
+    ex.naval = isNavalLoadout(loadout);
     return {
       ok: true,
       msg: `${n} updated. Re-equip cohorts to give them the new gear.`,
       id: ex.id,
     };
   }
-  const d: Design = { id: s.nextId++, name: n, loadout: { ...loadout } };
+  const d: Design = {
+    id: s.nextId++,
+    name: n,
+    loadout: { ...loadout },
+    naval: isNavalLoadout(loadout),
+  };
   civ.designs.push(d);
   return { ok: true, msg: `${n} designed.`, id: d.id };
 }
@@ -784,7 +945,7 @@ export function endTurn(s: GameState): string[] {
  */
 function heal(s: GameState) {
   for (const f of s.formations) {
-    if (f.kind !== 'army') continue;
+    if (f.kind === 'settlers' || f.aboard !== undefined) continue;
     const medics = f.cohorts.some(c => c.loadout.kit === 'field-medics');
     const home = supplyingCity(s, f.civId, f.hex);
     for (const c of f.cohorts) {
@@ -890,6 +1051,7 @@ export function declareWar(s: GameState, a: number, b: number, called = false): 
   const treachery = hasPact(s, a, b);
   breakTreaties(s, a, b);
   s.wars.push({ a, b, since: s.turn });
+  invalidateMarkets();
   const msg = called
     ? `The ${A.name} joined their allies against the ${B.name}!`
     : `The ${A.name} declared war on the ${B.name}${treachery ? ', breaking their pact' : ''}!`;
@@ -911,6 +1073,7 @@ export function declareWar(s: GameState, a: number, b: number, called = false): 
 }
 
 export function endWar(s: GameState, a: number, b: number) {
+  invalidateMarkets();
   s.wars = s.wars.filter(w => !((w.a === a && w.b === b) || (w.a === b && w.b === a)));
   log(s, a, `The ${s.civs[a].name} and the ${s.civs[b].name} made peace.`);
 }
@@ -971,7 +1134,10 @@ export function checkVictory(s: GameState) {
 
 /** What stands on a hex for an attacker: the strongest formation, else a city's own guard. */
 export function defenderAt(s: GameState, hex: number): { f?: Formation; city?: City } {
-  const fs = formationsAt(s, hex).filter(f => f.kind === 'army');
+  const water = isWaterHex(s, hex);
+  const fs = formationsAt(s, hex).filter(f =>
+    water ? f.kind === 'fleet' : f.kind === 'army' && f.aboard === undefined,
+  );
   const city = cityAt(s, hex);
   const f = fs.sort((a, b) => people(b) - people(a))[0];
   return { f, city };
@@ -999,11 +1165,23 @@ export interface AttackCheck {
 export function canAttack(s: GameState, fid: number, hex: number): AttackCheck {
   const f = formation(s, fid);
   if (!f) return { problem: 'No such formation.' };
-  if (f.kind !== 'army') return { problem: 'Settlers do not fight.' };
+  if (f.kind === 'settlers') return { problem: 'Settlers do not fight.' };
+  const waterTarget = isWaterHex(s, hex);
+  if (f.kind === 'army' && waterTarget) return { problem: 'Troops cannot fight ships at sea.' };
+  if (f.kind === 'fleet' && !waterTarget && !f.cohorts.some(c => cohortRanged(c)))
+    return { problem: 'Only ships with archers or guns can bombard the shore.' };
+  if (
+    f.kind === 'army' &&
+    f.aboard !== undefined &&
+    formationsAt(s, hex).some(o => o.kind === 'fleet')
+  )
+    return { problem: 'Nothing to land on.' };
   const { f: df, city } = defenderAt(s, hex);
   const civilians = formationsAt(s, hex).filter(x => x.kind === 'settlers' && x.civId !== f.civId);
   const civId = df?.civId ?? city?.civId ?? civilians[0]?.civId;
   if (civId === undefined || civId === f.civId) return { problem: 'Nothing to attack there.' };
+  if (f.kind === 'fleet' && !waterTarget && !df && !city)
+    return { problem: 'Land troops to take them.' };
   if (distance(gridOf(s), f.hex, hex) !== 1) return { problem: 'Move next to them first.' };
   if (f.moves <= 0) return { problem: 'No moves left this turn.' };
   if (!atWar(s, f.civId, civId)) return { needsWar: civId, target: { f: df, city, civId } };
@@ -1015,7 +1193,10 @@ function battleInputs(s: GameState, f: Formation, hex: number) {
   const defCivId = df?.civId ?? city!.civId;
   const defCohorts = df ? df.cohorts : cityGuard(s, city!);
   const defName = df ? `${s.civs[defCivId].name} ${df.name}` : `${city!.name} guard`;
-  const volleyOnly = f.cohorts.every(c => cohortRanged(c));
+  const naval = f.kind === 'fleet';
+  // ships fire at the shore; they never board a beach
+  const volleyOnly = f.cohorts.every(c => cohortRanged(c)) || (naval && !isWaterHex(s, hex));
+  const landing = f.kind === 'army' && f.aboard !== undefined;
   const own = territory(s);
   const rough = s.map.relief[hex] !== 'flat' || s.map.vegetation[hex] !== 'none';
   const am = civMods(s, f.civId),
@@ -1024,7 +1205,10 @@ function battleInputs(s: GameState, f: Formation, hex: number) {
     defHome = own[hex] === defCivId;
   // situational bonuses add up into simple multipliers for each side
   const boost = (m: typeof am, attacking: boolean, home: boolean) => {
+    const atSea = isWaterHex(s, hex) || (attacking && naval);
     const sit =
+      (atSea ? m.navalPct : 0) +
+      (attacking && landing ? -30 : 0) +
       (attacking ? m.attackPct : 0) +
       (home ? m.homePct : 0) +
       (rough ? m.roughPct : 0) +
@@ -1039,7 +1223,9 @@ function battleInputs(s: GameState, f: Formation, hex: number) {
           (m.defensePct +
             (home ? m.homePct : 0) +
             (rough ? m.roughPct : 0) +
-            (!attacking && city ? m.cityDefensePct : 0)) /
+            (!attacking && city ? m.cityDefensePct : 0) +
+            (atSea ? m.navalPct / 2 : 0) -
+            (attacking && landing ? 25 : 0)) /
             100,
       ),
     };
@@ -1126,6 +1312,8 @@ export function nextResearch(s: GameState, civ: Civ): string | null {
     const t = TECHS[id];
     let v = techCost(s, civ, id);
     if (t.favoured && civ.leanings.includes(t.favoured)) v *= 0.7;
+    if (civ.sea === undefined && (id === 'sailing' || id === 'navigation') && boxedIn(s, civ))
+      v *= 0.3;
     if (
       atWarNow &&
       /sword|bow|mail|armour|pike|gun|musket|drill|chivalry|feudal|siege|iron|bronze/.test(
@@ -1136,6 +1324,14 @@ export function nextResearch(s: GameState, civ: Civ): string | null {
     return v * (0.85 + rng() * 0.3);
   };
   return avail.sort((a, b) => score(a.id) - score(b.id))[0].id;
+}
+
+/** A people with no room left on its own land (it will need ships). */
+function boxedIn(s: GameState, civ: Civ): boolean {
+  return (
+    s.formations.some(f => f.civId === civ.id && f.kind === 'settlers' && !f.path.length) ||
+    s.map.type === 'archipelago'
+  );
 }
 
 /** The first tech on the way to `goal` that can be researched now. */
@@ -1210,6 +1406,7 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
     s.formations = s.formations.filter(x => !victims.includes(x));
     f.moves = 0;
     f.hex = hex;
+    f.aboard = undefined;
     const msg = `${attCiv.name} ${f.name} scattered the ${s.civs[chk.target!.civId].name} settlers.`;
     log(s, f.civId, msg);
     checkElimination(s);
@@ -1230,7 +1427,7 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
     // cohorts cut below a fifth of their men are folded into the survivors
     const lost = fm.cohorts.filter(c => c.strength < 20);
     fm.cohorts = fm.cohorts.filter(c => c.strength >= 20);
-    if (!fm.cohorts.length) s.formations = s.formations.filter(x => x !== fm);
+    if (!fm.cohorts.length) removeFormation(s, fm);
     return lost.length;
   };
   applyLosses(f, report.attacker.cohortLoss);
@@ -1258,11 +1455,12 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
         n !== f.hex &&
         pass(n) &&
         isFinite(enterCost(s.map, b.df!, n)) &&
-        !formationsAt(s, n).some(x => x.civId === b.df!.civId && x.kind === 'army'),
+        !formationsAt(s, n).some(x => x.civId === b.df!.civId && x.kind === b.df!.kind),
     );
     options.sort((x, y) => distance(g, y, f.hex) - distance(g, x, f.hex));
     if (options.length && !b.city) {
       b.df.hex = options[0];
+      for (const o of cargoOf(s, b.df)) o.hex = options[0];
       b.df.fortified = false;
       b.df.path = [];
       result = `${b.def.name} fell back.`;
@@ -1272,13 +1470,14 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
       b.df.fortified = false;
       b.df.moves = 0;
     } else {
-      s.formations = s.formations.filter(x => x !== b.df);
+      removeFormation(s, b.df);
       result = `${b.def.name} had nowhere to run and was destroyed.`;
     }
   } else if (report.outcome === 'defender-broke' && !b.df && b.city && attackerAlive) {
     // city guard broken: the city falls to troops that can hold it
-    if (f.cohorts.some(c => !cohortRanged(c))) {
+    if (f.kind === 'army' && f.cohorts.some(c => !cohortRanged(c))) {
       result = captureCity(s, b.city, f);
+      f.aboard = undefined;
     } else {
       result = `${b.city.name}'s guard is shaken, but archers cannot take a city.`;
     }
@@ -1295,9 +1494,12 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
     report.outcome !== 'attacker-broke' &&
     !b.ctx.volleyOnly &&
     !formationsAt(s, hex).some(x => x.civId !== f.civId) &&
-    (!cityAt(s, hex) || cityAt(s, hex)!.civId === f.civId)
+    (!cityAt(s, hex) || cityAt(s, hex)!.civId === f.civId) &&
+    isWaterHex(s, hex) === (f.kind === 'fleet')
   ) {
     f.hex = hex;
+    f.aboard = undefined;
+    if (f.kind === 'fleet') for (const o of cargoOf(s, f)) o.hex = hex;
   }
   if (!attackerAlive) result += ` ${b.att.name} was destroyed.`;
   report.lines.push(result);
@@ -1316,6 +1518,7 @@ function captureCity(s: GameState, c: City, by: Formation): string {
   const old = s.civs[c.civId];
   const civ = s.civs[by.civId];
   c.civId = by.civId;
+  invalidateMarkets();
   c.pop = Math.max(MIN_CITY_POP, Math.round((c.pop * 0.75) / 50) * 50);
   // civilians in the city are lost
   s.formations = s.formations.filter(x => !(x.hex === c.hex && x.civId === old.id));
@@ -1466,6 +1669,7 @@ export function buildRoad(s: GameState, fid: number): Result {
   if (!isPassableLand(s.map, f.hex)) return fail('No road can be built here.');
   if (f.moves <= 0) return fail('No moves left this turn.');
   s.roads[f.hex] = 1;
+  invalidateMarkets();
   f.moves = 0;
   f.path = [];
   return ok('Road built.');

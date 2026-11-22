@@ -207,6 +207,113 @@ for (let i = 0; i < 6; i++) {
 }
 await page.waitForTimeout(200);
 await page.screenshot({ path: `${out}/10-zoomed-out.png` });
+// ships: design a transport, launch it, board the troops by clicking the ship
+const coastal = await page.evaluate(() => {
+  type Hu = {
+    game: any;
+    focus: (h: number) => void;
+    bump: () => void;
+    select: (id: number) => void;
+  };
+  const hu = (globalThis as unknown as { __hu: Hu }).__hu;
+  const g = hu.game;
+  const c = g.cities.find((x: any) => x.civId === 0);
+  const w = g.map.w;
+  const r = Math.floor(c.hex / w),
+    col = c.hex % w;
+  const off =
+    r & 1
+      ? [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [1, 1],
+          [0, -1],
+          [1, -1],
+        ]
+      : [
+          [1, 0],
+          [-1, 0],
+          [-1, 1],
+          [0, 1],
+          [-1, -1],
+          [0, -1],
+        ];
+  const around = off.map(([dc, dr]) => (r + dr) * w + col + dc);
+  let water = around.find((h: number) => ['coast', 'lake'].includes(g.map.terrain[h]));
+  if (water === undefined) {
+    // test only: turn a free neighbouring hex into a little bay
+    water = around.find(
+      (h: number) =>
+        !g.formations.some((f: any) => f.hex === h) && !g.districts.some((d: any) => d.hex === h),
+    );
+    if (water === undefined) return false;
+    g.map.terrain[water] = 'lake';
+    g.map.vegetation[water] = 'none';
+    g.map.relief[water] = 'flat';
+  }
+  g.civs[0].techs.push('sailing', 'navigation');
+  const centre = g.districts.find((d: any) => d.hex === c.hex);
+  centre.slots[0] = { type: 'shipyard', built: true, progress: 0, paid: true };
+  c.stockpile.wood = (c.stockpile.wood ?? 0) + 50;
+  c.stockpile.hides = (c.stockpile.hides ?? 0) + 10;
+  c.pop += 2000;
+  hu.focus(c.hex);
+  hu.bump();
+  return true;
+});
+if (coastal) {
+  await page.click('button:has-text("Unit designs")');
+  await page.click('.land-sea button:has-text("Ships")');
+  await page.fill('.design-name', 'Ferry');
+  await page.click('.slot:has(h3:text("Hull")) .item:has-text("Galley")');
+  await page.click('.slot:has(h3:text("Rig")) .item:has-text("Square sail")');
+  await page.click('.slot:has(h3:text("Fit-out")) .item:has-text("Troop deck")');
+  await page.screenshot({ path: `${out}/9b-ship-designer.png` });
+  await page.click('.loadout-side button.primary');
+  await page.click('.modal.designs .x');
+  await page.evaluate(() => {
+    const hu = (globalThis as unknown as { __hu: { game: any; selectCity: (id: number) => void } })
+      .__hu;
+    hu.selectCity(hu.game.cities.find((x: any) => x.civId === 0).id);
+  });
+  await page.waitForTimeout(100);
+  if (await page.$('.ship-row')) {
+    await page.selectOption('.ship-row select', { label: 'Ferry' });
+    await page.click('.ship-row button');
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: `${out}/9c-ship-launched.png` });
+    await page.mouse.move(720, 471);
+    for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -400);
+    // select the levy in the city and click the ship to board it
+    const boarded = await page.evaluate(() => {
+      const hu = (
+        globalThis as unknown as {
+          __hu: { game: any; select: (id: number) => void; focus: (h: number) => void };
+        }
+      ).__hu;
+      const g = hu.game;
+      const fleet = g.formations.find((f: any) => f.civId === 0 && f.kind === 'fleet');
+      const c = g.cities.find((x: any) => x.civId === 0);
+      const army = g.formations.find(
+        (f: any) =>
+          f.civId === 0 && f.kind === 'army' && f.cohorts.length <= 5 && f.name !== 'Scouts',
+      );
+      army.hex = c.hex;
+      army.moves = 2;
+      hu.select(army.id);
+      hu.focus(fleet.hex);
+      return true;
+    });
+    if (boarded) {
+      await page.waitForTimeout(250);
+      await page.mouse.click(720, 471);
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: `${out}/9d-boarded.png` });
+    }
+  }
+}
+
 // diplomacy: the peoples screen and a deal
 if (await page.$('.modal-back')) await page.keyboard.press('Escape');
 const proposalBtn = await page.$('.modal.proposal button:not(.primary)');

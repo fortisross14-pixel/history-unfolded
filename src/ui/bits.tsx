@@ -63,7 +63,14 @@ export function UnitPortrait({
 }) {
   return (
     <span className={`portrait ${small ? 'small' : ''}`} style={{ borderColor: color }}>
-      <img src={`${BASE}units/${sprite}.png`} alt="" />
+      <img
+        src={
+          sprite.startsWith('ship:')
+            ? `${BASE}ships/${sprite.slice(5)}.png`
+            : `${BASE}units/${sprite}.png`
+        }
+        alt=""
+      />
     </span>
   );
 }

@@ -12,6 +12,7 @@ const VARIANTS: Record<string, number> = {
 };
 const UNITS = ['pikeman', 'musketeer', 'cavalry', 'scout', 'colonist', 'conquistador'];
 const GOODS = ['timber', 'furs', 'gold', 'silver', 'spices', 'silk', 'dyes', 'wine', 'corn', 'cod'];
+const SHIPS = ['caravel', 'carrack', 'fluyt', 'frigate', 'galleon'];
 const CITIES = ['city-outpost', 'city-town', 'city-city', 'port-outpost', 'port-town', 'port-city'];
 
 export interface Assets {
@@ -35,6 +36,7 @@ export async function loadAssets(): Promise<Assets> {
   for (const u of UNITS) jobs.push([`unit:${u}`, `units/${u}.png`]);
   for (const g of GOODS) jobs.push([`good:${g}`, `goods/${g}.png`]);
   for (const c of CITIES) jobs.push([`city:${c}`, `cities/${c}.png`]);
+  for (const sh of SHIPS) jobs.push([`ship:${sh}`, `ships/${sh}.png`]);
   jobs.push(['parchment', 'parchment.jpg']);
   const imgs = await Promise.all(jobs.map(([, p]) => load(BASE + p)));
   const img: Record<string, HTMLImageElement> = {};

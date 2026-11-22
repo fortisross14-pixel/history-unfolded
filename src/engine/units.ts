@@ -23,7 +23,8 @@ export function loadoutWeight(l: Loadout): number {
   return SLOTS.reduce((s, k) => s + ITEMS[l[k]].weight, 0);
 }
 
-export const isMounted = (l: Loadout) => l.mount !== 'foot';
+export const isShip = (l: Loadout) => !!ITEMS[l.armour]?.naval;
+export const isMounted = (l: Loadout) => l.mount !== 'foot' && !isShip(l);
 export const isRanged = (l: Loadout) => !!ITEMS[l.weapon].ranged;
 
 export type Role = 'infantry' | 'ranged' | 'cavalry' | 'horse-archers';
@@ -41,6 +42,7 @@ export const ROLE_NAMES: Record<Role, string> = {
 /** Movement points of one cohort: mount speed, kit bonus, heavy kit slows. */
 export function cohortMoves(l: Loadout): number {
   let m = (ITEMS[l.mount].move ?? 2) + (ITEMS[l.kit].move ?? 0);
+  if (isShip(l)) return Math.max(1, m);
   const w = loadoutWeight(l);
   if (!isMounted(l) && w >= 4) m -= 1;
   if (isMounted(l) && w >= 5) m -= 1;
@@ -67,6 +69,11 @@ const allBooted = (f: Formation) =>
 /** Cost in movement points to enter hex `to`. Infinity = impassable. */
 export function enterCost(m: MapData, f: Formation, to: number): number {
   const t = m.terrain[to];
+  if (f.kind === 'fleet') {
+    if (t === 'coast' || t === 'lake') return 1;
+    if (t === 'ocean') return oceanGoing(f) ? 1 : Infinity;
+    return Infinity; // ports are handled by the caller
+  }
   if (t === 'ocean' || t === 'coast' || t === 'lake') return Infinity;
   const rel = RELIEF[m.relief[to]];
   if (!isFinite(rel.moveCost)) return Infinity;
@@ -76,6 +83,20 @@ export function enterCost(m: MapData, f: Formation, to: number): number {
   if (allMounted(f)) extra += veg.mountedExtra;
   return 1 + extra;
 }
+
+/** Every ship in the fleet can cross open ocean. */
+export const oceanGoing = (f: Formation) =>
+  f.cohorts.length > 0 && f.cohorts.every(c => !!ITEMS[c.loadout.armour].ocean);
+
+/** Cohorts of troops or settlers a fleet can carry. */
+export const fleetCapacity = (f: Formation) =>
+  f.kind !== 'fleet'
+    ? 0
+    : f.cohorts.reduce(
+        (a, c) =>
+          a + (ITEMS[c.loadout.armour].capacity ?? 0) + (ITEMS[c.loadout.kit].capacity ?? 0),
+        0,
+      );
 
 /** Share of losses (in %) a formation takes before it breaks: base, best banner, average gear. */
 export function formationMorale(f: Formation): number {
@@ -121,6 +142,7 @@ export function groupName(
   if (kind === 'settlers') return 'Settlers';
   const d = designOf(civ, g.designId);
   if (d) return d.name;
+  if (isShip(g.loadout)) return ITEMS[g.loadout.armour].name;
   return SLOTS.every(s => ITEMS[g.loadout[s]].empty) ? 'Levy' : 'Custom';
 }
 
@@ -229,6 +251,16 @@ export function loadoutProblem(l: Loadout, techs: string[]): string | null {
     if (!it || it.slot !== s) return `Invalid ${s}`;
     if (it.tech && !techs.includes(it.tech)) return `${it.name} needs research`;
   }
+  // a ship uses only ship parts; troops use none
+  const ship = isShip(l);
+  for (const s of SLOTS) {
+    const it = ITEMS[l[s]];
+    if (ship && (s === 'shield' || s === 'helmet' || s === 'boots') && !it.empty)
+      return 'Ships have no shields, helmets or boots';
+    if (ship && (s === 'weapon' || s === 'mount' || s === 'kit') && !it.naval)
+      return `${it.name} is not a ship part`;
+    if (!ship && it.naval) return `${it.name} is a ship part`;
+  }
   if (ITEMS[l.weapon].twoHanded && !ITEMS[l.shield].empty && !ITEMS[l.shield].freeHands)
     return `${ITEMS[l.weapon].name} needs both hands: no shield`;
   return null;
@@ -266,6 +298,7 @@ const ROLE_SPRITE: Record<Role, string> = {
 };
 
 export function spriteForLoadout(l: Loadout): string {
+  if (isShip(l)) return `ship:${HULL_SPRITE[l.armour] ?? 'caravel'}`;
   if (l.kit === 'scouting-gear' && !isMounted(l)) return 'scout';
   const r = roleOf(l);
   if (r === 'infantry' && !ITEMS[l.armour].empty && ITEMS[l.weapon].damage === 'cut')
@@ -274,8 +307,24 @@ export function spriteForLoadout(l: Loadout): string {
 }
 
 /** Which sprite stands for a formation on the map: its biggest group. */
+const HULL_SPRITE: Record<string, string> = {
+  dugout: 'caravel',
+  'galley-hull': 'caravel',
+  longship: 'fluyt',
+  cog: 'carrack',
+  carrack: 'carrack',
+  galleon: 'galleon',
+};
+
 export function formationSprite(f: Formation): string {
   if (f.kind === 'settlers') return 'colonist';
+  if (f.kind === 'fleet') {
+    const main = groupCohorts(f)[0]?.loadout;
+    if (!main) return 'ship:caravel';
+    if (ITEMS[main.weapon].ranged && (main.weapon === 'deck-guns' || main.weapon === 'broadside'))
+      return main.armour === 'galleon' ? 'ship:galleon' : 'ship:frigate';
+    return `ship:${HULL_SPRITE[main.armour] ?? 'caravel'}`;
+  }
   const main = groupCohorts(f)[0]?.loadout;
   return main ? spriteForLoadout(main) : 'pikeman';
 }

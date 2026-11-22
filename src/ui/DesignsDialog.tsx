@@ -1,5 +1,15 @@
 import { useMemo, useState } from 'react';
-import { ITEM_LIST, SLOT_NAMES, SLOTS, type Loadout, type Slot } from '../data/items.ts';
+import {
+  DEFAULT_SHIP,
+  ITEM_LIST,
+  ITEMS,
+  NAVAL_SLOT_NAMES,
+  NAVAL_SLOTS,
+  SLOT_NAMES,
+  SLOTS,
+  type Loadout,
+  type Slot,
+} from '../data/items.ts';
 import { TECHS } from '../data/techs.ts';
 import { DEFAULT_LOADOUT } from '../data/items.ts';
 import { deleteDesign, saveDesign, type Result } from '../engine/game.ts';
@@ -29,13 +39,22 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
   const current = editing === 'new' ? undefined : civ.designs.find(d => d.id === editing);
   const [name, setName] = useState(current?.name ?? '');
   const [l, setL] = useState<Loadout>({ ...(current?.loadout ?? DEFAULT_LOADOUT) });
+  const [sea, setSea] = useState<boolean>(!!current?.naval);
+  const slotList = sea ? NAVAL_SLOTS : SLOTS;
+  const slotName = (k: Slot) => (sea ? NAVAL_SLOT_NAMES[k]! : SLOT_NAMES[k]);
+  const switchSea = (v: boolean) => {
+    setSea(v);
+    setEditing('new');
+    setName('');
+    setL({ ...(v ? DEFAULT_SHIP : DEFAULT_LOADOUT) });
+  };
   const [lastSaved, setLastSaved] = useState<number | undefined>();
 
   const pick = (id: number | 'new') => {
     const d = id === 'new' ? undefined : civ.designs.find(x => x.id === id);
     setEditing(id);
     setName(d?.name ?? '');
-    setL({ ...(d?.loadout ?? DEFAULT_LOADOUT) });
+    setL({ ...(d?.loadout ?? (sea ? DEFAULT_SHIP : DEFAULT_LOADOUT)) });
   };
   const problem = loadoutProblem(l, civ.techs);
   const st = cohortStats(l);
@@ -68,28 +87,38 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
         </header>
         <div className="designs-body">
           <nav className="design-list">
+            <div className="land-sea">
+              <button className={!sea ? 'on' : ''} onClick={() => switchSea(false)}>
+                Troops
+              </button>
+              <button className={sea ? 'on' : ''} onClick={() => switchSea(true)}>
+                Ships
+              </button>
+            </div>
             <button
               className={`design-row ${editing === 'new' ? 'on' : ''}`}
               onClick={() => pick('new')}
             >
               <b>+ New design</b>
             </button>
-            {civ.designs.map(d => (
-              <button
-                key={d.id}
-                className={`design-row ${editing === d.id ? 'on' : ''}`}
-                onClick={() => pick(d.id)}
-              >
-                <UnitPortrait sprite={spriteForLoadout(d.loadout)} color={civ.color} small />
-                <span>
-                  <b>{d.name}</b>
-                  <small>
-                    {ROLE_NAMES[cohortStats(d.loadout).role]} · {inUse(d.id)} cohort
-                    {inUse(d.id) === 1 ? '' : 's'}
-                  </small>
-                </span>
-              </button>
-            ))}
+            {civ.designs
+              .filter(d => !!d.naval === sea)
+              .map(d => (
+                <button
+                  key={d.id}
+                  className={`design-row ${editing === d.id ? 'on' : ''}`}
+                  onClick={() => pick(d.id)}
+                >
+                  <UnitPortrait sprite={spriteForLoadout(d.loadout)} color={civ.color} small />
+                  <span>
+                    <b>{d.name}</b>
+                    <small>
+                      {ROLE_NAMES[cohortStats(d.loadout).role]} · {inUse(d.id)} cohort
+                      {inUse(d.id) === 1 ? '' : 's'}
+                    </small>
+                  </span>
+                </button>
+              ))}
           </nav>
 
           <div className="design-editor">
@@ -103,11 +132,11 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
                 onChange={e => setName(e.target.value)}
               />
             </div>
-            {SLOTS.map((slot: Slot) => (
+            {slotList.map((slot: Slot) => (
               <div key={slot} className="slot">
-                <h3>{SLOT_NAMES[slot]}</h3>
+                <h3>{slotName(slot)}</h3>
                 <div className="items">
-                  {ITEM_LIST.filter(i => i.slot === slot).map(it => {
+                  {ITEM_LIST.filter(i => i.slot === slot && !!i.naval === sea).map(it => {
                     const locked = !!it.tech && !civ.techs.includes(it.tech);
                     const on = l[slot] === it.id;
                     const clash =
@@ -162,7 +191,13 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
           </div>
 
           <aside className="loadout-side">
-            <h3>Each cohort (100 people)</h3>
+            <h3>{sea ? 'Each ship (50 crew)' : 'Each cohort (100 people)'}</h3>
+            {sea && (
+              <p className="small">
+                Carries {(ITEMS[l.armour].capacity ?? 0) + (ITEMS[l.kit].capacity ?? 0)} cohorts ·{' '}
+                {ITEMS[l.armour].ocean ? 'crosses open ocean' : 'coast only'}
+              </p>
+            )}
             <table className="stats">
               <tbody>
                 <tr>

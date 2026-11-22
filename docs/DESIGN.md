@@ -195,11 +195,31 @@ The player *can* find an overwhelming combination; we only make sure it has a na
 
 Numbers are data, not code (§12), so tuning is a spreadsheet job.
 
-### 6.4 Naval
+### 6.4 Naval (as built)
 
-Same model: a **fleet** is a formation of **ships**, and ships have slots too (Hull, Propulsion,
-Armament, Fit-out). Ships carry embarked land formations (capacity in cohorts). Kept for
-Milestone 4; early game uses simple embark-on-coast rules.
+- **Ship designs** use the same designer as troops, with four slots: **Hull** (dugout, galley,
+  longship, cog, carrack, galleon: protection, cargo space, and whether it can cross open
+  ocean), **Rig** (oars, square sail, lateen sail, full rig: speed), **Armament** (unarmed, ram,
+  boarding crew, deck archers, ballista, deck guns, broadside) and **Fit-out** (troop deck,
+  marines, crow's nest). Each ship is one "cohort" of a fleet, crewed by 50 people from the city.
+- A city needs a **Shipyard** slot (Sailing, by the water) to launch ships. Ships merge into
+  fleets like troops merge into formations, and split the same way.
+- **Fleets** move on coast and lakes; open ocean needs ocean-going hulls (Navigation and later).
+  They can sail into your own coastal cities.
+- **Carrying troops:** move troops or settlers onto your own fleet with room to **board**; the
+  fleet carries them; click land next to it to **land** (it takes the turn's moves). Troops can
+  also attack the shore straight from the ships at a heavy penalty. If a fleet sinks, everyone
+  aboard is lost. A ship standing in a strait also works as a ferry.
+- **Battles at sea** use the same engine: armed ships with rams and boarding crews form the
+  front, ships with archers or guns shoot. Sea-power bonuses from culture and research
+  (Maritime identity, Navigation, Compass, Admiralty…) now count. Ships with archers or guns can
+  **bombard** the shore (armies and cities), but cannot take a city.
+- **Sea trade:** cities with a Harbour or Shipyard join their markets over water (coast; open
+  ocean once the Compass is known). Enemy fleets at war cut the sea lanes.
+- **AI at sea:** designs Transports and Warships from the best parts it knows, builds shipyards
+  in coastal cities, ships settlers to other islands when its land runs out, carries armies to
+  enemy shores when no target is reachable by land, and keeps warships to hunt enemy fleets
+  while at war. Island peoples research Sailing early.
 
 ## 7. Cities, districts and buildings
 
@@ -450,6 +470,27 @@ contact with very different cultures, low stability).
   Education for Rationalist; Astronomy for Solar…).
 - **Research goals:** click any later tech to aim for it; research then walks its prerequisites.
 
+### 10.2 Diplomacy (as built)
+
+- **Opinion** of each people for each other, with the reasons shown: shared or clashing ideas,
+  war, pacts, alliances, trade, a common enemy, crowded borders, and **memories** that fade over
+  time (declared war on us, broke a sworn pact, took our cities, made peace, generous dealings,
+  refused our demand, failed to pay…). Attitudes: Hostile, Cold, Wary, Warm, Friendly.
+- **Deals:** gold and goods now or per turn (20 turns), a non-aggression pact (30 turns) or an
+  alliance. Goods are paid from each capital's market. The AI values goods by how scarce they
+  are for it, wants a margin from rivals and forgives a little from friends; the deal screen
+  shows its answer live as you edit.
+- **Pacts and alliances:** declaring war on a pact partner breaks it and every people remembers
+  the treachery; when a people is attacked its allies declare war on the aggressor.
+- **The AI** proposes trades, pacts and alliances to the player, demands tribute when much
+  stronger and hostile, sues for peace when losing or tired, and makes pacts and alliances with
+  other AI peoples. It goes to war against peoples it dislikes and is clearly stronger than.
+- **AI campaigns:** it picks the softest enemy city it can reach, gathers its field armies at
+  its nearest city and merges them, marches once strong enough (or after waiting), assaults,
+  regroups if bled, and turns back to defend threatened cities first.
+- **Victory:** last people standing (conquest), or the best **score** (people, cities, techs,
+  culture) at the game's turn limit (200–600, chosen at start; you can play on after it).
+
 ## 11. Civilizations and AI
 
 - **8–10 civs per game, all identical at start**: same starting units (1 Settlers, 1 levy of
@@ -537,10 +578,11 @@ its builder are dropped: maps are procedural only.
 
 ## 15. Milestones
 
-Progress: **M0–M6 done.** Unit designs (§5.4) replaced the earlier per-cohort loadout picking.
+Progress: **M0–M9 done.** Unit designs (§5.4) replaced the earlier per-cohort loadout picking.
 Settlers, war and peace, and city capture came with M3. M4 brought districts, workers, housing,
 construction, blueprints, roads and markets. M5 the research tree (§10.1), M6 the culture web
-(§9.6). Next: **M7, smarter AI and diplomacy**, then naval.
+(§9.6). M7 smarter AI and M8 diplomacy and victory (§10.2), M9 ships (§6.4). Next: balance passes,
+more eras (industrial, modern), and naming/visual polish.
 
 | # | Milestone | Done when |
 |---|---|---|

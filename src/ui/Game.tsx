@@ -5,6 +5,10 @@ import {
   assignDesign,
   attack,
   buildRoad,
+  buildShip,
+  isPort,
+  isWaterHex,
+  shipFor,
   canAttack,
   cityAt,
   declareWar,
@@ -135,6 +139,7 @@ export function Game({
       focus,
       bump,
       select: (id: number) => setSel({ kind: 'formation', id }),
+      selectCity: (id: number) => setSel({ kind: 'city', id }),
     };
   });
 
@@ -190,6 +195,12 @@ export function Game({
   const onClick = (hex: number) => {
     const mineHere = formationsAt(game, hex).filter(f => f.civId === me.id);
     const cityHere = cityAt(game, hex);
+    // troops board an own ship next to them; ships sail into own ports
+    if (mySelF && hex !== mySelF.hex && !enemyAt(hex)) {
+      if (mySelF.kind !== 'fleet' && isWaterHex(game, hex) && shipFor(game, mySelF, hex))
+        return moveTo(hex);
+      if (mySelF.kind === 'fleet' && isPort(game, me.id, hex)) return moveTo(hex);
+    }
     // with a unit selected, clicking an adjacent enemy attacks; clicking open ground moves
     if (mySelF && hex !== mySelF.hex) {
       if (enemyAt(hex) && canAttack(game, mySelF.id, hex).target) return doAttack(hex);
@@ -470,6 +481,7 @@ export function Game({
               }
             }}
             onOpen={() => setDialog({ kind: 'city', cityId: selCity.id })}
+            onShip={designId => report(buildShip(game, selCity.id, designId))}
             onSettlers={() => {
               const r = report(trainSettlers(game, selCity.id));
               if (r.ok) {

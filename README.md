@@ -15,11 +15,12 @@ npm run build      # type-check and build
 ## Checks
 
 ```bash
-npm test                     # data references, map generator, core rules, culture and research
+npm test                     # data, maps, rules, culture and research, diplomacy, ships
 node --no-warnings scripts/battles.ts   # matchup table of army compositions (balance)
 node --no-warnings scripts/aidiag.ts    # AI-only game: how each people does over time
 node --no-warnings scripts/citydiag.ts  # one AI city's districts and economy over time
 node --no-warnings scripts/pace.ts      # research, culture and upheaval pace of AI peoples
+node --no-warnings scripts/archdiag.ts  # AI on an archipelago: fleets, crossings, speed per turn
 npm run test:ui -- <outDir>  # drives the built game in headless Chromium and saves screenshots
                              # (needs `npx vite preview --port 4173` running)
 ```
@@ -59,8 +60,14 @@ npm run test:ui -- <outDir>  # drives the built game in headless Chromium and sa
   identity with its own bonuses. Going deep builds tension until an upheaval (a revolution, a
   reformation) lets the people keep two choices and take a new path. Every people starts the
   same and ends up different.
+- **Ships**: design hulls, rigs, armament and fit-out; launch from a shipyard; carry troops and
+  settlers, land them, fight at sea, bombard the shore. Ports trade by sea.
+- **Diplomacy**: opinion with reasons and memories, deals (gold, goods, per-turn trade), pacts,
+  alliances that drag allies into wars, AI offers and tribute demands.
+- **Victory**: conquest, or the best score at the turn limit.
 - Fog of war, path preview with turn markers, go-to orders across turns, autosave.
-- Rival peoples expand, design and equip their own troops, garrison cities and go to war.
+- Rival peoples expand (by sea too), design and equip troops and ships, gather armies for
+  sieges, defend their cities, make deals and go to war.
 
 ## Code
 

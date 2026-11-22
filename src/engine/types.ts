@@ -67,9 +67,11 @@ export interface Design {
   id: number;
   name: string;
   loadout: Loadout;
+  /** a ship design */
+  naval?: boolean;
 }
 
-export type FormationKind = 'army' | 'settlers';
+export type FormationKind = 'army' | 'settlers' | 'fleet';
 
 export interface Formation {
   id: number;
@@ -82,6 +84,8 @@ export interface Formation {
   /** remaining go-to path (next hex first) */
   path: number[];
   fortified: boolean;
+  /** an army or settlers carried by this fleet */
+  aboard?: number;
 }
 
 export interface City {
@@ -112,6 +116,16 @@ export interface Civ {
   leanings: string[];
   /** AI only: the current military campaign */
   ai?: { targetCity: number; staging: number; phase: 'gather' | 'march'; since: number };
+  /** AI only: a sea crossing in progress (settlers or an army on transports) */
+  sea?: {
+    fleet: number;
+    cargo: number;
+    port: number;
+    landing: number;
+    dest: number;
+    stage: 'load' | 'sail' | 'unload';
+    since: number;
+  };
   science: number;
   gold: number;
   /** 1 = explored, per hex */

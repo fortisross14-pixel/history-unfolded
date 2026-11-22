@@ -34,6 +34,7 @@ import {
   cityEconomy,
   districtAt,
   districtSites,
+  invalidateMarkets,
   marketCities,
   marketStock,
   slotProblem,
@@ -150,6 +151,7 @@ for (const seed of [1, 2, 3, 42]) {
     )!;
     const before = marketCities(s, second).length;
     for (const h of path) s.roads[h] = 1;
+    invalidateMarkets();
     check(
       marketCities(s, second).length >= 2 && before >= 1,
       `road joins ${second.name} to ${capital.name}'s market`,
@@ -167,6 +169,7 @@ for (const seed of [1, 2, 3, 42]) {
     const blocker = s.formations.find(f => f.civId === foe.id && f.kind === 'army')!;
     const oldHex = blocker.hex;
     blocker.hex = cut;
+    invalidateMarkets();
     const riverLink = s.map.river[cut] === 1;
     if (!path.some(h => s.map.river[h]))
       check(
@@ -174,6 +177,7 @@ for (const seed of [1, 2, 3, 42]) {
         'an enemy on the road splits the market',
       );
     blocker.hex = oldHex;
+    invalidateMarkets();
     endWar(s, me.id, foe.id);
   }
 
@@ -321,14 +325,38 @@ for (const seed of [1, 2, 3, 42]) {
   check(formationMoves(fake) === 2, 'mixed horse + foot formation moves 2');
 
   // nothing stands on water or mountains, nothing shares a hex with foreigners
-  const okHexes = s.formations.every(f => isPassableLand(s.map, f.hex));
+  const okHexes = s.formations.every(
+    f => f.kind === 'fleet' || f.aboard !== undefined || isPassableLand(s.map, f.hex),
+  );
   check(okHexes, 'all formations on passable land');
   const mixed = s.formations.some(f => formationsAt(s, f.hex).some(o => o.civId !== f.civId));
   check(!mixed, 'no hex shared between peoples');
 
   // a long game with the AI: no crashes, invariants hold
   for (let t = 0; t < 150; t++) endTurn(s);
-  const bad2 = s.formations.filter(f => !isPassableLand(s.map, f.hex) || f.cohorts.length === 0);
+  const water = (h: number) => ['coast', 'ocean', 'lake'].includes(s.map.terrain[h]);
+  const bad2 = s.formations.filter(
+    f =>
+      f.cohorts.length === 0 ||
+      (f.kind === 'fleet' || f.aboard !== undefined
+        ? !water(f.hex) && !s.cities.some(c => c.hex === f.hex)
+        : !isPassableLand(s.map, f.hex)) ||
+      (f.aboard !== undefined && s.formations.find(o => o.id === f.aboard)?.hex !== f.hex),
+  );
+  for (const f of bad2)
+    console.log(
+      '     invalid:',
+      f.name,
+      'civ',
+      f.civId,
+      s.civs[f.civId].isPlayer,
+      JSON.stringify(s.civs[f.civId].sea),
+      f.kind,
+      f.aboard,
+      s.map.terrain[f.hex],
+      s.map.relief[f.hex],
+      f.cohorts.length,
+    );
   check(!bad2.length, `after turn ${s.turn}: ${s.formations.length} formations, all valid`);
   check(
     !s.formations.some(f => formationsAt(s, f.hex).some(o => o.civId !== f.civId)),

@@ -585,6 +585,18 @@ const list: SlotType[] = [
     note: 'Room for 1,500 more people.',
   },
   {
+    id: 'shipyard',
+    name: 'Shipyard',
+    group: 'craft',
+    tech: 'sailing',
+    labour: 100,
+    build: { prod: 18, goods: { wood: 4 } },
+    out: { prod: 1 },
+    needs: { water: true },
+    glyph: '⛵',
+    note: 'Lets the city build ships. Needs a coast or lake.',
+  },
+  {
     id: 'harbour',
     name: 'Harbour',
     group: 'commerce',

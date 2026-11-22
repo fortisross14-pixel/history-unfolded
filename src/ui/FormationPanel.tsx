@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ITEMS, SLOTS } from '../data/items.ts';
 import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
-import { canFoundCity, formationsAt, refitPreview, supplyingCity } from '../engine/game.ts';
+import {
+  canFoundCity,
+  cargoOf,
+  formationsAt,
+  refitPreview,
+  supplyingCity,
+} from '../engine/game.ts';
 import type { Formation, GameState } from '../engine/types.ts';
 import {
   capOf,
+  fleetCapacity,
+  oceanGoing,
   cohortStats,
   formationMoves,
   formationSprite,
@@ -66,7 +74,7 @@ export function FormationPanel(p: Props) {
   const missing = new Set(
     preview && preview.problem === null ? preview.missing.map(x => x.good) : [],
   );
-  const roles = new Set(f.cohorts.map(c => cohortStats(c.loadout).role));
+  const roles = new Set(f.kind === 'fleet' ? [] : f.cohorts.map(c => cohortStats(c.loadout).role));
 
   return (
     <div className="panel formation">
@@ -111,7 +119,30 @@ export function FormationPanel(p: Props) {
         </div>
       </div>
 
-      {f.kind === 'army' && (
+      {f.kind === 'fleet' && (
+        <div className="fleet-info small">
+          Carries {cargoOf(game, f).reduce((a, o) => a + o.cohorts.length, 0)}/{fleetCapacity(f)}{' '}
+          cohorts · {oceanGoing(f) ? 'ocean-going' : 'coast only'}
+          {cargoOf(game, f).map(o => (
+            <button key={o.id} className="link" onClick={() => p.onSelect(o.id)}>
+              {o.name} ({o.cohorts.length})
+            </button>
+          ))}
+          {mine && (
+            <div className="muted">
+              Click a land hex next to the fleet with the troops selected to land them.
+            </div>
+          )}
+        </div>
+      )}
+      {f.aboard !== undefined && (
+        <p className="fleet-info small">
+          Aboard {game.formations.find(x => x.id === f.aboard)?.name}. Click land next to the ship
+          to go ashore (uses the turn's moves), or attack the shore straight from the ship (at a
+          penalty).
+        </p>
+      )}
+      {f.kind !== 'settlers' && (
         <div className="stat-row">
           <span title="Total melee strength">⚔ {stats.melee}</span>
           <span title="Total ranged strength">🏹 {stats.ranged}</span>
@@ -202,7 +233,7 @@ export function FormationPanel(p: Props) {
         })}
       </div>
 
-      {mine && f.kind === 'army' && (
+      {mine && f.kind !== 'settlers' && f.aboard === undefined && (
         <div className="assign">
           <div className="row">
             <span className="assign-label">
@@ -213,11 +244,13 @@ export function FormationPanel(p: Props) {
               onChange={e => setDesignId(e.target.value ? Number(e.target.value) : null)}
             >
               <option value="">— pick a design —</option>
-              {civ.designs.map(d => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
+              {civ.designs
+                .filter(d => !!d.naval === (f.kind === 'fleet'))
+                .map(d => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
             </select>
             <button onClick={() => p.onDesigns('new')} title="Design a new unit type">
               New…
@@ -276,17 +309,19 @@ export function FormationPanel(p: Props) {
               Found city
             </button>
           )}
-          <button
-            onClick={p.onRoad}
-            disabled={!!game.roads[f.hex] || f.moves <= 0}
-            title={
-              game.roads[f.hex]
-                ? 'There is a road here'
-                : 'Lay a road on this hex (R). Uses the remaining moves.'
-            }
-          >
-            Build road
-          </button>
+          {f.kind !== 'fleet' && f.aboard === undefined && (
+            <button
+              onClick={p.onRoad}
+              disabled={!!game.roads[f.hex] || f.moves <= 0}
+              title={
+                game.roads[f.hex]
+                  ? 'There is a road here'
+                  : 'Lay a road on this hex (R). Uses the remaining moves.'
+              }
+            >
+              Build road
+            </button>
+          )}
           <button onClick={p.onFortify} title="F">
             {f.fortified ? 'Wake' : 'Fortify'}
           </button>

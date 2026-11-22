@@ -1,5 +1,8 @@
 import { marketCities, marketStock } from '../engine/economy.ts';
+import { useState } from 'react';
 import {
+  hasSlot,
+  SHIP_CREW,
   cityGuard,
   cityYield,
   LEVY_PEOPLE,
@@ -16,6 +19,7 @@ export function CityPanel({
   onLevy,
   onSettlers,
   onOpen,
+  onShip,
 }: {
   game: GameState;
   c: City;
@@ -23,10 +27,12 @@ export function CityPanel({
   onLevy: () => void;
   onSettlers: () => void;
   onOpen: () => void;
+  onShip: (designId: number) => void;
 }) {
   const y = cityYield(game, c);
   const civ = game.civs[c.civId];
   const canLevy = c.pop - LEVY_PEOPLE >= MIN_CITY_POP;
+  const [ship, setShip] = useState(0);
   return (
     <div className="panel city">
       <div className="panel-head">
@@ -111,6 +117,30 @@ export function CityPanel({
               Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
             </button>
           </div>
+          {hasSlot(game, c, 'shipyard') ? (
+            <div className="row ship-row">
+              <select value={ship} onChange={e => setShip(Number(e.target.value))}>
+                <option value={0}>Build a ship…</option>
+                {civ.designs
+                  .filter(d => d.naval)
+                  .map(d => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+              </select>
+              <button disabled={!ship} onClick={() => onShip(ship)}>
+                Launch ({SHIP_CREW} crew)
+              </button>
+            </div>
+          ) : (
+            <p className="muted small">
+              A shipyard (after Sailing, in a district by the water) lets the city build ships.
+            </p>
+          )}
+          {hasSlot(game, c, 'shipyard') && !civ.designs.some(d => d.naval) && (
+            <p className="muted small">Design a ship first (Unit designs → Ships).</p>
+          )}
           <p className="muted small">
             {y.workersUsed.toLocaleString()} of {y.workers.toLocaleString()} workers busy · room for{' '}
             {y.housing.toLocaleString()} people.

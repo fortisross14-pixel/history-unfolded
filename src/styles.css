@@ -1434,3 +1434,32 @@ p.good {
   align-items: center;
   gap: 8px;
 }
+.land-sea {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.land-sea button {
+  flex: 1;
+  padding: 4px;
+}
+.land-sea button.on {
+  background: linear-gradient(#fff6dc, #f3e2b2);
+  outline: 2px solid var(--gold);
+}
+.fleet-info {
+  background: rgba(169, 194, 192, 0.35);
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin: 6px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+.ship-row {
+  margin-top: 6px;
+}
+.ship-row select {
+  flex: 1;
+}

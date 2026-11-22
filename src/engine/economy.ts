@@ -8,10 +8,19 @@
  * for two slots per matching hex. Settlements join into a market when a road, river or port
  * links them; a market pays for things from one shared store, and towns feed its cities.
  */
-import { COMFORT_PCT, COMFORT_PEOPLE, DEPOSITS, GOODS, SPECIAL_MIN } from '../data/goods.ts';
 import {
-  gridNeighbors,
+  COMFORT_PCT,
+  COMFORT_PEOPLE,
+  DEPOSITS,
+  GOODS,
+  isComfort,
+  SPECIAL_MIN,
+  STORE_PER_CELL,
+} from '../data/goods.ts';
+import {
+  isHousing,
   isRural,
+  MIN_HOUSING,
   SLOT_TYPES,
   type SlotGroup,
   type SlotType,
@@ -39,9 +48,6 @@ export const TIER_BONUS: Record<Tier, { all: number; focus: number }> = {
   metropolis: { all: 30, focus: 70 },
 };
 const FOCUS: SlotGroup[] = ['services', 'craft'];
-/** A building gains this much per other building of its group in its district, up to the cap. */
-export const SYNERGY_PCT = 5;
-export const SYNERGY_CAP = 30;
 
 const gridOf = (s: GameState): Grid => ({ w: s.map.w, h: s.map.h });
 
@@ -298,17 +304,17 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
   for (const d of districts) {
     const centre = isCentre(d);
     const reports: SlotReport[] = [];
-    // buildings of a kind gather: each gains for every other built one of its group here
-    const groupCount: Record<string, number> = {};
     // how many of each building the district holds, and which one of them this is
     const typeCount: Record<string, number> = {};
     const nth: Record<string, number> = {};
+    let housing = 0;
     for (const x of d.slots)
       if (x.built && x.type) {
-        const gr = SLOT_TYPES[x.type].group;
-        groupCount[gr] = (groupCount[gr] ?? 0) + 1;
         typeCount[x.type] = (typeCount[x.type] ?? 0) + 1;
+        if (isHousing(x.type)) housing++;
       }
+    const lived = housing >= MIN_HOUSING;
+    // 1. producers: staffing, inputs, base yield, what the land adds
     for (let i = 0; i < 9; i++) {
       const st = d.slots[i];
       const out = zero();
@@ -325,6 +331,17 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
           rate: 0,
           out,
           idle: problem ? undefined : 'Not built yet',
+        });
+        continue;
+      }
+      // nobody lives here: only the houses themselves (and the town hall) work
+      if (!lived && !t.fixed && !isHousing(t.id)) {
+        reports.push({
+          problem: null,
+          staffed: false,
+          rate: 0,
+          out,
+          idle: `Needs ${MIN_HOUSING} housing cells in this district (${housing} built)`,
         });
         continue;
       }
@@ -358,31 +375,57 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       if (t.id === 'woodlot' && forest) out.goods.wood = (out.goods.wood ?? 0) + 0.5 * rate;
       if (short.length)
         note = `Short of ${short.map(([gd]) => gd).join(', ')}: a third of its output`;
-      // neighbours in the grid
-      for (const a of t.adjacency ?? []) {
-        const n = gridNeighbors(i).filter(
-          j => d.slots[j].built && d.slots[j].type && a.from.includes(d.slots[j].type!),
-        ).length;
-        if (!n) continue;
-        addYield(out, a.bonus, n);
-        if (a.pct) for (const gd of Object.keys(out.goods)) out.goods[gd] *= 1 + (a.pct / 100) * n;
+      reports.push({ problem: null, staffed: true, rate, out, note });
+    }
+    // 2. adders: +x to every yield of each target in the district; 3. the strongest multiplier
+    const boosters = d.slots
+      .map((x, i) => ({ t: x.type ? SLOT_TYPES[x.type] : undefined, r: reports[i] }))
+      .filter(b => b.t?.boost && b.r.staffed);
+    for (const [phase, key] of [
+      [2, 'add'],
+      [3, 'mul'],
+    ] as const) {
+      for (let i = 0; i < 9; i++) {
+        const r = reports[i];
+        const type = d.slots[i].type;
+        if (!r.staffed || !type) continue;
+        const on = boosters.filter(b => b.t!.boost![key] && b.t!.boost!.of.includes(type));
+        if (!on.length) continue;
+        if (phase === 2) {
+          const add = on.reduce((a, b) => a + b.t!.boost!.add! * b.r.rate, 0);
+          for (const k of ['food', 'prod', 'science', 'gold', 'culture'] as const)
+            if (r.out[k] > 0) r.out[k] += add;
+          for (const gd of Object.keys(r.out.goods))
+            if (r.out.goods[gd] > 0) r.out.goods[gd] += add;
+        } else {
+          const mul = Math.max(...on.map(b => 1 + (b.t!.boost!.mul! - 1) * b.r.rate));
+          scaleTotals(r.out, mul, true);
+        }
       }
-      // a themed district, then the settlement's rank, then research and culture
+    }
+    for (const b of boosters) {
+      const targets = d.slots.filter(
+        (x, i) => x.type && b.t!.boost!.of.includes(x.type) && reports[i].staffed,
+      ).length;
+      if (!targets)
+        b.r.note = `Boosts nothing here yet: needs ${b
+          .t!.boost!.of.map(id => SLOT_TYPES[id]?.name.toLowerCase())
+          .slice(0, 3)
+          .join(', ')}…`;
+      else
+        b.r.note = `${b.t!.boost!.mul ? `×${b.t!.boost!.mul}` : `+${b.t!.boost!.add}`} to ${targets} here`;
+    }
+    // 4. the settlement's rank and the people's research and culture, then into the totals
+    for (let i = 0; i < 9; i++) {
+      const r = reports[i];
+      const type = d.slots[i].type;
+      if (!r.staffed || !type) continue;
+      const t = SLOT_TYPES[type];
       let up = 0;
-      if (!t.fixed && !isRural(t.id) && t.group !== 'residential')
-        up += Math.min(SYNERGY_CAP, SYNERGY_PCT * ((groupCount[t.group] ?? 1) - 1));
       if (!t.fixed) up += FOCUS.includes(t.group) ? bonus.focus : bonus.all;
       up += mods.groupPct[t.group] ?? 0;
-      if (up) scaleTotals(out, pct(up), true);
-      // granaries reward each neighbouring farm
-      if (t.id === 'granary') {
-        const fields = gridNeighbors(i).filter(
-          j => d.slots[j].built && d.slots[j].type === 'farm',
-        ).length;
-        out.food += fields * 0.5;
-      }
-      addYield(total, out);
-      reports.push({ problem: null, staffed: true, rate, out, note });
+      if (up) scaleTotals(r.out, pct(up), true);
+      addYield(total, r.out);
     }
     slots.set(d.id, reports);
   }
@@ -406,7 +449,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
   if (comfort.want) {
     const left = (gd: string) => (stock[gd] ?? 0) - (inputs[gd] ?? 0);
     const kinds = Object.keys(GOODS)
-      .filter(gd => GOODS[gd].kind === 'luxury' && left(gd) >= 1)
+      .filter(gd => isComfort(gd) && left(gd) >= 1)
       .sort((a, b) => left(b) - left(a));
     let n = 0;
     for (let round = 0; n < comfort.want && kinds.some(gd => left(gd) >= 1); round++)
@@ -457,10 +500,16 @@ export function constructionQueue(s: GameState, c: City): { d: District; i: numb
   const out: { d: District; i: number }[] = [];
   for (const d of cityDistricts(s, c)) {
     const centre = isCentre(d);
+    // a district without its housing cannot work: its houses go first
+    const housed = d.slots.filter(x => x.built && isHousing(x.type)).length >= MIN_HOUSING;
+    const todo: { d: District; i: number }[] = [];
     d.slots.forEach((st, i) => {
       if (st.type && !st.built && !slotProblem(s, c.civId, c.hex, centre, st.type, d.id))
-        out.push({ d, i });
+        todo.push({ d, i });
     });
+    if (!housed)
+      todo.sort((a, b) => +isHousing(b.d.slots[b.i].type) - +isHousing(a.d.slots[a.i].type));
+    out.push(...todo);
   }
   return out;
 }
@@ -618,6 +667,16 @@ function scaleTotals(t: Totals, k: number, goodsToo: boolean) {
   if (goodsToo) for (const g of Object.keys(t.goods)) t.goods[g] *= k;
 }
 
+/** Housing cells built in a settlement, and those beyond each district's two. */
+export function housingCells(s: GameState, c: City): { built: number; spare: number } {
+  const ds = s.districts.filter(d => d.cityId === c.id);
+  const built = ds.reduce(
+    (a, d) => a + d.slots.filter(x => x.built && isHousing(x.type)).length,
+    0,
+  );
+  return { built, spare: Math.max(0, built - MIN_HOUSING * ds.length) };
+}
+
 /** A district's character, from what is built (or planned) in it. */
 export function districtKind(d: District): string {
   const n: Record<string, number> = {};
@@ -687,12 +746,15 @@ export interface GoodLine {
   traded: number;
   net: number;
   stock: number;
+  /** most the stores can hold */
+  cap: number;
 }
 
 /** A people's goods, per turn: what its settlements make and burn, its trade deals, its stores. */
 export function civGoods(s: GameState, civId: number): Record<string, GoodLine> {
   const out: Record<string, GoodLine> = {};
-  const line = (g: string) => (out[g] ??= { made: 0, used: 0, traded: 0, net: 0, stock: 0 });
+  const line = (g: string) =>
+    (out[g] ??= { made: 0, used: 0, traded: 0, net: 0, stock: 0, cap: 0 });
   for (const c of s.cities) {
     if (c.civId !== civId) continue;
     const e = cityEconomy(s, c);
@@ -707,11 +769,51 @@ export function civGoods(s: GameState, civId: number): Record<string, GoodLine> 
     for (const [g, n] of Object.entries(give?.goodsPerTurn ?? {})) line(g).traded -= n;
     for (const [g, n] of Object.entries(get?.goodsPerTurn ?? {})) line(g).traded += n;
   }
-  for (const l of Object.values(out)) {
+  const { cap } = storeCaps(s, civId);
+  for (const [g, l] of Object.entries(out)) {
+    l.cap = cap(g);
     l.made = Math.round(l.made * 10) / 10;
     l.used = Math.round(l.used * 10) / 10;
     l.net = Math.round((l.made - l.used + l.traded) * 10) / 10;
     l.stock = Math.floor(l.stock);
   }
   return out;
+}
+
+/**
+ * How much of each good a people can keep: STORE_PER_CELL for every working cell that makes it,
+ * and as much again per settlement for anything (bought goods need somewhere to go).
+ */
+export function storeCaps(s: GameState, civId: number, econ?: Map<number, CityEconomy>) {
+  const cells: Record<string, number> = {};
+  let settlements = 0;
+  for (const c of s.cities) {
+    if (c.civId !== civId) continue;
+    settlements++;
+    const e = econ?.get(c.id) ?? cityEconomy(s, c);
+    for (const reps of e.slots.values())
+      for (const r of reps)
+        if (r.staffed)
+          for (const [g, n] of Object.entries(r.out.goods))
+            if (n > 0) cells[g] = (cells[g] ?? 0) + 1;
+  }
+  return {
+    cap: (g: string) => STORE_PER_CELL * ((cells[g] ?? 0) + settlements),
+    cells,
+  };
+}
+
+/** Goods past the store limit are lost: each settlement gives up its share. */
+export function capStores(s: GameState, civId: number, econ?: Map<number, CityEconomy>) {
+  const { cap } = storeCaps(s, civId, econ);
+  const mine = s.cities.filter(c => c.civId === civId);
+  const total: Record<string, number> = {};
+  for (const c of mine)
+    for (const [g, n] of Object.entries(c.stockpile)) total[g] = (total[g] ?? 0) + n;
+  for (const [g, n] of Object.entries(total)) {
+    const lim = cap(g);
+    if (n <= lim) continue;
+    const k = lim / n;
+    for (const c of mine) if (c.stockpile[g]) c.stockpile[g] *= k;
+  }
 }

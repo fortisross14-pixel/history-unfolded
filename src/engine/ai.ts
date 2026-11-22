@@ -47,6 +47,7 @@ import {
   opinion,
 } from './diplomacy.ts';
 import { DEPOSITS, GOODS } from '../data/goods.ts';
+import { isHousing, MIN_HOUSING } from '../data/slots.ts';
 import {
   buildShip,
   cargoOf,
@@ -292,7 +293,12 @@ function chooseCulture(s: GameState, civ: Civ, rng: Rng) {
       n.tags.filter(t => civ.leanings.includes(t)).length * 3 +
       (5 - n.tier) * 0.5 +
       rng() * 2 -
-      nodeCost(s, civ, n) / 60,
+      nodeCost(s, civ, n) / 60 +
+      // the ranks of settlement: a charter once there are towns to feed a city
+      (n.id === 'city-charter' && s.cities.filter(c => c.civId === civ.id).length >= 3 ? 8 : 0) +
+      (n.id === 'seat-of-empire' && s.cities.some(c => c.civId === civ.id && c.tier === 'city')
+        ? 6
+        : 0),
   }));
   const best = scored.reduce((a, b) => (b.v > a.v ? b : a)).n;
   if (civ.culture.points >= nodeCost(s, civ, best)) takeNode(s, civ.id, best.id);
@@ -375,62 +381,64 @@ function pathNextTo(s: GameState, f: Formation, target: number): number[] | null
   return best;
 }
 
+// a town's centre: four housing cells (with the rural district's two, the six a city needs)
 const CENTRE = [
   'houses',
   'market',
   'houses',
-  'workshop',
-  null,
   'school',
+  null,
+  'shrine',
   'houses',
-  'granary',
-  'barracks',
+  'workshop',
+  'houses',
 ];
-// a city's quarters: each cell names what it wants; anything not yet researched waits
+// a city's quarters, built around a chain: producers, an adder, a late multiplier, two houses.
+// A cell whose building is not researched yet waits for it.
 const QUARTERS: Record<string, (string | null)[]> = {
   research: [
     'school',
-    'library',
+    'university',
     'houses',
+    'university',
     'library',
     'university',
-    'school',
     'houses',
-    'printing-house',
-    'observatory',
+    'laboratory',
+    'school',
   ],
   industry: [
     'workshop',
+    'workshop',
+    'houses',
     'smithy',
-    'houses',
-    'armoury',
-    'foundry',
-    'tannery',
-    'houses',
     'guild-hall',
-    'weaver',
+    'workshop',
+    'houses',
+    'factory',
+    'armoury',
   ],
   market: [
     'market',
     'bank',
     'houses',
-    'market',
-    'mint',
     'bank',
-    'tenements',
+    'guild-hall',
+    'mint',
+    'houses',
     'stock-exchange',
-    'aqueduct',
+    'bank',
   ],
   civic: [
     'shrine',
     'temple',
     'houses',
-    'monument',
+    'temple',
     'amphitheatre',
+    'monument',
     'houses',
+    'printing-house',
     'cathedral',
-    'houses',
-    'tenements',
   ],
 };
 const QUARTER_ORDER = ['research', 'industry', 'market', 'civic', 'research'];
@@ -441,14 +449,7 @@ const QUARTER_ORDER = ['research', 'industry', 'market', 'civic', 'research'];
  * woodcutters, and houses to fill.
  */
 function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[]; score: number } {
-  const slots: (string | null)[] = new Array(9).fill(null);
-  const order = [0, 1, 2, 3, 5, 6, 7, 8];
-  let k = 0,
-    score = 0;
   const ok = (t: string) => !slotProblem(s, civ.id, hex, false, t);
-  const put = (t: string, n: number) => {
-    for (let j = 0; j < n && k < order.length; j++) slots[order[k++]] = t;
-  };
   const worth = (g: Record<string, number> | undefined) =>
     Object.keys(g ?? {}).reduce((a, x) => a + (GOODS[x]?.kind === 'luxury' ? 3 : 2), 0);
   const specials = ['mine', 'plantation', 'fishing-dock', 'hunting-lodge']
@@ -459,20 +460,73 @@ function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[
     })
     .filter(x => x.v > 0)
     .sort((a, b) => b.v - a.v);
+  const want: string[] = [];
+  let score = 0;
+  const BOOST: Record<string, string> = {
+    mine: 'infirmary',
+    plantation: 'granary',
+    'hunting-lodge': 'lumber-mill',
+  };
   if (specials[0]) {
-    put(specials[0].t, 4);
+    want.push(...Array(4).fill(specials[0].t));
     score += specials[0].v * 2;
+    const b = BOOST[specials[0].t];
+    if (b) want.push(b);
   }
-  if (workable(s, civ.id, hex, 'pasture', 1).open.length) put('pasture', 2);
-  if (workable(s, civ.id, hex, 'farm', 1).open.length) put('farm', 2);
-  if (ok('fishing-dock') && workable(s, civ.id, hex, 'fishing-dock', 1).open.length)
-    put('fishing-dock', 1);
-  put('woodlot', 1);
+  if (workable(s, civ.id, hex, 'pasture', 1).open.length) want.push('pasture', 'pasture');
+  if (workable(s, civ.id, hex, 'farm', 1).open.length) want.push('farm', 'farm');
+  want.push('woodlot');
   // stone for building comes from plain mines when the land holds no richer seam
-  if (specials[0]?.t !== 'mine') put('mine', 2);
-  slots[4] = specials[0]?.t === 'mine' && ok('infirmary') ? 'infirmary' : 'houses';
-  while (k < order.length) put(k % 2 ? 'farm' : 'pasture', 1);
+  if (specials[0]?.t !== 'mine') want.push('mine', 'mine');
+  while (want.length < 7) want.push('farm');
+  if (want.filter(t => t === 'farm').length >= 2 && !want.includes('granary')) want.push('granary');
+  // every district needs two housing cells: the middle and one corner
+  const cells = want.filter(ok).slice(0, 7);
+  while (cells.length < 7) cells.push('farm');
+  const slots: (string | null)[] = [
+    cells[0],
+    cells[1],
+    cells[2],
+    cells[3],
+    'houses',
+    cells[4],
+    cells[5],
+    cells[6],
+    'houses',
+  ];
   return { slots, score };
+}
+
+/**
+ * Once research brings a booster and a district has enough of its targets, put it in: an empty
+ * cell, else the weakest cell that is neither a target, housing it needs, nor a booster.
+ */
+function addBoosters(s: GameState, civ: Civ, c: City, d: District) {
+  const centre = isCentre(d);
+  const types = d.slots.map(x => x.type);
+  for (const b of Object.values(SLOT_TYPES)) {
+    if (!b.boost || types.includes(b.id)) continue;
+    if (slotProblem(s, civ.id, c.hex, centre, b.id, d.id)) continue;
+    const targets = types.filter(t => t && b.boost!.of.includes(t)).length;
+    if (targets < (b.boost.mul ? 3 : 2)) continue;
+    if (Object.keys(b.inputs ?? {}).some(g => (marketStock(s, c)[g] ?? 0) < 10)) continue;
+    const houses = types.filter(t => isHousing(t)).length;
+    let at = types.findIndex((t, i) => !t && i !== 4);
+    if (at < 0)
+      at = types.findIndex(
+        t =>
+          t &&
+          !b.boost!.of.includes(t) &&
+          !SLOT_TYPES[t]?.boost &&
+          !SLOT_TYPES[t]?.fixed &&
+          !(isHousing(t) && houses <= MIN_HOUSING) &&
+          !Object.values(SLOT_TYPES).some(o => o.boost?.of.includes(t) && types.includes(o.id)),
+      );
+    if (at >= 0) {
+      setSlot(s, d.id, at, b.id);
+      return;
+    }
+  }
 }
 
 /** Fill a district's empty cells from a layout; cells it cannot take yet get houses or wait. */
@@ -519,6 +573,7 @@ function planDistricts(s: GameState, civ: Civ, c: City) {
     }
     // cells waiting on research get filled once it arrives
     if (centre) fillDistrict(s, civ, c, centre, CENTRE);
+    for (const d of ds) addBoosters(s, civ, c, d);
     // cells left empty (a blueprint gap, research since) get another look
     const fields = ds.find(d => !isCentre(d));
     if (fields && fields.slots.some(x => !x.type)) {
@@ -539,6 +594,7 @@ function planDistricts(s: GameState, civ: Civ, c: City) {
     );
   const others = ds.filter(d => !isCentre(d));
   others.forEach((d, k) => fillDistrict(s, civ, c, d, QUARTERS[QUARTER_ORDER[k] ?? 'research']));
+  for (const d of ds) addBoosters(s, civ, c, d);
   if (districtRoom(s, c) > 0) {
     const kind = QUARTER_ORDER[others.length] ?? 'research';
     const r = placeDistrict(s, c.id, `${c.name} ${kind} quarter`, []);

@@ -25,7 +25,7 @@ import {
 } from './diplomacy.ts';
 import { civMods, pct } from './mods.ts';
 import { cultureTurn, newCultureState } from './culture.ts';
-import { TAGS } from '../data/culture.ts';
+import { CULTURE, TAGS } from '../data/culture.ts';
 import { tagCounts as tagCountsOf } from './mods.ts';
 import {
   build,
@@ -36,11 +36,13 @@ import {
   emptySlot,
   isCentre,
   shareFood,
+  housingCells,
   TIER_NAME,
   marketCities,
   marketSpend,
   marketStock,
   marketTake,
+  capStores,
   slotProblem,
 } from './economy.ts';
 import { isRural, SLOT_TYPES } from '../data/slots.ts';
@@ -679,10 +681,15 @@ export function levy(s: GameState, cityId: number): Result {
   return ok(`${f.name} raised in ${c.name}.`);
 }
 
-/** Food a city must store to grow by 250 people: bigger cities grow more slowly. */
+/**
+ * Food a settlement must store to grow by 250 people: bigger ones grow more slowly, and every
+ * housing cell beyond its districts' two makes growing 8% cheaper (down to 60%).
+ */
 export const growthCost = (s: GameState, c: City) =>
   Math.round(
-    (15 + (c.pop / 1000) * 12 + (c.pop / 1000) ** 2 * 0.6) * pct(civMods(s, c.civId).growthPct),
+    (15 + (c.pop / 1000) * 12 + (c.pop / 1000) ** 2 * 0.6) *
+      pct(civMods(s, c.civId).growthPct) *
+      Math.max(0.6, 1 - 0.08 * housingCells(s, c).spare),
   );
 
 /** Per-turn summary of a city (see economy.ts for the slot-by-slot detail). */
@@ -932,6 +939,8 @@ export function endTurn(s: GameState): string[] {
     upkeep = Math.round(upkeep * pct(civMods(s, civ.id).upkeepPct));
     civ.gold += gold - upkeep;
     if (civ.gold < 0) civ.gold = 0;
+    // stores hold only so much: what does not fit is lost
+    capStores(s, civ.id, econ);
     if (!civ.researching) civ.researching = nextResearch(s, civ);
     // science is stored even while nothing is chosen, so choosing late costs nothing
     civ.science += science;
@@ -1485,7 +1494,7 @@ export const territoryRadius = (s: GameState, civId: number) =>
   TERRITORY_RADIUS + Math.floor(civMods(s, civId).territoryRadius);
 
 /** Later eras cost more than their listed base (indexed by era, 1..4). */
-const ERA_COST = [1, 1.5, 2, 3, 9];
+const ERA_COST = [1, 1.3, 1.6, 2, 4.5];
 
 /** Research cost after culture leanings and bonuses. */
 export function techCost(s: GameState, civ: Civ, id: string): number {
@@ -1862,6 +1871,12 @@ export interface UpgradeInfo {
   lost: number;
 }
 
+/** Housing cells a settlement must have built to rise, and the culture choice it needs. */
+export const RANK_NEEDS = {
+  city: { housing: 6, culture: 'city-charter' },
+  metropolis: { housing: 8, culture: 'seat-of-empire' },
+} as const;
+
 export const UPGRADE: Record<
   'city' | 'metropolis',
   { pop: number; gold: number; goods: Record<string, number> }
@@ -1887,6 +1902,10 @@ export function upgradeInfo(s: GameState, c: City): UpgradeInfo {
     s.cities.some(x => x.civId === c.civId && x.tier === 'metropolis' && x !== c)
   )
     problem = 'A people can have only one metropolis.';
+  else if (!civ.culture.taken.includes(RANK_NEEDS[to].culture))
+    problem = `Needs the ${CULTURE[RANK_NEEDS[to].culture].name} culture choice.`;
+  else if (housingCells(s, c).built < RANK_NEEDS[to].housing)
+    problem = `Needs ${RANK_NEEDS[to].housing} housing cells built (${housingCells(s, c).built} now).`;
   else if (c.pop < need.pop)
     problem = `Needs ${need.pop.toLocaleString()} people (${c.pop.toLocaleString()} now).`;
   else if (civ.gold < need.gold) problem = `Needs ${need.gold} gold (${Math.floor(civ.gold)} now).`;

@@ -48,8 +48,8 @@ foundCity(s, s.formations.find(f => f.civId === me.id && f.kind === 'settlers')!
 // ---- research
 check(techCost(s, me, 'mining') < techCost(s, me, 'iron-working'), 'later eras cost more');
 check(
-  techCost(s, me, 'iron-working') === Math.round(TECHS['iron-working'].cost * 2),
-  'classical techs cost 2x their base',
+  techCost(s, me, 'iron-working') === Math.round(TECHS['iron-working'].cost * 1.6),
+  'classical techs cost 1.6x their base',
 );
 check(!availableTechs(me).some(t => t.era > 1), 'only the Ancient age is open at the start');
 check(

@@ -207,6 +207,17 @@ export const TECH_LIST: TechInfo[] = [
     favoured: 'maritime',
     mods: { sight: 1, coastalPct: 5 },
   }),
+  t('preservation', 'Food Preservation', 4, 320, [], "Food packaging doubles a district's food.", {
+    favoured: 'agrarian',
+  }),
+  t(
+    'steam-power',
+    'Steam Power',
+    4,
+    380,
+    ['metallurgy'],
+    'Factories, pumping stations and steam sawmills double their districts.',
+  ),
   t('star-forts', 'Star Forts', 4, 350, ['gunpowder'], 'Cities hold against guns.', {
     mods: { cityDefensePct: 20 },
   }),

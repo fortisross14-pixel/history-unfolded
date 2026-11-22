@@ -49,10 +49,12 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   grow by founding many towns. A town holds 2 districts and may farm, cut wood and mine its land;
   with 6,000 people it can become a city (4 districts, bonuses to every building, most of all
   research and industry) at the cost of its farms and mines; one city can become the people's
-  metropolis (6 districts). Towns in a market feed its cities.
-- **Districts**: 3×3 grids of buildings you design and name: a "Farm" of pigs, cattle, grain and
-  a woodlot, a "Northern Mine" of mines around an infirmary, a research quarter of schools and
-  libraries (buildings of a kind gain from each other). Buildings need workers and something on
+  metropolis (6 districts). Ranks need a culture choice (City Charter, Seat of Empire) and 6 or
+  8 housing cells. Towns in a market feed its cities.
+- **Districts**: 3×3 grids of buildings you design and name. Each needs 2 housing cells; producers
+  make things and boosters raise them: a library adds ½ to each university, a research lab
+  doubles them (three universities: 4½ → 6 → 12 science). The same +½ / ×2 runs through food,
+  mining, wood, culture, gold and industry, with the multipliers late. Buildings need workers and something on
   the settlement's land (forest, flat land, a deposit), boost their neighbours, and are built by
   its production. Save layouts as blueprints. Houses give room to grow.
 - **Working the land**: farms, pastures, woodcutters and mines give half a unit anywhere; pigs,

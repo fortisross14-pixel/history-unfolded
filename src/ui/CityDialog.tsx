@@ -3,6 +3,7 @@ import { DEPOSITS, GOODS, SPECIAL_MIN } from '../data/goods.ts';
 import {
   GROUPS,
   isRural,
+  MIN_HOUSING,
   SLOT_LIST,
   SLOT_TYPES,
   type SlotGroup,
@@ -18,8 +19,6 @@ import {
   isCentre,
   landOf,
   marketCities,
-  SYNERGY_CAP,
-  SYNERGY_PCT,
   TIER_BONUS,
   TIER_NAME,
   marketStock,
@@ -517,9 +516,10 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
               <div className="new-district">
                 <h3>Lay out a district</h3>
                 <p className="muted small">
-                  A district is a 3×3 grid of buildings you choose. Buildings of a kind work better
-                  together: each gains {SYNERGY_PCT}% for every other one of its group in the same
-                  district (up to {SYNERGY_CAP}%).
+                  A district is a 3×3 grid of buildings you choose. It needs {MIN_HOUSING} housing
+                  cells before anything else in it works. Producers make things; boosters raise
+                  every producer of their kind in the same district: a library adds ½ to each
+                  university, a research lab doubles them.
                   {c.tier === 'town'
                     ? ' Towns can also farm, cut wood and mine their land.'
                     : ' Cities leave farming and mining to their towns.'}
@@ -674,10 +674,18 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                     a unit, so eight mines by coal dig eight coal.
                   </li>
                   <li>
-                    Neighbours matter: an infirmary in the middle boosts four mines; banks next to
-                    banks earn more; a granary feeds the farms around it.
+                    Boosters raise the producers of their kind in the same district: an adder puts ½
+                    on each (library on universities, infirmary on mines, granary on farms), a late
+                    multiplier doubles them (research lab, pumping station, food packaging).
                   </li>
-                  <li>Houses make room for people. Without room the city stops growing.</li>
+                  <li>
+                    Every district needs {MIN_HOUSING} housing cells before anything else in it
+                    works; housing beyond that makes the settlement grow faster.
+                  </li>
+                  <li>
+                    Houses make room for people. Without room the settlement stops growing. A city
+                    needs 6 housing cells and the City Charter.
+                  </li>
                 </ul>
                 <h3>This city now</h3>
                 <p className="small">

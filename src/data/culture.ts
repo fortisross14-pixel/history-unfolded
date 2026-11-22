@@ -715,6 +715,27 @@ export const CULTURE_LIST: CultureNode[] = [
     'The village decides.',
     { req: ['land-tenure'], any: ['social-mobility', 'council-of-elders'] },
   ),
+  // ranks of settlement: open to every path through society
+  n(
+    'society',
+    'city-charter',
+    'City Charter',
+    2,
+    [],
+    { housingPct: 5 },
+    'Towns may grow into cities.',
+    { any: ['kinship', 'clan-society', 'household-society'] },
+  ),
+  n(
+    'society',
+    'seat-of-empire',
+    'Seat of Empire',
+    4,
+    [],
+    { culturePct: 5 },
+    'One city may become the metropolis.',
+    { req: ['city-charter'], any: ['caste-system', 'social-mobility', 'urban-life'] },
+  ),
 
   // ---------------- economy
   n('economy', 'barter', 'Barter', 1, [], { goldPct: 5 }, 'This for that.'),

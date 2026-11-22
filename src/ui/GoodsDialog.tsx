@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { COMFORT_PEOPLE, GOODS } from '../data/goods.ts';
-import { DEAL_TURNS, evaluateOffer, ledgerOf } from '../engine/diplomacy.ts';
+import { COMFORT_PEOPLE, GOODS, STORE_PER_CELL } from '../data/goods.ts';
+import { bestPrice, DEAL_TURNS, evaluateOffer, ledgerOf } from '../engine/diplomacy.ts';
 import { atWar } from '../engine/game.ts';
 import type { GameState, Offer } from '../engine/types.ts';
 import { GoodIcon } from './bits.tsx';
@@ -64,7 +64,9 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
           deposit and at least 3 of the working building in one district; then every one of them
           brings a unit. Settlements use luxuries as comforts (one a turn per{' '}
           {COMFORT_PEOPLE.toLocaleString()} people), cities burn coal or wood, workshops and
-          smithies work goods up. A good that runs out lowers what depends on it.
+          smithies work goods up. A good that runs out lowers what depends on it. Stores hold{' '}
+          {STORE_PER_CELL} of a good for every cell that makes it, and {STORE_PER_CELL} of anything
+          per settlement: the rest is lost, so sell it.
         </p>
         <table className="ledger">
           <thead>
@@ -74,7 +76,7 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
               <th>Used</th>
               <th>Trade</th>
               <th>Net</th>
-              <th>Store</th>
+              <th>Store / limit</th>
               <th />
             </tr>
           </thead>
@@ -94,6 +96,7 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
                   </td>
                   <td>
                     {l.stock}
+                    <small className={l.stock >= l.cap ? 'bad' : 'muted'}>/{l.cap}</small>
                     {runsOut !== null && (
                       <small className={runsOut < 10 ? 'bad' : 'muted'}>
                         {' '}
@@ -106,12 +109,17 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
                       <button
                         className="small"
                         onClick={() => {
-                          setSelling(g);
+                          // no set prices: start from the best that anyone would pay
                           const k = Math.max(1, Math.floor(l.net));
+                          const bids = partners
+                            .map(p => ({ id: p.id, gold: bestPrice(game, civId, p.id, g, k) }))
+                            .sort((a, b) => b.gold - a.gold);
+                          setSelling(g);
                           setN(k);
-                          setPrice(
-                            Math.max(1, Math.round(k * (GOODS[g]?.kind === 'luxury' ? 3 : 2))),
-                          );
+                          if (bids[0]) {
+                            setTo(bids[0].id);
+                            setPrice(bids[0].gold);
+                          }
                         }}
                       >
                         Sell…
@@ -162,6 +170,24 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
                 gold a turn
               </label>
             </div>
+            <p className="small">
+              What they would pay for {n} a turn:{' '}
+              {partners
+                .map(p => ({ p, gold: bestPrice(game, civId, p.id, selling, n) }))
+                .sort((a, b) => b.gold - a.gold)
+                .map(({ p, gold }) => (
+                  <button
+                    key={p.id}
+                    className={`link ${to === p.id ? 'on' : ''}`}
+                    onClick={() => {
+                      setTo(p.id);
+                      setPrice(gold);
+                    }}
+                  >
+                    the {p.name}: {gold ? `${gold} gold` : 'not interested'}
+                  </button>
+                ))}
+            </p>
             <p className="small muted">
               Runs for {DEAL_TURNS} turns, delivered from your capital's market. If you cannot
               deliver, they will remember. You keep{' '}

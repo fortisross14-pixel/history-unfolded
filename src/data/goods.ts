@@ -1,7 +1,8 @@
 /** Goods and the map deposits that produce them. */
 import type { ReliefId, TerrainId, VegetationId } from './terrain.ts';
 
-export type GoodKind = 'food' | 'raw' | 'luxury';
+/** made: manufactured in cities (cloth, tools…): traded, and cloth and leatherwork are comforts */
+export type GoodKind = 'food' | 'raw' | 'luxury' | 'made';
 
 export interface GoodInfo {
   name: string;
@@ -43,7 +44,17 @@ export const GOODS: Record<string, GoodInfo> = {
   sugar: { name: 'Sugar', kind: 'luxury', glyph: 'Su', color: '#e7dcc8' },
   'whale-oil': { name: 'Whale oil', kind: 'luxury', glyph: 'Wh', color: '#4d6a7a' },
   pearls: { name: 'Pearls', kind: 'luxury', glyph: 'Pe', color: '#e9e4f0' },
+  tools: { name: 'Tools', kind: 'made', glyph: 'Tl', color: '#6b6f78' },
+  cloth: { name: 'Cloth', kind: 'made', glyph: 'Cl', color: '#b08f6a' },
+  leatherwork: { name: 'Leatherwork', kind: 'made', glyph: 'Lw', color: '#8a5a32' },
 };
+
+/** Goods that serve as comforts: luxuries and the finer made goods. */
+export const isComfort = (g: string) =>
+  GOODS[g]?.kind === 'luxury' || g === 'cloth' || g === 'leatherwork';
+
+/** Store limit: this much of a good per cell that makes it (and per settlement, for anything). */
+export const STORE_PER_CELL = 8;
 
 /** Luxuries settlements consume as comforts: one unit a turn per this many people. */
 export const COMFORT_PEOPLE = 4000;

@@ -246,8 +246,8 @@ You grow by founding many small towns, not by growing a few huge cities.
 | Rank | Districts | Rural buildings | Bonus to buildings | Needs |
 |---|---|---|---|---|
 | Town | 2 (the centre with the town hall + 1) | farms, woodlots, mines, docks | — | founding |
-| City | 4 | none: the towns around supply them | +15%, research and industry +35% | 6,000 people, 150 gold, 10 stone, 30 wood |
-| Metropolis | 6 (one per people) | none | +30%, research and industry +70% | 15,000 people, 400 gold, 30 stone, 50 wood |
+| City | 4 | none: the towns around supply them | +15%, research and industry +35% | City Charter (culture), 6 housing cells, 6,000 people, 150 gold, 10 stone, 30 wood |
+| Metropolis | 6 (one per people) | none | +30%, research and industry +70% | Seat of Empire (culture), 8 housing cells, 15,000 people, 400 gold, 30 stone, 50 wood |
 
 - **Becoming a city pulls down every rural building** (farming, forestry, extraction groups):
   those districts must be redesigned as quarters. A town's open land feeds a few people
@@ -255,10 +255,41 @@ You grow by founding many small towns, not by growing a few huge cities.
 - **Towns feed cities.** Settlements short of food draw on the surplus of the others in their
   market (joined by road, river or sea), shared out in proportion. A town that feeds a city grows
   more slowly.
-- **Themed districts.** Every building gains 5% for each other building of its group in the same
-  district, up to +30% (not rural or housing). A district with a university, library, school and
-  printing house is a research quarter worth more than the same buildings spread out. A
-  district's label follows what it holds (Research quarter, Market quarter, Farmland…).
+- **Towns are needed**: only they hold farms, pastures, woodcutters, mines and the rest. A people
+  can also go urban and buy its food and raw goods with the cloth, tools and leatherwork its
+  cities make.
+- **Ranks need a culture choice and the action**: City Charter (society, open from any first
+  society choice) lets towns become cities; Seat of Empire lets one city become the metropolis.
+  Then the player raises the settlement from its screen.
+
+### 7.1b Inside a district: housing, producers, boosters (as built)
+
+- **Housing**: every district needs at least **2 housing cells** (houses, tenements,
+  aqueducts) built before anything else in it works; houses are built first where they are
+  missing. A city needs 6 housing cells in all (of a town's 18 cells), a metropolis 8. Each
+  housing cell beyond its districts' two makes growth 8% cheaper (to 60% at most), so more
+  people for settlers and levies, at the price of cells that make nothing.
+- **Producers** make things (a university +1½ science, a mine ½ stone plus what the land holds).
+- **Boosters** work on the producers of their kind in the same district:
+  - an **adder** (+½ on every yield of each target), from the early to the mid game;
+  - a **multiplier** (×2 on everything each target makes), late (the Renaissance).
+  Adders stack; of several multipliers on one building only the strongest counts.
+
+| Chain | Producers | +½ adder | ×2 multiplier |
+|---|---|---|---|
+| Research | school (1), university (1½), observatory (2) | library (Philosophy) | research lab (Scientific Method) |
+| Food | farm, pasture, plantation, boats, lodge | granary (Pottery: farms, plantations), windmill (Mechanics: farms, pastures) | food packaging (Food Preservation) |
+| Mining | mine | infirmary (Tanning) | pumping station (Steam Power) |
+| Wood | woodcutter, hunting lodge | lumber mill (Carpentry) | steam sawmill (Steam Power) |
+| Culture | shrine (1), monument (1½), temple (2), cathedral (4) | amphitheatre (Literature) | printing house (Printing) |
+| Gold | market, bank, mint, harbour | guild hall (Guilds) | stock exchange (Banking) |
+| Industry | workshop, smithy, foundry, tannery, weaver | guild hall | factory (Steam Power; wears out a tool a turn) |
+| Housing | houses, tenements, aqueduct | market (+½ gold from each housing cell) | — |
+
+  Example: three universities make 4½ science; a library makes it 6; a research lab 12. The
+  other cells: two houses and a market or a temple.
+- The settlement's rank bonus and research percentages apply after the boosters.
+
 - Old saves load with every settlement as a town that keeps its centre and oldest district.
 
 ### 7.2 Districts: the 3×3 grid
@@ -361,19 +392,24 @@ Every rural building gives a little anywhere; what lies on the settlement's land
 
 **Demand.** Goods are made to be used, and use grows with the people:
 - **Comforts**: every settlement takes one luxury a turn per 4,000 people (sugar, spices, silk,
-  dyes, wine, furs, ivory, gold, silver, pearls, whale oil). Each kind it gets adds 5% gold and
+  dyes, wine, furs, ivory, gold, silver, pearls, whale oil, and the cloth and leatherwork cities
+  make). Each kind it gets adds 5% gold and
   culture; each unit missing takes 5% away.
 - **Fuel**: cities and the metropolis burn one fuel per 4,000 people: coal if the market has it
   (+5% production), else wood; with neither, everything they make drops 15%.
-- **Workshops**: workshop (wood → production), smithy (copper and tin → production), tannery
-  (leather → gold), weaver (wool → gold), mint (gold → coin), foundry (coal and iron →
-  production). Short of its goods, a building runs at a third.
+- **Workshops**: workshop (wood → production), smithy (copper and tin → tools), tannery
+  (leather → leatherwork), weaver (wool → cloth), mint (gold → coin), foundry (coal and iron →
+  production), factory (wears out tools). Short of its goods, a building runs at a third.
+- **Stores are limited**: a people keeps at most 8 of a good for every working cell that makes
+  it, plus 8 of anything per settlement. Three coal mines (which also dig stone) can hold 24 coal
+  and 24 stone. The rest is lost each turn, so surpluses are for selling.
 - Equipment and construction spend goods once (§5.3).
 
 **Trade by the turn.** The Goods screen (G) shows per good what all settlements make, what they
 use, what deals bring or take, the net and the store, with how many turns a shortfall leaves.
 **Sell** offers a surplus per turn to a people at peace for gold per turn, for 20 turns, paid
-from the capitals' markets. Peoples value goods by their own balance: what they run short of each
+from the capitals' markets. There are no set prices: the sell box asks every partner the most it
+would pay and starts from the best bid. Peoples value goods by their own balance: what they run short of each
 turn is dear, a steady surplus piling up is cheap. AI peoples offer to sell what you run short
 of, or to buy what you have to spare. A seller who cannot deliver is remembered for it.
 
@@ -521,7 +557,7 @@ contact with very different cultures, low stability).
   Age, Renaissance Age) that opens once a people knows about two thirds of the age (9, 11, 10
   techs: any of them) and unlocks the next age. Skipped techs stay available later. The research
   screen shows only the ages reached, current age first; later ages stay hidden.
-- Base costs scale by age (×1.5, ×2, ×3, ×9: science grows with population, so the last age
+- Base costs scale by age (×1.3, ×1.6, ×2, ×4.5: science grows with population, so the last age
   must cost far more to last). In AI test games the leading people has about 47 techs by
   turn 200 and the whole tree around turn 320–330 of 400 (`scripts/pace.ts`). Science is stored
   even while nothing is being researched.

@@ -467,3 +467,28 @@ export function newProposal(s: GameState, p: Omit<Proposal, 'id' | 'turn'>): Pro
   s.proposals.push(full);
   return full;
 }
+
+/**
+ * The most gold a turn the other people would pay for `n` of a good a turn (0 if they would not
+ * take it at all). There are no set prices: a good is worth what someone will pay for it.
+ */
+export function bestPrice(s: GameState, from: number, to: number, good: string, n: number): number {
+  const offer = (gold: number): Offer => ({
+    give: { goodsPerTurn: { [good]: n } },
+    get: { goldPerTurn: gold },
+    turns: DEAL_TURNS,
+  });
+  if (!evaluateOffer(s, from, to, offer(0)).accept) return 0;
+  let lo = 0,
+    hi = 1;
+  while (hi < 1000 && evaluateOffer(s, from, to, offer(hi)).accept) {
+    lo = hi;
+    hi *= 2;
+  }
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (evaluateOffer(s, from, to, offer(mid)).accept) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}

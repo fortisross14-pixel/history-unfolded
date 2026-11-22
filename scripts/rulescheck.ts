@@ -34,6 +34,7 @@ import { isPassableLand } from '../src/engine/mapgen.ts';
 import { distance, neighbors, within } from '../src/engine/hex.ts';
 import { findPath } from '../src/engine/path.ts';
 import {
+  capStores,
   cityDistricts,
   cityEconomy,
   civGoods,
@@ -139,10 +140,12 @@ for (const seed of [1, 2, 3, 42]) {
     for (const h of others) t.map.deposit[h] = null;
     t.civs[me.id].techs.push('mineralogy');
     tc.pop = 20000;
+    // every district needs its two housing cells: the last two
     const fill = (types: string[]) => {
+      const all = [...types, ...Array(7 - types.length).fill(null), 'houses', 'houses'];
       for (let i = 0; i < 9; i++)
-        td.slots[i] = types[i]
-          ? { type: types[i], built: true, progress: 0, paid: true }
+        td.slots[i] = all[i]
+          ? { type: all[i], built: true, progress: 0, paid: true }
           : { type: null, built: false, progress: 0, paid: false };
     };
     const out = () => cityEconomy(t, tc).slots.get(td.id)!;
@@ -159,8 +162,34 @@ for (const seed of [1, 2, 3, 42]) {
     check(/need 3 mines/.test(out()[0].note ?? ''), `the slot says why: "${out()[0].note}"`);
     fill(['mine', 'mine', 'mine']);
     check(sum('coal') === 3, `three mines next to coal: 3 coal (${sum('coal')})`);
-    fill(['mine', 'mine', 'mine', 'mine', 'mine', 'mine', 'mine', 'mine']);
-    check(sum('coal') === 8, `eight mines: 8 coal a turn (${sum('coal')})`);
+    fill(['mine', 'mine', 'mine', 'mine', 'mine', 'mine', 'mine']);
+    check(sum('coal') === 7, `seven mines: 7 coal a turn (${sum('coal')})`);
+    // stores hold 8 per cell that makes a good, and 8 of anything per settlement
+    {
+      const n = t.cities.filter(c => c.civId === me.id).length;
+      tc.stockpile.coal = 10000;
+      capStores(t, me.id);
+      const held = t.cities
+        .filter(c => c.civId === me.id)
+        .reduce((a, c) => a + (c.stockpile.coal ?? 0), 0);
+      check(
+        Math.abs(held - 8 * (7 + n)) < 1e-6,
+        `7 coal mines store ${Math.round(held)} coal (8 × (7 + ${n}))`,
+      );
+    }
+    // boosters: an infirmary adds ½ to everything each mine digs
+    fill(['mine', 'mine', 'mine', 'infirmary']);
+    t.civs[me.id].techs.push('tanning');
+    check(
+      sum('coal') === 4.5 && sum('stone') === 3,
+      `an infirmary: 3 mines dig 4.5 coal and 3 stone (${sum('coal')}, ${sum('stone')})`,
+    );
+    // no housing, no work
+    td.slots[7] = { type: null, built: false, progress: 0, paid: false };
+    check(
+      !sum('coal') && /housing/.test(out()[0].idle ?? ''),
+      'a district without 2 houses stands idle',
+    );
     t.map.deposit[spot] = { kind: 'pigs', richness: 1 };
     fill(['pasture', 'pasture']);
     check(sum('food') === 2, `two pastures by pigs: 2 food (${sum('food')})`);
@@ -240,20 +269,37 @@ for (const seed of [1, 2, 3, 42]) {
       check(canFoundCity(s, { ...probe, hex: two }) === null, 'a town two hexes away is fine');
   }
 
-  // --- district synergy: a second school in the same district makes each one better
+  // --- boosters: 3 universities, a library adds ½ to each, a research lab doubles them
   {
     const t = structuredClone(s);
     const tc = t.cities.find(c => c.id === capital.id)!;
-    const td = cityDistricts(t, tc).find(isCentre)!;
-    t.civs[me.id].techs.push('writing');
+    const td = t.districts.find(d => d.id === pd.id)!;
+    t.civs[me.id].techs.push('education', 'philosophy', 'scientific-method');
     tc.pop = 20000;
-    const put = (i: number) =>
-      (td.slots[i] = { type: 'school', built: true, progress: 0, paid: true });
-    put(0);
-    const one = cityEconomy(t, tc).slots.get(td.id)![0].out.science;
-    put(2);
-    const two = cityEconomy(t, tc).slots.get(td.id)![0].out.science;
-    check(two > one, `schools together work better (${one} → ${two} science each)`);
+    const put = (i: number, type: string | null) =>
+      (td.slots[i] = type
+        ? { type, built: true, progress: 0, paid: true }
+        : { type: null, built: false, progress: 0, paid: false });
+    for (let i = 0; i < 9; i++) put(i, null);
+    put(0, 'university');
+    put(1, 'university');
+    put(2, 'university');
+    put(7, 'houses');
+    put(8, 'houses');
+    // the town is a town: no rank bonus, so the sums are plain
+    const sci = () =>
+      cityEconomy(t, tc)
+        .slots.get(td.id)!
+        .reduce((a, x) => a + x.out.science, 0);
+    const base = sci();
+    put(3, 'library');
+    const lib = sci();
+    put(4, 'laboratory');
+    const lab = sci();
+    check(
+      Math.abs(lib - base - 1.5) < 1e-6 && Math.abs(lab - lib * 2) < 1e-6,
+      `3 universities ${base} → with a library ${lib} → with a research lab ${lab}`,
+    );
   }
 
   // --- town to city: needs people, gold and goods; farms give way; room for four districts
@@ -263,6 +309,12 @@ for (const seed of [1, 2, 3, 42]) {
     check(!!upgradeInfo(t, tc).problem, 'a young town cannot become a city yet');
     tc.pop = 7000;
     t.civs[me.id].gold = 1000;
+    check(/City Charter/.test(upgradeInfo(t, tc).problem ?? ''), 'a city needs the City Charter');
+    t.civs[me.id].culture.taken.push('city-charter', 'seat-of-empire');
+    // six housing cells across the town's districts
+    const cen = cityDistricts(t, tc).find(isCentre)!;
+    for (const i of [0, 1, 2, 3, 5, 6])
+      cen.slots[i] = { type: 'houses', built: true, progress: 0, paid: true };
     tc.stockpile.stone = 100;
     tc.stockpile.wood = 100;
     const farmD = t.districts.find(d => d.id === pd.id)!;
@@ -276,6 +328,8 @@ for (const seed of [1, 2, 3, 42]) {
     check(!!slotProblem(t, me.id, tc.hex, false, 'grain-field'), 'a city cannot lay out fields');
     check(placeDistrict(t, tc.id, 'Library quarter', []).ok, 'a city takes a third district');
     check(placeDistrict(t, tc.id, 'Fourth', []).ok, '... and a fourth');
+    for (const d of cityDistricts(t, tc).slice(2))
+      for (const i of [7, 8]) d.slots[i] = { type: 'houses', built: true, progress: 0, paid: true };
     check(!placeDistrict(t, tc.id, 'Fifth', []).ok, 'but not a fifth');
     // one metropolis per people
     tc.pop = 16000;

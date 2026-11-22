@@ -42,9 +42,11 @@ import {
   evaluateOffer,
   executeOffer,
   hasPact,
+  ledgerOf,
   newProposal,
   opinion,
 } from './diplomacy.ts';
+import { DEPOSITS, GOODS } from '../data/goods.ts';
 import {
   buildShip,
   cargoOf,
@@ -57,7 +59,14 @@ import {
   stepCost,
 } from './game.ts';
 import { findPath } from './path.ts';
-import { cityDistricts, marketStock, constructionQueue, isCentre, slotProblem } from './economy.ts';
+import {
+  cityDistricts,
+  marketStock,
+  constructionQueue,
+  isCentre,
+  slotProblem,
+  workable,
+} from './economy.ts';
 import { districtRoom, placeDistrict, setSlot, upgradeInfo, upgradeSettlement } from './game.ts';
 import type { City, District } from './types.ts';
 import { hexFood, isPassableLand } from './mapgen.ts';
@@ -366,24 +375,6 @@ function pathNextTo(s: GameState, f: Formation, target: number): number[] | null
   return best;
 }
 
-// slot types the AI likes, most wanted first (for a hex where they are valid)
-const PRIORITY = [
-  'copper-mine',
-  'tin-mine',
-  'iron-mine',
-  'horse-stud',
-  'quarry',
-  'woodlot',
-  'grain-field',
-  'cattle-pasture',
-  'fishing-dock',
-  'pig-pen',
-  'hunting-lodge',
-  'plantation',
-  'gold-mine',
-  'silver-mine',
-  'sheep-run',
-];
 const CENTRE = [
   'houses',
   'market',
@@ -410,21 +401,21 @@ const QUARTERS: Record<string, (string | null)[]> = {
   ],
   industry: [
     'workshop',
-    'workshop',
+    'smithy',
     'houses',
     'armoury',
     'foundry',
-    'workshop',
+    'tannery',
     'houses',
     'guild-hall',
-    'workshop',
+    'weaver',
   ],
   market: [
     'market',
     'bank',
     'houses',
     'market',
-    'guild-hall',
+    'mint',
     'bank',
     'tenements',
     'stock-exchange',
@@ -444,26 +435,43 @@ const QUARTERS: Record<string, (string | null)[]> = {
 };
 const QUARTER_ORDER = ['research', 'industry', 'market', 'civic', 'research'];
 
-/** A town's working district: what its land is good for, two of each (three mines) at most. */
+/**
+ * A town's working district: a block of four for the most valuable special good on its land
+ * (special goods need three of the building in one district), animals or crops beside it,
+ * woodcutters, and houses to fill.
+ */
 function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[]; score: number } {
   const slots: (string | null)[] = new Array(9).fill(null);
-  let score = 0,
-    k = 0,
-    mines = 0;
   const order = [0, 1, 2, 3, 5, 6, 7, 8];
-  for (const t of PRIORITY) {
-    if (slotProblem(s, civ.id, hex, false, t)) continue;
-    const n = t.endsWith('mine') || t === 'quarry' ? 3 : 2;
-    for (let j = 0; j < n && k < order.length; j++) {
-      slots[order[k++]] = t;
-      score += t.endsWith('mine') ? 3 : 1;
-      if (t.endsWith('mine') || t === 'quarry') mines++;
-    }
+  let k = 0,
+    score = 0;
+  const ok = (t: string) => !slotProblem(s, civ.id, hex, false, t);
+  const put = (t: string, n: number) => {
+    for (let j = 0; j < n && k < order.length; j++) slots[order[k++]] = t;
+  };
+  const worth = (g: Record<string, number> | undefined) =>
+    Object.keys(g ?? {}).reduce((a, x) => a + (GOODS[x]?.kind === 'luxury' ? 3 : 2), 0);
+  const specials = ['mine', 'plantation', 'fishing-dock', 'hunting-lodge']
+    .filter(ok)
+    .map(t => {
+      const open = workable(s, civ.id, hex, t, 9).open.filter(d => DEPOSITS[d].special);
+      return { t, v: open.reduce((a, d) => a + worth(DEPOSITS[d].gives.goods), 0) };
+    })
+    .filter(x => x.v > 0)
+    .sort((a, b) => b.v - a.v);
+  if (specials[0]) {
+    put(specials[0].t, 4);
+    score += specials[0].v * 2;
   }
-  slots[4] =
-    mines >= 2 && !slotProblem(s, civ.id, hex, false, 'infirmary') ? 'infirmary' : 'houses';
-  while (k < order.length)
-    slots[order[k++]] = !slotProblem(s, civ.id, hex, false, 'pig-pen') ? 'pig-pen' : 'houses';
+  if (workable(s, civ.id, hex, 'pasture', 1).open.length) put('pasture', 2);
+  if (workable(s, civ.id, hex, 'farm', 1).open.length) put('farm', 2);
+  if (ok('fishing-dock') && workable(s, civ.id, hex, 'fishing-dock', 1).open.length)
+    put('fishing-dock', 1);
+  put('woodlot', 1);
+  // stone for building comes from plain mines when the land holds no richer seam
+  if (specials[0]?.t !== 'mine') put('mine', 2);
+  slots[4] = specials[0]?.t === 'mine' && ok('infirmary') ? 'infirmary' : 'houses';
+  while (k < order.length) put(k % 2 ? 'farm' : 'pasture', 1);
   return { slots, score };
 }
 
@@ -473,6 +481,13 @@ function fillDistrict(s: GameState, civ: Civ, c: City, d: District, plan: (strin
   for (let i = 0; i < 9; i++) {
     if (d.slots[i].type) continue;
     const want = plan[i];
+    // a building that works up goods waits until the market has some of them
+    const stock = marketStock(s, c);
+    if (
+      want &&
+      Object.keys(SLOT_TYPES[want]?.inputs ?? {}).some(g => g !== 'wood' && (stock[g] ?? 0) < 10)
+    )
+      continue;
     if (want && !slotProblem(s, civ.id, c.hex, centre, want, d.id)) setSlot(s, d.id, i, want);
     else if (
       want === 'houses' ||
@@ -576,14 +591,17 @@ export function aiTurn(s: GameState, civ: Civ) {
   for (const c of cities) {
     const armies = mine().filter(f => f.kind === 'army' && f.name !== 'Scouts').length;
     if (c === rising && armies >= 1) continue;
+    // towns send out settlers; a city keeps its people and only gives levies when large
+    const town = c.tier === 'town';
     if (
+      town &&
       !settlersOut &&
       s.turn > 6 &&
       c.pop >= 3000 &&
       (cities.length < 6 || (cities.length < 14 && rng() < 0.2))
     )
       trainSettlers(s, c.id);
-    else if (c.pop >= 3000 && armies < cities.length * 2 + 1) levy(s, c.id);
+    else if (c.pop >= (town ? 3000 : 8000) && armies < cities.length * 2 + 1) levy(s, c.id);
   }
 
   // --- diplomacy and war
@@ -1123,22 +1141,41 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
     });
     return;
   }
-  // trade: our surplus for something we lack that the player has plenty of
-  const surplus = Object.keys(mine).filter(k => mine[k] > 120 && (theirs[k] ?? 0) < 40);
-  const want = Object.keys(theirs).filter(k => theirs[k] > 60 && (mine[k] ?? 0) < 20);
-  if (surplus.length && want.length && op > -20) {
-    const give = surplus[Math.floor(rng() * surplus.length)],
-      get = want[Math.floor(rng() * want.length)];
+  // trade by the turn: sell what we have to spare to a player who runs short, or buy what
+  // we run short of from a player with plenty
+  void mine;
+  void theirs;
+  if (op <= -20) return;
+  const ours = ledgerOf(s, civ.id),
+    yours = ledgerOf(s, me.id);
+  const price = (g: string) => (GOODS[g]?.kind === 'luxury' ? 3 : g === 'wood' ? 1 : 2);
+  const sell = Object.keys(ours).find(
+    g => ours[g].net >= 2 && ours[g].stock >= 20 && (yours[g]?.net ?? 0) < 0,
+  );
+  if (sell) {
+    const n = Math.max(1, Math.min(Math.floor(ours[sell].net), Math.ceil(-yours[sell].net)));
+    const gold = Math.max(1, Math.round(n * price(sell) * 0.8));
     newProposal(s, {
       from: civ.id,
       to: me.id,
       kind: 'trade',
-      offer: {
-        give: { goodsPerTurn: { [give]: 3 } },
-        get: { goodsPerTurn: { [get]: 2 } },
-        turns: 20,
-      },
-      text: `The ${civ.name} offer a trade: 3 ${give} a turn for 2 ${get} a turn, for 20 turns.`,
+      offer: { give: { goodsPerTurn: { [sell]: n } }, get: { goldPerTurn: gold }, turns: 20 },
+      text: `The ${civ.name} see you run short of ${GOODS[sell]?.name.toLowerCase() ?? sell}: ${n} a turn for ${gold} gold a turn, for 20 turns.`,
+    });
+    return;
+  }
+  const buy = Object.keys(ours).find(
+    g => ours[g].net < 0 && (yours[g]?.net ?? 0) >= 2 && (yours[g]?.stock ?? 0) >= 20,
+  );
+  if (buy && civ.gold > 60) {
+    const n = Math.max(1, Math.min(Math.floor(yours[buy].net), Math.ceil(-ours[buy].net)));
+    const gold = Math.max(1, Math.round(n * price(buy)));
+    newProposal(s, {
+      from: civ.id,
+      to: me.id,
+      kind: 'trade',
+      offer: { give: { goldPerTurn: gold }, get: { goodsPerTurn: { [buy]: n } }, turns: 20 },
+      text: `The ${civ.name} would buy ${n} ${GOODS[buy]?.name.toLowerCase() ?? buy} a turn for ${gold} gold a turn, for 20 turns.`,
     });
   }
 }

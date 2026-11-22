@@ -45,8 +45,13 @@ export const TECH_LIST: TechInfo[] = [
     'Leather armour, caps, marching boots, field medics, infirmaries.',
   ),
   t('pottery', 'Pottery', 1, 12, [], 'Granaries.', { favoured: 'agrarian' }),
-  t('mining', 'Mining', 1, 14, [], 'Copper, tin, gold and silver mines.'),
-  t('animal-husbandry', 'Animal Husbandry', 1, 14, [], 'Horse studs.', { favoured: 'agrarian' }),
+  t('mining', 'Mining', 1, 14, [], 'Mines dig copper, tin, gold and silver.', {
+    mods: { groupPct: { extraction: 10 } },
+  }),
+  t('animal-husbandry', 'Animal Husbandry', 1, 14, [], 'Pastures raise horses.', {
+    favoured: 'agrarian',
+    mods: { groupPct: { farming: 5 } },
+  }),
   t('archery', 'Archery', 1, 16, [], 'Bows.'),
   t('masonry', 'Masonry', 1, 18, [], 'Monuments and city walls.'),
   t('sailing', 'Sailing', 1, 18, [], 'Harbours.', { favoured: 'maritime' }),
@@ -68,7 +73,7 @@ export const TECH_LIST: TechInfo[] = [
   ),
   t('classical-age', 'Classical Age', 1, 30, [], 'Opens the Classical age.', { gate: 9 }),
   // ---- classical
-  t('iron-working', 'Iron Working', 2, 50, [], 'Reveals iron. Iron mines, swords and helmets.'),
+  t('iron-working', 'Iron Working', 2, 50, [], 'Reveals iron for mines. Iron swords and helmets.'),
   t('currency', 'Currency', 2, 45, [], 'Banks.', {
     favoured: 'mercantile',
     mods: { goldPct: 5 },
@@ -148,7 +153,7 @@ export const TECH_LIST: TechInfo[] = [
     'Wider territory and district reach.',
     { mods: { territoryRadius: 1, districtRadius: 1 } },
   ),
-  t('mineralogy', 'Mineralogy', 3, 110, [], 'Reveals coal. Coal mines.'),
+  t('mineralogy', 'Mineralogy', 3, 110, [], 'Reveals coal for mines.'),
   t('armour-smithing', 'Armour Smithing', 3, 180, ['mineralogy'], 'Plate armour and great helms.'),
   t('pike-tactics', 'Pike Tactics', 3, 140, ['feudalism'], 'Pikes.'),
   t('yeomanry', 'Yeomanry', 3, 120, [], 'Longbows.'),
@@ -156,7 +161,7 @@ export const TECH_LIST: TechInfo[] = [
     mods: { cityDefensePct: 10 },
   }),
   t('urbanism', 'Urbanism', 3, 160, [], 'Tenements.', { mods: { housingPct: 5 } }),
-  t('alchemy', 'Alchemy', 3, 150, ['mineralogy'], 'Reveals saltpeter. Saltpeter works.'),
+  t('alchemy', 'Alchemy', 3, 150, ['mineralogy'], 'Reveals saltpeter for mines.'),
   t('compass', 'Compass', 3, 130, [], 'Coastal trade; sight.', {
     favoured: 'maritime',
     mods: { coastalPct: 10, sight: 1, navalPct: 10 },

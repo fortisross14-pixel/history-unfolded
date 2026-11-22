@@ -1984,3 +1984,73 @@ kbd {
 .hexmap .hx-name {
   font-size: 16px;
 }
+
+/* ---------- goods ledger ---------- */
+.modal.goods-ledger {
+  width: min(720px, 100%);
+}
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 6px 0 10px;
+}
+.ledger th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-bottom: 1px solid rgba(74, 50, 30, 0.25);
+  padding: 4px 6px;
+}
+.ledger td {
+  padding: 3px 6px;
+  border-bottom: 1px solid rgba(74, 50, 30, 0.08);
+  font-variant-numeric: tabular-nums;
+}
+.ledger tr.short {
+  background: rgba(179, 38, 30, 0.06);
+}
+.ledger button.small {
+  padding: 2px 8px;
+  min-height: 0;
+  font-size: 12px;
+}
+.sell-box {
+  padding: 10px 12px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  background: rgba(243, 226, 178, 0.4);
+}
+.sell-box .row {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sell-box input[type='number'] {
+  width: 64px;
+}
+.cell .cell-note {
+  color: var(--ink-soft);
+  font-style: italic;
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+@media (max-width: 700px) {
+  .ledger {
+    font-size: 12px;
+  }
+  .ledger th:nth-child(4),
+  .ledger td:nth-child(4) {
+    display: none;
+  }
+}
+/* the top bar sheds words before it wraps */
+@media (max-width: 1560px) {
+  .topbar .wide-only {
+    display: none;
+  }
+}
+@media (max-width: 1560px) {
+  .topbar {
+    gap: 10px;
+  }
+}

@@ -49,9 +49,10 @@ import { FormationPanel } from './FormationPanel.tsx';
 import { HexPanel } from './HexPanel.tsx';
 import { MapView } from './MapView.tsx';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
+import { GoodsDialog } from './GoodsDialog.tsx';
 import { ResearchDialog } from './ResearchDialog.tsx';
 import { ProposalDialog } from './ProposalDialog.tsx';
-import { answerProposal, proposeDeal } from '../engine/diplomacy.ts';
+import { answerProposal, ledgerOf, proposeDeal } from '../engine/diplomacy.ts';
 import { CultureDialog, KeepDialog, TagChip } from './CultureDialog.tsx';
 import { resolveUpheaval, startUpheaval, takeNode } from '../engine/culture.ts';
 import { cityEconomy, constructionQueue } from '../engine/economy.ts';
@@ -72,6 +73,7 @@ type Dialog =
   | { kind: 'city'; cityId: number; hex?: number }
   | { kind: 'designs'; open?: number | 'new' }
   | { kind: 'peoples' }
+  | { kind: 'goods' }
   | { kind: 'battle'; report: BattleReport }
   | { kind: 'war'; civId: number; then?: () => void }
   | null;
@@ -116,6 +118,7 @@ const KEYS: [string, string][] = [
   ['K', 'Culture'],
   ['D', 'Unit designs'],
   ['P', 'Peoples and diplomacy'],
+  ['G', 'Goods: made, used and traded per turn'],
   ['Esc', 'Close a window, or clear the selection'],
   ['?', 'This list'],
 ];
@@ -459,6 +462,7 @@ export function Game({
       else if (key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
       else if (key === 'd') setDialog({ kind: 'designs' });
       else if (key === 'p') setDialog({ kind: 'peoples' });
+      else if (key === 'g') setDialog({ kind: 'goods' });
       else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
       else if (key === 'k') setDialog({ kind: 'culture' });
       else if (key === 't') setDialog({ kind: 'research' });
@@ -510,6 +514,12 @@ export function Game({
   );
   const myCities = game.cities.filter(c => c.civId === me.id);
   const todos = todo();
+  // goods running out within ten turns
+  const goodsShort = useMemo(
+    () =>
+      Object.values(ledgerOf(game, me.id)).filter(l => l.net < 0 && l.stock < -l.net * 10).length,
+    [version],
+  );
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
 
   const proposal = game.proposals.find(p => p.to === me.id);
@@ -594,7 +604,7 @@ export function Game({
           Turn <b>{game.turn}</b>
           <small className="muted">/{game.settings.turnLimit ?? 400}</small>
         </span>
-        <span title="Gold">⛁ {me.gold}</span>
+        <span title="Gold">⛁ {Math.floor(me.gold)}</span>
         <button className="research-btn" onClick={() => setDialog({ kind: 'research' })}>
           {research_ ? (
             <>
@@ -628,7 +638,14 @@ export function Game({
             ))}
         </span>
         <button className="secondary" onClick={() => setDialog({ kind: 'designs' })} title="D">
-          ⚔ Unit designs ({me.designs.length})
+          ⚔ Designs ({me.designs.length})
+        </button>
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'goods' })}
+          title="Goods per turn (G)"
+        >
+          📦 Goods{goodsShort ? <b className="war-pill">{goodsShort} short</b> : ''}
         </button>
         <button className="secondary" onClick={() => setDialog({ kind: 'peoples' })}>
           👥 Peoples
@@ -646,10 +663,10 @@ export function Game({
           disabled={!lastReport.length}
           title="What happened last turn"
         >
-          📜 Last turn
+          📜<span className="wide-only"> Last turn</span>
         </button>
-        <span className="muted secondary">
-          {myCities.length} {myCities.length === 1 ? 'city' : 'cities'}
+        <span className="muted secondary wide-only">
+          {myCities.length} {myCities.length === 1 ? 'settlement' : 'settlements'}
         </span>
         <span className="spacer" />
         <button
@@ -990,6 +1007,17 @@ export function Game({
           onKeep={ids => {
             report(resolveUpheaval(game, me.id, ids));
             saveGame(game);
+          }}
+        />
+      )}
+      {dialog?.kind === 'goods' && (
+        <GoodsDialog
+          game={game}
+          civId={me.id}
+          onClose={() => setDialog(null)}
+          onDeal={(id, o) => {
+            const r = proposeDeal(game, me.id, id, o);
+            report({ ok: r.ok, msg: r.msg } as Result);
           }}
         />
       )}

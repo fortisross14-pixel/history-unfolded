@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { DEPOSITS, GOODS } from '../data/goods.ts';
+import { DEPOSITS, GOODS, SPECIAL_MIN } from '../data/goods.ts';
 import {
   GROUPS,
   isRural,
@@ -25,6 +25,7 @@ import {
   marketStock,
   slotProblem,
   type Totals,
+  workable,
 } from '../engine/economy.ts';
 import {
   applyBlueprint,
@@ -254,6 +255,40 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                 {up.problem && <p className="muted small why">{up.problem}</p>}
               </div>
             )}
+            {(e.fuel.need > 0 || e.comfort.want > 0) && (
+              <>
+                <h3>Needs</h3>
+                {e.fuel.need > 0 && (
+                  <p className="small">
+                    Hearths burn {e.fuel.need} fuel a turn:{' '}
+                    {e.fuel.good === 'coal' ? (
+                      'coal (+5% production)'
+                    ) : e.fuel.good === 'wood' ? (
+                      'wood (coal would add 5% production)'
+                    ) : (
+                      <b className="bad">none to burn: everything −15%</b>
+                    )}
+                  </p>
+                )}
+                {e.comfort.want > 0 && (
+                  <p className="small">
+                    Comforts: {e.comfort.want} luxur{e.comfort.want > 1 ? 'ies' : 'y'} a turn,{' '}
+                    {Object.keys(e.comfort.got).length ? (
+                      <>
+                        gets <Goods goods={e.comfort.got} />
+                      </>
+                    ) : (
+                      'gets none'
+                    )}{' '}
+                    ·{' '}
+                    <b className={e.comfort.pct < 0 ? 'bad' : 'good'}>
+                      {e.comfort.pct >= 0 ? '+' : ''}
+                      {e.comfort.pct}% gold and culture
+                    </b>
+                  </p>
+                )}
+              </>
+            )}
             <h3>Market</h3>
             <p className="small">
               {market.length > 1
@@ -404,6 +439,7 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                                 <YieldLine y={x.rep.out} />
                               </small>
                             )}
+                            {x.rep?.note && <small className="cell-note">{x.rep.note}</small>}
                           </>
                         ) : (
                           <small className="muted">+ empty</small>
@@ -586,6 +622,20 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                                   <small>
                                     <YieldLine y={t.out} />
                                   </small>
+                                  {(() => {
+                                    // what this land would add to it
+                                    const w = workable(game, c.civId, c.hex, t.id, 9);
+                                    if (!w.open.length) return null;
+                                    const sp = w.open.filter(k => DEPOSITS[k].special);
+                                    return (
+                                      <small className="good">
+                                        Here: {w.open.map(k => DEPOSITS[k].name).join(', ')}
+                                        {sp.length
+                                          ? ` (${sp.map(k => DEPOSITS[k].name).join(', ')} with ${SPECIAL_MIN}+ in one district)`
+                                          : ''}
+                                      </small>
+                                    );
+                                  })()}
                                   <small className="muted">
                                     {t.labour ? `${t.labour} workers · ` : ''}
                                     {t.build.prod} prod{t.build.goods ? ' + ' : ''}
@@ -614,16 +664,18 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                 <ul className="small">
                   <li>Each building needs workers: half of the city's people can work.</li>
                   <li>
-                    Buildings use what is on the district's hex and the six around it: forest for
-                    woodlots, deposits for mines, flat land for fields.
+                    Farms, pastures, woodcutters and mines give a little anywhere (½ a unit). What
+                    lies on the settlement's land adds more: pigs, wheat and fish more food, cattle
+                    leather, sheep wool, a forest more wood.
                   </li>
                   <li>
-                    Mines run at full rate for richness × 2 slots; past that, half rate. A deposit
-                    feeds one district only.
+                    Special goods (coal, iron, gold, sugar, spices, furs, whales…) need{' '}
+                    {SPECIAL_MIN} or more of the working building in one district; then each brings
+                    a unit, so eight mines by coal dig eight coal.
                   </li>
                   <li>
                     Neighbours matter: an infirmary in the middle boosts four mines; banks next to
-                    banks earn more; pigs next to grain grow fatter.
+                    banks earn more; a granary feeds the farms around it.
                   </li>
                   <li>Houses make room for people. Without room the city stops growing.</li>
                 </ul>

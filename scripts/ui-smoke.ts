@@ -79,23 +79,29 @@ const pick = async (i: number, name: string) => {
   const b = page.locator('.pal:not(.locked)', { hasText: name }).first();
   if (await b.count()) await b.click();
 };
-await pick(4, 'Grain field');
-await pick(1, 'Pig pen');
-await pick(3, 'Pig pen');
-await pick(5, 'Pig pen');
-await pick(7, 'Woodlot');
-await pick(0, 'Cattle pasture');
+await pick(4, 'Farm');
+await pick(1, 'Pasture');
+await pick(3, 'Pasture');
+await pick(5, 'Mine');
+await pick(7, 'Woodcutter');
+await pick(0, 'Mine');
+await pick(2, 'Mine');
 await page.fill('.bp-row input', 'Farm');
 await page.click('.bp-row button:has-text("Save")');
 await page.locator('.grid3 .cell').nth(1).click();
 await page.screenshot({ path: `${out}/3b-district.png` });
 if (await page.$('.district-tabs button.add')) throw new Error('a town offered a third district');
 await page.click('.modal.city-screen .x');
+// the goods ledger
+await page.keyboard.press('g');
+await page.waitForSelector('.modal.goods-ledger');
+await page.screenshot({ path: `${out}/3c-goods.png` });
+await page.click('.modal.goods-ledger .x');
 await page.click('button:has-text("Raise levy")');
 await page.waitForTimeout(200);
 await page.screenshot({ path: `${out}/3-city-levy.png` });
 // design two unit types and split the new levy between them: 200 + 300
-await page.click('button:has-text("Unit designs")');
+await page.click('button:has-text("Designs")');
 await page.waitForSelector('.modal.designs');
 await page.fill('.design-name', 'Foot Falcons');
 await page.click('.slot:has(h3:text("Weapon")) .item:has-text("Spear")');
@@ -268,7 +274,7 @@ const coastal = await page.evaluate(() => {
   return true;
 });
 if (coastal) {
-  await page.click('button:has-text("Unit designs")');
+  await page.click('button:has-text("Designs")');
   await page.click('.land-sea button:has-text("Ships")');
   await page.fill('.design-name', 'Ferry');
   await page.click('.slot:has(h3:text("Hull")) .item:has-text("Galley")');

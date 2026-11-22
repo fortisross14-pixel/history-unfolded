@@ -40,6 +40,7 @@ import {
   marketCities,
   marketSpend,
   marketStock,
+  marketTake,
   slotProblem,
 } from './economy.ts';
 import { isRural, SLOT_TYPES } from '../data/slots.ts';
@@ -63,7 +64,7 @@ import {
   SETTLER_COHORTS,
 } from './units.ts';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
 /** Settlements may not touch: at least one hex between them. */
@@ -905,7 +906,8 @@ export function endTurn(s: GameState): string[] {
       gold += e.total.gold;
       for (const [k, n] of Object.entries(e.total.goods))
         c.stockpile[k] = (c.stockpile[k] ?? 0) + n;
-      marketSpend(s, c, e.inputs);
+      // what the buildings and hearths burned this turn (as much as the market had)
+      marketTake(s, c, e.inputs);
       c.food += fed.get(c.id) ?? e.surplus;
       // food stored turns into people while there is housing; starvation shrinks the city
       const need = growthCost(s, c);
@@ -1070,6 +1072,29 @@ const MIGRATIONS: Record<number, (d: GameState) => GameState> = {
     }
     return { ...d, version: 7 };
   },
+  // 7 → 8: the specialised rural buildings became farms, pastures and mines
+  7: d => {
+    const to: Record<string, string> = {
+      'grain-field': 'farm',
+      'pig-pen': 'pasture',
+      'cattle-pasture': 'pasture',
+      'sheep-run': 'pasture',
+      'horse-stud': 'pasture',
+      quarry: 'mine',
+      'copper-mine': 'mine',
+      'tin-mine': 'mine',
+      'iron-mine': 'mine',
+      'coal-mine': 'mine',
+      'gold-mine': 'mine',
+      'silver-mine': 'mine',
+      'saltpeter-works': 'mine',
+    };
+    for (const x of d.districts)
+      for (const st of x.slots) if (st.type && to[st.type]) st.type = to[st.type];
+    for (const c of d.civs)
+      for (const b of c.blueprints) b.slots = b.slots.map(t => (t && to[t]) || t);
+    return { ...d, version: 8 };
+  },
 };
 export const MIN_SAVE_VERSION = 5;
 
@@ -1152,6 +1177,12 @@ function validate(s: GameState) {
   for (const f of s.formations)
     for (const co of f.cohorts)
       for (const k of SLOTS) if (!ITEMS[co.loadout[k]]) co.loadout[k] = DEFAULT_LOADOUT[k];
+  // buildings that no longer exist leave an empty cell
+  for (const d of s.districts)
+    for (let i = 0; i < 9; i++)
+      if (d.slots[i].type && !SLOT_TYPES[d.slots[i].type!]) d.slots[i] = emptySlot();
+  for (const c of s.civs)
+    for (const b of c.blueprints) b.slots = b.slots.map(t => (t && SLOT_TYPES[t] ? t : null));
 }
 
 export const defaultCivCount = (size: keyof typeof MAP_SIZES) => MAP_SIZES[size].civs;

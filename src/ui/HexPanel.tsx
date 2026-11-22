@@ -1,6 +1,7 @@
+import { SLOT_TYPES } from '../data/slots.ts';
 import { landOf } from '../engine/economy.ts';
 import { within } from '../engine/hex.ts';
-import { DEPOSITS } from '../data/goods.ts';
+import { SPECIAL_MIN, DEPOSITS } from '../data/goods.ts';
 import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
 import { depositVisible, territory } from '../engine/game.ts';
 import { hexFood } from '../engine/mapgen.ts';
@@ -62,12 +63,19 @@ export function HexPanel({
             <tr>
               <td>Deposit</td>
               <td>
-                {DEPOSITS[d.kind].name} {'★'.repeat(d.richness)}{' '}
-                <Goods
-                  goods={Object.fromEntries(
-                    Object.entries(DEPOSITS[d.kind].yields).map(([k, n]) => [k, n * d.richness]),
-                  )}
-                />
+                {DEPOSITS[d.kind].name} <Goods goods={DEPOSITS[d.kind].yields} />
+                <div className="muted small">
+                  {(() => {
+                    const info = DEPOSITS[d.kind];
+                    const by = SLOT_TYPES[info.by]?.name.toLowerCase() ?? info.by;
+                    return info.special
+                      ? `A town beside it with ${SPECIAL_MIN}+ ${by}s in one district: each brings a unit.`
+                      : `Any ${by} of a town beside it does better.`;
+                  })()}
+                  {DEPOSITS[d.kind].tech && !game.civs[civId].techs.includes(DEPOSITS[d.kind].tech!)
+                    ? ` Needs ${DEPOSITS[d.kind].tech!.replace('-', ' ')}.`
+                    : ''}
+                </div>
               </td>
             </tr>
           )}

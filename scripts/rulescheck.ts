@@ -1,5 +1,6 @@
 /** Headless checks of the core rules: setup, movement, merge, split, refit, levy, turns. */
 import { DEFAULT_LOADOUT } from '../src/data/items.ts';
+import { isRural } from '../src/data/slots.ts';
 import {
   cityAt,
   deserialize,
@@ -35,6 +36,7 @@ import { findPath } from '../src/engine/path.ts';
 import {
   cityDistricts,
   cityEconomy,
+  civGoods,
   invalidateMarkets,
   isCentre,
   landOf,
@@ -94,15 +96,15 @@ for (const seed of [1, 2, 3, 42]) {
     `the town works its hex and the ring around it (${landOf(s, capital).length} hexes)`,
   );
   const farmSlots = [
-    'pig-pen',
-    'pig-pen',
-    'pig-pen',
-    'pig-pen',
-    'grain-field',
-    'pig-pen',
-    'cattle-pasture',
-    'cattle-pasture',
+    'pasture',
+    'pasture',
+    'pasture',
+    'farm',
+    'farm',
+    'farm',
     'woodlot',
+    'woodlot',
+    'houses',
   ];
   const pd = placeDistrict(s, capital.id, 'Farm', farmSlots);
   check(pd.ok, 'place a "Farm" district: ' + pd.msg);
@@ -117,24 +119,110 @@ for (const seed of [1, 2, 3, 42]) {
   check(!placeDistrict(s, capital.id, 'Again', []).ok, 'a town holds two districts');
   void slotProblem;
   check(!setSlot(s, centreD!.id, 4, 'houses').ok, 'the town hall cannot be replaced');
-  // grain next to pigs: the pig pen at index 1 or 3 or 5 or 7 borders the grain field at 4
   capital.stockpile.wood = 50;
   for (let t = 0; t < 25; t++) endTurn(s);
   const built = farm.slots.filter(x => x.built).length;
   check(built >= 3, `${built} farm slots built after 25 turns`);
   const econ = cityEconomy(s, capital);
-  const rep = econ.slots.get(farm.id)!;
-  const pigNextToGrain = [1, 3, 5, 7].find(
-    i => farm.slots[i].built && farm.slots[i].type === 'pig-pen' && farm.slots[4].built,
-  );
-  if (pigNextToGrain !== undefined) {
-    const lone = [0, 2].find(i => farm.slots[i].built && farm.slots[i].type === 'pig-pen');
-    if (lone !== undefined && rep[lone].staffed && rep[pigNextToGrain].staffed)
-      check(rep[pigNextToGrain].out.food > rep[lone].out.food, 'pigs next to grain make more food');
-  }
+  void econ.slots;
   check(econ.workersUsed <= econ.workers, `workers ${econ.workersUsed}/${econ.workers}`);
   const lim = cityEconomy(s, capital).total.housing;
   check(capital.pop <= lim, `population ${capital.pop} within housing ${lim}`);
+
+  // --- extraction: a little of anything anywhere, the land's goods for those who work them
+  {
+    const t = structuredClone(s);
+    const tc = t.cities.find(c => c.id === capital.id)!;
+    const td = t.districts.find(d => d.id === pd.id)!;
+    const spot = landOf(t, tc).find(h => h !== tc.hex && isPassableLand(t.map, h))!;
+    const others = landOf(t, tc).filter(h => h !== spot);
+    for (const h of others) t.map.deposit[h] = null;
+    t.civs[me.id].techs.push('mineralogy');
+    tc.pop = 20000;
+    const fill = (types: string[]) => {
+      for (let i = 0; i < 9; i++)
+        td.slots[i] = types[i]
+          ? { type: types[i], built: true, progress: 0, paid: true }
+          : { type: null, built: false, progress: 0, paid: false };
+    };
+    const out = () => cityEconomy(t, tc).slots.get(td.id)!;
+    const sum = (k: string) =>
+      out().reduce((a, x) => a + (k === 'food' ? x.out.food : (x.out.goods[k] ?? 0)), 0);
+    t.map.deposit[spot] = null;
+    fill(['farm', 'farm']);
+    check(Math.abs(sum('food') - 1) < 1e-6, `two plain farms give 1 food (${sum('food')})`);
+    fill(['mine', 'mine']);
+    check(Math.abs(sum('stone') - 1) < 1e-6, `two mines anywhere give 1 stone (${sum('stone')})`);
+    t.map.deposit[spot] = { kind: 'coal', richness: 1 };
+    fill(['mine', 'mine']);
+    check(!sum('coal'), 'two mines next to coal dig no coal');
+    check(/need 3 mines/.test(out()[0].note ?? ''), `the slot says why: "${out()[0].note}"`);
+    fill(['mine', 'mine', 'mine']);
+    check(sum('coal') === 3, `three mines next to coal: 3 coal (${sum('coal')})`);
+    fill(['mine', 'mine', 'mine', 'mine', 'mine', 'mine', 'mine', 'mine']);
+    check(sum('coal') === 8, `eight mines: 8 coal a turn (${sum('coal')})`);
+    t.map.deposit[spot] = { kind: 'pigs', richness: 1 };
+    fill(['pasture', 'pasture']);
+    check(sum('food') === 2, `two pastures by pigs: 2 food (${sum('food')})`);
+    t.map.deposit[spot] = { kind: 'cattle', richness: 1 };
+    check(
+      sum('food') === 1 && sum('hides') === 2,
+      `two pastures by cattle: 1 food and 2 leather (${sum('food')}, ${sum('hides')})`,
+    );
+    t.map.deposit[spot] = { kind: 'sheep', richness: 1 };
+    check(sum('wool') === 2, `two pastures by sheep: 2 wool (${sum('wool')})`);
+    // a workshop with no wood limps along at a third
+    fill(['workshop']);
+    for (const c of t.cities) if (c.civId === me.id) c.stockpile.wood = 0;
+    const r0 = out()[0];
+    check(
+      r0.staffed && r0.rate < 0.5 && /Short of wood/.test(r0.note ?? ''),
+      `short of wood, a workshop runs at a third (${r0.note})`,
+    );
+    // comforts: a luxury a turn per 4,000 people, variety adds gold and culture
+    tc.pop = 8000;
+    for (const c of t.cities)
+      if (c.civId === me.id) c.stockpile = { sugar: 20, spices: 20, wood: 50 };
+    const cm = cityEconomy(t, tc).comfort;
+    check(
+      cm.want === 2 && cm.got.sugar === 1 && cm.got.spices === 1 && cm.pct === 10,
+      `8,000 people take two luxuries, one of each kind: +${cm.pct}%`,
+    );
+    for (const c of t.cities) if (c.civId === me.id) c.stockpile = { wood: 50 };
+    check(cityEconomy(t, tc).comfort.pct === -10, 'no luxuries: −10% gold and culture');
+    // cities burn coal, else wood
+    tc.tier = 'city';
+    for (const c of t.cities) if (c.civId === me.id) c.stockpile = { coal: 10, wood: 10 };
+    const fu = cityEconomy(t, tc).fuel;
+    check(
+      fu.good === 'coal' && fu.need === 2,
+      `a city of 8,000 burns 2 coal (${fu.need} ${fu.good})`,
+    );
+    for (const c of t.cities) if (c.civId === me.id) c.stockpile = { wood: 10 };
+    check(cityEconomy(t, tc).fuel.good === 'wood', 'no coal: it burns wood');
+    tc.tier = 'town';
+    // a sale by the turn shows in both peoples' ledgers
+    const buyer = t.civs.find(c => c.id !== me.id && c.alive)!;
+    t.treaties.push({
+      kind: 'trade',
+      a: me.id,
+      b: buyer.id,
+      since: t.turn,
+      until: t.turn + 20,
+      aGives: { goodsPerTurn: { wool: 3 } },
+      bGives: { goldPerTurn: 4 },
+    });
+    check(
+      civGoods(t, me.id).wool?.traded === -3 && civGoods(t, buyer.id).wool?.traded === 3,
+      'selling 3 wool a turn: −3 for us, +3 for them',
+    );
+    // the goods ledger: made − used + traded
+    const lg = civGoods(t, me.id);
+    check(
+      Object.values(lg).every(l => Math.abs(l.net - (l.made - l.used + l.traded)) < 0.11),
+      'goods ledger adds up',
+    );
+  }
 
   // --- spacing: settlements may not touch, one hex between is fine
   {
@@ -178,12 +266,12 @@ for (const seed of [1, 2, 3, 42]) {
     tc.stockpile.stone = 100;
     tc.stockpile.wood = 100;
     const farmD = t.districts.find(d => d.id === pd.id)!;
-    const rural = farmD.slots.filter(x => x.type).length;
+    const rural = farmD.slots.filter(x => isRural(x.type)).length;
     const up = upgradeSettlement(t, tc.id);
     check(up.ok && tc.tier === 'city', 'the town becomes a city: ' + up.msg);
     check(
-      farmD.slots.every(x => !x.type) && rural > 0,
-      `the farm district is cleared (${rural} rural buildings pulled down)`,
+      farmD.slots.every(x => !isRural(x.type)) && farmD.slots.some(x => x.type) && rural > 0,
+      `farms and woodcutters are pulled down, the houses stay (${rural} rural buildings)`,
     );
     check(!!slotProblem(t, me.id, tc.hex, false, 'grain-field'), 'a city cannot lay out fields');
     check(placeDistrict(t, tc.id, 'Library quarter', []).ok, 'a city takes a third district');
@@ -273,8 +361,9 @@ for (const seed of [1, 2, 3, 42]) {
   }
 
   // raise a second levy and merge it by moving onto the first
+  const popBefore = capital.pop;
   check(levy(s, capital.id).ok, 'raise 2nd levy');
-  check(capital.pop === 1500, 'levy took 500 people');
+  check(capital.pop === popBefore - 500, 'levy took 500 people');
   const levy2 = mine().find(f => f.name === '2nd Levy')!;
   endTurn(s);
   const mv = orderMove(s, levy2.id, levy1.hex);

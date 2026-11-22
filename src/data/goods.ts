@@ -23,7 +23,13 @@ export const GOODS: Record<string, GoodInfo> = {
   saltpeter: { name: 'Saltpeter', kind: 'raw', glyph: 'Sp', color: '#c9c3b4' },
   horses: { name: 'Horses', kind: 'raw', glyph: 'Hr', color: '#7b4b2a' },
   grain: { name: 'Grain', kind: 'food', icon: 'corn', glyph: 'Gr', color: '#c9a640' },
-  fish: { name: 'Fish', kind: 'food', icon: 'cod', glyph: 'Fi', color: '#5b7f95' },
+  fish: {
+    name: 'Fish',
+    kind: 'food',
+    icon: 'cod',
+    glyph: 'Fi',
+    color: '#5b7f95',
+  },
   meat: { name: 'Meat', kind: 'food', glyph: 'Mt', color: '#a0473a' },
   ivory: { name: 'Ivory', kind: 'luxury', glyph: 'Iv', color: '#a8956a' },
   furs: { name: 'Furs', kind: 'luxury', icon: 'furs', glyph: 'Fu', color: '#6d4a2e' },
@@ -33,12 +39,31 @@ export const GOODS: Record<string, GoodInfo> = {
   silk: { name: 'Silk', kind: 'luxury', icon: 'silk', glyph: 'Sk', color: '#b56b8f' },
   dyes: { name: 'Dyes', kind: 'luxury', icon: 'dyes', glyph: 'Dy', color: '#5a4f9a' },
   wine: { name: 'Wine', kind: 'luxury', icon: 'wine', glyph: 'Wn', color: '#7a2a3a' },
+  wool: { name: 'Wool', kind: 'raw', glyph: 'Wo', color: '#d8cfb8' },
+  sugar: { name: 'Sugar', kind: 'luxury', glyph: 'Su', color: '#e7dcc8' },
+  'whale-oil': { name: 'Whale oil', kind: 'luxury', glyph: 'Wh', color: '#4d6a7a' },
+  pearls: { name: 'Pearls', kind: 'luxury', glyph: 'Pe', color: '#e9e4f0' },
 };
+
+/** Luxuries settlements consume as comforts: one unit a turn per this many people. */
+export const COMFORT_PEOPLE = 4000;
+/** Gold and culture per comfort kind received, and lost per unit missing. */
+export const COMFORT_PCT = 5;
+
+/** Special goods need a dedicated district: at least this many of the working building in it. */
+export const SPECIAL_MIN = 3;
 
 export interface DepositInfo {
   name: string;
-  /** what one richness level yields per turn when worked */
+  /** the good it stands for (icons, colours) */
   yields: Record<string, number>;
+  /** the building that works it, and what each such building gains from it */
+  by: string;
+  gives: { food?: number; gold?: number; goods?: Record<string, number> };
+  /** a special good: only a district with SPECIAL_MIN of `by` gets it */
+  special?: boolean;
+  /** tech needed to work it (beyond seeing it) */
+  tech?: string;
   terrain: TerrainId[];
   relief?: ReliefId[];
   vegetation?: VegetationId[];
@@ -52,6 +77,8 @@ const LAND_OPEN: TerrainId[] = ['grassland', 'plains'];
 
 export const DEPOSITS: Record<string, DepositInfo> = {
   wheat: {
+    by: 'farm',
+    gives: { food: 0.5 },
     name: 'Wheat',
     yields: { grain: 1 },
     terrain: ['plains', 'grassland'],
@@ -60,6 +87,8 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 6,
   },
   rice: {
+    by: 'farm',
+    gives: { food: 0.5 },
     name: 'Rice',
     yields: { grain: 1 },
     terrain: ['grassland'],
@@ -67,8 +96,17 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     vegetation: ['none', 'marsh'],
     weight: 3,
   },
-  fish: { name: 'Fish', yields: { fish: 1 }, terrain: ['coast', 'lake'], weight: 6 },
+  fish: {
+    name: 'Fish',
+    by: 'fishing-dock',
+    gives: { food: 0.5 },
+    yields: { fish: 1 },
+    terrain: ['coast', 'lake'],
+    weight: 6,
+  },
   pigs: {
+    by: 'pasture',
+    gives: { food: 0.5 },
     name: 'Pigs',
     yields: { meat: 1 },
     terrain: LAND_OPEN,
@@ -76,6 +114,8 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 3,
   },
   cattle: {
+    by: 'pasture',
+    gives: { goods: { hides: 1 } },
     name: 'Cattle',
     yields: { meat: 1, hides: 1 },
     terrain: LAND_OPEN,
@@ -84,6 +124,8 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 4,
   },
   sheep: {
+    by: 'pasture',
+    gives: { goods: { wool: 1 } },
     name: 'Sheep',
     yields: { meat: 1, hides: 1 },
     terrain: ['plains', 'grassland', 'tundra'],
@@ -91,6 +133,8 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 3,
   },
   game: {
+    by: 'hunting-lodge',
+    gives: { food: 0.5, goods: { hides: 0.5 } },
     name: 'Game',
     yields: { hides: 1, meat: 1 },
     terrain: ['tundra', 'grassland', 'plains'],
@@ -98,6 +142,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 4,
   },
   horses: {
+    by: 'pasture',
+    gives: { goods: { horses: 1 } },
+    tech: 'animal-husbandry',
     name: 'Horses',
     yields: { horses: 1 },
     terrain: ['plains', 'grassland', 'desert'],
@@ -106,6 +153,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 3,
   },
   stone: {
+    by: 'mine',
+    gives: { goods: { stone: 1 } },
+    special: true,
     name: 'Stone',
     yields: { stone: 1 },
     terrain: ['plains', 'grassland', 'desert', 'tundra'],
@@ -113,6 +163,10 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 4,
   },
   copper: {
+    by: 'mine',
+    gives: { goods: { copper: 1 } },
+    special: true,
+    tech: 'mining',
     name: 'Copper',
     yields: { copper: 1 },
     terrain: ['plains', 'grassland', 'desert', 'tundra'],
@@ -120,6 +174,10 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 3,
   },
   tin: {
+    by: 'mine',
+    gives: { goods: { tin: 1 } },
+    special: true,
+    tech: 'mining',
     name: 'Tin',
     yields: { tin: 1 },
     terrain: ['plains', 'grassland', 'desert', 'tundra'],
@@ -128,6 +186,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 2,
   },
   iron: {
+    by: 'mine',
+    gives: { goods: { iron: 1 } },
+    special: true,
     name: 'Iron',
     yields: { iron: 1 },
     terrain: ['plains', 'grassland', 'desert', 'tundra', 'snow'],
@@ -136,6 +197,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     revealedBy: 'iron-working',
   },
   coal: {
+    by: 'mine',
+    gives: { goods: { coal: 1 } },
+    special: true,
     name: 'Coal',
     yields: { coal: 1 },
     terrain: ['plains', 'grassland', 'tundra'],
@@ -145,6 +209,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     revealedBy: 'mineralogy',
   },
   saltpeter: {
+    by: 'mine',
+    gives: { goods: { saltpeter: 1 } },
+    special: true,
     name: 'Saltpeter',
     yields: { saltpeter: 1 },
     terrain: ['desert', 'plains'],
@@ -152,6 +219,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     revealedBy: 'alchemy',
   },
   ivory: {
+    by: 'hunting-lodge',
+    gives: { goods: { ivory: 1 } },
+    special: true,
     name: 'Ivory',
     yields: { ivory: 1 },
     terrain: ['plains', 'grassland'],
@@ -159,6 +229,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 2,
   },
   furs: {
+    by: 'hunting-lodge',
+    gives: { goods: { furs: 1 } },
+    special: true,
     name: 'Furs',
     yields: { furs: 1 },
     terrain: ['tundra', 'snow'],
@@ -166,6 +239,10 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 3,
   },
   gold: {
+    by: 'mine',
+    gives: { gold: 1, goods: { gold: 1 } },
+    special: true,
+    tech: 'mining',
     name: 'Gold',
     yields: { gold: 1 },
     terrain: ['desert', 'plains', 'grassland'],
@@ -173,6 +250,10 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 1,
   },
   silver: {
+    by: 'mine',
+    gives: { gold: 1, goods: { silver: 1 } },
+    special: true,
+    tech: 'mining',
     name: 'Silver',
     yields: { silver: 1 },
     terrain: ['tundra', 'plains', 'desert'],
@@ -180,6 +261,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 1,
   },
   spices: {
+    by: 'plantation',
+    gives: { goods: { spices: 1 } },
+    special: true,
     name: 'Spices',
     yields: { spices: 1 },
     terrain: ['grassland', 'plains'],
@@ -187,6 +271,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 2,
   },
   silk: {
+    by: 'plantation',
+    gives: { goods: { silk: 1 } },
+    special: true,
     name: 'Silk',
     yields: { silk: 1 },
     terrain: ['grassland', 'plains'],
@@ -194,6 +281,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 1,
   },
   dyes: {
+    by: 'plantation',
+    gives: { goods: { dyes: 1 } },
+    special: true,
     name: 'Dyes',
     yields: { dyes: 1 },
     terrain: ['grassland'],
@@ -201,11 +291,43 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 1,
   },
   wine: {
+    by: 'plantation',
+    gives: { goods: { wine: 1 } },
+    special: true,
     name: 'Wine',
     yields: { wine: 1 },
     terrain: ['plains', 'grassland'],
     relief: ['hills', 'flat'],
     vegetation: ['none'],
+    weight: 1,
+  },
+  sugar: {
+    name: 'Sugar',
+    by: 'plantation',
+    gives: { goods: { sugar: 1 } },
+    special: true,
+    yields: { sugar: 1 },
+    terrain: ['grassland', 'plains'],
+    relief: ['flat'],
+    vegetation: ['jungle', 'none', 'marsh'],
+    weight: 2,
+  },
+  whales: {
+    name: 'Whales',
+    by: 'fishing-dock',
+    gives: { goods: { 'whale-oil': 1 } },
+    special: true,
+    yields: { 'whale-oil': 1 },
+    terrain: ['coast'],
+    weight: 2,
+  },
+  pearls: {
+    name: 'Pearls',
+    by: 'fishing-dock',
+    gives: { goods: { pearls: 1 } },
+    special: true,
+    yields: { pearls: 1 },
+    terrain: ['coast'],
     weight: 1,
   },
 };

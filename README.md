@@ -55,6 +55,14 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   libraries (buildings of a kind gain from each other). Buildings need workers and something on
   the settlement's land (forest, flat land, a deposit), boost their neighbours, and are built by
   its production. Save layouts as blueprints. Houses give room to grow.
+- **Working the land**: farms, pastures, woodcutters and mines give half a unit anywhere; pigs,
+  wheat, fish and forest add more, cattle bring leather and sheep wool. Special goods (coal,
+  iron, gold, sugar, spices, furs, whales, pearls…) need three of the working building in one
+  district, then add up: eight mines by coal dig eight coal a turn.
+- **Goods by the turn**: settlements consume luxuries as comforts, cities burn coal or wood,
+  smithies, tanneries, weavers, mints and foundries work goods up; what runs out lowers yields.
+  The Goods screen (G) shows made, used, traded and net per good and sells a surplus by the turn
+  to other peoples.
 - **Roads and markets**: lay roads with any formation (half a move per hex along them). Cities
   joined by road or river share one store; an enemy on the road cuts it.
 - **War and peace, cities falling**: declare war, capture cities by breaking their guard,

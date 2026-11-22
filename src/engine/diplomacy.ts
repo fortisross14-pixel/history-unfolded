@@ -5,6 +5,7 @@
  */
 import { OPPOSED, TAGS } from '../data/culture.ts';
 import { GOODS } from '../data/goods.ts';
+import { civGoods, type GoodLine } from './economy.ts';
 import { marketSpend, marketStock } from './economy.ts';
 import { distance } from './hex.ts';
 import { tagCounts } from './mods.ts';
@@ -135,17 +136,54 @@ const PRICE: Record<string, number> = {
   coal: 3,
   saltpeter: 5,
   horses: 4,
+  wool: 2,
+  'whale-oil': 3,
 };
 const priceOf = (g: string) => PRICE[g] ?? (GOODS[g]?.kind === 'luxury' ? 4 : 2);
 
 export const capitalOf = (s: GameState, civId: number): City | undefined =>
   s.cities.filter(c => c.civId === civId).sort((a, b) => a.id - b.id)[0];
 
-/** How much a people values goods: scarce goods are worth more to it. */
+/** A people's goods balance, worked out once per turn and treaty change. */
+const ledgerCache = new WeakMap<
+  GameState,
+  { key: string; by: Map<number, Record<string, GoodLine>> }
+>();
+export function ledgerOf(s: GameState, civId: number): Record<string, GoodLine> {
+  const key = `${s.turn}|${s.treaties.length}|${s.cities.length}|${s.districts.length}`;
+  let c = ledgerCache.get(s);
+  if (!c || c.key !== key) {
+    c = { key, by: new Map() };
+    ledgerCache.set(s, c);
+  }
+  let l = c.by.get(civId);
+  if (!l) {
+    l = civGoods(s, civId);
+    c.by.set(civId, l);
+  }
+  return l;
+}
+
+/**
+ * How much a people values goods: what it runs short of each turn is dear, a steady surplus
+ * piling up is cheap.
+ */
 function goodValue(s: GameState, civId: number, g: string, n: number): number {
-  const cap = capitalOf(s, civId);
-  const have = cap ? (marketStock(s, cap)[g] ?? 0) : 0;
-  const need = have < 15 ? 1.6 : have < 60 ? 1 : have < 200 ? 0.6 : 0.3;
+  const l = ledgerOf(s, civId)[g];
+  const net = l?.net ?? 0,
+    have = l?.stock ?? 0;
+  const need =
+    net < 0
+      ? have < -net * 10
+        ? 2
+        : 1.4
+      : have < 15
+        ? 1.5
+        : net >= 2 && have > 60
+          ? 0.35
+          : have < 60
+            ? 1
+            : 0.6;
   return priceOf(g) * need * n;
 }
 

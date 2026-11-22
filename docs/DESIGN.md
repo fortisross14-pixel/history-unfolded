@@ -291,9 +291,8 @@ The player's examples are just designs:
    for woodlots, flat open land for grain fields, hills for sheep, a coast or lake for fishing
    docks, a deposit for mines. So a "Farm" on grassland next to a forest can hold pigs, cattle,
    grain and a woodlot.
-2. **Capacity.** Deposit slots run at full rate for richness × 2 slots of that type in the
-   settlement, then at half rate. Land slots run at full rate for two slots per matching hex of
-   its land. A deposit belongs to the settlement whose land it lies on.
+2. **Deposits** belong to the settlement whose land they lie on and work as in §8.0: special
+   goods need three of the working building in one district, then each brings a unit.
    Deposits also boost their farm: wheat or rice under grain fields, cattle under pastures,
    fish under docks.
 3. **Adjacency inside the grid** (up, down, left, right). An infirmary in the centre touches
@@ -338,6 +337,45 @@ and residential, with banks, stock exchanges, iron and coal mines and infirmarie
   diplomacy can include goods-for-goods deals ("20 iron per turn for 5 ivory").
 - **Happiness/stability:** luxuries, culture alignment and war weariness. Feeds unrest and is
   one of the triggers of upheaval (§9.4).
+
+### 8.0 Working the land (as built)
+
+Every rural building gives a little anywhere; what lies on the settlement's land adds more.
+
+| Building | Anywhere | With what lies on the land |
+|---|---|---|
+| Farm | ½ food | wheat or rice: 1 food |
+| Pasture | ½ food | pigs: 1 food · cattle: +1 leather · sheep: +1 wool · horses (Animal Husbandry): +1 horses |
+| Woodcutter | ½ wood | a forest or jungle: 1 wood |
+| Mine | ½ stone | stone, coal, iron, copper, tin, gold, silver, saltpeter: +1 of it (special) |
+| Plantation | ½ food | sugar, spices, silk, dyes, wine: +1 of it (special) |
+| Hunting lodge | ½ food | game: +½ food and ½ hides · furs, ivory: +1 (special) |
+| Fishing boats (coast) | ½ food | fish: 1 food · whales: +1 whale oil, pearls: +1 pearls (special) |
+
+- **Special goods need a dedicated district**: a town beside the deposit and at least **3** of
+  the working building in one district. Then every one of them brings a unit, so goods add up:
+  eight mines by coal dig 8 coal a turn. With fewer, the slot says what is missing ("Coal needs
+  3 mines in this district (2 now)"). Animals, grain, fish and forest work for any number.
+- With several deposits for one building on the land, the buildings take them in turn.
+- A thousand people eat one food a turn (two farms' worth).
+
+**Demand.** Goods are made to be used, and use grows with the people:
+- **Comforts**: every settlement takes one luxury a turn per 4,000 people (sugar, spices, silk,
+  dyes, wine, furs, ivory, gold, silver, pearls, whale oil). Each kind it gets adds 5% gold and
+  culture; each unit missing takes 5% away.
+- **Fuel**: cities and the metropolis burn one fuel per 4,000 people: coal if the market has it
+  (+5% production), else wood; with neither, everything they make drops 15%.
+- **Workshops**: workshop (wood → production), smithy (copper and tin → production), tannery
+  (leather → gold), weaver (wool → gold), mint (gold → coin), foundry (coal and iron →
+  production). Short of its goods, a building runs at a third.
+- Equipment and construction spend goods once (§5.3).
+
+**Trade by the turn.** The Goods screen (G) shows per good what all settlements make, what they
+use, what deals bring or take, the net and the store, with how many turns a shortfall leaves.
+**Sell** offers a surplus per turn to a people at peace for gold per turn, for 20 turns, paid
+from the capitals' markets. Peoples value goods by their own balance: what they run short of each
+turn is dear, a steady surplus piling up is cheap. AI peoples offer to sell what you run short
+of, or to buy what you have to spare. A seller who cannot deliver is remembered for it.
 
 ### 8.1 Cities, roads and markets (as built)
 

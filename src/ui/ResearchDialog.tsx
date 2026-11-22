@@ -29,6 +29,10 @@ export function techUnlocks(t: TechInfo): string[] {
   if (items.length) out.push(`⚔ ${items.join(', ')}`);
   if (slots.length) out.push(`▦ ${slots.join(', ')}`);
   if (reveals.length) out.push(`👁 reveals ${reveals.join(', ')}`);
+  const works = Object.values(DEPOSITS)
+    .filter(d => d.tech === t.id)
+    .map(d => d.name);
+  if (works.length) out.push(`⛏ works ${works.join(', ')}`);
   if (t.mods) out.push(`★ ${describeMods(t.mods)}`);
   return out;
 }

@@ -1,12 +1,17 @@
 """Cut the Ivory Codex icon sheets (art/source/icons-*.png) into icons the game loads.
 
-Usage:  python3 tools/cut_icon_sheets.py [sheet ...]   (sheet = file name without .png; none = all found)
+Usage:  python3 tools/cut_icon_sheets.py [--map] [sheet ...]
+        (sheet = file name without .png; none = all found; --map cuts the map sheets instead)
 Needs:  Pillow and numpy
 
 Reads art/icon-sheets.json (written by scripts/icon-plan.ts): six 1024 px sheets of 8 x 8 icons on
 cream paper. Each cell carries its full key (tech/archery, icon/gold, item/spear ...), so one sheet
 can feed several groups. Uses the same gutter-finding cut and ink lift as tools/cut_sprites.py, writes
 public/sprites/art/<group>/<name>.webp and merges the entries into public/sprites/art-manifest.json.
+
+With --map it reads art/map-sheets.json (written by scripts/map-art-plan.ts) instead: troop, ship
+and settlement figures on flat magenta and terrain symbols on cream, each sheet with its own grid
+and output height.
 """
 import json
 import os
@@ -24,22 +29,26 @@ HEIGHT = 96
 
 
 def cut(sheet):
+    cols, rows = sheet.get("cols", COLS), sheet.get("rows", ROWS)
+    style, height = sheet.get("style", "emblem"), sheet.get("height", HEIGHT)
     path = os.path.join(SRC, sheet["file"])
     im = Image.open(path).convert("RGB")
     rgb = np.asarray(im).astype(np.float32)
     border = np.concatenate([rgb[0], rgb[-1], rgb[:, 0], rgb[:, -1]])
     ref = np.median(border, axis=0)
     fg = (np.sqrt(((rgb - ref) ** 2).sum(axis=2)) > 60).astype(np.float32)
-    boxes = cell_boxes(fg, COLS, ROWS)
+    boxes = cell_boxes(fg, cols, rows)
     out, problems = {}, []
     for key, (x0, y0, x1, y1) in zip(sheet["cells"], boxes):
-        sprite = cut_cell(rgb[y0:y1, x0:x1], "emblem")
+        sprite = cut_cell(rgb[y0:y1, x0:x1], style)
         if sprite is None:
             problems.append(f"{key}: empty cell")
             continue
         if sprite.width >= (x1 - x0) - 2 or sprite.height >= (y1 - y0) - 2:
             problems.append(f"{key}: fills its whole cell")
-        scale = min(1.0, HEIGHT / max(sprite.width, sprite.height))
+        # icons fit a square; map figures keep their height so they stand on the same ground
+        side = max(sprite.width, sprite.height) if style == "emblem" else sprite.height
+        scale = min(1.0, height / side)
         sprite = sprite.resize(
             (max(1, round(sprite.width * scale)), max(1, round(sprite.height * scale))), Image.LANCZOS
         )
@@ -55,8 +64,10 @@ def cut(sheet):
 
 
 def main():
-    sheets = json.load(open(os.path.join(ROOT, "art", "icon-sheets.json")))
-    only = set(sys.argv[1:])
+    args = sys.argv[1:]
+    plan = "map-sheets.json" if "--map" in args else "icon-sheets.json"
+    sheets = json.load(open(os.path.join(ROOT, "art", plan)))
+    only = set(a for a in args if a != "--map")
     manifest = json.load(open(MANIFEST)) if os.path.exists(MANIFEST) else {}
     done = 0
     for sheet in sheets:

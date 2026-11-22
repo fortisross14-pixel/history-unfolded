@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CityScene } from './CityScene.tsx';
 import { Icon } from './icons.tsx';
 import { DEPOSITS, GOODS, SPECIAL_MIN } from '../data/goods.ts';
 import {
@@ -155,6 +156,16 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
           </button>
         </header>
 
+        <CityScene
+          game={game}
+          c={c}
+          selected={mineD?.id}
+          cell={cell}
+          onPick={(d, k) => {
+            setDSel(d);
+            setCell(k);
+          }}
+        />
         <div className="city-body">
           {/* ---------------- hexes */}
           <section className="city-hexes">

@@ -363,6 +363,21 @@ and residential, with banks, stock exchanges, iron and coal mines and infirmarie
   back) and the new one is queued. The rest keep working.
 - The city centre is a district of its own with the town hall fixed in the middle.
 
+### 7a. The settlement in low-poly 3D (as built)
+
+The city screen opens on the settlement in low-poly 3D (three.js, loaded only when a city screen
+opens). The centre district sits in the middle with its town hall; the other districts stand
+around it on a hex-like ring, joined by roads; bare meadow plots with a marker show where
+districts may still be laid out, up to the settlement's cap (2 for a town, 4 for a city, 6 for a
+metropolis). Inside a district every slot is a tile: a low-poly building once built, scaffolding
+while it is being built, a staked plot while empty. Clicking a tile picks that district and slot
+in the editor below; dragging turns the view, the wheel zooms, "Whole settlement" shows all of
+it. The camera frames the district being edited. Rendering is on demand (no animation loop).
+
+Every building goes through one table (`BUILDERS` in `src/render/city3d.ts`, with `ALIAS` for
+buildings that share a look and a generic hall in the building group's colour for the rest), so
+a procedural model can be replaced by a real one later without touching anything else.
+
 ## 8. Economy and goods
 
 - **Yields:** Food, Production, Gold, Science, Culture, plus **goods**.

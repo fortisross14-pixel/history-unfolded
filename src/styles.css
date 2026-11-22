@@ -2394,3 +2394,30 @@ input.rename {
   min-height: 40px;
   font-size: 14px;
 }
+
+/* the settlement in low-poly 3D, above the district editor */
+.city-scene {
+  position: relative;
+  height: clamp(220px, 36vh, 380px);
+  margin: 0 0 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(#e9e0c9, #d9cba7);
+  cursor: grab;
+}
+.city-scene canvas {
+  display: block;
+}
+.city-scene-hint {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  color: var(--iv-muted);
+  pointer-events: none;
+}
+.city-scene-whole {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  min-height: 36px;
+}

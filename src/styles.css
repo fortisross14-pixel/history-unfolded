@@ -1769,3 +1769,61 @@ button.toast {
     width: calc(100% - 16px);
   }
 }
+
+/* "Turn N" flourish after the AI moves: rises, holds, fades; never blocks a tap */
+.turn-banner {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  z-index: 19;
+  pointer-events: none;
+  padding: 8px 30px;
+  color: #fff6dc;
+  font:
+    italic 700 28px Georgia,
+    serif;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 6px rgba(30, 18, 8, 0.7);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(54, 37, 20, 0.85) 18%,
+    rgba(54, 37, 20, 0.85) 82%,
+    transparent
+  );
+  animation: turn-banner 1.5s ease-out forwards;
+}
+@keyframes turn-banner {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.96);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -6px) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn-banner {
+    animation-name: turn-banner-fade;
+  }
+}
+@keyframes turn-banner-fade {
+  0%,
+  70% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}

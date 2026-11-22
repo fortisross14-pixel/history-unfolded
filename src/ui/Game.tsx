@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { fx } from '../render/fx.ts';
+import { isMuted, setMuted, sound } from './sound.ts';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
 import {
@@ -93,6 +95,8 @@ export function Game({
   const [center, setCenter] = useState<{ hex: number; n: number } | null>(null);
   const toastId = useRef(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [muted, setMute] = useState(isMuted());
+  const [turnBanner, setTurnBanner] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(true);
   const topRef = useRef<HTMLElement>(null);
   const sideRef = useRef<HTMLElement>(null);
@@ -130,6 +134,7 @@ export function Game({
 
   const toast = useCallback((text: string, bad = false) => {
     const id = ++toastId.current;
+    if (bad) sound.deny();
     setToasts(t => [...t.slice(-5), { id, text, bad }]);
     // bad news stays until tapped; the rest fades
     if (!bad) setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
@@ -140,6 +145,10 @@ export function Game({
     return r;
   };
 
+  const selKey = sel ? `${sel.kind}:${'id' in sel ? sel.id : ''}` : '';
+  useEffect(() => {
+    if (selKey) sound.click();
+  }, [selKey]);
   const vis = useMemo(() => visibleHexes(game, me.id), [version]);
   const selF = sel?.kind === 'formation' ? formation(game, sel.id) : undefined;
   const mySelF = selF && selF.civId === me.id ? selF : undefined;
@@ -177,6 +186,9 @@ export function Game({
       bump,
       select: (id: number) => setSel({ kind: 'formation', id }),
       selectCity: (id: number) => setSel({ kind: 'city', id }),
+      fx,
+      /** click-to-act on a hex for the selected formation: move or attack */
+      act: (hex: number) => moveTo(hex),
     };
   });
 
@@ -198,6 +210,8 @@ export function Game({
   const runEndTurn = () => {
     const events = endTurn(game);
     setLastReport(events);
+    setTurnBanner(game.turn);
+    sound.turn();
     const saved = saveGame(game);
     if (!saved.ok) toast(`Autosave failed: ${saved.reason}`, true);
     events.forEach(e =>
@@ -219,7 +233,21 @@ export function Game({
     const chk = canAttack(game, mySelF.id, hex);
     if (chk.problem) return toast(chk.problem, true);
     const go = () => {
+      const from = mySelF.hex;
       const r = attack(game, mySelF.id, hex);
+      if (r.report) {
+        const a = r.report.attacker,
+          d = r.report.defender;
+        fx.flash(hex, '#ffe3a3');
+        if (d.lost) fx.float(hex, `−${d.lost}`, d.broke ? '#ffd166' : '#ff9b85');
+        if (a.lost) fx.float(from, `−${a.lost}`, a.broke ? '#ffd166' : '#ff9b85');
+        fx.shake(0.35 + Math.min(0.45, (a.lost + d.lost) / 900));
+        sound.clash();
+        if (game.cities.some(c => c.hex === hex && c.civId === me.id)) {
+          fx.float(hex, '★', '#ffe08a', 0.45);
+          setTimeout(() => sound.capture(), 350);
+        }
+      }
       report({ ok: r.ok, msg: r.ok ? undefined : r.msg } as Result);
       if (r.report) setDialog({ kind: 'battle', report: r.report });
       else if (r.msg) toast(r.msg, !r.ok);
@@ -239,6 +267,7 @@ export function Game({
     if (!mySelF) return;
     if (enemyAt(hex)) return doAttack(hex);
     const r = orderMove(game, mySelF.id, hex);
+    if (r.ok) (mySelF.kind === 'fleet' ? sound.sail : sound.march)();
     report(r);
     if (!game.formations.includes(mySelF)) {
       const host = formationsAt(game, hex).find(f => f.civId === me.id && f.kind === mySelF.kind);
@@ -531,6 +560,17 @@ export function Game({
         <button
           className="secondary"
           onClick={() => {
+            setMuted(!muted);
+            setMute(!muted);
+          }}
+          aria-pressed={!muted}
+          title={muted ? 'Sound off' : 'Sound on'}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+        <button
+          className="secondary"
+          onClick={() => {
             const r = saveGame(game, true);
             toast(r.ok ? 'Saved.' : `Could not save: ${r.reason}.`, !r.ok);
           }}
@@ -698,6 +738,16 @@ export function Game({
         )
       )}
 
+      {turnBanner > 0 && !busy && (
+        <div
+          className="turn-banner"
+          key={turnBanner}
+          aria-hidden
+          onAnimationEnd={() => setTurnBanner(0)}
+        >
+          Turn {turnBanner}
+        </div>
+      )}
       {busy && (
         <div className="busy" role="status" aria-live="polite">
           The peoples move…

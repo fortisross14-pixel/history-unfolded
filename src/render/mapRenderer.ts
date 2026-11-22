@@ -3,11 +3,13 @@
  * washes, ink coastlines and rivers, terrain symbols, deposits, borders, fog, cities, formations.
  */
 import { GOODS, DEPOSITS } from '../data/goods.ts';
+import { fx, Motion, reducedMotion } from './fx.ts';
 import { GROUPS, SLOT_TYPES } from '../data/slots.ts';
 import { TERRAIN, isWater } from '../data/terrain.ts';
 import { depositVisible, pathTurns, territory, visibleHexes } from '../engine/game.ts';
 import {
   centerUnit,
+  distance,
   hexAtUnit,
   neighbors,
   pixelSizeUnit,
@@ -155,6 +157,12 @@ export class MapRenderer {
   private lastZoom = 0;
   private zoomedAt = 0;
   private lastRes = 0;
+  private motion = new Motion();
+  private motionGame: GameState | null = null;
+  private selId: number | undefined;
+  private selAt = 0;
+  /** true while a tween or an effect is playing: the view wants another frame */
+  wantsFrame = false;
   /** the caller should redraw shortly: tiles will be rebuilt sharp after a zoom */
   wantsSettle = false;
   static CHUNK = 640;
@@ -189,14 +197,27 @@ export class MapRenderer {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.fillStyle = '#e8dcc0';
     ctx.fillRect(0, 0, this.viewW, this.viewH);
+    // screen shake: offset grows with trauma squared, a smooth wobble rather than noise
+    const tr = fx.currentTrauma();
+    const t = performance.now() / 1000;
+    const shX = tr > 0 ? tr * tr * 9 * Math.sin(t * 47) : 0,
+      shY = tr > 0 ? tr * tr * 7 * Math.cos(t * 39) : 0;
     ctx.setTransform(
       this.dpr * zoom,
       0,
       0,
       this.dpr * zoom,
-      -this.cam.x * zoom * this.dpr,
-      -this.cam.y * zoom * this.dpr,
+      (-this.cam.x * zoom + shX) * this.dpr,
+      (-this.cam.y * zoom + shY) * this.dpr,
     );
+    if (this.motionGame !== s) {
+      this.motion.reset();
+      this.motionGame = s;
+    }
+    if (ov.selectedFormation !== this.selId) {
+      this.selId = ov.selectedFormation;
+      this.selAt = performance.now();
+    }
 
     const key = this.staticKey(s, civId, vis);
     if (key !== this.chunkKey) {
@@ -234,6 +255,47 @@ export class MapRenderer {
     const pad = R * 2;
     const onScreen = hexesIn(g, this.cam.x - pad, this.cam.y - pad, vx1 + pad, vy1 + pad);
     this.paint(s, civId, ov, onScreen, vis, ownership(), false, zoom);
+    const playing = fx.tick();
+    this.drawFx(s, vis);
+    const popping = performance.now() - this.selAt < 220;
+    this.wantsFrame = playing || this.motion.active || popping;
+  }
+
+  /** Battle flashes and floating numbers above the map. */
+  private drawFx(s: GameState, vis: Uint8Array) {
+    const ctx = this.ctx;
+    const g: Grid = { w: s.map.w, h: s.map.h };
+    for (const f of fx.flashes) {
+      if (!vis[f.hex]) continue;
+      const x = centerUnit(g, f.hex)[0] * R,
+        y = centerUnit(g, f.hex)[1] * R;
+      const k = fx.flashAge(f);
+      ctx.globalAlpha = (1 - k) * 0.75;
+      ctx.fillStyle = f.color;
+      this.hexPath(x, y, R * (0.9 + k * 0.25));
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    for (const f of fx.floats) {
+      if (!vis[f.hex]) continue;
+      const x = centerUnit(g, f.hex)[0] * R,
+        y = centerUnit(g, f.hex)[1] * R;
+      const k = fx.floatAge(f);
+      const rise = reducedMotion() ? 0 : (1 - (1 - k) ** 2) * R * 0.9;
+      // pop in, hold, fade out
+      const scale =
+        k < 0.12 ? 0.6 + (k / 0.12) * 0.5 : k < 0.25 ? 1.1 - ((k - 0.12) / 0.13) * 0.1 : 1;
+      ctx.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
+      ctx.font = `bold ${R * 0.42 * scale}px Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(30,18,8,0.85)';
+      ctx.strokeText(f.text, x + f.dx * R, y - R * 0.7 - rise);
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.text, x + f.dx * R, y - R * 0.7 - rise);
+      ctx.globalAlpha = 1;
+    }
   }
 
   private renderChunk(
@@ -717,12 +779,20 @@ export class MapRenderer {
         if (!byHex.has(f.hex)) byHex.set(f.hex, []);
         byHex.get(f.hex)!.push(f);
       }
+      const drawn = new Set<number>();
       for (const [hex, fs] of byHex) {
         // armies in front, settlers behind
         fs.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'settlers' ? -1 : 1));
         const top = fs.find(f => f.id === ov.selectedFormation) ?? fs[fs.length - 1];
-        const x = cx(hex),
-          y = cy(hex);
+        for (const f of fs) drawn.add(f.id);
+        const prevHex = this.motion.lastHex(top.id);
+        const [x, y] = this.motion.place(
+          top.id,
+          hex,
+          cx(hex),
+          cy(hex),
+          prevHex === undefined ? 0 : distance(g, prevHex, hex),
+        );
         const hasCity = s.cities.some(c => c.hex === hex);
         const ox = hasCity ? -R * 0.45 : 0,
           oy = hasCity ? -R * 0.1 : R * 0.42;
@@ -737,10 +807,13 @@ export class MapRenderer {
         ctx.ellipse(x + ox, y + oy, R * 0.42, R * 0.13, 0, 0, Math.PI * 2);
         ctx.fill();
         if (top.id === ov.selectedFormation) {
+          // a quick pop when picked
+          const k = Math.min(1, (performance.now() - this.selAt) / 220);
+          const pop = reducedMotion() ? 1 : 1 + 0.45 * (1 - k) ** 2;
           ctx.strokeStyle = '#f3d36b';
           ctx.lineWidth = 3;
           ctx.beginPath();
-          ctx.ellipse(x + ox, y + oy, R * 0.5, R * 0.17, 0, 0, Math.PI * 2);
+          ctx.ellipse(x + ox, y + oy, R * 0.5 * pop, R * 0.17 * pop, 0, 0, Math.PI * 2);
           ctx.stroke();
         }
         sprite(
@@ -815,6 +888,7 @@ export class MapRenderer {
           ctx.fillText(`×${fs.length}`, bx + R * 0.21, by + R * 0.5);
         }
       }
+      this.motion.prune(drawn);
     }
   }
 

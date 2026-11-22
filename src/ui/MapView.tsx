@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { GameState } from '../engine/types.ts';
 import type { Assets } from '../render/assets.ts';
 import { MapRenderer, type Insets, type Overlay } from '../render/mapRenderer.ts';
+import { fx } from '../render/fx.ts';
 
 interface Props {
   game: GameState;
@@ -48,7 +49,8 @@ export function MapView({
       const w = window as unknown as { __drawMs?: number[] };
       (w.__drawMs ??= []).push(performance.now() - t0);
       if (w.__drawMs.length > 300) w.__drawMs.shift();
-      if (r.wantsSettle) setTimeout(redraw, 200);
+      if (r.wantsFrame) redraw();
+      else if (r.wantsSettle) setTimeout(redraw, 200);
     });
   };
 
@@ -63,6 +65,7 @@ export function MapView({
       redraw();
     });
     ro.observe(parent);
+    const offFx = fx.onChange(redraw);
     r.resize(parent.clientWidth, parent.clientHeight);
 
     // pointer handling: one pointer pans (or taps if it barely moved), two pointers pinch-zoom and pan
@@ -159,6 +162,7 @@ export function MapView({
     canvas.addEventListener('contextmenu', noMenu);
     return () => {
       ro.disconnect();
+      offFx();
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointermove', onPtrMove);
       canvas.removeEventListener('pointerup', onUp);

@@ -388,7 +388,11 @@ the open sea, rivers flowing hex to hex, roads and railways, settlements as smal
 with their people's flag (and a red ring when besieged), troops as figures in their people's
 colour and fleets as boats. Only explored land is drawn, and foreign troops only where the
 player sees them. Drag to pan, right-drag or the arrows to turn, wheel to zoom; Esc returns to
-the map. It is a preview to judge the look; the 2D map is still where the game is played.
+the map. The concept also draws territory borders in each people's colour, fades land the player knows
+but cannot see under a light mist, rings the selected troops in gold and plots their march in
+gold dots to a flag. It is a preview to judge the look; the 2D map is still where the game is
+played. To make it the playing map: hex picking and orders, instanced meshes for the whole
+world, hover and reachable-hex highlights.
 
 ## 8. Economy and goods
 

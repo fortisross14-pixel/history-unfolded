@@ -1235,7 +1235,13 @@ export function Game({
         />
       )}
       {show3d && (
-        <Map3DView game={game} civId={me.id} center={center3d} onClose={() => setShow3d(false)} />
+        <Map3DView
+          game={game}
+          civId={me.id}
+          center={center3d}
+          selected={selF?.civId === me.id ? selF.id : undefined}
+          onClose={() => setShow3d(false)}
+        />
       )}
       {dialog?.kind === 'crisis' && (
         <CrisisDialog

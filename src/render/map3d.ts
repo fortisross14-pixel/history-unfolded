@@ -8,10 +8,10 @@
  */
 import * as THREE from 'three';
 import { isWater } from '../data/terrain.ts';
-import { visibleHexes } from '../engine/game.ts';
+import { territory, visibleHexes } from '../engine/game.ts';
 import { centerUnit, distance, neighbors, type Grid } from '../engine/hex.ts';
 import type { GameState } from '../engine/types.ts';
-import { add, ball, boat, box, C, cone, cyl, flag, house, rng, rock, tree } from './city3d.ts';
+import { add, ball, boat, box, C, cone, cyl, flag, house, M, rng, rock, tree } from './city3d.ts';
 
 const TOP: Record<string, string> = {
   ocean: '#4f7f9a',
@@ -24,6 +24,9 @@ const TOP: Record<string, string> = {
   snow: '#eef0ee',
 };
 const RADIUS = 13;
+/** a colour faded toward grey parchment, for land under the fog of war */
+const fade = (hex: string) =>
+  '#' + new THREE.Color(hex).lerp(new THREE.Color('#b9b09a'), 0.55).getHexString();
 
 export class Map3D {
   private renderer: THREE.WebGLRenderer;
@@ -75,7 +78,7 @@ export class Map3D {
   }
 
   /** Draw the region around `center` as `civId` knows it. */
-  show(s: GameState, civId: number, center: number) {
+  show(s: GameState, civId: number, center: number, selected?: number) {
     this.world.clear();
     const g: Grid = { w: s.map.w, h: s.map.h };
     const m = s.map;
@@ -110,10 +113,11 @@ export class Map3D {
       this.world.add(tile);
       // the hex: a low prism, its top coloured by terrain, a darker skirt below
       const h = y + 0.5;
+      // land known but not seen is faded toward grey parchment
       const prismMesh = add(
         tile,
         new THREE.CylinderGeometry(0.985, 0.985, h, 6),
-        TOP[t] ?? C.grass,
+        vis[i] ? (TOP[t] ?? C.grass) : fade(TOP[t] ?? C.grass),
         0,
         y - h / 2,
         0,
@@ -194,24 +198,42 @@ export class Map3D {
         box(deck, 0.3, 0.01, 0.04, '#9fc3d0', (r() - 0.5) * 0.8, 0.005, (r() - 0.5) * 0.8);
     }
 
-    // rivers: from a hex to the one downstream, wider as they grow
+    // rivers: from a hex to the one downstream through their shared edge, swaying a little
+    const seg = (
+      x1: number,
+      z1: number,
+      x2: number,
+      z2: number,
+      y: number,
+      w: number,
+      c: string,
+      h = 0.03,
+    ) => {
+      const L = Math.hypot(x2 - x1, z2 - z1);
+      const b = add(
+        this.world,
+        new THREE.BoxGeometry(L + w * 0.6, h, w),
+        c,
+        (x1 + x2) / 2,
+        y,
+        (z1 + z2) / 2,
+      );
+      b.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+      b.castShadow = false;
+      return b;
+    };
     for (const i of region) {
       const to = m.riverTo[i];
       if (!m.river[i] || to < 0 || !known[to]) continue;
       const [x1, z1] = P(i),
         [x2, z2] = P(to);
-      const L = Math.hypot(x2 - x1, z2 - z1);
-      const w = 0.1 + Math.min(0.2, m.river[i] * 0.02);
-      const seg = add(
-        this.world,
-        new THREE.BoxGeometry(L, 0.03, w),
-        C.water,
-        (x1 + x2) / 2,
-        Math.max(top(i), top(to)) + 0.02,
-        (z1 + z2) / 2,
-      );
-      seg.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-      seg.castShadow = false;
+      const sway = (rng(i * 31 + to)() - 0.5) * 0.35;
+      const mx = (x1 + x2) / 2 + (z2 - z1) * sway * 0.5,
+        mz = (z1 + z2) / 2 - (x2 - x1) * sway * 0.5;
+      const w = 0.08 + Math.min(0.16, m.river[i] * 0.015);
+      const y = Math.max(top(i), top(to)) + 0.015;
+      seg(x1, z1, mx, mz, y, w, '#6f9fb0');
+      seg(mx, mz, x2, z2, y, w, '#6f9fb0');
     }
     // roads and railways
     for (const i of region) {
@@ -241,6 +263,7 @@ export class Map3D {
       const y = top(c.hex);
       const grp = new THREE.Group();
       grp.position.set(x, y, z);
+      grp.scale.setScalar(c.tier === 'metropolis' ? 1.45 : c.tier === 'city' ? 1.3 : 1.15);
       this.world.add(grp);
       const r = rng(c.id * 97 + 5);
       const n = c.tier === 'metropolis' ? 11 : c.tier === 'city' ? 8 : 5;
@@ -277,8 +300,15 @@ export class Map3D {
       here.set(f.hex, k + 1);
       const [x, z] = P(f.hex);
       const y = Math.max(top(f.hex), isWater(m.terrain[f.hex]) ? -0.1 : 0);
+      // up to three bands on a hex, in a little triangle; more stand behind unseen
+      const SPOTS = [
+        [0.3, 0.32],
+        [-0.36, 0.26],
+        [0.02, -0.42],
+      ];
+      if (k >= SPOTS.length) continue;
       const grp = new THREE.Group();
-      grp.position.set(x + 0.35 - k * 0.22, y, z + 0.3);
+      grp.position.set(x + SPOTS[k][0], y, z + SPOTS[k][1]);
       this.world.add(grp);
       const col = s.civs[f.civId].color;
       if (f.kind === 'fleet') {
@@ -296,6 +326,87 @@ export class Map3D {
         if (f.kind === 'army') cyl(grp, 0.006, 0.006, 0.26, C.timber, qx + 0.05, 0, qz, 3);
       }
       if (f.kind === 'army') flag(grp, -0.12, 0, -0.08, col, 0.36);
+    }
+    // borders: a band in the owner's colour along every edge where the owner changes
+    const own = territory(s);
+    for (const i of region) {
+      const o = own[i];
+      if (o < 0) continue;
+      const [x, z] = P(i);
+      const y = top(i) + 0.03;
+      for (const n of neighbors(g, i)) {
+        if (own[n] === o) continue;
+        const [nx, nz] = P(n);
+        const dx = (nx - x) / 2,
+          dz = (nz - z) / 2;
+        const b = add(
+          this.world,
+          new THREE.BoxGeometry(0.08, 0.05, 0.98),
+          s.civs[o].color,
+          x + dx * 0.9,
+          Math.max(y, 0.02),
+          z + dz * 0.9,
+          { transparent: true, opacity: 0.85 },
+        );
+        b.rotation.y = -Math.atan2(dz, dx);
+        b.castShadow = false;
+      }
+    }
+    // fog of war: land known but not seen lies under a low mist
+    const mist = M('#efe7d6', { transparent: true, opacity: 0.4, depthWrite: false });
+    for (const i of region) {
+      if (vis[i]) continue;
+      const [x, z] = P(i);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.02, 6), mist);
+      cap.position.set(x, top(i) + 0.95, z);
+      this.world.add(cap);
+    }
+    // the selected troops: a gold ring, and the way they will march
+    const sel = selected !== undefined ? s.formations.find(f => f.id === selected) : undefined;
+    if (sel && known[sel.hex]) {
+      const [x, z] = P(sel.hex);
+      const ring = add(
+        this.world,
+        new THREE.TorusGeometry(0.62, 0.035, 4, 32),
+        '#c79a3e',
+        x,
+        top(sel.hex) + 0.05,
+        z,
+        { emissive: '#6a4e18' },
+      );
+      ring.rotation.x = Math.PI / 2;
+      let prev = sel.hex;
+      sel.path.forEach((h, k) => {
+        const [ax, az] = P(prev),
+          [bx, bz] = P(h);
+        const y = Math.max(top(prev), top(h), 0) + 0.06;
+        for (let t = 0.2; t < 1; t += 0.2) {
+          const dot = add(
+            this.world,
+            new THREE.CylinderGeometry(0.05, 0.05, 0.02, 8),
+            '#c79a3e',
+            ax + (bx - ax) * t,
+            y,
+            az + (bz - az) * t,
+            { emissive: '#6a4e18' },
+          );
+          dot.castShadow = false;
+        }
+        if (k === sel.path.length - 1) {
+          flag(this.world, bx, top(h), bz, '#c79a3e', 0.5);
+          const end = add(
+            this.world,
+            new THREE.TorusGeometry(0.4, 0.03, 4, 24),
+            '#c79a3e',
+            bx,
+            top(h) + 0.05,
+            bz,
+            { emissive: '#6a4e18' },
+          );
+          end.rotation.x = Math.PI / 2;
+        }
+        prev = h;
+      });
     }
     // the sun follows the region
     this.sun.position.set(-14, 26, 10);

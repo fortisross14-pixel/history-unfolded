@@ -10,11 +10,14 @@ export function Map3DView({
   game,
   civId,
   center,
+  selected,
   onClose,
 }: {
   game: GameState;
   civId: number;
   center: number;
+  /** the selected troops: ring and planned march */
+  selected?: number;
   onClose: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -26,7 +29,7 @@ export function Map3DView({
       .then(m => {
         if (!live || !host.current) return;
         view.current = new m.Map3D(host.current);
-        view.current.show(game, civId, center);
+        view.current.show(game, civId, center, selected);
       })
       .catch(() => setFailed(true));
     const key = (e: KeyboardEvent) => {

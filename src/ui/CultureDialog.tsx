@@ -44,6 +44,13 @@ export function TagChip({ tag }: { tag: string }) {
 /** The culture web: nine domains, four tiers, forks that close doors, tension and upheavals. */
 export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose }: Props) {
   const [focus, setFocus] = useState<Domain | 'all'>('all');
+  // by default only what can be taken now (and what is held); locked paths on request
+  const [showAll, setShowAll] = useState(false);
+  const visible = (n: CultureNode) => {
+    const k = nodeStatus(civ, n).kind;
+    return showAll || k === 'taken' || k === 'available' || k === 'legacy' || k === 'upheaval';
+  };
+  const hidden = CULTURE_LIST.filter(n => !visible(n)).length;
   const ident = identity(civ);
   const c = civ.culture;
   const domains = focus === 'all' ? DOMAIN_LIST : [focus];
@@ -161,6 +168,16 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
           </p>
         )}
 
+        <div className="row filter-row">
+          <button className={showAll ? 'on' : ''} onClick={() => setShowAll(v => !v)}>
+            {showAll ? 'Show only what I can take' : `Show locked choices (${hidden})`}
+          </button>
+          {!showAll && (
+            <small className="muted">
+              Only adopted choices and those open now are shown; locked ones say what they need.
+            </small>
+          )}
+        </div>
         <div className="domain-tabs">
           <button className={focus === 'all' ? 'on' : ''} onClick={() => setFocus('all')}>
             All
@@ -210,7 +227,10 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
                   </button>
                 </div>
                 {[1, 2, 3, 4].map(tier => {
-                  const nodes = CULTURE_LIST.filter(n => n.domain === d && n.tier === tier);
+                  const nodes = CULTURE_LIST.filter(
+                    n => n.domain === d && n.tier === tier && visible(n),
+                  );
+                  if (!nodes.length) return null;
                   // group fork members together under a "choose one" bracket
                   const forks = [...new Set(nodes.filter(n => n.fork).map(n => n.fork!))];
                   return (

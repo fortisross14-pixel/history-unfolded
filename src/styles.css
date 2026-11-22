@@ -2166,3 +2166,9 @@ kbd {
 .pips i.on {
   background: var(--gold);
 }
+.good-emoji {
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}

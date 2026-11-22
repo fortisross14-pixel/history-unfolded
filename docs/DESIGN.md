@@ -685,6 +685,16 @@ The great houses are the thread through the game.
 - AI peoples keep about half the realm under the throne, give the rest to the house strongest in
   each settlement's line, honour restless houses, and yield a civil war when outgunned two to one.
 
+## 11c. Building on the map (planned)
+
+Roads are built by any army today. Later ages need trained hands:
+- **Ancient and Classical**: any formation lays roads (as now).
+- **Medieval onward**: **workers**, a civilian formation raised in a settlement, build better
+  roads and improvements.
+- **Industrial**: **engineers** lay railways (faster than roads, and they carry trade like
+  roads) and the modern improvements that follow.
+Not built yet.
+
 ## 12. Victory and game length
 
 - Turn limit (default 400), with a score at the end.
@@ -709,7 +719,12 @@ The great houses are the thread through the game.
 7. **Culture web screen.** Zoomable graph by domain; locked nodes greyed with "locked by: Solar
    Calendar"; tension meters; upheaval status; tag summary.
 8. **Diplomacy & trade.** Civs, relations with tag-based reasons, goods deals.
-9. **End turn / to-do list.** Nothing opens by itself (founding a city opens neither research
+9. **What is shown.** Lists show only what can be used now: the culture web shows adopted
+   choices and those open now, the district palette only what fits the cell, the designer only
+   researched gear. "Show locked choices" / "Show all buildings" reveal the rest, each with the
+   reason it is closed. Almost every building sits behind early research (farms, pastures,
+   woodcutters and houses do not).
+10. **End turn / to-do list.** Nothing opens by itself (founding a city opens neither research
    nor the city). The turn box's button walks through what is left: choose research, plan a
    city with nothing under construction, order idle units. Enter asks once while the list is
    not empty.

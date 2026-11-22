@@ -34,6 +34,7 @@ import { hexFood } from './mapgen.ts';
 import type { City, District, GameState, SlotState, Tier } from './types.ts';
 import { civMods, pct } from './mods.ts';
 import { ITEMS } from '../data/items.ts';
+import { TECHS } from '../data/techs.ts';
 import { lineBonus, warPenalty } from './dynasty.ts';
 
 export const WORKER_SHARE = 0.5;
@@ -150,7 +151,7 @@ export function slotProblem(
   if (!t) return 'Unknown building.';
   if (t.fixed) return 'Built with the city.';
   if (t.tech && !s.civs[civId].techs.includes(t.tech))
-    return `Needs research: ${t.tech.replace('-', ' ')}`;
+    return `Needs research: ${TECHS[t.tech]?.name ?? t.tech}`;
   const here = cityAtHex(s, hex);
   if (here && here.tier !== 'town' && isRural(typeId))
     return 'Only towns have room for farms, woodlots and mines; the towns around feed the city.';

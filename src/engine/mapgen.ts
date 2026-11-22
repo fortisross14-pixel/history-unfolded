@@ -315,6 +315,22 @@ export function generateMap(s: MapSettings): MapData {
   }
 
   // --- terrain and vegetation ---
+  // biomes by share of the land, so every map has its cold north, its deserts and its green
+  // middle; the climate and rainfall settings move the bands
+  const landCells: number[] = [];
+  for (let i = 0; i < N; i++) if (land[i]) landCells.push(i);
+  const quant = (arr: ArrayLike<number>, q: number) => {
+    const v = landCells.map(i => arr[i]).sort((a, b) => a - b);
+    return v.length ? v[Math.min(v.length - 1, Math.floor(q * v.length))] : 0;
+  };
+  const cl = LEVEL[s.climate],
+    rf = LEVEL[s.rainfall];
+  const tSnow = quant(temp, [0.08, 0.05, 0.02][cl]);
+  const tTundra = quant(temp, [0.24, 0.15, 0.08][cl]);
+  const tWarm = quant(temp, [0.45, 0.32, 0.22][cl]);
+  const mDesert = quant(moist, [0.38, 0.27, 0.17][rf]);
+  const mPlains = quant(moist, [0.55, 0.45, 0.35][rf]);
+  const tJungle = quant(temp, 0.82);
   const vegetation: VegetationId[] = new Array(N).fill('none');
   for (let i = 0; i < N; i++) {
     if (!land[i]) {
@@ -333,10 +349,10 @@ export function generateMap(s: MapSettings): MapData {
     const t = temp[i],
       m = moist[i];
     let ter: TerrainId;
-    if (t < 0.1) ter = 'snow';
-    else if (t < 0.27) ter = 'tundra';
-    else if (m < 0.32 && t > 0.5) ter = 'desert';
-    else if (m < 0.5) ter = 'plains';
+    if (t < tSnow) ter = 'snow';
+    else if (t < tTundra) ter = 'tundra';
+    else if (m < mDesert && t > tWarm) ter = 'desert';
+    else if (m < mPlains) ter = 'plains';
     else ter = 'grassland';
     if (river[i] && ter === 'desert' && m > 0.2) ter = 'plains';
     terrain[i] = ter;
@@ -345,15 +361,15 @@ export function generateMap(s: MapSettings): MapData {
     const score = m + vn * 0.35;
     const wetFlat = relief[i] === 'flat' && (river[i] > 0 || nearWater[i]);
     if (wetFlat && m > 0.68 && vn > 0.12) vegetation[i] = 'marsh';
-    else if (t > 0.78 && score > 0.66) vegetation[i] = 'jungle';
-    else if (score > (ter === 'tundra' ? 0.55 : 0.64)) vegetation[i] = 'forest';
+    else if (t > tJungle && score > 0.62) vegetation[i] = 'jungle';
+    else if (score > (ter === 'tundra' ? 0.52 : 0.6)) vegetation[i] = 'forest';
   }
 
   // --- deposits ---
   const dRng = mulberry32(hashSeed(s.seed, 9));
   const deposit: (Deposit | null)[] = new Array(N).fill(null);
-  const pLand = [0.07, 0.11, 0.16][LEVEL[s.resources]];
-  const pWater = [0.08, 0.12, 0.17][LEVEL[s.resources]];
+  const pLand = [0.035, 0.055, 0.085][LEVEL[s.resources]];
+  const pWater = [0.04, 0.06, 0.09][LEVEL[s.resources]];
   for (let i = 0; i < N; i++) {
     const t = terrain[i];
     if (t === 'ocean') continue;

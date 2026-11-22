@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { DEPOSITS, GOODS, SPECIAL_MIN } from '../data/goods.ts';
 import {
   GROUPS,
-  isRural,
   MIN_HOUSING,
   SLOT_LIST,
   SLOT_TYPES,
@@ -87,6 +86,7 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
   const [hex, setHex] = useState<number>(c.hex);
   const [dSel, setDSel] = useState<number | 'new' | 'locked'>(-1);
   const [cell, setCell] = useState<number | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const [newName, setNewName] = useState('');
   const [bpName, setBpName] = useState('');
   const [bpPick, setBpPick] = useState<number | ''>('');
@@ -578,16 +578,24 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                     {sel.st.built ? 'Demolish (¼ of the goods back)' : 'Clear slot'}
                   </button>
                 )}
+                {!sel.t?.fixed && (
+                  <div className="row filter-row">
+                    <button className={showAll ? 'on' : ''} onClick={() => setShowAll(v => !v)}>
+                      {showAll ? 'Only what I can build here' : 'Show all buildings'}
+                    </button>
+                  </div>
+                )}
                 {sel.t?.fixed ? (
                   <p className="muted small">The town hall stays.</p>
                 ) : (
                   groups.map(gr => {
-                    // buildings not researched yet stay out of the list
+                    // only what can go in this cell now; the rest, with reasons, on request
                     const known = SLOT_LIST.filter(
                       t =>
                         t.group === gr &&
-                        (!t.tech || civ.techs.includes(t.tech) || sel.st.type === t.id) &&
-                        (c.tier === 'town' || !isRural(t.id)),
+                        (showAll ||
+                          sel.st.type === t.id ||
+                          !slotProblem(game, c.civId, c.hex, centre, t.id, mineD.id)),
                     );
                     if (!known.length) return null;
                     return (

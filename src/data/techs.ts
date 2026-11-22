@@ -45,9 +45,14 @@ export const TECH_LIST: TechInfo[] = [
     'Leather armour, caps, marching boots, field medics, infirmaries.',
   ),
   t('pottery', 'Pottery', 1, 12, [], 'Granaries.', { favoured: 'agrarian' }),
-  t('mining', 'Mining', 1, 14, [], 'Mines dig copper, tin, gold and silver.', {
-    mods: { groupPct: { extraction: 10 } },
-  }),
+  t(
+    'mining',
+    'Mining',
+    1,
+    14,
+    [],
+    'Mines: stone anywhere; copper, tin, gold and silver where they lie.',
+  ),
   t('animal-husbandry', 'Animal Husbandry', 1, 14, [], 'Pastures raise horses.', {
     favoured: 'agrarian',
     mods: { groupPct: { farming: 5 } },

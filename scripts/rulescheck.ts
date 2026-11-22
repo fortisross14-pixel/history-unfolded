@@ -141,7 +141,7 @@ for (const seed of [1, 2, 3, 42]) {
     const spot = landOf(t, tc).find(h => h !== tc.hex && isPassableLand(t.map, h))!;
     const others = landOf(t, tc).filter(h => h !== spot);
     for (const h of others) t.map.deposit[h] = null;
-    t.civs[me.id].techs.push('mineralogy');
+    t.civs[me.id].techs.push('mineralogy', 'mining', 'the-wheel');
     tc.pop = 20000;
     // every district needs its two housing cells: the last two
     const fill = (types: string[]) => {

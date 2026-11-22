@@ -66,6 +66,62 @@ export function MapView({
     });
     ro.observe(parent);
     const offFx = fx.onChange(redraw);
+    // keyboard panning: W A S D or the arrows, held, glide the map (not while typing or in a window)
+    const held = new Set<string>();
+    const PAN = {
+      w: [0, -1],
+      a: [-1, 0],
+      s: [0, 1],
+      d: [1, 0],
+      arrowup: [0, -1],
+      arrowleft: [-1, 0],
+      arrowdown: [0, 1],
+      arrowright: [1, 0],
+    } as Record<string, [number, number]>;
+    let panFrame = 0,
+      last = 0;
+    const blocked = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      return (
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey ||
+        ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName) ||
+        t.isContentEditable ||
+        !!document.querySelector('.modal-back')
+      );
+    };
+    const step = (now: number) => {
+      const dt = Math.min(0.05, (now - (last || now)) / 1000);
+      last = now;
+      let dx = 0,
+        dy = 0;
+      for (const k of held) {
+        dx += PAN[k][0];
+        dy += PAN[k][1];
+      }
+      if (dx || dy) {
+        // about 900 screen pixels a second, whatever the zoom
+        r.cam.x += (dx * 900 * dt) / r.cam.zoom;
+        r.cam.y += (dy * 900 * dt) / r.cam.zoom;
+        clamp();
+        redraw();
+      }
+      panFrame = held.size ? requestAnimationFrame(step) : 0;
+      if (!held.size) last = 0;
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      if (!PAN[k] || blocked(e)) return;
+      e.preventDefault();
+      held.add(k);
+      if (!panFrame) panFrame = requestAnimationFrame(step);
+    };
+    const onKeyUp = (e: KeyboardEvent) => held.delete(e.key.toLowerCase());
+    const onBlur = () => held.clear();
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
     r.resize(parent.clientWidth, parent.clientHeight);
 
     // pointer handling: one pointer pans (or taps if it barely moved), two pointers pinch-zoom and pan
@@ -163,6 +219,10 @@ export function MapView({
     return () => {
       ro.disconnect();
       offFx();
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      cancelAnimationFrame(panFrame);
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointermove', onPtrMove);
       canvas.removeEventListener('pointerup', onUp);

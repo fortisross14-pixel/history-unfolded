@@ -120,7 +120,8 @@ const KEYS: [string, string][] = [
   ['C', 'Open the selected city'],
   ['T', 'Research'],
   ['K', 'Culture'],
-  ['D', 'Unit designs'],
+  ['W A S D', 'Move the map (arrow keys too)'],
+  ['U', 'Unit designs'],
   ['P', 'Peoples and diplomacy'],
   ['G', 'Goods: made, used and traded per turn'],
   ['Y', 'Dynasties: houses, governors, trinkets'],
@@ -189,7 +190,8 @@ export function Game({
   const toast = useCallback((text: string, bad = false) => {
     const id = ++toastId.current;
     if (bad) sound.deny();
-    setToasts(t => [...t.slice(-5), { id, text, bad }]);
+    // the same words twice in a row are one message
+    setToasts(t => (t.some(x => x.text === text) ? t : [...t.slice(-5), { id, text, bad }]));
     // bad news stays until tapped; the rest fades
     if (!bad) setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
   }, []);
@@ -473,7 +475,7 @@ export function Game({
         setArmed(-1);
       } else if (key === 'f' && mySelF) report(fortify(game, mySelF.id));
       else if (key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
-      else if (key === 'd') setDialog({ kind: 'designs' });
+      else if (key === 'u') setDialog({ kind: 'designs' });
       else if (key === 'p') setDialog({ kind: 'peoples' });
       else if (key === 'g') setDialog({ kind: 'goods' });
       else if (key === 'y') setDialog({ kind: 'dynasties' });

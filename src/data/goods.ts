@@ -10,48 +10,65 @@ export interface GoodInfo {
   /** sprite under /sprites/goods, or a short glyph drawn as a badge */
   icon?: string;
   glyph: string;
+  /** a pictogram for the badge when there is no art */
+  emoji?: string;
   color: string;
 }
 
 export const GOODS: Record<string, GoodInfo> = {
-  wood: { name: 'Wood', kind: 'raw', icon: 'timber', glyph: 'Wd', color: '#7a5a34' },
-  stone: { name: 'Stone', kind: 'raw', glyph: 'St', color: '#8a8478' },
-  hides: { name: 'Hides', kind: 'raw', icon: 'furs', glyph: 'Hd', color: '#9a6b40' },
-  copper: { name: 'Copper', kind: 'raw', glyph: 'Cu', color: '#b0663a' },
-  tin: { name: 'Tin', kind: 'raw', glyph: 'Sn', color: '#9aa4a8' },
-  iron: { name: 'Iron', kind: 'raw', glyph: 'Fe', color: '#5d5a5a' },
-  coal: { name: 'Coal', kind: 'raw', glyph: 'C', color: '#2f2b28' },
-  saltpeter: { name: 'Saltpeter', kind: 'raw', glyph: 'Sp', color: '#c9c3b4' },
-  horses: { name: 'Horses', kind: 'raw', glyph: 'Hr', color: '#7b4b2a' },
-  grain: { name: 'Grain', kind: 'food', icon: 'corn', glyph: 'Gr', color: '#c9a640' },
+  wood: { name: 'Wood', kind: 'raw', icon: 'timber', emoji: '🪵', glyph: 'Wd', color: '#7a5a34' },
+  stone: { name: 'Stone', kind: 'raw', emoji: '🪨', glyph: 'St', color: '#8a8478' },
+  hides: { name: 'Hides', kind: 'raw', icon: 'furs', emoji: '🐂', glyph: 'Hd', color: '#9a6b40' },
+  copper: { name: 'Copper', kind: 'raw', emoji: '🟠', glyph: 'Cu', color: '#b0663a' },
+  tin: { name: 'Tin', kind: 'raw', emoji: '⚪', glyph: 'Sn', color: '#9aa4a8' },
+  iron: { name: 'Iron', kind: 'raw', emoji: '⚙️', glyph: 'Fe', color: '#5d5a5a' },
+  coal: { name: 'Coal', kind: 'raw', emoji: '⚫', glyph: 'C', color: '#2f2b28' },
+  saltpeter: { name: 'Saltpeter', kind: 'raw', emoji: '💥', glyph: 'Sp', color: '#c9c3b4' },
+  horses: { name: 'Horses', kind: 'raw', emoji: '🐎', glyph: 'Hr', color: '#7b4b2a' },
+  grain: { name: 'Grain', kind: 'food', icon: 'corn', emoji: '🌾', glyph: 'Gr', color: '#c9a640' },
   fish: {
     name: 'Fish',
     kind: 'food',
     icon: 'cod',
+    emoji: '🐟',
     glyph: 'Fi',
     color: '#5b7f95',
   },
-  meat: { name: 'Meat', kind: 'food', glyph: 'Mt', color: '#a0473a' },
-  ivory: { name: 'Ivory', kind: 'luxury', glyph: 'Iv', color: '#a8956a' },
-  furs: { name: 'Furs', kind: 'luxury', icon: 'furs', glyph: 'Fu', color: '#6d4a2e' },
-  gold: { name: 'Gold', kind: 'luxury', icon: 'gold', glyph: 'Au', color: '#d1a72f' },
-  silver: { name: 'Silver', kind: 'luxury', icon: 'silver', glyph: 'Ag', color: '#a9b0b5' },
-  spices: { name: 'Spices', kind: 'luxury', icon: 'spices', glyph: 'Sc', color: '#b24d2a' },
-  silk: { name: 'Silk', kind: 'luxury', icon: 'silk', glyph: 'Sk', color: '#b56b8f' },
-  dyes: { name: 'Dyes', kind: 'luxury', icon: 'dyes', glyph: 'Dy', color: '#5a4f9a' },
-  wine: { name: 'Wine', kind: 'luxury', icon: 'wine', glyph: 'Wn', color: '#7a2a3a' },
-  wool: { name: 'Wool', kind: 'raw', glyph: 'Wo', color: '#d8cfb8' },
-  sugar: { name: 'Sugar', kind: 'luxury', glyph: 'Su', color: '#e7dcc8' },
-  'whale-oil': { name: 'Whale oil', kind: 'luxury', glyph: 'Wh', color: '#4d6a7a' },
-  pearls: { name: 'Pearls', kind: 'luxury', glyph: 'Pe', color: '#e9e4f0' },
-  tools: { name: 'Tools', kind: 'made', glyph: 'Tl', color: '#6b6f78' },
-  cloth: { name: 'Cloth', kind: 'made', glyph: 'Cl', color: '#b08f6a' },
-  leatherwork: { name: 'Leatherwork', kind: 'made', glyph: 'Lw', color: '#8a5a32' },
-  salt: { name: 'Salt', kind: 'raw', glyph: 'Sa', color: '#e4e1da' },
-  paper: { name: 'Paper', kind: 'made', glyph: 'Pa', color: '#efe6cf' },
-  steel: { name: 'Steel', kind: 'made', glyph: 'Sl', color: '#7d8a96' },
-  oil: { name: 'Oil', kind: 'raw', glyph: 'Oi', color: '#262422' },
-  electricity: { name: 'Electricity', kind: 'made', glyph: 'El', color: '#e0c23a' },
+  meat: { name: 'Meat', kind: 'food', emoji: '🍖', glyph: 'Mt', color: '#a0473a' },
+  ivory: { name: 'Ivory', kind: 'luxury', emoji: '🐘', glyph: 'Iv', color: '#a8956a' },
+  furs: { name: 'Furs', kind: 'luxury', icon: 'furs', emoji: '🦊', glyph: 'Fu', color: '#6d4a2e' },
+  gold: { name: 'Gold', kind: 'luxury', icon: 'gold', emoji: '🪙', glyph: 'Au', color: '#d1a72f' },
+  silver: {
+    name: 'Silver',
+    kind: 'luxury',
+    icon: 'silver',
+    emoji: '🥈',
+    glyph: 'Ag',
+    color: '#a9b0b5',
+  },
+  spices: {
+    name: 'Spices',
+    kind: 'luxury',
+    icon: 'spices',
+    emoji: '🌶️',
+    glyph: 'Sc',
+    color: '#b24d2a',
+  },
+  silk: { name: 'Silk', kind: 'luxury', icon: 'silk', emoji: '🧵', glyph: 'Sk', color: '#b56b8f' },
+  dyes: { name: 'Dyes', kind: 'luxury', icon: 'dyes', emoji: '🌺', glyph: 'Dy', color: '#5a4f9a' },
+  wine: { name: 'Wine', kind: 'luxury', icon: 'wine', emoji: '🍇', glyph: 'Wn', color: '#7a2a3a' },
+  wool: { name: 'Wool', kind: 'raw', emoji: '🐑', glyph: 'Wo', color: '#d8cfb8' },
+  sugar: { name: 'Sugar', kind: 'luxury', emoji: '🎋', glyph: 'Su', color: '#e7dcc8' },
+  'whale-oil': { name: 'Whale oil', kind: 'luxury', emoji: '🐋', glyph: 'Wh', color: '#4d6a7a' },
+  pearls: { name: 'Pearls', kind: 'luxury', emoji: '🦪', glyph: 'Pe', color: '#e9e4f0' },
+  tools: { name: 'Tools', kind: 'made', emoji: '🔨', glyph: 'Tl', color: '#6b6f78' },
+  cloth: { name: 'Cloth', kind: 'made', emoji: '🧶', glyph: 'Cl', color: '#b08f6a' },
+  leatherwork: { name: 'Leatherwork', kind: 'made', emoji: '👞', glyph: 'Lw', color: '#8a5a32' },
+  salt: { name: 'Salt', kind: 'raw', emoji: '🧂', glyph: 'Sa', color: '#e4e1da' },
+  paper: { name: 'Paper', kind: 'made', emoji: '📜', glyph: 'Pa', color: '#efe6cf' },
+  steel: { name: 'Steel', kind: 'made', emoji: '🔩', glyph: 'Sl', color: '#7d8a96' },
+  oil: { name: 'Oil', kind: 'raw', emoji: '🛢️', glyph: 'Oi', color: '#262422' },
+  electricity: { name: 'Electricity', kind: 'made', emoji: '⚡', glyph: 'El', color: '#e0c23a' },
 };
 
 /** Goods that serve as comforts: luxuries and the finer made goods. */
@@ -80,6 +97,8 @@ export interface DepositInfo {
   special?: boolean;
   /** tech needed to work it (beyond seeing it) */
   tech?: string;
+  /** a pictogram for the map badge (else the good's) */
+  emoji?: string;
   terrain: TerrainId[];
   relief?: ReliefId[];
   vegetation?: VegetationId[];
@@ -93,6 +112,7 @@ const LAND_OPEN: TerrainId[] = ['grassland', 'plains'];
 
 export const DEPOSITS: Record<string, DepositInfo> = {
   wheat: {
+    emoji: '🌾',
     by: 'farm',
     gives: { food: 0.5 },
     name: 'Wheat',
@@ -103,6 +123,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 6,
   },
   rice: {
+    emoji: '🌾',
     by: 'farm',
     gives: { food: 0.5 },
     name: 'Rice',
@@ -113,6 +134,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 3,
   },
   fish: {
+    emoji: '🐟',
     name: 'Fish',
     by: 'fishing-dock',
     gives: { food: 0.5 },
@@ -121,6 +143,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 6,
   },
   pigs: {
+    emoji: '🐖',
     by: 'pasture',
     gives: { food: 0.5 },
     name: 'Pigs',
@@ -130,6 +153,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 3,
   },
   cattle: {
+    emoji: '🐄',
     by: 'pasture',
     gives: { goods: { hides: 1 } },
     name: 'Cattle',
@@ -140,6 +164,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 4,
   },
   sheep: {
+    emoji: '🐑',
     by: 'pasture',
     gives: { goods: { wool: 1 } },
     name: 'Sheep',
@@ -149,6 +174,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     weight: 3,
   },
   game: {
+    emoji: '🦌',
     by: 'hunting-lodge',
     gives: { food: 0.5, goods: { hides: 0.5 } },
     name: 'Game',

@@ -374,13 +374,35 @@ export class MapRenderer {
     };
 
     if (STATIC) {
-      // 1. watercolour washes
+      // 1. watercolour washes: the terrain, then what covers it (rock, forest, jungle, marsh)
       for (const i of onScreen) {
         if (!known(i)) continue;
-        ctx.fillStyle = TERRAIN[m.terrain[i]].wash;
-        ctx.globalAlpha = isWater(m.terrain[i]) ? 0.85 : 0.78;
+        const mountain = m.relief[i] === 'mountains';
+        ctx.fillStyle = mountain
+          ? m.terrain[i] === 'snow'
+            ? '#c9c7c2'
+            : '#a7a29a'
+          : TERRAIN[m.terrain[i]].wash;
+        ctx.globalAlpha = isWater(m.terrain[i]) ? 0.85 : mountain ? 0.95 : 0.82;
         this.hexPath(cx(i), cy(i), R * 1.02);
         ctx.fill();
+        const tint = mountain
+          ? null
+          : m.vegetation[i] === 'jungle'
+            ? 'rgba(40,92,44,0.34)'
+            : m.vegetation[i] === 'forest'
+              ? 'rgba(62,98,50,0.22)'
+              : m.vegetation[i] === 'marsh'
+                ? 'rgba(70,112,110,0.26)'
+                : m.relief[i] === 'hills'
+                  ? 'rgba(120,92,52,0.16)'
+                  : null;
+        if (tint) {
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = tint;
+          this.hexPath(cx(i), cy(i), R * 1.02);
+          ctx.fill();
+        }
       }
       ctx.globalAlpha = 1;
 
@@ -465,15 +487,18 @@ export class MapRenderer {
           continue;
         }
         if (rel === 'mountains') {
+          // impassable: a tall peak that reads at any zoom
           const snowy = (ter === 'snow' || ter === 'tundra') && extra('snowpeak', 4, 1);
-          sprite(
-            snowy || `mountain-${Math.floor(hash(i, 1) * 6)}`,
-            x - R * 0.12,
-            y + R * 0.15,
-            R * 1.45,
-          );
-          if (hash(i, 2) > 0.45)
-            sprite(`mountain-${Math.floor(hash(i, 3) * 6)}`, x + R * 0.38, y + R * 0.5, R * 0.95);
+          if (snowy) sprite(snowy, x - R * 0.12, y + R * 0.15, R * 1.45);
+          else {
+            this.peak(
+              x - R * 0.12,
+              y + R * 0.55,
+              R * (0.95 + hash(i, 1) * 0.15),
+              R * (1.15 + hash(i, 2) * 0.2),
+            );
+            if (hash(i, 3) > 0.35) this.peak(x + R * 0.38, y + R * 0.62, R * 0.6, R * 0.7);
+          }
           continue;
         }
         if (rel === 'hills') {
@@ -512,13 +537,16 @@ export class MapRenderer {
           }
         } else if (veg === 'marsh') {
           sprite(`marsh-${Math.floor(hash(i, 6) * 4)}`, x, y + R * 0.4, R * 0.9);
-        } else if (ter === 'desert' && rel === 'flat' && hash(i, 7) > 0.75) {
-          const dune = extra('dune', 4, 8);
+        } else if (ter === 'desert' && rel === 'flat') {
+          const dune = hash(i, 7) > 0.6 && extra('dune', 4, 8);
           if (dune) sprite(dune, x, y + R * 0.3, R * 0.75);
-          else sprite(`rocks-${Math.floor(hash(i, 8) * 3)}`, x, y + R * 0.3, R * 0.6);
-        } else if (ter === 'tundra' && rel === 'flat' && veg === 'none' && hash(i, 7) > 0.5) {
-          const sh = extra('tundra', 4, 8);
+          else this.dunes(x, y, hash(i, 8));
+        } else if (ter === 'snow' && rel === 'flat') {
+          this.drifts(x, y, hash(i, 8));
+        } else if (ter === 'tundra' && rel === 'flat' && veg === 'none') {
+          const sh = hash(i, 7) > 0.5 && extra('tundra', 4, 8);
           if (sh) sprite(sh, x, y + R * 0.35, R * 0.6);
+          else this.tufts(x, y, hash(i, 8));
         } else if (m.river[i] && rel === 'flat' && veg === 'none' && hash(i, 7) > 0.6) {
           const reed = extra('reeds', 3, 8);
           if (reed) sprite(reed, x + R * 0.3, y + R * 0.45, R * 0.45);
@@ -571,20 +599,24 @@ export class MapRenderer {
             h = (icon.naturalHeight / icon.naturalWidth) * w;
           ctx.drawImage(icon, x - w / 2, y - h / 2, w, h);
         } else {
+          // a pictogram on the good's colour
           ctx.fillStyle = good.color;
+          ctx.globalAlpha = 0.35;
           ctx.beginPath();
-          ctx.arc(x, y, R * 0.21, 0, Math.PI * 2);
+          ctx.arc(x, y, R * 0.24, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = '#fff';
-          ctx.font = `bold ${R * 0.2}px Georgia, serif`;
+          ctx.globalAlpha = 1;
+          const pic = info.emoji ?? good.emoji;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(good.glyph, x, y + 1);
-        }
-        if (d.richness > 1) {
-          ctx.fillStyle = INK;
-          ctx.font = `bold ${R * 0.18}px Georgia, serif`;
-          ctx.fillText('•'.repeat(d.richness), x, y + R * 0.36);
+          if (pic) {
+            ctx.font = `${R * 0.3}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+            ctx.fillText(pic, x, y + 1);
+          } else {
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${R * 0.2}px Georgia, serif`;
+            ctx.fillText(good.glyph, x, y + 1);
+          }
         }
       }
 
@@ -878,6 +910,100 @@ export class MapRenderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, x, y + fs * 0.75);
+  }
+
+  /** A tall, shaded, snow-capped peak with its foot at (x, y). */
+  private peak(x: number, y: number, w: number, h: number) {
+    const ctx = this.ctx;
+    const top = y - h;
+    ctx.lineJoin = 'round';
+    // shadow side, lit side, then snow
+    ctx.fillStyle = '#6e6962';
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, y);
+    ctx.lineTo(x, top);
+    ctx.lineTo(x + w / 2, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#948e85';
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, y);
+    ctx.lineTo(x, top);
+    ctx.lineTo(x - w * 0.05, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#f6f3ec';
+    ctx.beginPath();
+    ctx.moveTo(x - w * 0.17, top + h * 0.34);
+    ctx.lineTo(x, top);
+    ctx.lineTo(x + w * 0.17, top + h * 0.34);
+    ctx.lineTo(x + w * 0.06, top + h * 0.28);
+    ctx.lineTo(x - w * 0.04, top + h * 0.37);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, y);
+    ctx.lineTo(x, top);
+    ctx.lineTo(x + w / 2, y);
+    ctx.stroke();
+  }
+
+  /** Wind-drawn dunes on sand. */
+  private dunes(x: number, y: number, h: number) {
+    const ctx = this.ctx;
+    ctx.strokeStyle = 'rgba(150,110,55,0.55)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let k = 0; k < 3; k++) {
+      const ox = x + (k - 1) * R * 0.38 + (h - 0.5) * R * 0.2;
+      const oy = y + (k % 2 ? 0.05 : 0.35) * R + (h - 0.5) * R * 0.1;
+      ctx.moveTo(ox - R * 0.28, oy);
+      ctx.quadraticCurveTo(ox, oy - R * 0.2, ox + R * 0.28, oy);
+    }
+    ctx.stroke();
+  }
+
+  /** Blue-grey drifts on snowfields. */
+  private drifts(x: number, y: number, h: number) {
+    const ctx = this.ctx;
+    ctx.strokeStyle = 'rgba(120,140,160,0.5)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let k = 0; k < 2; k++) {
+      const oy = y + (k ? 0.35 : -0.05) * R;
+      const ox = x + (h - 0.5) * R * 0.3 + (k ? 0.15 : -0.2) * R;
+      ctx.moveTo(ox - R * 0.32, oy);
+      ctx.bezierCurveTo(
+        ox - R * 0.1,
+        oy - R * 0.12,
+        ox + R * 0.1,
+        oy + R * 0.08,
+        ox + R * 0.32,
+        oy - R * 0.02,
+      );
+    }
+    ctx.stroke();
+  }
+
+  /** Little tufts of grass on the tundra. */
+  private tufts(x: number, y: number, h: number) {
+    const ctx = this.ctx;
+    ctx.strokeStyle = 'rgba(90,96,70,0.6)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let k = 0; k < 4; k++) {
+      const ox = x + (((k * 0.37 + h) % 1) - 0.5) * R * 1.0;
+      const oy = y + (((k * 0.61 + h * 0.7) % 1) - 0.3) * R * 0.8;
+      ctx.moveTo(ox - R * 0.06, oy);
+      ctx.lineTo(ox - R * 0.03, oy - R * 0.1);
+      ctx.moveTo(ox, oy);
+      ctx.lineTo(ox, oy - R * 0.13);
+      ctx.moveTo(ox + R * 0.06, oy);
+      ctx.lineTo(ox + R * 0.03, oy - R * 0.1);
+    }
+    ctx.stroke();
   }
 
   private hexPath(x: number, y: number, r: number) {

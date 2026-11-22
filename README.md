@@ -94,6 +94,7 @@ npm run check:perf           # map frame times with the CPU slowed 4x
 - **Diplomacy**: opinion with reasons and memories, deals (gold, goods, per-turn trade), pacts,
   alliances that drag allies into wars, AI offers and tribute demands.
 - **Victory**: conquest, or the best score at the turn limit.
+- WASD or the arrow keys move the map; `?` lists all keys.
 - Fog of war, path preview with turn markers, go-to orders across turns, saved games with
   autosaves.
 - Rival peoples expand (by sea too), design and equip troops and ships, gather armies for

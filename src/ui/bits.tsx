@@ -66,6 +66,18 @@ export function GoodIcon({ id, size = 18 }: { id: string; size?: number }) {
         style={{ height: size }}
       />
     );
+  if (g.emoji)
+    return (
+      <span
+        className="good-emoji"
+        title={g.name}
+        role="img"
+        aria-label={g.name}
+        style={{ fontSize: size * 0.85 }}
+      >
+        {g.emoji}
+      </span>
+    );
   return (
     <span
       className="good-glyph"

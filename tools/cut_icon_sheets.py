@@ -28,6 +28,31 @@ COLS = ROWS = 8
 HEIGHT = 96
 
 
+def key_magenta(rgb):
+    """A figure on flat magenta: every magenta pixel goes, also the ones enclosed by the figure
+    (between legs, inside a bow, behind sails), and edge pixels are un-mixed from the magenta."""
+    rgb = rgb.astype(np.float32)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    # how magenta a pixel is: red and blue both well above green
+    m = np.minimum(r, b) - g
+    alpha = np.clip((165 - m) / 95, 0, 1)
+    ref = np.array([255.0, 0.0, 255.0])
+    aa = alpha[..., None]
+    fg = np.where(aa > 0.05, (rgb - ref * (1 - aa)) / np.maximum(aa, 0.05), rgb)
+    # what pink is left on the rim: pull red and blue down to what the green allows
+    spill = np.clip(np.minimum(fg[..., 0], fg[..., 2]) - fg[..., 1] - 40, 0, None)
+    fg[..., 0] -= spill * 0.5
+    fg[..., 2] -= spill
+    rgba = np.dstack([np.clip(fg, 0, 255), alpha * 255]).astype(np.uint8)
+    ys, xs = np.nonzero(alpha > 0.04)
+    if not len(ys):
+        return None
+    pad = 3
+    y0, y1 = max(ys.min() - pad, 0), min(ys.max() + pad + 1, rgba.shape[0])
+    x0, x1 = max(xs.min() - pad, 0), min(xs.max() + pad + 1, rgba.shape[1])
+    return Image.fromarray(rgba[y0:y1, x0:x1], "RGBA")
+
+
 def cut(sheet):
     cols, rows = sheet.get("cols", COLS), sheet.get("rows", ROWS)
     style, height = sheet.get("style", "emblem"), sheet.get("height", HEIGHT)
@@ -40,7 +65,8 @@ def cut(sheet):
     boxes = cell_boxes(fg, cols, rows)
     out, problems = {}, []
     for key, (x0, y0, x1, y1) in zip(sheet["cells"], boxes):
-        sprite = cut_cell(rgb[y0:y1, x0:x1], style)
+        cell = rgb[y0:y1, x0:x1]
+        sprite = key_magenta(cell) if style == "figure" else cut_cell(cell, style)
         if sprite is None:
             problems.append(f"{key}: empty cell")
             continue

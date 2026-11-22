@@ -222,7 +222,7 @@ writeFileSync(
       file: s.file,
       cols: s.cols,
       rows: s.rows,
-      style: s.style === 'figure' ? 'miniature' : 'emblem',
+      style: s.style === 'figure' ? 'figure' : 'emblem',
       height: s.out,
       cells: s.cells.map(c => c[0]),
     })),

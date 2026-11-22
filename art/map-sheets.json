@@ -3,7 +3,7 @@
   "file": "map-1-foot.png",
   "cols": 4,
   "rows": 4,
-  "style": "miniature",
+  "style": "figure",
   "height": 192,
   "cells": [
    "unit/levy",
@@ -28,7 +28,7 @@
   "file": "map-2-horse-civil-ships.png",
   "cols": 4,
   "rows": 4,
-  "style": "miniature",
+  "style": "figure",
   "height": 192,
   "cells": [
    "unit/light-cavalry",
@@ -53,7 +53,7 @@
   "file": "map-3-settlements.png",
   "cols": 4,
   "rows": 2,
-  "style": "miniature",
+  "style": "figure",
   "height": 256,
   "cells": [
    "city/village",

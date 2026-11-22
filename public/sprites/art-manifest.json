@@ -314,6 +314,46 @@
   "w": 96,
   "h": 67
  },
+ "city/city": {
+  "path": "art/city/city.webp",
+  "w": 353,
+  "h": 256
+ },
+ "city/metropolis": {
+  "path": "art/city/metropolis.webp",
+  "w": 309,
+  "h": 256
+ },
+ "city/port-city": {
+  "path": "art/city/port-city.webp",
+  "w": 341,
+  "h": 256
+ },
+ "city/port-metropolis": {
+  "path": "art/city/port-metropolis.webp",
+  "w": 301,
+  "h": 256
+ },
+ "city/port-town": {
+  "path": "art/city/port-town.webp",
+  "w": 329,
+  "h": 256
+ },
+ "city/port-village": {
+  "path": "art/city/port-village.webp",
+  "w": 351,
+  "h": 256
+ },
+ "city/town": {
+  "path": "art/city/town.webp",
+  "w": 326,
+  "h": 256
+ },
+ "city/village": {
+  "path": "art/city/village.webp",
+  "w": 355,
+  "h": 256
+ },
  "deposit/cattle": {
   "path": "art/deposit/cattle.webp",
   "w": 96,
@@ -1349,6 +1389,46 @@
   "w": 96,
   "h": 67
  },
+ "ship/carrack": {
+  "path": "art/ship/carrack.webp",
+  "w": 191,
+  "h": 192
+ },
+ "ship/cog": {
+  "path": "art/ship/cog.webp",
+  "w": 191,
+  "h": 192
+ },
+ "ship/dugout": {
+  "path": "art/ship/dugout.webp",
+  "w": 283,
+  "h": 185
+ },
+ "ship/galleon": {
+  "path": "art/ship/galleon.webp",
+  "w": 196,
+  "h": 192
+ },
+ "ship/galley": {
+  "path": "art/ship/galley.webp",
+  "w": 219,
+  "h": 192
+ },
+ "ship/gunship": {
+  "path": "art/ship/gunship.webp",
+  "w": 198,
+  "h": 192
+ },
+ "ship/longship": {
+  "path": "art/ship/longship.webp",
+  "w": 226,
+  "h": 192
+ },
+ "ship/war-galley": {
+  "path": "art/ship/war-galley.webp",
+  "w": 223,
+  "h": 192
+ },
  "tag/absolutist": {
   "path": "art/tag/absolutist.webp",
   "w": 96,
@@ -1759,6 +1839,136 @@
   "w": 89,
   "h": 96
  },
+ "terrain/dune-0": {
+  "path": "art/terrain/dune-0.webp",
+  "w": 80,
+  "h": 34
+ },
+ "terrain/dune-1": {
+  "path": "art/terrain/dune-1.webp",
+  "w": 80,
+  "h": 30
+ },
+ "terrain/dune-2": {
+  "path": "art/terrain/dune-2.webp",
+  "w": 80,
+  "h": 20
+ },
+ "terrain/dune-3": {
+  "path": "art/terrain/dune-3.webp",
+  "w": 80,
+  "h": 33
+ },
+ "terrain/ice-0": {
+  "path": "art/terrain/ice-0.webp",
+  "w": 80,
+  "h": 40
+ },
+ "terrain/ice-1": {
+  "path": "art/terrain/ice-1.webp",
+  "w": 80,
+  "h": 45
+ },
+ "terrain/ice-2": {
+  "path": "art/terrain/ice-2.webp",
+  "w": 80,
+  "h": 59
+ },
+ "terrain/jungle-0": {
+  "path": "art/terrain/jungle-0.webp",
+  "w": 80,
+  "h": 70
+ },
+ "terrain/jungle-1": {
+  "path": "art/terrain/jungle-1.webp",
+  "w": 80,
+  "h": 78
+ },
+ "terrain/jungle-2": {
+  "path": "art/terrain/jungle-2.webp",
+  "w": 80,
+  "h": 66
+ },
+ "terrain/jungle-3": {
+  "path": "art/terrain/jungle-3.webp",
+  "w": 80,
+  "h": 74
+ },
+ "terrain/reeds-0": {
+  "path": "art/terrain/reeds-0.webp",
+  "w": 80,
+  "h": 77
+ },
+ "terrain/reeds-1": {
+  "path": "art/terrain/reeds-1.webp",
+  "w": 80,
+  "h": 74
+ },
+ "terrain/reeds-2": {
+  "path": "art/terrain/reeds-2.webp",
+  "w": 80,
+  "h": 67
+ },
+ "terrain/snowpeak-0": {
+  "path": "art/terrain/snowpeak-0.webp",
+  "w": 80,
+  "h": 50
+ },
+ "terrain/snowpeak-1": {
+  "path": "art/terrain/snowpeak-1.webp",
+  "w": 80,
+  "h": 42
+ },
+ "terrain/snowpeak-2": {
+  "path": "art/terrain/snowpeak-2.webp",
+  "w": 80,
+  "h": 41
+ },
+ "terrain/snowpeak-3": {
+  "path": "art/terrain/snowpeak-3.webp",
+  "w": 80,
+  "h": 38
+ },
+ "terrain/tundra-0": {
+  "path": "art/terrain/tundra-0.webp",
+  "w": 80,
+  "h": 52
+ },
+ "terrain/tundra-1": {
+  "path": "art/terrain/tundra-1.webp",
+  "w": 80,
+  "h": 46
+ },
+ "terrain/tundra-2": {
+  "path": "art/terrain/tundra-2.webp",
+  "w": 80,
+  "h": 41
+ },
+ "terrain/tundra-3": {
+  "path": "art/terrain/tundra-3.webp",
+  "w": 80,
+  "h": 72
+ },
+ "terrain/waves-0": {
+  "path": "art/terrain/waves-0.webp",
+  "w": 80,
+  "h": 29
+ },
+ "terrain/waves-1": {
+  "path": "art/terrain/waves-1.webp",
+  "w": 80,
+  "h": 52
+ },
+ "terrain/waves-2": {
+  "path": "art/terrain/waves-2.webp",
+  "w": 80,
+  "h": 23
+ },
+ "terrain/waves-3": {
+  "path": "art/terrain/waves-3.webp",
+  "w": 80,
+  "h": 45
+ },
  "troop/archers": {
   "path": "art/troop/archers.webp",
   "w": 86,
@@ -1918,5 +2128,125 @@
   "path": "art/troop/workers.webp",
   "w": 96,
   "h": 84
+ },
+ "unit/archer": {
+  "path": "art/unit/archer.webp",
+  "w": 131,
+  "h": 192
+ },
+ "unit/arquebusier": {
+  "path": "art/unit/arquebusier.webp",
+  "w": 176,
+  "h": 192
+ },
+ "unit/axeman": {
+  "path": "art/unit/axeman.webp",
+  "w": 132,
+  "h": 192
+ },
+ "unit/crossbowman": {
+  "path": "art/unit/crossbowman.webp",
+  "w": 166,
+  "h": 192
+ },
+ "unit/engineers": {
+  "path": "art/unit/engineers.webp",
+  "w": 151,
+  "h": 192
+ },
+ "unit/field-gun": {
+  "path": "art/unit/field-gun.webp",
+  "w": 231,
+  "h": 192
+ },
+ "unit/heavy-cavalry": {
+  "path": "art/unit/heavy-cavalry.webp",
+  "w": 162,
+  "h": 192
+ },
+ "unit/heavy-swordsman": {
+  "path": "art/unit/heavy-swordsman.webp",
+  "w": 136,
+  "h": 192
+ },
+ "unit/hoplite": {
+  "path": "art/unit/hoplite.webp",
+  "w": 120,
+  "h": 192
+ },
+ "unit/horse-archer": {
+  "path": "art/unit/horse-archer.webp",
+  "w": 150,
+  "h": 192
+ },
+ "unit/javelineer": {
+  "path": "art/unit/javelineer.webp",
+  "w": 157,
+  "h": 192
+ },
+ "unit/knight": {
+  "path": "art/unit/knight.webp",
+  "w": 142,
+  "h": 192
+ },
+ "unit/levy": {
+  "path": "art/unit/levy.webp",
+  "w": 135,
+  "h": 192
+ },
+ "unit/light-cavalry": {
+  "path": "art/unit/light-cavalry.webp",
+  "w": 146,
+  "h": 192
+ },
+ "unit/longbowman": {
+  "path": "art/unit/longbowman.webp",
+  "w": 126,
+  "h": 192
+ },
+ "unit/musketeer": {
+  "path": "art/unit/musketeer.webp",
+  "w": 148,
+  "h": 192
+ },
+ "unit/pikeman": {
+  "path": "art/unit/pikeman.webp",
+  "w": 116,
+  "h": 192
+ },
+ "unit/plate-infantry": {
+  "path": "art/unit/plate-infantry.webp",
+  "w": 157,
+  "h": 192
+ },
+ "unit/scout": {
+  "path": "art/unit/scout.webp",
+  "w": 154,
+  "h": 192
+ },
+ "unit/settlers": {
+  "path": "art/unit/settlers.webp",
+  "w": 234,
+  "h": 192
+ },
+ "unit/slinger": {
+  "path": "art/unit/slinger.webp",
+  "w": 136,
+  "h": 192
+ },
+ "unit/spearman": {
+  "path": "art/unit/spearman.webp",
+  "w": 116,
+  "h": 192
+ },
+ "unit/swordsman": {
+  "path": "art/unit/swordsman.webp",
+  "w": 143,
+  "h": 192
+ },
+ "unit/workers": {
+  "path": "art/unit/workers.webp",
+  "w": 191,
+  "h": 192
  }
 }

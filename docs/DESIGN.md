@@ -1,6 +1,6 @@
 # Game Design Document — working title "History Unfolded: Forge"
 
-Status: draft 0.1 · Scope: a turn-based, hex-map 4X in the classic civilization-builder mould, where
+Status: draft 0.2 (decisions from review applied, see §17) · Scope: a turn-based, hex-map 4X in the classic civilization-builder mould, where
 **armies, buildings and cultures are all assembled by the player** instead of picked from fixed lists.
 
 ---
@@ -36,10 +36,23 @@ civilizations look, fight or think alike, and each got that way through its own 
 | Movement points, zones of control, combat odds preview | "One unit per tile" stacking rule | Moving a formation onto a friendly one merges them |
 | Tech tree with eras | Tech that unlocks finished units/buildings | Tech unlocks equipment, slot types and caps |
 | Diplomacy, war, peace, borders | Civics/policy cards swapped freely | Culture web with exclusive branches and upheaval events |
-| Turn-based, single player vs AI | — | Goods stockpiles feed equipment and building upkeep |
+| Turn-based, single player vs AI | Global/national resource pool | Goods stored per city; roads join cities into shared **markets** |
 
 ## 4. The map
 
+- **Always procedural.** Every game generates a new map from a seed; there is no Earth or fixed
+  map. Map *types* make games feel different, not just reshuffled:
+  - **Continents** (2–4 large landmasses), **Pangaea** (one landmass, land war heavy),
+    **Archipelago** (many islands, sea game), **Inland Sea** (land ring around a central sea),
+    **Highlands** (mountain chains and valleys, choke points), **Fractal/Random** (anything).
+  - Settings: size, sea level, climate (cold ↔ hot), rainfall (dry ↔ wet), resource abundance,
+    mountain density, seed (shareable). "Random" picks all of them.
+  - Generation pipeline: heightmap (layered noise + plate-like ridges) → land/sea by sea level →
+    temperature by latitude and height → moisture → terrain/feature → rivers flowing downhill to
+    sea → deposits placed by terrain rules → start positions balanced.
+- **Art is swappable.** Terrain, features, deposits and units are drawn through a tile/sprite
+  registry keyed by id. The first version uses simple generated shapes and colours; the owner's
+  existing art packs can be dropped in later without engine changes.
 - **Hex grid**, axial coordinates, pointy-top. Map sizes from Small (~1,500 hexes, 4 civs) to
   Huge (~6,000 hexes, 10 civs).
 - **Terrain** (one per hex): grassland, plains, desert, tundra, snow, coast, ocean, lake.
@@ -111,11 +124,12 @@ Each item has:
 
 - Open a formation and **assign loadouts to any number of cohorts**: pick 2, 8 or all 10 and
   give them bows → 200, 800 or 1,000 bowmen.
-- Refitting needs the goods in your national stockpile and happens:
+- **Replace anything:** weapons, armour, shields, mounts, tools and kit, on any subset of
+  cohorts. Refitting needs the goods in the **market** the formation stands in (§8.1) and happens:
   - instantly-ish (1 turn) in or next to a city with an **Armoury** slot in one of its districts,
   - slowly (3 turns, +50% cost) anywhere in your own territory,
   - not at all in enemy territory (except swapping to items the formation already carries).
-- Old equipment goes back to the stockpile at 50% value.
+- Old equipment goes back to that market's stockpile at 50% value.
 - **Loadout templates.** Save named templates ("Iron Wall": Pike + Plate + Shield) and apply
   them to cohorts in one click. Templates are per player and also become the vocabulary the AI
   uses when it designs its own troops.
@@ -235,15 +249,35 @@ The player's examples are just designs:
 ## 8. Economy and goods
 
 - **Yields:** Food, Production, Gold, Science, Culture, plus **goods**.
-- **Goods** are stockpiled nationally (simple model) with per-city warehouses later if needed.
-  Tiers: raw (iron ore, coal, wood, hides, grain, ivory) → processed (iron bars, leather, lumber,
+- **Goods** are stored **per city** (see §8.1). Tiers: raw (iron ore, coal, wood, hides, grain, ivory) → processed (iron bars, leather, lumber,
   flour) → finished (tools, weapons, armour, luxury goods).
-- **Equipment is made of goods.** Equipping cohorts pulls goods from the stockpile (§5.3).
+- **Equipment is made of goods.** Equipping cohorts pulls goods from the local market (§5.3, §8.1).
   This is the main sink tying the map to the army.
 - **Trade:** trade routes between your cities and to other civs move goods and earn gold;
   diplomacy can include goods-for-goods deals ("20 iron per turn for 5 ivory").
 - **Happiness/stability:** luxuries, culture alignment and war weariness. Feeds unrest and is
   one of the triggers of upheaval (§9.4).
+
+### 8.1 Cities, roads and markets
+
+- Every city has its **own stockpile**. What its districts produce goes there; what its
+  districts, levies and refits consume comes from there.
+- **Roads** are built hex by hex (by worker formations, or automatically between cities once
+  *Road Building* is known). When two cities are joined by an unbroken road (or river, or later
+  railway / sea route through friendly ports), they become one **market**.
+- A **market** is a group of connected cities that **share one pooled stockpile**. In the UI a
+  market shows as a coloured network with a single goods list. Isolated cities are markets of
+  one.
+- **Breaking a connection splits the market.** An enemy formation standing on a road hex, a
+  pillaged road or a blockaded port cuts the link; the pool is split back between the cities
+  (by each city's share of recent production). This makes roads real military targets.
+- **Moving goods between separate markets** (your own unconnected cities, or other civs) needs
+  **trade routes/caravans**: slow, limited capacity per turn, and can be raided.
+- **Formations draw from the market they are in.** A formation inside your territory uses the
+  market of the nearest connected city; an army far from roads cannot refit and takes supply
+  attrition. Armouries only help in cities of the same market.
+- Later techs/culture extend reach: *Paved Roads* (faster), *Canals*, *Railways* (bigger
+  movement and instant market joins), *Merchant Marine* (sea routes join coastal markets).
 
 ## 9. Culture: the culture web
 
@@ -399,25 +433,28 @@ interface District { id: string; hex: HexId; design: DistrictDesign; built: bool
 interface CultureNode { id: string; domain: Domain; cost: number; requiresAll: string[]; requiresAny: string[]; excludes: string[]; tags: string[]; effects: Effect[]; }
 interface CultureState { taken: Set<string>; locked: Set<string>; legacy: Set<string>; tension: Record<Domain, number>; upheaval?: { domain: Domain; turnsLeft: number }; }
 
-interface Civ { id: string; name: string; techs: Set<string>; culture: CultureState; stockpile: Record<GoodId, number>; templates: Record<string, Loadout>; blueprints: Record<string, DistrictDesign>; }
+interface City { id: string; civId: string; hex: HexId; population: number; stockpile: Record<GoodId, number>; districtIds: string[]; }
+interface Market { id: string; cityIds: string[]; } // recomputed when roads change; pooled view = sum of member stockpiles
+
+interface Civ { id: string; name: string; techs: Set<string>; culture: CultureState; templates: Record<string, Loadout>; blueprints: Record<string, DistrictDesign>; }
 ```
 
 ### 14.3 What happens to the current code
 
 The current repository is a zero-player history simulator. Very little carries over directly.
 Proposal: archive it on a tag (`v3-archive`) and start a clean `src/` for the new game, keeping
-only the tooling (Vite, TS config, Prettier, the headless-sim script pattern) and possibly the
-Earth map builder as a later "Earth map" option.
+only the tooling (Vite, TS config, Prettier, the headless-sim script pattern). The Earth map and
+its builder are dropped: maps are procedural only.
 
 ## 15. Milestones
 
 | # | Milestone | Done when |
 |---|---|---|
 | M0 | Clean slate | Old code archived, new skeleton builds, empty hex map renders |
-| M1 | Map & movement | Procedural hex map with terrain/deposits, fog of war, a formation moves with movement points, merge on move, split |
-| M2 | Cohorts & loadouts | Levy from a city, equipment items from data, assign loadouts to N cohorts, templates, goods stockpile pays for it |
+| M1 | Map & movement | Procedural hex map (several map types, seeded) with terrain/rivers/deposits, fog of war, a formation moves with movement points, merge on move, split |
+| M2 | Cohorts & loadouts | Levy from a city, equipment items from data, assign loadouts to N cohorts, templates, per-city stockpiles pay for it |
 | M3 | Combat | Ranged/charge/melee/morale resolution, odds preview, terrain modifiers, casualties, a dumb AI that attacks |
-| M4 | Cities & districts | Found cities, 3×3 district designer, hex requirements, adjacency, labour, production of goods, blueprints |
+| M4 | Cities & districts | Found cities, 3×3 district designer, hex requirements, adjacency, labour, production of goods, blueprints, roads and markets |
 | M5 | Tech tree | ~60 techs across 4 eras unlocking items and slot types |
 | M6 | Culture web | ~120 nodes, forks and locks, tags, tension meters, one upheaval type (Revolution), then the rest |
 | M7 | AI civs | 8–10 AI civs that expand, design troops/districts, pick culture, fight and make peace |
@@ -429,13 +466,17 @@ Earth map builder as a later "Earth map" option.
 
 ## 16. Open questions
 
-1. Your note "You can go to your troops and replace…" was cut off. This draft reads it as
-   **re-equipping cohorts in an existing formation** (§5.5). Is there more, e.g. swapping cohorts
-   between formations or replacing casualties?
-2. Do goods stockpile **nationally** (simpler) or **per city** with transport (deeper,
-   more logistics)? Draft assumes national.
-3. Should soldiers **really cost population** (draft: yes), or is that too punishing?
-4. Multiplayer: out of scope for now, but turns and determinism are designed so hot-seat or
+1. Multiplayer: out of scope for now, but turns and determinism are designed so hot-seat or
    async could come later. Wanted?
-5. Map: procedural only, or keep an Earth map option from the current repo?
-6. How many slot types and items for the first playable? Draft: 10 items, 20 slots.
+2. How many slot types and items for the first playable? Draft: 10 items, 20 slots.
+3. Art: which formats/sizes are the existing asset packs (hex tiles, sprites, PNG/SVG)? The
+   sprite registry will be shaped to match once they are added.
+
+## 17. Decisions log
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | What does "replace" on troops mean? | Re-equipping: swap weapons, armour, shields, mounts, tools and kit on any number of cohorts (§5.5). |
+| 2 | National or per-city goods? | Per city. Roads (and later rivers, rail, sea routes) connect cities into a **market** with one shared pool; cutting the link splits it (§8.1). |
+| 3 | Do soldiers cost population? | Yes (§5.2). |
+| 4 | Maps? | Procedural only, many map types, every game different; no Earth map. Art from the owner's asset packs added later through a sprite registry (§4). |

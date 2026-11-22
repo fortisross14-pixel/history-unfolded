@@ -26,6 +26,8 @@ export interface GameSettings {
   playerName: string;
   /** the game ends on this turn with a score victory */
   turnLimit?: number;
+  /** opponent strength and forgiveness; absent in older saves = normal */
+  difficulty?: 'casual' | 'normal' | 'hard';
 }
 
 export interface Deposit {

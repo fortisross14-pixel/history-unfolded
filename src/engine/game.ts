@@ -59,6 +59,7 @@ import {
   settlePending,
 } from './dynasty.ts';
 import { AREA_NAMES, type Area } from '../data/dynasties.ts';
+import { difficultyOf, yieldFactor } from './difficulty.ts';
 import { realmEventTurn, settleRealmEvent } from './realmEvents.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
@@ -158,7 +159,9 @@ export function newGame(settings: GameSettings): GameState {
     const free = neighbors(g, start).filter(k => isPassableLand(map, k));
     const spot = (n: number) => free[n % Math.max(1, free.length)] ?? start;
     addFormation(s, civ.id, 'settlers', start, SETTLER_COHORTS, 'Settlers');
-    addFormation(s, civ.id, 'army', spot(0), LEVY_COHORTS, nextLevyName(s, civ.id));
+    const extra = civ.isPlayer ? difficultyOf(s).startCohorts : 0;
+    if (civ.isPlayer) civ.gold += difficultyOf(s).startGold;
+    addFormation(s, civ.id, 'army', spot(0), LEVY_COHORTS + extra, nextLevyName(s, civ.id));
     const scout = addFormation(s, civ.id, 'army', spot(1), 1, 'Scouts');
     const scoutDesign: Design = {
       id: s.nextId++,
@@ -1052,12 +1055,14 @@ export function endTurn(s: GameState): string[] {
         if (civ.isPlayer) events.push(`${c.name} is starving.`);
       }
     }
-    cultureOf.set(civ.id, culture);
+    // difficulty: the AI's yields are scaled, never the player's
+    const yf = yieldFactor(s, civ);
+    cultureOf.set(civ.id, culture * yf);
     let upkeep = 0;
     for (const f of s.formations)
       if (f.civId === civ.id) for (const co of f.cohorts) upkeep += cohortUpkeep(co);
     upkeep = Math.round(upkeep * pct(civMods(s, civ.id).upkeepPct));
-    civ.gold += gold - upkeep;
+    civ.gold += Math.round(gold * yf) - upkeep;
     if (civ.gold < 0) civ.gold = 0;
     // firearms burn powder each turn; a realm out of it fires at half
     const powder = powderNeed(s, civ.id);
@@ -1072,7 +1077,7 @@ export function endTurn(s: GameState): string[] {
     capStores(s, civ.id, econ);
     if (!civ.researching) civ.researching = nextResearch(s, civ);
     // science is stored even while nothing is chosen, so choosing late costs nothing
-    civ.science += science;
+    civ.science += science * yf;
     if (civ.researching) {
       const t = TECHS[civ.researching];
       const cost = techCost(s, civ, t.id);

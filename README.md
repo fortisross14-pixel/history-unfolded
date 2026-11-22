@@ -79,6 +79,7 @@ npm run check:perf           # map frame times with the CPU slowed 4x
 - **Roads and markets**: roads are built, not given: any army early, workers from the Medieval
   age, engineers from the Industrial (half a move per hex along them). Cities
   joined by road or river share one store; an enemy on the road cuts it.
+- **Difficulty**: Discovery, Standard or Veteran, chosen at New game, with its modifiers shown.
 - **Events**: a story to decide every 5 to 15 turns, varied, with costs shown up front.
 - **Renaming**: rename any settlement from its panel (✎).
 - **War and peace, cities falling**: declare war, capture cities by breaking their guard,

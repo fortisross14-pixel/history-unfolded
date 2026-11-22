@@ -705,6 +705,26 @@ Against repetition: cooldowns per event, once-a-game events, a lower weight for 
 the last one and for events already seen. Some queue a follow-up a few turns later. Costs scale
 with the age. Left undecided, the first open choice is taken when the turn ends.
 
+## 11e. Difficulty (as built)
+
+Three presets chosen on the New game screen, their modifiers listed under the choice. Difficulty
+changes how able and forgiving the rivals are, never which mechanics exist. All knobs live in one
+profile (`src/engine/difficulty.ts`); saves without a difficulty play as Standard.
+
+| | Discovery (casual) | Standard (normal) | Veteran (hard) |
+| --- | --- | --- | --- |
+| Rival gold, science, culture | ×0.85 | ×1 | ×1.15 |
+| First war anywhere / on the player | turn 40 / 60 | 30 / 30 | 25 / 25 |
+| War chance per turn, strength edge wanted | 4%, ×1.4 | 6%, ×1 | 8%, ×0.85 |
+| Player start | +50 gold, +2 levy cohorts | even | even |
+| Harmful realm events | ×0.5 | ×1 | ×1.3 |
+| Player houses' unrest growth | ×0.8 | ×1 | ×1.15 |
+
+`scripts/difficultycheck.ts` checks that one seed gives the same world on all three and that
+rivals end weaker on Discovery than on Veteran. A 3-seed, 180-turn sweep gave rival scores
+285 / 296 / 309 and 17 / 36 / 48 wars. Planned next: early-war warnings on Discovery, smarter
+combined arms and deal reading on Veteran.
+
 ## 12. Victory and game length
 
 - Turn limit (default 400), with a score at the end.

@@ -2208,3 +2208,17 @@ input.rename {
 .event-choice small {
   color: var(--ink-soft);
 }
+
+/* difficulty: three cards and the modifiers of the chosen one */
+.map-types.difficulty {
+  grid-template-columns: repeat(3, 1fr);
+}
+.difficulty-notes {
+  margin: 4px 0 12px;
+  padding-left: 18px;
+}
+@media (max-width: 520px) {
+  .map-types.difficulty {
+    grid-template-columns: 1fr;
+  }
+}

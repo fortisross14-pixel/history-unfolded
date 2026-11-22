@@ -38,6 +38,7 @@ import { SLOT_TYPES } from '../data/slots.ts';
 import { DEFAULT_LOADOUT } from '../data/items.ts';
 import { ageOf } from '../data/techs.ts';
 import { invalidateMarkets } from './economy.ts';
+import { difficultyOf } from './difficulty.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
 import type { City, Civ, Dynasty, GameState, Trinket } from './types.ts';
 import { power as formationPower } from './units.ts';
@@ -509,6 +510,7 @@ export function dynastyTurn(s: GameState, civ: Civ): string[] {
     if (weak && gain > 0) gain += 1;
     gain = Math.min(12, gain);
     if (demo) gain = gain > 0 ? gain * DEMOCRACY_UNREST : gain;
+    if (civ.isPlayer && gain > 0) gain *= difficultyOf(s).unrestRate;
     const before = d.unrest;
     d.unrest = Math.max(0, Math.min(REVOLT_AT, d.unrest + gain));
     if (before < 50 && d.unrest >= 50)

@@ -85,6 +85,7 @@ import {
   stepCost,
 } from './game.ts';
 import { findPath } from './path.ts';
+import { difficultyOf } from './difficulty.ts';
 import {
   cityDistricts,
   marketStock,
@@ -1314,8 +1315,10 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
   const enemies = others.filter(o => atWar(s, civ.id, o.id));
 
   // declare war on a weaker neighbour we dislike
-  if (!enemies.length && s.turn > 30 && rng() < 0.06) {
+  const diff = difficultyOf(s);
+  if (!enemies.length && s.turn > diff.firstWarTurn && rng() < diff.warChance) {
     const targets = others.filter(o => {
+      if (o.isPlayer && s.turn <= diff.peaceWithPlayerUntil) return false;
       if (allied(s, civ.id, o.id)) return false;
       const near = s.cities.some(
         c => c.civId === o.id && cities.some(m => distance(g, c.hex, m.hex) <= 14),
@@ -1325,7 +1328,7 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
       const pact = hasPact(s, civ.id, o.id);
       if (pact && !(op < -60 && mineP > militaryPower(s, o.id) * 3)) return false;
       if (op > 10) return false;
-      const need = op < -40 ? 1.1 : op < -15 ? 1.3 : 1.6;
+      const need = (op < -40 ? 1.1 : op < -15 ? 1.3 : 1.6) * diff.warMargin;
       return mineP > militaryPower(s, o.id) * need + 5 && canReach(s, civ, o);
     });
     if (targets.length)

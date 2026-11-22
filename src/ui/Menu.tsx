@@ -4,6 +4,7 @@ import { randomSeed } from '../engine/rng.ts';
 import type { GameSettings, Level3, MapSize, MapType } from '../engine/types.ts';
 import { deleteGame, listGames } from './save.ts';
 import { artUrl } from '../render/art.ts';
+import { DIFFICULTIES, DIFFICULTY_ORDER, type Difficulty } from '../engine/difficulty.ts';
 
 const L3 = (labels: [string, string, string]) =>
   (['low', 'normal', 'high'] as Level3[]).map((v, i) => ({ v, label: labels[i] }));
@@ -27,6 +28,7 @@ export function Menu({
   const [name, setName] = useState('');
   const [games, setGames] = useState(listGames);
   const [turnLimit, setTurnLimit] = useState(400);
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
 
   const select = <T extends string>(
     label: string,
@@ -87,6 +89,25 @@ export function Menu({
           </div>
         )}
         <h2>New game</h2>
+        <div className="map-types difficulty" role="radiogroup" aria-label="Difficulty">
+          {DIFFICULTY_ORDER.map(d => (
+            <button
+              key={d}
+              role="radio"
+              aria-checked={difficulty === d}
+              className={`map-type ${difficulty === d ? 'on' : ''}`}
+              onClick={() => setDifficulty(d)}
+            >
+              <b>{DIFFICULTIES[d].name}</b>
+              <small>{DIFFICULTIES[d].promise}</small>
+            </button>
+          ))}
+        </div>
+        <ul className="difficulty-notes muted small">
+          {DIFFICULTIES[difficulty].notes.map(n => (
+            <li key={n}>{n}</li>
+          ))}
+        </ul>
         <div className="map-types">
           {MAP_TYPES.map(t => (
             <button
@@ -173,6 +194,7 @@ export function Menu({
               civCount: civs,
               playerName: name.trim(),
               turnLimit,
+              difficulty,
             })
           }
         >

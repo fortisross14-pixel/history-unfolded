@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fx } from '../render/fx.ts';
 import { isMuted, setMuted, sound } from './sound.ts';
+import { difficultyOf } from '../engine/difficulty.ts';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
 import {
@@ -578,6 +579,7 @@ export function Game({
               : ''}
             {!me.alive ? ` The chronicles will remember the ${me.name}.` : ''}
           </p>
+          <p className="muted small">Difficulty: {difficultyOf(game).name}</p>
           <table className="stats">
             <tbody>
               {ranking.map(c => (

@@ -23,6 +23,7 @@ import { distance, neighbors } from './hex.ts';
 import { isPassableLand, validDeposits } from './mapgen.ts';
 import { hashSeed, mulberry32, type Rng } from './rng.ts';
 import type { City, Civ, Dynasty, GameState } from './types.ts';
+import { difficultyOf } from './difficulty.ts';
 
 export type EventKind = 'land' | 'people' | 'court' | 'trade' | 'war' | 'faith' | 'knowledge';
 
@@ -84,6 +85,8 @@ interface EventDef {
 
 // ---------------------------------------------------------------- helpers
 
+/** harmful events: rarer on Casual, more common on Hard */
+const HARSH = new Set(['blight', 'plague', 'fire', 'bandits', 'flood']);
 const pick = <T>(r: Rng, xs: T[]): T | undefined =>
   xs.length ? xs[Math.floor(r() * xs.length)] : undefined;
 const mine = (s: GameState, civ: Civ) => s.cities.filter(c => c.civId === civ.id);
@@ -924,7 +927,8 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
       if (!sub || !ctxOf(s, civ, sub)) continue;
       // the same kind twice running is unlikely; events seen often fade
       const seen = st.history.filter(h => h.id === e.id).length;
-      const w = ((e.weight ?? 1) * (st.lastKind === e.kind ? 0.25 : 1)) / (1 + seen * 0.5);
+      const harsh = HARSH.has(e.id) ? difficultyOf(s).harshEvents : 1;
+      const w = ((e.weight ?? 1) * harsh * (st.lastKind === e.kind ? 0.25 : 1)) / (1 + seen * 0.5);
       options.push({ e, sub, w });
     }
     if (!options.length) {

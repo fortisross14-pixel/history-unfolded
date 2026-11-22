@@ -1,5 +1,6 @@
 /** Generates maps of every type and size and prints stats plus a small ASCII preview. */
-import { generateMap, MAP_SIZES } from '../src/engine/mapgen.ts';
+import { generateMap, MAP_SIZES, startValue } from '../src/engine/mapgen.ts';
+import { distance } from '../src/engine/hex.ts';
 import type { MapSettings, MapType, MapSize } from '../src/engine/types.ts';
 
 const types: MapType[] = [
@@ -75,5 +76,43 @@ for (const type of types) {
     }
   }
 }
-console.log(fails ? `${fails} maps short of starts` : 'all maps OK');
+// fairness: the poorest start against the median, and how close neighbours sit
+{
+  let worst = 1,
+    sum = 0,
+    n = 0,
+    gap = Infinity;
+  for (const type of [
+    'continents',
+    'pangaea',
+    'archipelago',
+    'inland-sea',
+    'highlands',
+  ] as MapType[])
+    for (let seed = 1; seed <= 24; seed++) {
+      const m = generateMap({
+        type,
+        size: 'standard',
+        seaLevel: 'normal',
+        climate: 'normal',
+        rainfall: 'normal',
+        resources: 'normal',
+        mountains: 'normal',
+        seed,
+      });
+      const v = m.starts.map(st => startValue(m, st)).sort((a, b) => a - b);
+      const ratio = v[0] / v[Math.floor(v.length / 2)];
+      worst = Math.min(worst, ratio);
+      sum += ratio;
+      n++;
+      for (const a of m.starts)
+        for (const b of m.starts) if (a !== b) gap = Math.min(gap, distance(m, a, b));
+    }
+  const ok = worst >= 0.55 && sum / n >= 0.8 && gap >= 6;
+  if (!ok) fails++;
+  console.log(
+    `${ok ? 'ok  ' : 'FAIL'} start fairness: poorest/median worst ${worst.toFixed(2)}, mean ${(sum / n).toFixed(2)}; closest starts ${gap} hexes apart`,
+  );
+}
+console.log(fails ? `${fails} map checks failed` : 'all maps OK');
 process.exit(fails ? 1 : 0);

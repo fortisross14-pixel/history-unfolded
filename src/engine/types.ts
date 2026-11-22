@@ -88,11 +88,17 @@ export interface Formation {
   aboard?: number;
 }
 
+/** Town: 2 districts, farms and mines allowed. City: 4, no rural buildings. Metropolis: 6, one per civ. */
+export type Tier = 'town' | 'city' | 'metropolis';
+
 export interface City {
   id: number;
   civId: number;
   name: string;
   hex: number;
+  tier: Tier;
+  /** the house that governs it (a dynasty id of its people) */
+  governor?: number;
   /** people */
   pop: number;
   food: number;
@@ -117,7 +123,17 @@ export interface Civ {
   /** AI only: culture tags it leans towards */
   leanings: string[];
   /** AI only: the current military campaign */
-  ai?: { targetCity: number; staging: number; phase: 'gather' | 'march'; since: number };
+  ai?: {
+    targetCity: number;
+    /** land hex next to our city where the armies gather */
+    staging: number;
+    phase: 'gather' | 'march' | 'assault';
+    since: number;
+    /** formations committed to this campaign */
+    members: number[];
+  };
+  /** AI only: formations sent home to heal (they rejoin at 80%) */
+  recovering?: number[];
   /** AI only: a sea crossing in progress (settlers or an army on transports) */
   sea?: {
     fleet: number;
@@ -127,7 +143,25 @@ export interface Civ {
     dest: number;
     stage: 'load' | 'sail' | 'unload';
     since: number;
+    /** enemy city hex an invasion aims at (none for settlers) */
+    target?: number;
+    /** sailing home to unload after a crossing could not be made */
+    abort?: boolean;
   };
+  /** the great houses; `ruling` holds the throne */
+  dynasties: Dynasty[];
+  ruling: number;
+  /** trinkets earned by building, not yet given to a house */
+  trinkets: Trinket[];
+  /**
+   * A house has risen. `pending`: the player has yet to choose a side (the realm has not split).
+   * Once split, `rival` is the breakaway realm and the war runs CIVIL_WAR_TURNS.
+   */
+  civilWar?: { rebel: number; since: number; pending?: boolean; rival?: number };
+  /** goods it ran out of last turn (saltpeter: firearms fire at half) */
+  shortOf?: string[];
+  /** a realm that broke away in a civil war (from this civ id) */
+  splitFrom?: number;
   science: number;
   gold: number;
   /** 1 = explored, per hex */
@@ -145,6 +179,26 @@ export interface Civ {
   losses: number;
 }
 
+export interface Trinket {
+  id: number;
+  name: string;
+  line: import('../data/dynasties.ts').Area;
+}
+
+export interface Dynasty {
+  id: number;
+  name: string;
+  color: string;
+  trinkets: Trinket[];
+  /** points it was born with, by area (2 in one, 1 in another) */
+  traits: Partial<Record<import('../data/dynasties.ts').Area, number>>;
+  /** experience from governing, by area */
+  xp: Partial<Record<import('../data/dynasties.ts').Area, number>>;
+  /** 0..REVOLT_AT: how close the house is to rising */
+  unrest: number;
+  founded: number;
+}
+
 /** One cell of a district's 3×3 grid. */
 export interface SlotState {
   type: string | null;
@@ -155,7 +209,7 @@ export interface SlotState {
   paid: boolean;
 }
 
-/** A district: a named 3×3 grid of slots on one hex, belonging to a city. */
+/** A district: a named 3×3 grid of slots inside a settlement (all on the settlement's hex). */
 export interface District {
   id: number;
   cityId: number;
@@ -242,6 +296,11 @@ export interface War {
   a: number;
   b: number;
   since: number;
+  /** people lost in battle, by civ id */
+  dead?: Record<number, number>;
+  /** cities taken, by the civ that took them */
+  taken?: Record<number, number>;
+  lastFight?: number;
 }
 
 export interface LogEntry {

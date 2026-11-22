@@ -315,6 +315,22 @@ export function generateMap(s: MapSettings): MapData {
   }
 
   // --- terrain and vegetation ---
+  // biomes by share of the land, so every map has its cold north, its deserts and its green
+  // middle; the climate and rainfall settings move the bands
+  const landCells: number[] = [];
+  for (let i = 0; i < N; i++) if (land[i]) landCells.push(i);
+  const quant = (arr: ArrayLike<number>, q: number) => {
+    const v = landCells.map(i => arr[i]).sort((a, b) => a - b);
+    return v.length ? v[Math.min(v.length - 1, Math.floor(q * v.length))] : 0;
+  };
+  const cl = LEVEL[s.climate],
+    rf = LEVEL[s.rainfall];
+  const tSnow = quant(temp, [0.08, 0.05, 0.02][cl]);
+  const tTundra = quant(temp, [0.24, 0.15, 0.08][cl]);
+  const tWarm = quant(temp, [0.45, 0.32, 0.22][cl]);
+  const mDesert = quant(moist, [0.38, 0.27, 0.17][rf]);
+  const mPlains = quant(moist, [0.55, 0.45, 0.35][rf]);
+  const tJungle = quant(temp, 0.82);
   const vegetation: VegetationId[] = new Array(N).fill('none');
   for (let i = 0; i < N; i++) {
     if (!land[i]) {
@@ -333,10 +349,10 @@ export function generateMap(s: MapSettings): MapData {
     const t = temp[i],
       m = moist[i];
     let ter: TerrainId;
-    if (t < 0.1) ter = 'snow';
-    else if (t < 0.27) ter = 'tundra';
-    else if (m < 0.32 && t > 0.5) ter = 'desert';
-    else if (m < 0.5) ter = 'plains';
+    if (t < tSnow) ter = 'snow';
+    else if (t < tTundra) ter = 'tundra';
+    else if (m < mDesert && t > tWarm) ter = 'desert';
+    else if (m < mPlains) ter = 'plains';
     else ter = 'grassland';
     if (river[i] && ter === 'desert' && m > 0.2) ter = 'plains';
     terrain[i] = ter;
@@ -345,15 +361,15 @@ export function generateMap(s: MapSettings): MapData {
     const score = m + vn * 0.35;
     const wetFlat = relief[i] === 'flat' && (river[i] > 0 || nearWater[i]);
     if (wetFlat && m > 0.68 && vn > 0.12) vegetation[i] = 'marsh';
-    else if (t > 0.78 && score > 0.66) vegetation[i] = 'jungle';
-    else if (score > (ter === 'tundra' ? 0.55 : 0.64)) vegetation[i] = 'forest';
+    else if (t > tJungle && score > 0.62) vegetation[i] = 'jungle';
+    else if (score > (ter === 'tundra' ? 0.52 : 0.6)) vegetation[i] = 'forest';
   }
 
   // --- deposits ---
   const dRng = mulberry32(hashSeed(s.seed, 9));
   const deposit: (Deposit | null)[] = new Array(N).fill(null);
-  const pLand = [0.07, 0.11, 0.16][LEVEL[s.resources]];
-  const pWater = [0.08, 0.12, 0.17][LEVEL[s.resources]];
+  const pLand = [0.035, 0.055, 0.085][LEVEL[s.resources]];
+  const pWater = [0.04, 0.06, 0.09][LEVEL[s.resources]];
   for (let i = 0; i < N; i++) {
     const t = terrain[i];
     if (t === 'ocean') continue;
@@ -485,24 +501,88 @@ function placeStarts(m: MapData, count: number, r: Rng): number[] {
   let first = cands[0];
   for (const i of cands) if (score[i] > score[first]) first = i;
   chosen.push(first);
+  // keep neighbours apart; if the land cannot hold everyone that far apart, close ranks
+  let minGap = Math.max(4, Math.floor(spread * 0.6));
   while (chosen.length < count) {
     let best = -1,
       bv = -Infinity;
     for (const i of cands) {
       let dmin = Infinity;
       for (const c of chosen) dmin = Math.min(dmin, distance(g, i, c));
-      if (dmin < 4) continue;
+      if (dmin < minGap) continue;
       const v = Math.min(dmin, spread * 1.2) / spread + (score[i] / maxS) * 0.5;
       if (v > bv) {
         bv = v;
         best = i;
       }
     }
-    if (best < 0) break;
+    if (best < 0) {
+      if (minGap <= 4) break;
+      minGap--;
+      continue;
+    }
     chosen.push(best);
   }
   for (const s of chosen) balanceStart(m, s, r);
+  evenStarts(m, chosen, r);
   return chosen;
+}
+
+/** What a start is worth: food in reach, open land around it, deposits. */
+export function startValue(m: MapData, s: number): number {
+  const g = { w: m.w, h: m.h };
+  let v = 0;
+  for (const k of within(g, s, 3)) {
+    const d = distance(g, s, k);
+    if (d <= 2) v += hexFood(m, k) + (m.deposit[k] ? 1 : 0);
+    if (isPassableLand(m, k)) v += 0.3;
+  }
+  return v;
+}
+
+/** Lift any start well below the median: soften the poorest land near it, then add food. */
+function evenStarts(m: MapData, starts: number[], r: Rng) {
+  if (starts.length < 2) return;
+  const g = { w: m.w, h: m.h };
+  const vals = starts.map(s => startValue(m, s)).sort((a, b) => a - b);
+  const median = vals[Math.floor(vals.length / 2)];
+  const better: Partial<Record<TerrainId, TerrainId>> = {
+    desert: 'plains',
+    tundra: 'plains',
+    snow: 'tundra',
+  };
+  for (const s of starts) {
+    for (let tries = 0; tries < 30 && startValue(m, s) < median * 0.85; tries++) {
+      const ring = within(g, s, 2).filter(k => k !== s && isPassableLand(m, k));
+      const poor = ring
+        .filter(k => better[m.terrain[k]] || m.vegetation[k] === 'marsh')
+        .sort((a, b) => hexFood(m, a) - hexFood(m, b))[0];
+      if (poor !== undefined) {
+        if (m.vegetation[poor] === 'marsh') m.vegetation[poor] = 'none';
+        else m.terrain[poor] = better[m.terrain[poor]]!;
+        continue;
+      }
+      const plain = ring.find(k => m.terrain[k] === 'plains' && !m.deposit[k]);
+      if (plain !== undefined) {
+        m.terrain[plain] = 'grassland';
+        continue;
+      }
+      const bare = shuffleCopy(
+        r,
+        ring.filter(k => !m.deposit[k] && m.relief[k] !== 'mountains'),
+      );
+      const k = bare.find(k =>
+        validDeposits(m.terrain[k], m.relief[k], m.vegetation[k]).some(d =>
+          ['wheat', 'cattle', 'pigs', 'rice', 'sheep', 'game', 'fish'].includes(d),
+        ),
+      );
+      if (k === undefined) break;
+      const kinds = validDeposits(m.terrain[k], m.relief[k], m.vegetation[k]).filter(d =>
+        ['wheat', 'cattle', 'pigs', 'rice', 'sheep', 'game', 'fish'].includes(d),
+      );
+      m.deposit[k] = { kind: pick(r, kinds), richness: 1 };
+    }
+  }
 }
 
 /** Make sure every start has wood, a food deposit and a metal or horses nearby. */

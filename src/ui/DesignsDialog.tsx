@@ -20,8 +20,9 @@ import {
   loadoutProblem,
   ROLE_NAMES,
   spriteForLoadout,
+  artKeyForLoadout,
 } from '../engine/units.ts';
-import { Goods, UnitPortrait } from './bits.tsx';
+import { Art, Goods, UnitPortrait } from './bits.tsx';
 
 interface Props {
   game: GameState;
@@ -40,7 +41,19 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
   const [name, setName] = useState(current?.name ?? '');
   const [l, setL] = useState<Loadout>({ ...(current?.loadout ?? DEFAULT_LOADOUT) });
   const [sea, setSea] = useState<boolean>(!!current?.naval);
-  const slotList = sea ? NAVAL_SLOTS : SLOTS;
+  // only gear this people can make: research brings the rest
+  const usable = (slot: Slot) =>
+    ITEM_LIST.filter(
+      i =>
+        i.slot === slot &&
+        !!i.naval === sea &&
+        (!i.tech || civ.techs.includes(i.tech) || l[slot] === i.id),
+    );
+  const slotList = (sea ? NAVAL_SLOTS : SLOTS).filter(sl => usable(sl).length > 1);
+  const hiddenSlots = (sea ? NAVAL_SLOTS : SLOTS).filter(sl => usable(sl).length <= 1);
+  const lockedCount = ITEM_LIST.filter(
+    i => !!i.naval === sea && i.tech && !civ.techs.includes(i.tech),
+  ).length;
   const slotName = (k: Slot) => (sea ? NAVAL_SLOT_NAMES[k]! : SLOT_NAMES[k]);
   const switchSea = (v: boolean) => {
     setSea(v);
@@ -109,7 +122,12 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
                   className={`design-row ${editing === d.id ? 'on' : ''}`}
                   onClick={() => pick(d.id)}
                 >
-                  <UnitPortrait sprite={spriteForLoadout(d.loadout)} color={civ.color} small />
+                  <UnitPortrait
+                    sprite={spriteForLoadout(d.loadout)}
+                    art={artKeyForLoadout(d.loadout)}
+                    color={civ.color}
+                    small
+                  />
                   <span>
                     <b>{d.name}</b>
                     <small>
@@ -123,7 +141,11 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
 
           <div className="design-editor">
             <div className="row name-row">
-              <UnitPortrait sprite={spriteForLoadout(l)} color={civ.color} />
+              <UnitPortrait
+                sprite={spriteForLoadout(l)}
+                art={artKeyForLoadout(l)}
+                color={civ.color}
+              />
               <input
                 className="design-name"
                 placeholder="Name it: Hoplites, Foot Falcons, Iron Wall…"
@@ -136,7 +158,7 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
               <div key={slot} className="slot">
                 <h3>{slotName(slot)}</h3>
                 <div className="items">
-                  {ITEM_LIST.filter(i => i.slot === slot && !!i.naval === sea).map(it => {
+                  {usable(slot).map(it => {
                     const locked = !!it.tech && !civ.techs.includes(it.tech);
                     const on = l[slot] === it.id;
                     const clash =
@@ -156,6 +178,7 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
                           setL(next);
                         }}
                       >
+                        <Art k={`item/${it.id}`} size={44} className="item-art" />
                         <b>{it.name}</b>
                         <small>
                           {locked ? (
@@ -188,6 +211,15 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
                 </div>
               </div>
             ))}
+            {lockedCount > 0 && (
+              <p className="muted small more-gear">
+                {lockedCount} more pieces of gear come with research
+                {hiddenSlots.length
+                  ? `, among them the first ${hiddenSlots.map(sl => slotName(sl).toLowerCase() + 's').join(' and ')}`
+                  : ''}
+                .
+              </p>
+            )}
           </div>
 
           <aside className="loadout-side">

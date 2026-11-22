@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { OPPOSED, TAGS } from '../data/culture.ts';
 import { GOODS } from '../data/goods.ts';
+import type { GoodLine } from '../engine/economy.ts';
 import {
   attitude,
   capitalOf,
@@ -8,6 +9,7 @@ import {
   describeBundle,
   evaluateOffer,
   hasPact,
+  ledgerOf,
   opinion,
   opinionParts,
   PACT_TURNS,
@@ -25,7 +27,7 @@ import {
 import { identity, tagCounts } from '../engine/mods.ts';
 import type { Bundle, GameState, Offer } from '../engine/types.ts';
 import { TagChip } from './CultureDialog.tsx';
-import { Goods } from './bits.tsx';
+import { GoodIcon } from './bits.tsx';
 
 interface Props {
   game: GameState;
@@ -250,6 +252,7 @@ function DealDialog({
     set: (b: Bundle) => void,
     stock: Record<string, number>,
     gold: number,
+    ledger: Record<string, GoodLine>,
   ) => {
     const num = (v: string) => Math.max(0, Math.floor(Number(v) || 0));
     const setGood = (key: 'goods' | 'goodsPerTurn', g: string, n: number) => {
@@ -286,17 +289,22 @@ function DealDialog({
             <tr className="muted small">
               <td>Good</td>
               <td>In store</td>
+              <td>Net a turn</td>
               <td>Now</td>
               <td>A turn</td>
             </tr>
             {goods
-              .filter(g => (stock[g] ?? 0) >= 1)
+              .filter(g => (stock[g] ?? 0) >= 1 || (ledger[g]?.net ?? 0) !== 0)
               .map(g => (
                 <tr key={g}>
                   <td>
-                    <Goods goods={{ [g]: 0.0001 }} /> {GOODS[g].name}
+                    <GoodIcon id={g} /> {GOODS[g].name}
                   </td>
                   <td>{Math.floor(stock[g] ?? 0)}</td>
+                  <td className={(ledger[g]?.net ?? 0) < 0 ? 'bad' : ''}>
+                    {(ledger[g]?.net ?? 0) > 0 ? '+' : ''}
+                    {ledger[g]?.net ?? 0}
+                  </td>
                   <td>
                     <input
                       type="number"
@@ -331,8 +339,8 @@ function DealDialog({
           </button>
         </header>
         <div className="deal-body">
-          {side('You give', give, setGive, stockA, game.civs[from].gold)}
-          {side('You ask for', get, setGet, stockB, them.gold)}
+          {side('You give', give, setGive, stockA, game.civs[from].gold, ledgerOf(game, from))}
+          {side('You ask for', get, setGet, stockB, them.gold, ledgerOf(game, to))}
         </div>
         <div className="row">
           <label>

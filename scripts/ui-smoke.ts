@@ -35,7 +35,7 @@ await page.screenshot({ path: `${out}/2b-research.png` });
 await page.click('.tech-card.can:has-text("Archery")');
 // set a far goal from the tree, then look at the culture web
 await page.click('.research-btn:has-text("Archery")');
-await page.click('.tech-card:has-text("Iron Working")');
+await page.click('.age-gate button');
 await page.screenshot({ path: `${out}/2c-research-goal.png` });
 await page.click('.modal.research .x');
 await page.evaluate(() => {
@@ -57,16 +57,20 @@ await page.click('.domain-tabs button:has-text("Cosmology")');
 await page.screenshot({ path: `${out}/2e-culture-cosmology.png` });
 await page.click('.modal.culture .x');
 
-// city screen: lay out a "Farm" district and fill a few slots
-await page.click('button:has-text("City & districts")');
+// founding opened nothing: the new city waits in the to-do list ("Plan Corin")
+if (await page.$('.modal.city-screen')) throw new Error('founding a city opened the city screen');
+for (let i = 0; i < 6 && !(await page.$('.modal.city-screen')); i++) {
+  const label = (await page.textContent('button.next')) ?? '';
+  await page.click('button.next');
+  await page.waitForTimeout(120);
+  if (!label.startsWith('Plan') && (await page.$('.modal'))) await page.keyboard.press('Escape');
+}
+if (!(await page.$('.modal.city-screen'))) throw new Error('the to-do list never offered the city');
+await page.screenshot({ path: `${out}/3-todo-city.png` });
 await page.waitForSelector('.modal.city-screen');
 await page.screenshot({ path: `${out}/3a-city-screen.png` });
-const hexes = page.locator('.hexmap .hx:not(.off)');
-const nHex = await hexes.count();
-for (let k = 1; k < nHex; k++) {
-  await hexes.nth(k).click();
-  if (await page.$('.new-district')) break;
-}
+// a town has two district tabs: the centre and one free; the rest are locked until it grows
+await page.click('.district-tabs button.add');
 await page.fill('.new-district .design-name', 'Farm');
 await page.click('.new-district button.primary');
 await page.waitForSelector('.grid3');
@@ -75,22 +79,29 @@ const pick = async (i: number, name: string) => {
   const b = page.locator('.pal:not(.locked)', { hasText: name }).first();
   if (await b.count()) await b.click();
 };
-await pick(4, 'Grain field');
-await pick(1, 'Pig pen');
-await pick(3, 'Pig pen');
-await pick(5, 'Pig pen');
-await pick(7, 'Woodlot');
-await pick(0, 'Cattle pasture');
+await pick(4, 'Farm');
+await pick(1, 'Pasture');
+await pick(3, 'Pasture');
+await pick(5, 'Mine');
+await pick(7, 'Woodcutter');
+await pick(0, 'Mine');
+await pick(2, 'Mine');
 await page.fill('.bp-row input', 'Farm');
 await page.click('.bp-row button:has-text("Save")');
 await page.locator('.grid3 .cell').nth(1).click();
 await page.screenshot({ path: `${out}/3b-district.png` });
+if (await page.$('.district-tabs button.add')) throw new Error('a town offered a third district');
 await page.click('.modal.city-screen .x');
+// the goods ledger
+await page.keyboard.press('g');
+await page.waitForSelector('.modal.goods-ledger');
+await page.screenshot({ path: `${out}/3c-goods.png` });
+await page.click('.modal.goods-ledger .x');
 await page.click('button:has-text("Raise levy")');
 await page.waitForTimeout(200);
 await page.screenshot({ path: `${out}/3-city-levy.png` });
 // design two unit types and split the new levy between them: 200 + 300
-await page.click('button:has-text("Unit designs")');
+await page.click('button:has-text("Designs")');
 await page.waitForSelector('.modal.designs');
 await page.fill('.design-name', 'Foot Falcons');
 await page.click('.slot:has(h3:text("Weapon")) .item:has-text("Spear")');
@@ -263,7 +274,7 @@ const coastal = await page.evaluate(() => {
   return true;
 });
 if (coastal) {
-  await page.click('button:has-text("Unit designs")');
+  await page.click('button:has-text("Designs")');
   await page.click('.land-sea button:has-text("Ships")');
   await page.fill('.design-name', 'Ferry');
   await page.click('.slot:has(h3:text("Hull")) .item:has-text("Galley")');

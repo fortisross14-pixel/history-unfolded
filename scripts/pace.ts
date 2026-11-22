@@ -35,7 +35,7 @@ for (let t = 1; t <= turns; t++) {
         .join(' ');
       const hot = Object.entries(c.culture.tension).sort((a, b) => b[1] - a[1])[0];
       console.log(
-        `${c.name.padEnd(9)} cities ${cs.length} pop ${(pop / 1000).toFixed(0)}k techs ${c.techs.length} sci ${sci.toFixed(0)}/t culture ${c.culture.taken.length}+${c.culture.legacy.length}L ${cul.toFixed(0)}/t  [${id}] tension ${hot[0]} ${hot[1].toFixed(0)}${c.culture.upheaval ? ' UPHEAVAL ' + DOMAINS[c.culture.upheaval.domain].upheaval : ''}`,
+        `${c.name.padEnd(9)} towns ${cs.filter(x => x.tier === 'town').length} cities ${cs.filter(x => x.tier === 'city').length}${cs.some(x => x.tier === 'metropolis') ? '+M' : ''} pop ${(pop / 1000).toFixed(0)}k techs ${c.techs.length} sci ${sci.toFixed(0)}/t culture ${c.culture.taken.length}+${c.culture.legacy.length}L ${cul.toFixed(0)}/t  [${id}] tension ${hot[0]} ${hot[1].toFixed(0)}${c.culture.upheaval ? ' UPHEAVAL ' + DOMAINS[c.culture.upheaval.domain].upheaval : ''}`,
       );
     }
   }

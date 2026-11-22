@@ -1,6 +1,7 @@
-import { districtAt } from '../engine/economy.ts';
+import { SLOT_TYPES } from '../data/slots.ts';
+import { landOf } from '../engine/economy.ts';
 import { within } from '../engine/hex.ts';
-import { DEPOSITS } from '../data/goods.ts';
+import { SPECIAL_MIN, DEPOSITS } from '../data/goods.ts';
 import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
 import { depositVisible, territory } from '../engine/game.ts';
 import { hexFood } from '../engine/mapgen.ts';
@@ -28,11 +29,10 @@ export function HexPanel({
     );
   }
   const d = depositVisible(game, civId, hex) ? m.deposit[hex] : null;
-  const dist = districtAt(game, hex);
-  const home = !dist
-    ? game.cities.find(c => c.civId === civId && within({ w: m.w, h: m.h }, c.hex, 2).includes(hex))
-    : undefined;
-  const openFor = dist ? game.cities.find(c => c.id === dist.cityId && c.civId === civId) : home;
+  // the settlement whose land this is (its hex or one next to it)
+  const worker = game.cities.find(c => landOf(game, c).includes(hex));
+  const openFor = worker && worker.civId === civId ? worker : undefined;
+  void within;
   const owner = territory(game)[hex];
   const parts = [
     TERRAIN[m.terrain[hex]].name,
@@ -63,12 +63,19 @@ export function HexPanel({
             <tr>
               <td>Deposit</td>
               <td>
-                {DEPOSITS[d.kind].name} {'★'.repeat(d.richness)}{' '}
-                <Goods
-                  goods={Object.fromEntries(
-                    Object.entries(DEPOSITS[d.kind].yields).map(([k, n]) => [k, n * d.richness]),
-                  )}
-                />
+                {DEPOSITS[d.kind].name} <Goods goods={DEPOSITS[d.kind].yields} />
+                <div className="muted small">
+                  {(() => {
+                    const info = DEPOSITS[d.kind];
+                    const by = SLOT_TYPES[info.by]?.name.toLowerCase() ?? info.by;
+                    return info.special
+                      ? `A town beside it with ${SPECIAL_MIN}+ ${by}s in one district: each brings a unit.`
+                      : `Any ${by} of a town beside it does better.`;
+                  })()}
+                  {DEPOSITS[d.kind].tech && !game.civs[civId].techs.includes(DEPOSITS[d.kind].tech!)
+                    ? ` Needs ${DEPOSITS[d.kind].tech!.replace('-', ' ')}.`
+                    : ''}
+                </div>
               </td>
             </tr>
           )}
@@ -82,12 +89,12 @@ export function HexPanel({
               <td>Half a move along roads</td>
             </tr>
           )}
-          {dist && (
+          {worker && (
             <tr>
-              <td>District</td>
+              <td>Worked by</td>
               <td>
-                {dist.name} ({dist.slots.filter(x => x.built).length}/
-                {dist.slots.filter(x => x.type).length} built)
+                {worker.name}
+                {worker.civId !== civId ? ` (${game.civs[worker.civId].name})` : ''}
               </td>
             </tr>
           )}
@@ -95,7 +102,7 @@ export function HexPanel({
       </table>
       {onOpenDistrict && openFor && (
         <button className="primary" onClick={() => onOpenDistrict(openFor.id)}>
-          {dist ? 'Open district' : `Lay out a district (${openFor.name})`}
+          Open {openFor.name}
         </button>
       )}
     </div>

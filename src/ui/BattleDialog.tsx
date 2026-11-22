@@ -1,4 +1,5 @@
 import type { BattleReport } from '../engine/combat.ts';
+import { Art } from './bits.tsx';
 
 const OUTCOME: Record<BattleReport['outcome'], string> = {
   'defender-broke': 'Victory',
@@ -30,6 +31,7 @@ export function BattleDialog({ report, onClose }: { report: BattleReport; onClos
             ×
           </button>
         </header>
+        <Art k={`battle/${report.scene ?? 'field'}`} className="battle-art" />
         <div className="battle-sides">
           {side(report.attacker)}
           <span className="vs">vs</span>

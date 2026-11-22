@@ -62,6 +62,8 @@ export interface SideReport {
 }
 
 export interface BattleReport {
+  /** which battle picture fits: set by the caller */
+  scene?: 'field' | 'siege' | 'naval' | 'charge' | 'forest' | 'landing';
   attacker: SideReport;
   defender: SideReport;
   lines: string[];
@@ -220,7 +222,8 @@ export function resolveBattle(
       if (spears > 0)
         back = strike(
           riders,
-          [{ amount: spears * LETHALITY * 0.8 * bD.melee, type: 'pierce' }],
+          // a set spear finds the horse whatever the rider wears
+          [{ amount: spears * LETHALITY * 0.8 * bD.melee, type: 'pierce', ap: 0.4 }],
           () => 1,
           attMul,
         );
@@ -241,11 +244,19 @@ export function resolveBattle(
             alive(us).some(u => u.s.role === 'cavalry') &&
             !alive(enemy).some(u => u.s.role === 'cavalry');
           const k = luck() * (flank ? 1.3 : 1);
+          // spears keep hurting horsemen in the press, not only when the charge comes in
+          const eFront = alive(enemy).filter(front);
+          const mounted = eFront.length
+            ? eFront.filter(u => u.s.role === 'cavalry').length / eFront.length
+            : 0;
           const hits: Hit[] = [];
           for (const u of alive(us)) {
             const str = (u.hp / COHORT_SIZE) * u.xpMul * k;
             if (front(u))
-              hits.push({ amount: u.s.melee * LETHALITY * str * b.melee, type: u.s.damage });
+              hits.push({
+                amount: (u.s.melee + u.s.antiCharge * 0.5 * mounted) * LETHALITY * str * b.melee,
+                type: u.s.damage,
+              });
             else if (screened || u.s.role === 'horse-archers')
               hits.push({
                 amount: u.s.ranged * LETHALITY * 0.8 * str * b.ranged,

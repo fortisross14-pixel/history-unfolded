@@ -1,4 +1,5 @@
 /** Sprite registry. Art is looked up by key, so a new art pack only has to provide the same keys. */
+import { artKeys, artUrl, loadArtManifest } from './art.ts';
 const BASE = `${import.meta.env.BASE_URL}sprites/`;
 
 const VARIANTS: Record<string, number> = {
@@ -38,7 +39,15 @@ export async function loadAssets(): Promise<Assets> {
   for (const c of CITIES) jobs.push([`city:${c}`, `cities/${c}.png`]);
   for (const sh of SHIPS) jobs.push([`ship:${sh}`, `ships/${sh}.png`]);
   jobs.push(['parchment', 'parchment.jpg']);
-  const imgs = await Promise.all(jobs.map(([, p]) => load(BASE + p)));
+  // generated art the map draws (the screens load theirs on demand)
+  await loadArtManifest();
+  const urls = jobs.map(([, p]) => BASE + p);
+  for (const k of artKeys())
+    if (/^(unit|ship|city|terrain|good)\//.test(k)) {
+      jobs.push([`art:${k}`, '']);
+      urls.push(artUrl(k)!);
+    }
+  const imgs = await Promise.all(urls.map(load));
   const img: Record<string, HTMLImageElement> = {};
   jobs.forEach(([k], i) => {
     if (imgs[i].naturalWidth) img[k] = imgs[i];

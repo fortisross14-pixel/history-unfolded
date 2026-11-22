@@ -5,6 +5,8 @@
  */
 import { OPPOSED, TAGS } from '../data/culture.ts';
 import { GOODS } from '../data/goods.ts';
+import { civGoods, type GoodLine } from './economy.ts';
+import { inCivilWar } from './dynasty.ts';
 import { marketSpend, marketStock } from './economy.ts';
 import { distance } from './hex.ts';
 import { tagCounts } from './mods.ts';
@@ -135,17 +137,54 @@ const PRICE: Record<string, number> = {
   coal: 3,
   saltpeter: 5,
   horses: 4,
+  wool: 2,
+  'whale-oil': 3,
 };
 const priceOf = (g: string) => PRICE[g] ?? (GOODS[g]?.kind === 'luxury' ? 4 : 2);
 
 export const capitalOf = (s: GameState, civId: number): City | undefined =>
   s.cities.filter(c => c.civId === civId).sort((a, b) => a.id - b.id)[0];
 
-/** How much a people values goods: scarce goods are worth more to it. */
+/** A people's goods balance, worked out once per turn and treaty change. */
+const ledgerCache = new WeakMap<
+  GameState,
+  { key: string; by: Map<number, Record<string, GoodLine>> }
+>();
+export function ledgerOf(s: GameState, civId: number): Record<string, GoodLine> {
+  const key = `${s.turn}|${s.treaties.length}|${s.cities.length}|${s.districts.length}`;
+  let c = ledgerCache.get(s);
+  if (!c || c.key !== key) {
+    c = { key, by: new Map() };
+    ledgerCache.set(s, c);
+  }
+  let l = c.by.get(civId);
+  if (!l) {
+    l = civGoods(s, civId);
+    c.by.set(civId, l);
+  }
+  return l;
+}
+
+/**
+ * How much a people values goods: what it runs short of each turn is dear, a steady surplus
+ * piling up is cheap.
+ */
 function goodValue(s: GameState, civId: number, g: string, n: number): number {
-  const cap = capitalOf(s, civId);
-  const have = cap ? (marketStock(s, cap)[g] ?? 0) : 0;
-  const need = have < 15 ? 1.6 : have < 60 ? 1 : have < 200 ? 0.6 : 0.3;
+  const l = ledgerOf(s, civId)[g];
+  const net = l?.net ?? 0,
+    have = l?.stock ?? 0;
+  const need =
+    net < 0
+      ? have < -net * 10
+        ? 2
+        : 1.4
+      : have < 15
+        ? 1.5
+        : net >= 2 && have > 60
+          ? 0.35
+          : have < 60
+            ? 1
+            : 0.6;
   return priceOf(g) * need * n;
 }
 
@@ -191,6 +230,12 @@ export function evaluateOffer(s: GameState, from: number, to: number, o: Offer):
   let value = bundleValue(s, to, o.give, turns) - bundleValue(s, to, o.get, turns);
   if (o.peace) {
     if (!war) return { accept: false, value: 0, reason: 'You are not at war.' };
+    if (inCivilWar(s, from, to))
+      return {
+        accept: false,
+        value: 0,
+        reason: 'A civil war ends in victory or stalemate, not in a treaty.',
+      };
     const w = s.wars.find(x => pairIs(x, from, to))!;
     const length = s.turn - w.since;
     if (length < 6)
@@ -201,8 +246,17 @@ export function evaluateOffer(s: GameState, from: number, to: number, o: Offer):
       };
     const mine = powerOfCiv(s, to),
       theirs = powerOfCiv(s, from);
-    // tired of war, afraid of losing, or confident of winning
-    value += length * 1.5 + (theirs / Math.max(1, mine) - 1) * 40;
+    // how the war is going for them (`to`): losses, cities taken, and who is stronger now
+    const myDead = w.dead?.[to] ?? 0,
+      theirDead = w.dead?.[from] ?? 0;
+    const winning = theirDead > myDead * 1.3 + 200 || (w.taken?.[to] ?? 0) > (w.taken?.[from] ?? 0);
+    const losing = myDead > theirDead * 1.3 + 200 || (w.taken?.[from] ?? 0) > (w.taken?.[to] ?? 0);
+    const quiet = w.lastFight !== undefined ? s.turn - w.lastFight >= 15 : length >= 40;
+    value +=
+      length * 0.5 +
+      (winning ? -35 : losing ? 30 : 0) +
+      (quiet ? 15 : 0) +
+      (theirs / Math.max(1, mine) - 1) * 25;
   }
   if (o.pact) {
     if (hasPact(s, from, to))
@@ -426,4 +480,29 @@ export function newProposal(s: GameState, p: Omit<Proposal, 'id' | 'turn'>): Pro
   const full = { ...p, id: s.nextId++, turn: s.turn };
   s.proposals.push(full);
   return full;
+}
+
+/**
+ * The most gold a turn the other people would pay for `n` of a good a turn (0 if they would not
+ * take it at all). There are no set prices: a good is worth what someone will pay for it.
+ */
+export function bestPrice(s: GameState, from: number, to: number, good: string, n: number): number {
+  const offer = (gold: number): Offer => ({
+    give: { goodsPerTurn: { [good]: n } },
+    get: { goldPerTurn: gold },
+    turns: DEAL_TURNS,
+  });
+  if (!evaluateOffer(s, from, to, offer(0)).accept) return 0;
+  let lo = 0,
+    hi = 1;
+  while (hi < 1000 && evaluateOffer(s, from, to, offer(hi)).accept) {
+    lo = hi;
+    hi *= 2;
+  }
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (evaluateOffer(s, from, to, offer(mid)).accept) lo = mid;
+    else hi = mid;
+  }
+  return lo;
 }

@@ -37,6 +37,8 @@ export interface ItemInfo {
   chargeAdd?: number;
   /** share of city walls ignored when assaulting (ladders, guns) */
   siege?: number;
+  /** saltpeter burned as powder per cohort per turn; short of it, firearms fire at half */
+  powder?: number;
   /** a shield that stands on the ground: usable with two-handed weapons */
   freeHands?: boolean;
   /** ship part: the slot is reused (weapon = armament, armour = hull, mount = rig, kit = fit-out) */
@@ -122,7 +124,7 @@ const list: ItemInfo[] = [
     cost: { copper: 1, wood: 1 },
     upkeep: 1,
     weight: 1,
-    attack: 5,
+    attack: 4,
     damage: 'crush',
     twoHanded: true,
     note: 'Breaks armour. Two-handed: no shield.',
@@ -321,7 +323,7 @@ const list: ItemInfo[] = [
     upkeep: 1,
     weight: 0,
     move: 4,
-    charge: 4,
+    charge: 6,
     note: 'Fast, charges, flanks. Poor in forest and marsh.',
   },
   // kit
@@ -401,11 +403,12 @@ const list: ItemInfo[] = [
     cost: { wood: 3 },
     upkeep: 1,
     weight: 0,
-    attack: 6,
+    attack: 7,
+    armourPierce: 0.2,
     damage: 'missile',
     ranged: true,
     twoHanded: true,
-    note: 'Long range volleys. Two-handed.',
+    note: 'Heavy, fast volleys with no iron needed. Two-handed.',
   },
   {
     id: 'crossbow',
@@ -463,6 +466,7 @@ const list: ItemInfo[] = [
     twoHanded: true,
     armourPierce: 0.5,
     siege: 0.15,
+    powder: 0.25,
     note: 'Loud, slow and armour-piercing.',
   },
   {
@@ -479,6 +483,7 @@ const list: ItemInfo[] = [
     twoHanded: true,
     armourPierce: 0.6,
     siege: 0.2,
+    powder: 0.25,
     note: 'Massed volleys. Pair with bayonets.',
   },
   {
@@ -495,7 +500,25 @@ const list: ItemInfo[] = [
     twoHanded: true,
     armourPierce: 0.5,
     siege: 0.5,
+    powder: 0.5,
     note: 'Breaks walls and formations. Very slow.',
+  },
+  {
+    id: 'rifle',
+    name: 'Rifle',
+    slot: 'weapon',
+    tech: 'rifling',
+    cost: { iron: 1, steel: 1 },
+    upkeep: 2,
+    weight: 1,
+    attack: 12,
+    damage: 'pierce',
+    ranged: true,
+    twoHanded: true,
+    armourPierce: 0.7,
+    siege: 0.2,
+    powder: 0.25,
+    note: 'Accurate at long range. Burns powder (saltpeter) every turn.',
   },
   {
     id: 'kite-shield',

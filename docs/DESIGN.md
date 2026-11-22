@@ -195,6 +195,15 @@ The player *can* find an overwhelming combination; we only make sure it has a na
 
 Numbers are data, not code (§12), so tuning is a spreadsheet job.
 
+**Balance pass (as built).** `scripts/battles.ts` (and `--late`) fights every army against
+every other. The early circle it aims for: spears beat riders (they blunt the charge and keep
+hurting horsemen in melee in proportion to how much of the enemy front is mounted), riders beat
+archers and two-handed axemen (charge 6), swords beat spears, and axes are the cheap way to crack
+armour (attack 4, crush) rather than the best weapon outright. A set spear's answer to a charge
+ignores 40% of armour. Late, knights stay strong but cost about twice a pike block; longbows hit
+harder than crossbows (7) without needing iron, crossbows pierce more (40% against 20%). Mixed
+armies at the same cost beat pure ones: 6 swords and 4 archers hold 10 swords for far less tin.
+
 ### 6.4 Naval (as built)
 
 - **Ship designs** use the same designer as troops, with four slots: **Hull** (dugout, galley,
@@ -223,17 +232,75 @@ Numbers are data, not code (§12), so tuning is a spreadsheet job.
 
 ## 7. Cities, districts and buildings
 
-### 7.1 Cities
+### 7.1 Settlements: towns, cities and the metropolis (as built)
 
-- Founded by a **Settlers** formation (5 cohorts of civilians; sending them out costs a city 1,000 people with families). The city centre
-  occupies one hex and claims the ring around it; borders grow with culture.
-- A city has **population** (in units of 1,000 people for display), **food**, **housing**, and
-  **labour** (people available to work slots).
-- Every hex inside the city's work radius (2, later 3) can hold **one district**.
+You grow by founding many small towns, not by growing a few huge cities.
+
+- **One hex each.** A settlement is founded by Settlers and occupies a single hex. It works its
+  **land**: its own hex and the six around it. Settlements may not touch: at least one hex
+  between them, so neighbouring towns share up to two land hexes; a shared hex belongs to the
+  older settlement. Founding a town within 3 hexes of one of your own lays a track to it, so
+  clusters of towns form one market from the start.
+- **Ranks.** Districts are slots inside the settlement, each a 3×3 grid (§7.2):
+
+| Rank | Districts | Rural buildings | Bonus to buildings | Needs |
+|---|---|---|---|---|
+| Town | 2 (the centre with the town hall + 1) | farms, woodlots, mines, docks | — | founding |
+| City | 4 | none: the towns around supply them | +15%, research and industry +35% | City Charter (culture), 6 housing cells, 6,000 people, 150 gold, 10 stone, 30 wood |
+| Metropolis | 6 (one per people) | none | +30%, research and industry +70% | Seat of Empire (culture), 8 housing cells, 15,000 people, 400 gold, 30 stone, 50 wood |
+
+- **Becoming a city pulls down every rural building** (farming, forestry, extraction groups):
+  those districts must be redesigned as quarters. A town's open land feeds a few people
+  (subsistence); a city's does not.
+- **Towns feed cities.** Settlements short of food draw on the surplus of the others in their
+  market (joined by road, river or sea), shared out in proportion. A town that feeds a city grows
+  more slowly.
+- **Towns are needed**: only they hold farms, pastures, woodcutters, mines and the rest. A people
+  can also go urban and buy its food and raw goods with the cloth, tools and leatherwork its
+  cities make.
+- **Ranks need a culture choice and the action**: City Charter (society, open from any first
+  society choice) lets towns become cities; Seat of Empire lets one city become the metropolis.
+  Then the player raises the settlement from its screen.
+- **Rural districts, urban districts**: towns hold the extractive cells (farms, mines…). A people
+  can go urban and trade its cities' made goods for food and raw goods from other peoples.
+
+### 7.1b Inside a district: housing, producers, boosters (as built)
+
+- **Housing**: every district needs at least **2 housing cells** (houses, tenements,
+  aqueducts) built before anything else in it works; houses are built first where they are
+  missing. A city needs 6 housing cells in all (of a town's 18 cells), a metropolis 8. Each
+  housing cell beyond its districts' two makes growth 8% cheaper (to 60% at most), so more
+  people for settlers and levies, at the price of cells that make nothing.
+- Every building belongs to a **line** and has a **role**:
+  - **base** (+1 of the line's yield; rural bases give ½ plus what the land holds);
+  - **support** (+½ on every yield of each base of its line in the district), early to mid game;
+  - **modern multiplier** (×2 the line in its district), late; **one per district**;
+  - **great building** (+200%, ×3, the line in its district); **one in the whole realm**,
+    unlocked in a given age.
+  Supports stack; the multiplier and the great building multiply each other.
+
+| Line | Bases | Support | Multiplier | Great building (age) |
+|---|---|---|---|---|
+| Food | farm, pasture, plantation, boats, lodge | granary, windmill | food packaging | Royal Granaries (Classical) |
+| Wood | woodcutter | lumber mill | steam sawmill | Royal Forest (Classical) |
+| Mining | mine | infirmary | pumping station | King's Mine (Medieval) |
+| Science | school, university, observatory | library | research lab | Academy of Sciences (Renaissance) |
+| Religion and arts | shrine, monument, temple | amphitheatre | printing house | Cathedral (Theology) |
+| Money | market, bank, mint, harbour | guild hall | counting house | Stock exchange (Joint-Stock) |
+| Industry | workshop, smithy, foundry, tannery, weaver | engineers' lodge | factory | Ironworks (Renaissance) |
+
+  The market also puts ½ gold on each housing cell of its district. Example: three
+  universities make 3 science; a library makes it 4½; a research lab 9; the Academy 27.
+- **Housing perks**: each housing cell beyond its districts' two makes growth 8% cheaper (to
+  60%), sends settlers out for 10% fewer people (to 600), and every two add a cohort to the
+  levies raised there (up to +3).
+- The settlement's rank bonus and research percentages apply after the boosters.
+
+- Old saves load with every settlement as a town that keeps its centre and oldest district.
 
 ### 7.2 Districts: the 3×3 grid
 
-- A **district** is placed on a hex and has **9 slots** in a 3×3 grid.
+- A **district** sits inside a settlement and has **9 slots** in a 3×3 grid.
 - The player **designs** it: picks a slot type for each of the 9 cells, names it, and it gets
   built slot by slot (each slot has its own build cost and time).
 - **Slot types** are unlocked by research and culture, e.g.:
@@ -257,13 +324,12 @@ The player's examples are just designs:
 
 ### 7.3 Rules that make design interesting (as built)
 
-1. **Reach.** A slot can use anything on its district's hex and the six hexes around it: forest
+1. **Reach.** A slot can use anything on its settlement's land (its hex and its six neighbours): forest
    for woodlots, flat open land for grain fields, hills for sheep, a coast or lake for fishing
    docks, a deposit for mines. So a "Farm" on grassland next to a forest can hold pigs, cattle,
    grain and a woodlot.
-2. **Capacity.** Deposit slots run at full rate for richness × 2 slots of that type in the
-   district, then at half rate. Land slots run at full rate for two slots per matching hex in
-   reach. A deposit feeds **one** district: the one standing on it, otherwise the older one.
+2. **Deposits** belong to the settlement whose land they lie on and work as in §8.0: special
+   goods need three of the working building in one district, then each brings a unit.
    Deposits also boost their farm: wheat or rice under grain fields, cattle under pastures,
    fish under docks.
 3. **Adjacency inside the grid** (up, down, left, right). An infirmary in the centre touches
@@ -308,6 +374,67 @@ and residential, with banks, stock exchanges, iron and coal mines and infirmarie
   diplomacy can include goods-for-goods deals ("20 iron per turn for 5 ivory").
 - **Happiness/stability:** luxuries, culture alignment and war weariness. Feeds unrest and is
   one of the triggers of upheaval (§9.4).
+
+### 8.0 Working the land (as built)
+
+Every rural building gives a little anywhere; what lies on the settlement's land adds more.
+
+| Building | Anywhere | With what lies on the land |
+|---|---|---|
+| Farm | ½ food | wheat or rice: 1 food |
+| Pasture | ½ food | pigs: 1 food · cattle: +1 leather · sheep: +1 wool · horses (Animal Husbandry): +1 horses |
+| Woodcutter | ½ wood | a forest or jungle: 1 wood |
+| Mine | ½ stone | stone, coal, iron, copper, tin, gold, silver, saltpeter: +1 of it (special) |
+| Plantation | ½ food | sugar, spices, silk, dyes, wine: +1 of it (special) |
+| Hunting lodge | ½ food | game: +½ food and ½ hides · furs, ivory: +1 (special) |
+| Fishing boats (coast) | ½ food | fish: 1 food · whales: +1 whale oil, pearls: +1 pearls (special) |
+
+- **Special goods need a dedicated district**: a town beside the deposit and at least **3** of
+  the working building in one district. Then every one of them brings a unit, so goods add up:
+  eight mines by coal dig 8 coal a turn. With fewer, the slot says what is missing ("Coal needs
+  3 mines in this district (2 now)"). Animals, grain, fish and forest work for any number.
+- With several deposits for one building on the land, the buildings take them in turn.
+- A thousand people eat one food a turn (two farms' worth).
+
+**Demand.** Goods are made to be used, and use grows with the people:
+- **Comforts**: every settlement takes one luxury a turn per 4,000 people (sugar, spices, silk,
+  dyes, wine, furs, ivory, gold, silver, pearls, whale oil, and the cloth and leatherwork cities
+  make). Each kind it gets adds 5% gold and
+  culture; each unit missing takes 5% away.
+- **Fuel**: cities and the metropolis burn one fuel per 4,000 people: coal if the market has it
+  (+5% production), else wood; with neither, everything they make drops 15%.
+- **Workshops**: workshop (wood → production), smithy (copper and tin → tools), tannery
+  (leather → leatherwork), weaver (wool → cloth), mint (gold → coin), foundry (coal and iron →
+  production), factory (wears out tools). Short of its goods, a building runs at a third.
+- **Stores are limited**: a people keeps at most 8 of a good for every working cell that makes
+  it, plus 8 of anything per settlement. Three coal mines (which also dig stone) can hold 24 coal
+  and 24 stone. The rest is lost each turn, so surpluses are for selling.
+- Equipment and construction spend goods once (§5.3).
+
+**Trade by the turn.** The Goods screen (G) shows per good what all settlements make, what they
+use, what deals bring or take, the net and the store, with how many turns a shortfall leaves.
+**Sell** offers a surplus per turn to a people at peace for gold per turn, for 20 turns, paid
+from the capitals' markets. There are no set prices: the sell box asks every partner the most it
+would pay and starts from the best bid. Peoples value goods by their own balance: what they run short of each
+turn is dear, a steady surplus piling up is cheap. AI peoples offer to sell what you run short
+of, or to buy what you have to spare. A seller who cannot deliver is remembered for it.
+
+### 8.0b Goods through the ages (as built)
+
+About 28 goods are in play, and they arrive over time:
+
+| Age | New goods | Where from | Spent on, every turn | Spent on, once |
+|---|---|---|---|---|
+| Ancient | wood, stone, hides, wool, salt, copper, tin, horses, gold, silver; luxuries (ivory, furs, spices, silk, dyes, wine, sugar, pearls, whale oil) | woodcutters, mines, pastures, plantations, lodges, boats | workshops (wood), smithies (copper, tin), tanneries (hides), weavers (wool), mints (gold), comforts (luxuries, salt) | buildings, gear (bronze, horses) |
+| Classical | iron; paper | mines (Iron Working); paper mills | libraries (paper) | iron gear |
+| Medieval | coal, saltpeter; cloth, leatherwork, tools | mines (Mineralogy, Alchemy); weavers, tanneries, smithies | city hearths (coal or wood), comforts (cloth, leatherwork) | — |
+| Renaissance | steel | foundries (coal, iron) | printing houses (paper), firearms (saltpeter as powder) | guns |
+| Industrial | oil, electricity | mines (Oil Drilling); power plants (oil, else coal) | railway stations (coal), steam pumps and sawmills (coal), power plants (oil or coal), factories (tools, electricity), research labs (electricity), food packaging (salt) | rifles (steel), factories, plants and stations (steel) |
+
+- **Powder**: arquebuses, muskets, field guns and rifles burn saltpeter each turn (a quarter of a
+  unit per cohort, half for guns). A realm out of it fires its firearms at half strength.
+- Short of what it burns, a building runs at a third; a city without fuel loses 15%.
+- Uranium waits for a Modern age, not built yet.
 
 ### 8.1 Cities, roads and markets (as built)
 
@@ -447,9 +574,17 @@ contact with very different cultures, low stability).
 
 ### 10.1 As built
 
-- **57 techs in 4 eras** (Ancient 13, Classical 16, Medieval 16, Renaissance 12). Each has a
-  base cost scaled by era (×1.5, ×2, ×2.5, ×3). In AI test games a people reaches about 35 techs
-  by turn 200 and 50 by turn 300.
+- **Five ages, one small tree each** (Ancient 13 techs, Classical 16, Medieval 15, Renaissance
+  12, Industrial 7: Steam Power, Railways, Machine Tools, Food Preservation, Oil Drilling, Rifling,
+  Electricity). Prerequisites only link techs of the same age, and most techs have none, so an age's techs
+  can be taken in almost any order. Each age ends in a **gate tech** (Classical Age, Medieval
+  Age, Renaissance Age) that opens once a people knows about two thirds of the age (9, 11, 10
+  techs: any of them) and unlocks the next age. Skipped techs stay available later. The research
+  screen shows only the ages reached, current age first; later ages stay hidden.
+- Base costs scale by age (×1.3, ×1.6, ×2, ×4.5, ×3.5 on larger bases: science grows with population, so the last age
+  must cost far more to last). In AI test games the leading people has about 47 techs by
+  turn 200 and the whole tree around turn 320–330 of 400 (`scripts/pace.ts`). Science is stored
+  even while nothing is being researched.
 - Techs unlock **equipment** (iron swords, composite bows, longbows, crossbows, pikes, lances,
   arquebuses, muskets, field guns, kite shields, pavises, iron helmets, great helms, chain mail,
   plate, cuirasses, hobnailed boots, heavy and barded horses, siege ladders, bayonets),
@@ -468,7 +603,8 @@ contact with very different cultures, low stability).
 - **Culture-dependent costs:** a tech is 20% cheaper for a people holding 2+ choices of its
   favoured tag (Sailing, Navigation, Compass, Cartography for Maritime; Writing, Philosophy,
   Education for Rationalist; Astronomy for Solar…).
-- **Research goals:** click any later tech to aim for it; research then walks its prerequisites.
+- **Research goals:** click a tech you cannot take yet, or the next age's gate, to aim for it;
+  research then takes the cheapest steps there.
 
 ### 10.2 Diplomacy (as built)
 
@@ -496,14 +632,68 @@ contact with very different cultures, low stability).
 - **8–10 civs per game, all identical at start**: same starting units (1 Settlers, 1 levy of
   5 cohorts, 1 Scout), same tech, empty culture web. Only name, colour and leader portrait differ.
   Players may pick a name/colour/banner.
-- Start positions are balanced by the map generator (comparable food, at least one strategic
-  deposit within 6 hexes).
+- Start positions are balanced by the map generator: every start gets wood, a food deposit and
+  copper or stone plus horses nearby; starts keep at least 0.6 of an even spread apart; and any
+  start below 85% of the median value (food within 2 hexes, deposits, open land within 3) is
+  lifted by softening poor land, greening plains and adding food. `scripts/mapcheck.ts` checks
+  the poorest start against the median over 120 maps (worst about 0.63, mostly peninsulas that
+  have the sea instead).
 - **AI personalities** are not built in. Each AI gets a few **leanings** (e.g. "likes the sea",
   "likes order") that only weight its early culture picks, then its own tags drive the rest.
 - **AI design of troops and districts:** the AI picks from a library of sensible loadout
   templates and district blueprints, scores them against what it has (goods, deposits) and what
   it has seen the player field, and adopts new templates when it meets something that beats it.
   This is what makes "someone creates something better" happen.
+
+## 11b. Dynasties (as built)
+
+The great houses are the thread through the game.
+
+- **One house rules from the start.** Once the realm has 3 settlements, two more rise in the
+  Classical age, a fourth in the Medieval, a fifth in the Renaissance (at most 5).
+- **Traits and levels.** Each house is born with 2 points in one area and 1 in another. Areas are
+  the building lines (food, wood, mining, science, religion and arts, money, industry) and war.
+  A house's **level** in an area runs 0 to 10: its traits, plus **experience** from governing
+  (a settlement fully given to a line teaches 1 a turn; 40 make a level), plus its **trinkets**.
+  A level-2 research house put in a military town, given war trophies, slowly becomes a war house.
+- **Governors.** Every settlement is governed by a house (the throne by default), from the Houses
+  screen (Y) or the settlement panel. Each level adds +10% to its line where the house governs;
+  the ruling house lends half of its levels to the whole realm. War levels season the levies
+  raised there (+1 battle per 3 levels) and muster more guards.
+- **Trinkets** come from building (12% per finished building of a line), from **great
+  buildings** (always two of their line), from **captured settlements** (a treasure of what the
+  place was known for) and from **broken armies** (a war trophy, 25% when the enemy loses 300+).
+  The **War College** (Medieval, one per realm) seasons every levy of the realm and teaches its
+  governing house war three times as fast.
+- **Power and unrest.** Power is the people a house governs, plus 300 per level. A house that
+  outweighs the throne grows restless (at most 12 a turn); one close to it grumbles; the rest calm
+  down. Taking a settlement from a house offends it (+10). Honours (15 gold per settlement) calm a
+  house by 35; a trinket given calms it by 10.
+- **Civil war** at 100 unrest. **The realm splits.** The player chooses a side: that side keeps
+  its settlements, the other houses with theirs, and the alliances. The other house's settlements,
+  with the armies and ships nearest them and a levy raised in each of them, become a realm of
+  their own, at war; no treaty ends it.
+  - Take all their settlements and the war is won at once.
+  - After **10 turns** the side with the bigger army takes the throne and the realm is one again.
+    The losing house gives up half its trinkets and half its learning.
+  - Armies **within 90–110%** of each other: **stalemate**. Two realms remain, at peace.
+  - The throne can yield at any time. A choice left open defaults to the throne; AI thrones stand
+    with themselves.
+- **Democracy** (politics, after Constitution): the houses become parties. Assignment is free,
+  the party governing the most people leads, unrest grows at a quarter of the rate, and levels
+  count for 40%.
+- AI peoples keep about half the realm under the throne, give the rest to the house strongest in
+  each settlement's line, honour restless houses, and yield a civil war when outgunned two to one.
+
+## 11c. Building on the map (planned)
+
+Roads are built by any army today. Later ages need trained hands:
+- **Ancient and Classical**: any formation lays roads (as now).
+- **Medieval onward**: **workers**, a civilian formation raised in a settlement, build better
+  roads and improvements.
+- **Industrial**: **engineers** lay railways (faster than roads, and they carry trade like
+  roads) and the modern improvements that follow.
+Not built yet.
 
 ## 12. Victory and game length
 
@@ -520,14 +710,24 @@ contact with very different cultures, low stability).
 2. **Formation panel.** Cohort list grouped by loadout; select N cohorts → "Assign loadout" or
    "Split"; stats summary; templates dropdown.
 3. **Loadout designer.** Pick items per slot, see stats, cost and upkeep, save as template.
+   Only gear already researched is listed; a slot with nothing to choose yet is left out.
 4. **City panel.** Population, labour, food, housing, districts list, levy button.
-5. **District designer.** 3×3 grid, palette of unlocked slot types, valid/invalid highlighting
+5. **District designer.** 3×3 grid, palette of researched slot types (others hidden), valid/invalid highlighting
    for the target hex, adjacency arrows, totals (output, labour, cost), save as blueprint.
-6. **Research screen.** Tech tree.
+6. **Research screen.** The current age's techs as cards, tabs for earlier ages with techs left,
+   and the gate to the next age with a progress bar. The big web is the culture screen's.
 7. **Culture web screen.** Zoomable graph by domain; locked nodes greyed with "locked by: Solar
    Calendar"; tension meters; upheaval status; tag summary.
 8. **Diplomacy & trade.** Civs, relations with tag-based reasons, goods deals.
-9. **End turn / notifications.**
+9. **What is shown.** Lists show only what can be used now: the culture web shows adopted
+   choices and those open now, the district palette only what fits the cell, the designer only
+   researched gear. "Show locked choices" / "Show all buildings" reveal the rest, each with the
+   reason it is closed. Almost every building sits behind early research (farms, pastures,
+   woodcutters and houses do not).
+10. **End turn / to-do list.** Nothing opens by itself (founding a city opens neither research
+   nor the city). The turn box's button walks through what is left: choose research, plan a
+   city with nothing under construction, order idle units. Enter asks once while the list is
+   not empty.
 
 ## 14. Technical plan
 

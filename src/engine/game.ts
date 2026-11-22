@@ -6,9 +6,9 @@ import { CITY_NAMES, CIV_PRESETS, INDEPENDENT_PRESETS } from '../data/civs.ts';
 import { independentTurn } from './independents.ts';
 import { historyTurn } from './events.ts';
 import { DEPOSITS } from '../data/goods.ts';
-import { isWater } from '../data/terrain.ts';
+import { isWater, type ReliefId, type TerrainId, type VegetationId } from '../data/terrain.ts';
 import { DEFAULT_LOADOUT, isNavalLoadout, ITEMS, SLOTS, type Loadout } from '../data/items.ts';
-import { TECHS, TECH_LIST } from '../data/techs.ts';
+import { AGE_GATE, ageOf, ageTechs, ERAS, TECHS, TECH_LIST } from '../data/techs.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
 import { generateMap, isPassableLand, MAP_SIZES } from './mapgen.ts';
 import { findPath } from './path.ts';
@@ -27,22 +27,38 @@ import {
 } from './diplomacy.ts';
 import { civMods, pct } from './mods.ts';
 import { cultureTurn, newCultureState } from './culture.ts';
-import { TAGS } from '../data/culture.ts';
+import { CULTURE, TAGS } from '../data/culture.ts';
 import { tagCounts as tagCountsOf } from './mods.ts';
 import {
   build,
   cityDistricts,
   invalidateMarkets,
   cityEconomy,
-  districtAt,
-  districtSites,
+  DISTRICT_CAP,
   emptySlot,
+  isCentre,
+  shareFood,
+  housingCells,
+  TIER_NAME,
   marketCities,
   marketSpend,
   marketStock,
+  marketTake,
+  capStores,
+  powderNeed,
   slotProblem,
 } from './economy.ts';
-import { SLOT_TYPES } from '../data/slots.ts';
+import { isRural, SLOT_TYPES } from '../data/slots.ts';
+import {
+  awardTrinket,
+  dynastyTurn,
+  foundingDynasty,
+  levyXpFrom,
+  maybeTrinket,
+  settlementAreas,
+  settlePending,
+} from './dynasty.ts';
+import { AREA_NAMES, type Area } from '../data/dynasties.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
 import {
@@ -63,10 +79,11 @@ import {
   SETTLER_COHORTS,
 } from './units.ts';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 10;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
-export const MIN_CITY_DISTANCE = 4;
+/** Settlements may not touch: at least one hex between them. */
+export const MIN_CITY_DISTANCE = 2;
 export const LEVY_PEOPLE = LEVY_COHORTS * COHORT_SIZE;
 export const MIN_CITY_POP = 1000;
 export const START_CITY_POP = 2000;
@@ -126,8 +143,14 @@ export function newGame(settings: GameSettings): GameState {
       alive: true,
       kills: 0,
       losses: 0,
+      dynasties: [],
+      ruling: -1,
+      trinkets: [],
     };
     s.civs.push(civ);
+    const house = foundingDynasty(s, civ);
+    civ.dynasties.push(house);
+    civ.ruling = house.id;
     const start = map.starts[i];
     const g = gridOf(s);
     const free = neighbors(g, start).filter(k => isPassableLand(map, k));
@@ -183,8 +206,14 @@ function placeIndependents(s: GameState, civCount: number) {
       alive: true,
       kills: 0,
       losses: 0,
+      dynasties: [],
+      ruling: -1,
+      trinkets: [],
     };
     s.civs.push(civ);
+    const house = foundingDynasty(s, civ);
+    civ.dynasties.push(house);
+    civ.ruling = house.id;
     const settlers = addFormation(s, civ.id, 'settlers', hex, SETTLER_COHORTS, 'Settlers');
     foundCity(s, settlers.id);
     const c = s.cities.find(x => x.civId === civ.id);
@@ -547,7 +576,9 @@ export function advance(s: GameState, f: Formation): Result {
       f.aboard = undefined;
     }
     // troops at war can cut (or reopen) roads and sea lanes as they move
-    if (s.wars.some(w => w.a === f.civId || w.b === f.civId)) invalidateMarkets();
+    const carries = (h: number) => s.roads[h] || s.map.river[h] || isWaterHex(s, h);
+    if ((carries(from) || carries(next)) && s.wars.some(w => w.a === f.civId || w.b === f.civId))
+      invalidateMarkets();
     updateExplored(s, f.civId);
     if (end?.mergeWith) merged = mergeInto(s, f, end.mergeWith);
     if (end?.embark) merged = `${f.name} boarded ${end.embark.name}.`;
@@ -644,11 +675,11 @@ export function fortify(s: GameState, fid: number): Result {
 // ---------------------------------------------------------------- cities
 
 export function canFoundCity(s: GameState, f: Formation): string | null {
-  if (f.kind !== 'settlers') return 'Only settlers can found a city.';
-  if (!isPassableLand(s.map, f.hex)) return 'Cities need open land.';
+  if (f.kind !== 'settlers') return 'Only settlers can found a town.';
+  if (!isPassableLand(s.map, f.hex)) return 'Towns need open land.';
   const g = gridOf(s);
   const near = s.cities.find(c => distance(g, c.hex, f.hex) < MIN_CITY_DISTANCE);
-  if (near) return `Too close to ${near.name} (min ${MIN_CITY_DISTANCE} hexes).`;
+  if (near) return `Right next to ${near.name}: leave at least one hex between settlements.`;
   return null;
 }
 
@@ -670,6 +701,7 @@ export function foundCity(s: GameState, fid: number): Result {
     civId: civ.id,
     name,
     hex: f.hex,
+    tier: 'town',
     pop: s.cities.some(x => x.civId === civ.id) ? SETTLED_CITY_POP : START_CITY_POP,
     food: 0,
     founded: s.turn,
@@ -686,10 +718,19 @@ export function foundCity(s: GameState, fid: number): Result {
     slots: Array.from({ length: 9 }, () => emptySlot()),
   };
   centre.slots[4] = { type: 'town-hall', built: true, progress: 0, paid: true };
-  // a district already on this hex (from an older city) is cleared
-  s.districts = s.districts.filter(d => d.hex !== c.hex);
   s.districts.push(centre);
   s.roads[c.hex] = 1;
+  // a new town close to one of its own people's settlements is joined to it by a track
+  const g0 = gridOf(s);
+  const kin = s.cities
+    .filter(x => x !== c && x.civId === civ.id && distance(g0, x.hex, c.hex) <= 3)
+    .sort((a, b) => distance(g0, a.hex, c.hex) - distance(g0, b.hex, c.hex))[0];
+  if (kin) {
+    const track = findPath(g0, c.hex, kin.hex, (_a, b) =>
+      isPassableLand(s.map, b) ? 1 : Infinity,
+    );
+    if (track && track.length <= 3) for (const h of track) s.roads[h] = 1;
+  }
   invalidateMarkets();
   s.formations = s.formations.filter(x => x.id !== f.id);
   s.map.vegetation[f.hex] = 'none';
@@ -702,20 +743,40 @@ export function foundCity(s: GameState, fid: number): Result {
 export function levy(s: GameState, cityId: number): Result {
   const c = city(s, cityId);
   if (!c) return fail('No such city.');
-  if (c.pop - LEVY_PEOPLE < MIN_CITY_POP)
-    return fail(`${c.name} needs ${MIN_CITY_POP + LEVY_PEOPLE} people to raise a levy.`);
-  c.pop -= LEVY_PEOPLE;
-  const f = addFormation(s, c.civId, 'army', c.hex, levySize(s, c.civId), nextLevyName(s, c.civId));
+  // spare housing fills bigger levies (those men are people too)
+  const extra = housingLevyExtra(s, c);
+  const people = LEVY_PEOPLE + extra * COHORT_SIZE;
+  if (c.pop - people < MIN_CITY_POP)
+    return fail(`${c.name} needs ${MIN_CITY_POP + people} people to raise a levy.`);
+  c.pop -= people;
+  const f = addFormation(
+    s,
+    c.civId,
+    'army',
+    c.hex,
+    levySize(s, c.civId) + extra,
+    nextLevyName(s, c.civId),
+  );
   f.moves = 0;
-  if (hasSlot(s, c, 'barracks')) for (const co of f.cohorts) co.xp = 1;
-  log(s, c.civId, `${c.name} raised the ${f.name} (500 people).`);
+  // barracks, a house seasoned in war, and the realm's War College all season new levies
+  const seasoned =
+    (hasSlot(s, c, 'barracks') ? 1 : 0) +
+    levyXpFrom(s, c) +
+    (s.cities.some(x => x.civId === c.civId && hasSlot(s, x, 'war-college')) ? 1 : 0);
+  for (const co of f.cohorts) co.xp = Math.max(co.xp, seasoned);
+  log(s, c.civId, `${c.name} raised the ${f.name} (${people} people).`);
   return ok(`${f.name} raised in ${c.name}.`);
 }
 
-/** Food a city must store to grow by 250 people: bigger cities grow more slowly. */
+/**
+ * Food a settlement must store to grow by 250 people: bigger ones grow more slowly, and every
+ * housing cell beyond its districts' two makes growing 8% cheaper (down to 60%).
+ */
 export const growthCost = (s: GameState, c: City) =>
   Math.round(
-    (15 + (c.pop / 1000) * 12 + (c.pop / 1000) ** 2 * 0.6) * pct(civMods(s, c.civId).growthPct),
+    (15 + (c.pop / 1000) * 12 + (c.pop / 1000) ** 2 * 0.6) *
+      pct(civMods(s, c.civId).growthPct) *
+      Math.max(0.6, 1 - 0.08 * housingCells(s, c).spare),
   );
 
 /** Per-turn summary of a city (see economy.ts for the slot-by-slot detail). */
@@ -886,9 +947,20 @@ export function assignDesign(
 
 // ---------------------------------------------------------------- research
 
+/** How many of an age's techs a people knows, gates left out. */
+export const knownInAge = (civ: Civ, era: number) =>
+  ageTechs(era).filter(t => civ.techs.includes(t.id)).length;
+
+/** Techs that can be researched now: in an age already reached, prerequisites known; a gate also
+ * needs enough of its age known. */
 export function availableTechs(civ: Civ) {
+  const age = ageOf(civ.techs);
   return TECH_LIST.filter(
-    t => !civ.techs.includes(t.id) && t.requires.every(r => civ.techs.includes(r)),
+    t =>
+      !civ.techs.includes(t.id) &&
+      t.era <= age &&
+      t.requires.every(r => civ.techs.includes(r)) &&
+      (t.gate === undefined || knownInAge(civ, t.era) >= t.gate),
   );
 }
 
@@ -904,6 +976,8 @@ export function setResearch(s: GameState, civId: number, techId: string): Result
 export function endTurn(s: GameState): string[] {
   const events: string[] = [];
   const me = player(s);
+  // a civil war choice left open: the player stands with the throne
+  events.push(...settlePending(s, me));
   const logStart = s.log.length;
   // AI acts after the player, in the same turn
   for (const civ of s.civs)
@@ -918,20 +992,26 @@ export function endTurn(s: GameState): string[] {
   for (const e of s.log.slice(logStart))
     if (e.civId !== me.id && e.text.includes(me.name)) events.push(e.text);
 
+  const cultureOf = new Map<number, number>();
   for (const civ of s.civs) {
     if (!civ.alive) continue;
     let science = 0,
       gold = 0,
       culture = 0;
-    for (const c of s.cities.filter(x => x.civId === civ.id)) {
-      const e = cityEconomy(s, c);
+    const mine = s.cities.filter(x => x.civId === civ.id);
+    const econ = new Map(mine.map(c => [c.id, cityEconomy(s, c)]));
+    // towns feed the cities they trade with
+    const fed = shareFood(s, new Map(mine.map(c => [c.id, econ.get(c.id)!.surplus])));
+    for (const c of mine) {
+      const e = econ.get(c.id)!;
       science += e.total.science;
       culture += e.total.culture;
       gold += e.total.gold;
       for (const [k, n] of Object.entries(e.total.goods))
         c.stockpile[k] = (c.stockpile[k] ?? 0) + n;
-      marketSpend(s, c, e.inputs);
-      c.food += e.surplus;
+      // what the buildings and hearths burned this turn (as much as the market had)
+      marketTake(s, c, e.inputs);
+      c.food += fed.get(c.id) ?? e.surplus;
       // food stored turns into people while there is housing; starvation shrinks the city
       const need = growthCost(s, c);
       if (c.food >= need) {
@@ -940,42 +1020,81 @@ export function endTurn(s: GameState): string[] {
           c.pop += 250;
         } else c.food = need;
       }
-      for (const done of build(s, c, e.total.prod))
-        if (civ.isPlayer) events.push(`${c.name}: ${done} finished.`);
+      for (const done of build(s, c, e.total.prod)) {
+        if (civ.isPlayer) events.push(`${c.name}: ${done.text} finished.`);
+        // a finished building of a line may bring a trinket for the houses
+        const st = SLOT_TYPES[done.type];
+        const line: Area | undefined = st?.id === 'war-college' ? 'military' : st?.line;
+        // a great building always brings two treasures of its line
+        if (st?.role === 'great' && line) {
+          const a = awardTrinket(s, civ, line, c.id * 17);
+          const b = awardTrinket(s, civ, line, c.id * 19);
+          if (civ.isPlayer)
+            events.push(`${st.name} brings the ${a.name} and the ${b.name} to your treasury.`);
+        }
+        const t =
+          line && st?.role !== 'great'
+            ? maybeTrinket(s, civ, line, c.id * 13 + done.type.length)
+            : null;
+        if (t && civ.isPlayer)
+          events.push(
+            `A trinket is found in ${c.name}: the ${t.name} (${AREA_NAMES[line!]}). Give it to a house.`,
+          );
+      }
       if (c.food < -5) {
         c.food = 0;
         c.pop = Math.max(MIN_CITY_POP, c.pop - 250);
         if (civ.isPlayer) events.push(`${c.name} is starving.`);
       }
     }
+    cultureOf.set(civ.id, culture);
     let upkeep = 0;
     for (const f of s.formations)
       if (f.civId === civ.id) for (const co of f.cohorts) upkeep += cohortUpkeep(co);
     upkeep = Math.round(upkeep * pct(civMods(s, civ.id).upkeepPct));
     civ.gold += gold - upkeep;
     if (civ.gold < 0) civ.gold = 0;
+    // firearms burn powder each turn; a realm out of it fires at half
+    const powder = powderNeed(s, civ.id);
+    const cap0 = mine[0];
+    civ.shortOf = [];
+    if (powder > 0 && cap0) {
+      const have = marketStock(s, cap0).saltpeter ?? 0;
+      if (have < powder) civ.shortOf.push('saltpeter');
+      marketTake(s, cap0, { saltpeter: Math.min(have, powder) });
+    }
+    // stores hold only so much: what does not fit is lost
+    capStores(s, civ.id, econ);
     if (!civ.researching) civ.researching = nextResearch(s, civ);
+    // science is stored even while nothing is chosen, so choosing late costs nothing
+    civ.science += science;
     if (civ.researching) {
-      civ.science += science;
       const t = TECHS[civ.researching];
       const cost = techCost(s, civ, t.id);
       if (civ.science >= cost) {
         civ.science -= cost;
         civ.techs.push(t.id);
         civ.researching = null;
-        log(s, civ.id, `${civ.name} learned ${t.name}.`);
-        if (civ.isPlayer) events.push(`Research complete: ${t.name}. ${t.note}`);
+        if (t.gate !== undefined) {
+          log(s, civ.id, `The ${civ.name} enter the ${ERAS[t.era + 1]} age.`);
+          if (civ.isPlayer)
+            events.push(
+              `A new age: the ${ERAS[t.era + 1]}. ${ageTechs(t.era + 1).length} new techs to research.`,
+            );
+        } else {
+          log(s, civ.id, `${civ.name} learned ${t.name}.`);
+          if (civ.isPlayer) events.push(`Research complete: ${t.name}. ${t.note}`);
+        }
       }
     }
   }
 
   for (const civ of s.civs) {
     if (!civ.alive || civ.independent) continue;
-    const culture = s.cities
-      .filter(c => c.civId === civ.id)
-      .reduce((a, c) => a + cityEconomy(s, c).total.culture, 0);
-    const msgs = cultureTurn(s, civ, culture);
+    const msgs = cultureTurn(s, civ, cultureOf.get(civ.id) ?? 0);
     if (civ.isPlayer) events.push(...msgs);
+    const dyn = dynastyTurn(s, civ);
+    if (civ.isPlayer) events.push(...dyn);
   }
   events.push(...diplomacyTurn(s));
   events.push(...historyTurn(s));
@@ -1031,14 +1150,192 @@ export function cohortUpkeep(c: Cohort): number {
 
 // ---------------------------------------------------------------- save / load
 
-export function serialize(s: GameState): string {
-  return JSON.stringify(s);
+// ---------------------------------------------------------------- save format
+
+const TER: TerrainId[] = [
+  'ocean',
+  'coast',
+  'lake',
+  'grassland',
+  'plains',
+  'desert',
+  'tundra',
+  'snow',
+];
+const REL: ReliefId[] = ['flat', 'hills', 'mountains'];
+const VEG: VegetationId[] = ['none', 'forest', 'jungle', 'marsh'];
+const enc = <T extends string>(xs: T[], ids: T[]) =>
+  xs.map(x => String.fromCharCode(97 + ids.indexOf(x))).join('');
+const dec = <T extends string>(str: string, ids: T[]) =>
+  Array.from(str, ch => ids[ch.charCodeAt(0) - 97]);
+function bits(xs: number[]): string {
+  const bytes = new Uint8Array(Math.ceil(xs.length / 8));
+  xs.forEach((v, i) => v && (bytes[i >> 3] |= 1 << (i & 7)));
+  let out = '';
+  for (const b of bytes) out += String.fromCharCode(b);
+  return btoa(out);
+}
+function unbits(b64: string, n: number): number[] {
+  const raw = atob(b64);
+  return Array.from({ length: n }, (_, i) => (raw.charCodeAt(i >> 3) >> (i & 7)) & 1);
 }
 
+/**
+ * Saves are versioned. Each entry upgrades a save from version k to k + 1; keep them forever.
+ * Versions before MIN_SAVE_VERSION came from development builds and are not loadable.
+ */
+const MIGRATIONS: Record<number, (d: GameState) => GameState> = {
+  // 5 → 6: research went to ages; anyone already holding a later age's tech gets its gates
+  5: d => {
+    for (const c of d.civs) {
+      const top = Math.max(1, ...c.techs.map(id => TECHS[id]?.era ?? 1));
+      for (let e = 2; e <= top; e++) if (!c.techs.includes(AGE_GATE[e])) c.techs.push(AGE_GATE[e]);
+      if (c.researchGoal && !TECHS[c.researchGoal]) c.researchGoal = null;
+    }
+    return { ...d, version: 6 };
+  },
+  // 6 → 7: settlements became one hex with 2/4/6 districts; old ones become towns keeping
+  // their centre and their oldest other district
+  6: d => {
+    for (const c of d.cities) {
+      c.tier = 'town';
+      const mine = d.districts.filter(x => x.cityId === c.id);
+      const centre = mine.find(x => x.slots.some(y => y.type === 'town-hall'));
+      const other = mine.filter(x => x !== centre).sort((a, b) => a.id - b.id)[0];
+      const keep = new Set([centre, other].filter(Boolean));
+      d.districts = d.districts.filter(x => x.cityId !== c.id || keep.has(x));
+      for (const x of keep) x!.hex = c.hex;
+    }
+    return { ...d, version: 7 };
+  },
+  // 7 → 8: the specialised rural buildings became farms, pastures and mines
+  7: d => {
+    const to: Record<string, string> = {
+      'grain-field': 'farm',
+      'pig-pen': 'pasture',
+      'cattle-pasture': 'pasture',
+      'sheep-run': 'pasture',
+      'horse-stud': 'pasture',
+      quarry: 'mine',
+      'copper-mine': 'mine',
+      'tin-mine': 'mine',
+      'iron-mine': 'mine',
+      'coal-mine': 'mine',
+      'gold-mine': 'mine',
+      'silver-mine': 'mine',
+      'saltpeter-works': 'mine',
+    };
+    for (const x of d.districts)
+      for (const st of x.slots) if (st.type && to[st.type]) st.type = to[st.type];
+    for (const c of d.civs)
+      for (const b of c.blueprints) b.slots = b.slots.map(t => (t && to[t]) || t);
+    return { ...d, version: 8 };
+  },
+  // 8 → 9: dynasties, and buildings on lines
+  8: d => {
+    for (const c of d.civs) {
+      c.trinkets = [];
+      const house = foundingDynasty(d, c);
+      c.dynasties = [house];
+      c.ruling = house.id;
+    }
+    return { ...d, version: 9 };
+  },
+  // 9 → 10: history events (free peoples only appear in new games)
+  9: d => ({ ...d, events: [], lastEvent: {}, version: 10 }),
+};
+export const MIN_SAVE_VERSION = 5;
+
+/** Compact JSON: terrain as strings, explored and roads as bitsets, no generation-only data. */
+export function serialize(s: GameState): string {
+  const N = s.map.w * s.map.h;
+  const map = {
+    ...s.map,
+    terrain: enc(s.map.terrain, TER),
+    relief: enc(s.map.relief, REL),
+    vegetation: enc(s.map.vegetation, VEG),
+    elevation: [],
+    riverTo: s.map.riverTo.flatMap((t, i) => (t >= 0 ? [i, t] : [])),
+    river: s.map.river.flatMap((v, i) => (v ? [i, v] : [])),
+  };
+  const civs = s.civs.map(c => ({ ...c, explored: bits(c.explored) }));
+  return JSON.stringify({ format: 2, n: N, state: { ...s, map, civs, roads: bits(s.roads) } });
+}
+
+export class SaveError extends Error {}
+
 export function deserialize(json: string): GameState {
-  const s = JSON.parse(json) as GameState;
-  if (s.version !== SAVE_VERSION) throw new Error(`Save version ${s.version} is not supported.`);
+  const raw = JSON.parse(json);
+  let s: GameState;
+  if (raw && raw.format === 2) {
+    const st = raw.state,
+      N = raw.n as number;
+    const riverTo = new Array<number>(N).fill(-1),
+      river = new Array<number>(N).fill(0);
+    for (let k = 0; k < st.map.riverTo.length; k += 2)
+      riverTo[st.map.riverTo[k]] = st.map.riverTo[k + 1];
+    for (let k = 0; k < st.map.river.length; k += 2) river[st.map.river[k]] = st.map.river[k + 1];
+    s = {
+      ...st,
+      map: {
+        ...st.map,
+        terrain: dec(st.map.terrain, TER),
+        relief: dec(st.map.relief, REL),
+        vegetation: dec(st.map.vegetation, VEG),
+        riverTo,
+        river,
+      },
+      civs: st.civs.map((c: Civ & { explored: string }) => ({
+        ...c,
+        explored: unbits(c.explored as unknown as string, N),
+      })),
+      roads: unbits(st.roads, N),
+    };
+  } else s = raw as GameState; // plain JSON from earlier builds
+  if (typeof s.version !== 'number') throw new SaveError('This is not a History Unfolded save.');
+  if (s.version > SAVE_VERSION)
+    throw new SaveError('This save comes from a newer version of the game.');
+  if (s.version < MIN_SAVE_VERSION)
+    throw new SaveError('This save comes from an early test version and cannot be loaded.');
+  while (s.version < SAVE_VERSION) s = MIGRATIONS[s.version]({ ...s, version: s.version });
+  for (const c of s.cities) c.tier ??= 'town';
+  for (const c of s.civs)
+    for (const d of c.dynasties ?? []) {
+      d.traits ??= {};
+      d.xp ??= {};
+    }
+  validate(s);
   return s;
+}
+
+/** Refuse saves whose pieces do not fit together; quietly drop references to removed content. */
+function validate(s: GameState) {
+  const N = s.map.w * s.map.h;
+  const sizes = [
+    s.map.terrain.length,
+    s.map.relief.length,
+    s.map.vegetation.length,
+    s.map.river.length,
+    s.roads.length,
+  ];
+  if (sizes.some(n => n !== N) || s.civs.some(c => c.explored.length !== N))
+    throw new SaveError('The save is damaged (map data does not fit).');
+  if (
+    s.map.terrain.some(t => !t) ||
+    s.formations.some(f => f.hex < 0 || f.hex >= N) ||
+    s.cities.some(c => c.hex < 0 || c.hex >= N)
+  )
+    throw new SaveError('The save is damaged.');
+  for (const c of s.civs) c.techs = c.techs.filter(t => TECHS[t]);
+  for (const f of s.formations)
+    for (const co of f.cohorts)
+      for (const k of SLOTS) if (!ITEMS[co.loadout[k]]) co.loadout[k] = DEFAULT_LOADOUT[k];
+  // buildings that no longer exist leave an empty cell
+  for (const d of s.districts)
+    for (let i = 0; i < 9; i++)
+      if (d.slots[i].type && !SLOT_TYPES[d.slots[i].type!]) d.slots[i] = emptySlot();
+  for (const c of s.civs)
+    for (const b of c.blueprints) b.slots = b.slots.map(t => (t && SLOT_TYPES[t] ? t : null));
 }
 
 export const defaultCivCount = (size: keyof typeof MAP_SIZES) => MAP_SIZES[size].civs;
@@ -1204,7 +1501,13 @@ export function defenderAt(s: GameState, hex: number): { f?: Formation; city?: C
 /** The city guard: townsfolk with spears and hide shields, more of them in bigger cities. */
 export function cityGuard(s: GameState, c: City): Cohort[] {
   const walls = cityWalls(s, c);
-  const n = 3 + Math.floor(c.pop / 2000) + walls.guard + Math.floor(civMods(s, c.civId).guard);
+  const n =
+    3 +
+    Math.floor(c.pop / 2000) +
+    walls.guard +
+    Math.floor(civMods(s, c.civId).guard) +
+    // a governor house seasoned in war musters more of the townsfolk
+    Math.floor(levyXpFrom(s, c) * 1.5);
   return Array.from({ length: n }, (_, i) => ({
     id: -1 - i,
     strength: Math.max(1, Math.round(COHORT_SIZE * c.guard)),
@@ -1297,13 +1600,13 @@ function battleInputs(s: GameState, f: Formation, hex: number) {
       name: `${s.civs[f.civId].name} ${f.name}`,
       cohorts: f.cohorts,
       morale: formationMorale(f) + am.morale,
-      boost: boost(am, true, attHome),
+      boost: dryPowder(s, f, boost(am, true, attHome)),
     },
     def: {
       name: defName,
       cohorts: defCohorts,
       morale: (df ? formationMorale(df) + (city ? 15 : 0) : 45) + dm.morale,
-      boost: boost(dm, false, defHome),
+      boost: df ? dryPowder(s, df, boost(dm, false, defHome)) : boost(dm, false, defHome),
     },
     ctx: {
       map: s.map,
@@ -1335,14 +1638,31 @@ export function cityWalls(s: GameState, c: City): { walls: number; guard: number
 
 const cohortSiege = (c: Cohort) => SLOTS.reduce((a, k) => a + (ITEMS[c.loadout[k]].siege ?? 0), 0);
 
+/** Short of powder, a formation's firearms fire at half: its ranged strength drops by their share. */
+function dryPowder<T extends { ranged: number }>(s: GameState, f: Formation, b: T): T {
+  if (!s.civs[f.civId].shortOf?.includes('saltpeter')) return b;
+  const guns = f.cohorts.filter(c => SLOTS.some(k => ITEMS[c.loadout[k]]?.powder)).length;
+  const ranged = f.cohorts.filter(c => cohortRanged(c)).length;
+  if (!guns || !ranged) return b;
+  return { ...b, ranged: b.ranged * (1 - 0.5 * (guns / ranged)) };
+}
+
 /** Cohorts per new levy. */
 export const levySize = (s: GameState, civId: number) =>
   LEVY_COHORTS + Math.floor(civMods(s, civId).levyCohorts);
+/**
+ * Spare housing (cells beyond each district's two) lets a settlement raise bigger levies (+1
+ * cohort per two, up to +3) and send out settlers for fewer people (−10% each, to 60%).
+ */
+export const housingLevyExtra = (s: GameState, c: City) =>
+  Math.min(3, Math.floor(housingCells(s, c).spare / 2));
+export const settlersCost = (s: GameState, c: City) =>
+  Math.round((SETTLERS_PEOPLE * Math.max(0.6, 1 - 0.1 * housingCells(s, c).spare)) / 50) * 50;
 export const territoryRadius = (s: GameState, civId: number) =>
   TERRITORY_RADIUS + Math.floor(civMods(s, civId).territoryRadius);
 
-/** Later eras cost more than their listed base. */
-const ERA_COST = [1, 1.5, 2, 2.5, 3];
+/** Later eras cost more than their listed base (indexed by era, 1..4). */
+const ERA_COST = [1, 1.3, 1.6, 2, 4.5, 3.5];
 
 /** Research cost after culture leanings and bonuses. */
 export function techCost(s: GameState, civ: Civ, id: string): number {
@@ -1369,6 +1689,8 @@ export function nextResearch(s: GameState, civ: Civ): string | null {
   const score = (id: string) => {
     const t = TECHS[id];
     let v = techCost(s, civ, id);
+    // a new age is worth reaching as soon as it opens
+    if (t.gate !== undefined) v *= 0.35;
     if (t.favoured && civ.leanings.includes(t.favoured)) v *= 0.7;
     if (civ.sea === undefined && (id === 'sailing' || id === 'navigation') && boxedIn(s, civ))
       v *= 0.3;
@@ -1399,6 +1721,15 @@ export function goalStep(civ: Civ, goal: string): string | null {
     if (civ.techs.includes(id) || seen.has(id)) return null;
     seen.add(id);
     const t = TECHS[id];
+    // a later age is reached through its gate
+    if (t.era > ageOf(civ.techs)) return walk(AGE_GATE[t.era]);
+    if (t.gate !== undefined && knownInAge(civ, t.era) < t.gate) {
+      // any tech of the age counts: take the cheapest open one
+      const open = availableTechs(civ)
+        .filter(x => x.era === t.era && x.gate === undefined)
+        .sort((a, b) => a.cost - b.cost);
+      return open[0]?.id ?? null;
+    }
     const missing = t.requires.filter(r => !civ.techs.includes(r));
     if (!missing.length) return id;
     // cheapest branch first
@@ -1475,6 +1806,17 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
   const b = battleInputs(s, f, hex);
   const rng = mulberry32(hashSeed(s.settings.map.seed, s.turn * 7919 + f.id * 31 + hex));
   const report = resolveBattle(b.att, b.def, { ...b.ctx, rng });
+  report.scene = isWaterHex(s, hex)
+    ? 'naval'
+    : f.aboard !== undefined
+      ? 'landing'
+      : b.city
+        ? 'siege'
+        : report.lines.some(l => l.startsWith('Charge:'))
+          ? 'charge'
+          : s.map.vegetation[hex] === 'forest' || s.map.vegetation[hex] === 'jungle'
+            ? 'forest'
+            : 'field';
   const defCiv = s.civs[b.defCivId];
 
   const applyLosses = (fm: Formation, loss: Record<number, number>) => {
@@ -1490,6 +1832,15 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
   };
   applyLosses(f, report.attacker.cohortLoss);
   if (b.df) applyLosses(b.df, report.defender.cohortLoss);
+  const war = s.wars.find(
+    w => (w.a === f.civId && w.b === b.defCivId) || (w.b === f.civId && w.a === b.defCivId),
+  );
+  if (war) {
+    war.dead ??= {};
+    war.dead[f.civId] = (war.dead[f.civId] ?? 0) + report.attacker.lost;
+    war.dead[b.defCivId] = (war.dead[b.defCivId] ?? 0) + report.defender.lost;
+    war.lastFight = s.turn;
+  }
   attCiv.kills += report.defender.lost;
   attCiv.losses += report.attacker.lost;
   defCiv.kills += report.attacker.lost;
@@ -1504,6 +1855,16 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
       0,
       b.city.guard * (1 - report.defender.lost / Math.max(1, report.defender.start)),
     );
+  }
+  // a broken enemy that lost heavily: the victors may carry off a war trophy
+  if (report.outcome === 'defender-broke' && report.defender.lost >= 300) {
+    const civ = s.civs[f.civId];
+    const roll = mulberry32(hashSeed(s.settings.map.seed, s.turn * 331 + f.id))();
+    if (roll < 0.25) {
+      const t = awardTrinket(s, civ, 'military', f.id);
+      if (civ.isPlayer)
+        log(s, civ.id, `A trophy from the field: the ${t.name}. Give it to a house.`);
+    }
   }
   if (report.outcome === 'defender-broke' && b.df && defenderAlive) {
     // retreat away from the attacker, or be cut down if there is nowhere to go
@@ -1576,7 +1937,17 @@ function captureCity(s: GameState, c: City, by: Formation): string {
   const old = s.civs[c.civId];
   const civ = s.civs[by.civId];
   c.civId = by.civId;
+  c.governor = undefined;
   invalidateMarkets();
+  // a people keeps one metropolis: a second one taken steps down to a city
+  if (
+    c.tier === 'metropolis' &&
+    s.cities.some(x => x !== c && x.civId === by.civId && x.tier === 'metropolis')
+  ) {
+    c.tier = 'city';
+    const extra = cityDistricts(s, c).slice(DISTRICT_CAP.city);
+    s.districts = s.districts.filter(d => !extra.includes(d));
+  }
   c.pop = Math.max(MIN_CITY_POP, Math.round((c.pop * 0.75) / 50) * 50);
   // civilians in the city are lost
   s.formations = s.formations.filter(x => !(x.hex === c.hex && x.civId === old.id));
@@ -1587,8 +1958,18 @@ function captureCity(s: GameState, c: City, by: Formation): string {
     for (const o of s.civs)
       if (o.alive && o.independent && o.id !== old.id)
         remember(s, o.id, civ.id, 'crushed', 'Crushed a free people', -15, 0.1);
+  const war = s.wars.find(
+    w => (w.a === civ.id && w.b === old.id) || (w.b === civ.id && w.a === old.id),
+  );
+  if (war) {
+    war.taken ??= {};
+    war.taken[civ.id] = (war.taken[civ.id] ?? 0) + 1;
+  }
+  // the conquerors carry off a treasure of what the place was known for
+  const areas = Object.entries(settlementAreas(s, c)).sort((x, y) => y[1] - x[1]);
+  const loot = awardTrinket(s, civ, (areas[0]?.[0] as Area) ?? 'military', c.id);
   log(s, by.civId, msg);
-  return msg;
+  return `${msg} Among the spoils: the ${loot.name}.`;
 }
 
 /** A people with no cities and no settlers is gone; its troops scatter. */
@@ -1611,9 +1992,10 @@ export function checkElimination(s: GameState) {
 export function trainSettlers(s: GameState, cityId: number): Result {
   const c = city(s, cityId);
   if (!c) return fail('No such city.');
-  if (c.pop - SETTLERS_PEOPLE < MIN_CITY_POP)
-    return fail(`${c.name} needs ${MIN_CITY_POP + SETTLERS_PEOPLE} people to send out settlers.`);
-  c.pop -= SETTLERS_PEOPLE;
+  const people = settlersCost(s, c);
+  if (c.pop - people < MIN_CITY_POP)
+    return fail(`${c.name} needs ${MIN_CITY_POP + people} people to send out settlers.`);
+  c.pop -= people;
   const f = addFormation(s, c.civId, 'settlers', c.hex, SETTLER_COHORTS, 'Settlers');
   f.moves = 0;
   log(s, c.civId, `${c.name} sent out settlers.`);
@@ -1626,29 +2008,128 @@ export const hasSlot = (s: GameState, c: City, type: string) =>
   cityDistricts(s, c).some(d => d.slots.some(x => x.built && x.type === type));
 
 /** Lay out a new district on a hex near the city. Slots are built one by one by the city. */
+/** Districts a settlement may still lay out. */
+export const districtRoom = (s: GameState, c: City) =>
+  DISTRICT_CAP[c.tier] - s.districts.filter(d => d.cityId === c.id).length;
+
+/** Lay out a new district in a settlement, up to its rank's limit. */
 export function placeDistrict(
   s: GameState,
   cityId: number,
-  hex: number,
   name: string,
   slots: (string | null)[],
 ): Result & { id?: number } {
   const c = city(s, cityId);
-  if (!c) return fail('No such city.');
-  if (districtAt(s, hex)) return fail('There is already a district there.');
-  if (!districtSites(s, c, territory(s)).includes(hex))
-    return fail(`Not a site for ${c.name}: pick its own land within 2 hexes.`);
+  if (!c) return fail('No such settlement.');
+  if (districtRoom(s, c) <= 0)
+    return fail(
+      c.tier === 'metropolis'
+        ? `${c.name} holds all six districts it can.`
+        : `${c.name} is full. A ${c.tier === 'town' ? 'city' : 'metropolis'} has room for more.`,
+    );
   const d: District = {
     id: s.nextId++,
     cityId,
-    hex,
+    hex: c.hex,
     name: name.trim().slice(0, 28) || 'District',
     slots: Array.from({ length: 9 }, (_, i) =>
       emptySlot(slots[i] && !SLOT_TYPES[slots[i]!]?.fixed ? slots[i] : null),
     ),
   };
   s.districts.push(d);
+  // a blueprint may hold buildings this place cannot take: leave those cells empty
+  for (let i = 0; i < 9; i++) {
+    const t = d.slots[i].type;
+    if (t && slotProblem(s, c.civId, c.hex, false, t, d.id)) d.slots[i] = emptySlot();
+  }
   return { ok: true, msg: `${d.name} laid out.`, id: d.id };
+}
+
+// ---------------------------------------------------------------- town, city, metropolis
+
+export interface UpgradeInfo {
+  to: City['tier'] | null;
+  pop: number;
+  gold: number;
+  goods: Record<string, number>;
+  /** why it cannot happen yet, or null */
+  problem: string | null;
+  /** rural buildings that will be pulled down */
+  lost: number;
+}
+
+/** Housing cells a settlement must have built to rise, and the culture choice it needs. */
+export const RANK_NEEDS = {
+  city: { housing: 6, culture: 'city-charter' },
+  metropolis: { housing: 8, culture: 'seat-of-empire' },
+} as const;
+
+export const UPGRADE: Record<
+  'city' | 'metropolis',
+  { pop: number; gold: number; goods: Record<string, number> }
+> = {
+  city: { pop: 6000, gold: 150, goods: { stone: 10, wood: 30 } },
+  metropolis: { pop: 15000, gold: 400, goods: { stone: 30, wood: 50 } },
+};
+
+/** What raising a settlement to the next rank takes. */
+export function upgradeInfo(s: GameState, c: City): UpgradeInfo {
+  const to = c.tier === 'town' ? 'city' : c.tier === 'city' ? 'metropolis' : null;
+  if (!to) return { to, pop: 0, gold: 0, goods: {}, problem: 'Already a metropolis.', lost: 0 };
+  const need = UPGRADE[to];
+  const civ = s.civs[c.civId];
+  const lost = s.districts
+    .filter(d => d.cityId === c.id)
+    .reduce((a, d) => a + d.slots.filter(x => isRural(x.type)).length, 0);
+  let problem: string | null = null;
+  const stock = marketStock(s, c);
+  const shortGoods = Object.entries(need.goods).filter(([k, n]) => (stock[k] ?? 0) < n);
+  if (
+    to === 'metropolis' &&
+    s.cities.some(x => x.civId === c.civId && x.tier === 'metropolis' && x !== c)
+  )
+    problem = 'A people can have only one metropolis.';
+  else if (!civ.culture.taken.includes(RANK_NEEDS[to].culture))
+    problem = `Needs the ${CULTURE[RANK_NEEDS[to].culture].name} culture choice.`;
+  else if (housingCells(s, c).built < RANK_NEEDS[to].housing)
+    problem = `Needs ${RANK_NEEDS[to].housing} housing cells built (${housingCells(s, c).built} now).`;
+  else if (c.pop < need.pop)
+    problem = `Needs ${need.pop.toLocaleString()} people (${c.pop.toLocaleString()} now).`;
+  else if (civ.gold < need.gold) problem = `Needs ${need.gold} gold (${Math.floor(civ.gold)} now).`;
+  else if (shortGoods.length)
+    problem = `The market lacks ${shortGoods.map(([k, n]) => `${Math.ceil(n - (stock[k] ?? 0))} ${k}`).join(', ')}.`;
+  return { to, pop: need.pop, gold: need.gold, goods: need.goods, problem, lost };
+}
+
+/**
+ * Raise a town to a city (4 districts, building bonuses, no farms, woodlots or mines) or a
+ * city to the people's one metropolis (6 districts, bigger bonuses).
+ */
+export function upgradeSettlement(s: GameState, cityId: number): Result {
+  const c = city(s, cityId);
+  if (!c) return fail('No such settlement.');
+  const u = upgradeInfo(s, c);
+  if (u.problem || !u.to) return fail(u.problem ?? 'Cannot grow further.');
+  if (!marketSpend(s, c, u.goods)) return fail('The market cannot pay for it.');
+  s.civs[c.civId].gold -= u.gold;
+  const was = c.tier;
+  c.tier = u.to;
+  // the fields and mines give way to streets
+  let cleared = 0;
+  for (const d of s.districts.filter(x => x.cityId === c.id))
+    for (let i = 0; i < 9; i++)
+      if (isRural(d.slots[i].type)) {
+        d.slots[i] = emptySlot();
+        cleared++;
+      }
+  log(
+    s,
+    c.civId,
+    `${c.name} grew from a ${TIER_NAME[was].toLowerCase()} into a ${TIER_NAME[c.tier].toLowerCase()}.`,
+  );
+  return ok(
+    `${c.name} is now a ${TIER_NAME[c.tier].toLowerCase()}: room for ${DISTRICT_CAP[c.tier]} districts${cleared ? `; ${cleared} farm and mine buildings gave way to streets` : ''}.`,
+  );
 }
 
 /** Change one slot. A built slot that is replaced is demolished (a quarter of its goods back). */
@@ -1666,7 +2147,7 @@ export function setSlot(s: GameState, districtId: number, i: number, type: strin
   }
   d.slots[i] = emptySlot(type);
   if (type) {
-    const why = slotProblem(s, c.civId, d.hex, d.hex === c.hex, type, d.id);
+    const why = slotProblem(s, c.civId, c.hex, isCentre(d), type, d.id);
     if (why) return ok(`${SLOT_TYPES[type].name} planned, but: ${why}`);
   }
   return ok();
@@ -1683,7 +2164,7 @@ export function removeDistrict(s: GameState, districtId: number): Result {
   const d = s.districts.find(x => x.id === districtId);
   if (!d) return fail('No such district.');
   const c = city(s, d.cityId);
-  if (c && c.hex === d.hex) return fail('The city centre cannot be removed.');
+  if (c && isCentre(d)) return fail('The centre district stays.');
   for (let i = 0; i < 9; i++) setSlot(s, d.id, i, null);
   s.districts = s.districts.filter(x => x !== d);
   return ok(`${d.name} cleared.`);

@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { fx } from '../render/fx.ts';
+import { isMuted, setMuted, sound } from './sound.ts';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
 import {
+  availableTechs,
   assignDesign,
   attack,
   buildRoad,
@@ -37,7 +40,7 @@ import {
 } from '../engine/game.ts';
 import type { GameState } from '../engine/types.ts';
 import type { Assets } from '../render/assets.ts';
-import type { Overlay } from '../render/mapRenderer.ts';
+import type { Insets, Overlay } from '../render/mapRenderer.ts';
 import { BattleDialog } from './BattleDialog.tsx';
 import { CityDialog } from './CityDialog.tsx';
 import { CityPanel } from './CityPanel.tsx';
@@ -46,15 +49,18 @@ import { FormationPanel } from './FormationPanel.tsx';
 import { HexPanel } from './HexPanel.tsx';
 import { MapView } from './MapView.tsx';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
+import { GoodsDialog } from './GoodsDialog.tsx';
+import { DynastiesDialog } from './DynastiesDialog.tsx';
+import { assignGovernor, rulerOf } from '../engine/dynasty.ts';
 import { ResearchDialog } from './ResearchDialog.tsx';
 import { ProposalDialog } from './ProposalDialog.tsx';
-import { answerProposal, proposeDeal } from '../engine/diplomacy.ts';
+import { answerProposal, ledgerOf, proposeDeal } from '../engine/diplomacy.ts';
 import { playerEvent, resolveEvent } from '../engine/events.ts';
 import { absorb, giveGift } from '../engine/independents.ts';
 import { EventDialog } from './EventDialog.tsx';
 import { CultureDialog, KeepDialog, TagChip } from './CultureDialog.tsx';
 import { resolveUpheaval, startUpheaval, takeNode } from '../engine/culture.ts';
-import { cityEconomy } from '../engine/economy.ts';
+import { cityEconomy, constructionQueue } from '../engine/economy.ts';
 import { identity } from '../engine/mods.ts';
 import { DOMAINS } from '../data/culture.ts';
 import { saveGame } from './save.ts';
@@ -66,13 +72,65 @@ type Sel =
   | null;
 type Dialog =
   | { kind: 'research' }
+  | { kind: 'report' }
+  | { kind: 'keys' }
   | { kind: 'culture' }
   | { kind: 'city'; cityId: number; hex?: number }
   | { kind: 'designs'; open?: number | 'new' }
   | { kind: 'peoples' }
+  | { kind: 'goods' }
+  | { kind: 'dynasties' }
   | { kind: 'battle'; report: BattleReport }
   | { kind: 'war'; civId: number; then?: () => void }
   | null;
+
+/** "research, 2 cities, 3 units" */
+function todoSummary(list: { key: string }[]): string {
+  const n = (k: string) => list.filter(t => t.key.startsWith(k)).length;
+  const parts: string[] = [];
+  if (n('research')) parts.push('choose research');
+  if (n('trinkets')) parts.push('give out trinkets');
+  const c = n('city:'),
+    u = n('unit:');
+  if (c) parts.push(`plan ${c} cit${c > 1 ? 'ies' : 'y'}`);
+  if (u) parts.push(`${u} unit${u > 1 ? 's' : ''} to order`);
+  return parts.join(', ');
+}
+
+/** What the Next button will do: the item after the current one. */
+function nextLabel(
+  list: { key: string; label: string }[],
+  last: string,
+  sel: { kind: string; id?: number } | null,
+): string {
+  const here =
+    sel?.kind === 'formation' ? `unit:${sel.id}` : sel?.kind === 'city' ? `city:${sel.id}` : '';
+  const at = list.findIndex(t => t.key === (here || last));
+  const t = list[(at + 1) % list.length];
+  const more = list.length - 1;
+  const what = t.key.startsWith('unit:') ? `Next: ${t.label}` : t.label;
+  return more ? `${what} (+${more})` : what;
+}
+
+const KEYS: [string, string][] = [
+  ['Click', 'Select a unit, city or hex'],
+  ['Right-click', 'Move the selected unit there, or attack'],
+  ['Enter', 'End the turn (asks once if units still wait)'],
+  ['Space N', 'Next thing to do: research, a city to plan, a unit to order'],
+  ['F', 'Fortify'],
+  ['B', 'Found a city (settlers)'],
+  ['R', 'Build a road'],
+  ['C', 'Open the selected city'],
+  ['T', 'Research'],
+  ['K', 'Culture'],
+  ['W A S D', 'Move the map (arrow keys too)'],
+  ['U', 'Unit designs'],
+  ['P', 'Peoples and diplomacy'],
+  ['G', 'Goods: made, used and traded per turn'],
+  ['Y', 'Dynasties: houses, governors, trinkets'],
+  ['Esc', 'Close a window, or clear the selection'],
+  ['?', 'This list'],
+];
 
 export function Game({
   initial,
@@ -94,11 +152,51 @@ export function Game({
   const [dialog, setDialog] = useState<Dialog>(null);
   const [center, setCenter] = useState<{ hex: number; n: number } | null>(null);
   const toastId = useRef(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [muted, setMute] = useState(isMuted());
+  const [turnBanner, setTurnBanner] = useState(0);
+  const [sheetOpen, setSheetOpen] = useState(true);
+  const topRef = useRef<HTMLElement>(null);
+  const sideRef = useRef<HTMLElement>(null);
+  const turnRef = useRef<HTMLDivElement>(null);
+  const [insets, setInsets] = useState<Insets>({ top: 0, right: 0, bottom: 0, left: 0 });
+  // the map keeps the selected thing in the part of the screen the interface leaves free
+  useLayoutEffect(() => {
+    const vw = window.innerWidth,
+      vh = window.innerHeight;
+    const top = topRef.current?.getBoundingClientRect().bottom ?? 0;
+    const side = sideRef.current?.getBoundingClientRect();
+    const turn = turnRef.current?.getBoundingClientRect();
+    const phone = vw < 700;
+    const hasPanel = !!side && side.height > 20;
+    const next: Insets = {
+      top: Math.round(top),
+      right: !phone && hasPanel ? Math.round(vw - side!.left) : 0,
+      bottom: Math.round(
+        phone && hasPanel ? vh - Math.min(side!.top, turn?.top ?? vh) : turn ? vh - turn.top : 0,
+      ),
+      left: 0,
+    };
+    if (next.top !== insets.top || next.right !== insets.right || next.bottom !== insets.bottom)
+      setInsets(next);
+  });
+  // the first centring happened before the panels were measured: redo it once they are
+  const recentred = useRef(false);
+  useEffect(() => {
+    if (recentred.current || (!insets.bottom && !insets.right)) return;
+    recentred.current = true;
+    const f = sel?.kind === 'formation' ? formation(game, sel.id) : undefined;
+    if (f) setCenter({ hex: f.hex, n: Date.now() });
+  }, [insets]);
+  const endArmed = useRef(false);
 
   const toast = useCallback((text: string, bad = false) => {
     const id = ++toastId.current;
-    setToasts(t => [...t.slice(-4), { id, text, bad }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), bad ? 5000 : 3800);
+    if (bad) sound.deny();
+    // the same words twice in a row are one message
+    setToasts(t => (t.some(x => x.text === text) ? t : [...t.slice(-5), { id, text, bad }]));
+    // bad news stays until tapped; the rest fades
+    if (!bad) setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
   }, []);
   const report = (r: Result) => {
     if (r.msg) toast(r.msg, !r.ok);
@@ -106,6 +204,10 @@ export function Game({
     return r;
   };
 
+  const selKey = sel ? `${sel.kind}:${'id' in sel ? sel.id : ''}` : '';
+  useEffect(() => {
+    if (selKey) sound.click();
+  }, [selKey]);
   const vis = useMemo(() => visibleHexes(game, me.id), [version]);
   const selF = sel?.kind === 'formation' ? formation(game, sel.id) : undefined;
   const mySelF = selF && selF.civId === me.id ? selF : undefined;
@@ -114,6 +216,7 @@ export function Game({
   const idle = () =>
     game.formations.filter(f => f.civId === me.id && f.moves > 0 && !f.fortified && !f.path.length);
   const focus = (hex: number) => setCenter({ hex, n: Date.now() });
+  /** The next unit waiting for orders, after the one selected. */
   const selectNext = () => {
     const list = idle();
     if (!list.length) return false;
@@ -121,6 +224,60 @@ export function Game({
     const f = list[(cur + 1) % list.length];
     setSel({ kind: 'formation', id: f.id });
     focus(f.hex);
+    return true;
+  };
+  /**
+   * What is still to do this turn: choose research, give idle cities something to build, order
+   * units. Nothing opens by itself; the turn box walks through this list.
+   */
+  type Todo = { key: string; label: string; go: () => void };
+  const todo = (): Todo[] => {
+    const out: Todo[] = [];
+    const mine = game.cities.filter(c => c.civId === me.id);
+    if (!me.researching && mine.length && availableTechs(me).length)
+      out.push({
+        key: 'research',
+        label: 'Choose research',
+        go: () => setDialog({ kind: 'research' }),
+      });
+    if (me.trinkets.length)
+      out.push({
+        key: 'trinkets',
+        label: `Give out ${me.trinkets.length} trinket${me.trinkets.length > 1 ? 's' : ''}`,
+        go: () => setDialog({ kind: 'dynasties' }),
+      });
+    for (const c of mine)
+      if (!constructionQueue(game, c).length)
+        out.push({
+          key: `city:${c.id}`,
+          label: `Plan ${c.name}`,
+          go: () => {
+            setSel({ kind: 'city', id: c.id });
+            focus(c.hex);
+            setDialog({ kind: 'city', cityId: c.id });
+          },
+        });
+    for (const f of idle())
+      out.push({
+        key: `unit:${f.id}`,
+        label: f.name,
+        go: () => {
+          setSel({ kind: 'formation', id: f.id });
+          focus(f.hex);
+        },
+      });
+    return out;
+  };
+  const lastTodo = useRef('');
+  const doNext = () => {
+    const list = todo();
+    if (!list.length) return false;
+    const here =
+      sel?.kind === 'formation' ? `unit:${sel.id}` : sel?.kind === 'city' ? `city:${sel.id}` : '';
+    const at = list.findIndex(t => t.key === (here || lastTodo.current));
+    const t = list[(at + 1) % list.length];
+    lastTodo.current = t.key;
+    t.go();
     return true;
   };
 
@@ -143,22 +300,45 @@ export function Game({
       bump,
       select: (id: number) => setSel({ kind: 'formation', id }),
       selectCity: (id: number) => setSel({ kind: 'city', id }),
+      fx,
+      /** click-to-act on a hex for the selected formation: move or attack */
+      act: (hex: number) => moveTo(hex),
     };
   });
 
+  const [busy, setBusy] = useState(false);
+  const [lastReport, setLastReport] = useState<string[]>([]);
   const doEndTurn = () => {
+    if (busy) return;
+    setBusy(true);
+    setArmed(-1);
+    // let the "peoples move" banner paint before the AI thinks
+    setTimeout(() => {
+      try {
+        runEndTurn();
+      } finally {
+        setBusy(false);
+      }
+    }, 30);
+  };
+  const runEndTurn = () => {
     const events = endTurn(game);
-    saveGame(game);
-    events.forEach(e =>
-      toast(e, /declared war on the|captured .* from|attacked/.test(e) && e.includes(me.name)),
-    );
-    if (
-      !me.researching &&
-      game.cities.some(c => c.civId === me.id) &&
-      Object.keys(TECHS).some(t => !me.techs.includes(t))
-    )
-      toast('Choose something to research.');
+    setLastReport(events);
+    setTurnBanner(game.turn);
+    sound.turn();
+    const saved = saveGame(game);
+    if (!saved.ok) toast(`Autosave failed: ${saved.reason}`, true);
+    // the news that needs the player stays up; the rest is summed up in the turn report
+    const urgent = (e: string) =>
+      /declared war on the|captured .* from|attacked/.test(e) && e.includes(me.name);
+    const calm = events.filter(e => !urgent(e));
+    events.filter(urgent).forEach(e => toast(e, true));
+    if (calm.length <= 2) calm.forEach(e => toast(e));
+    else toast(`${calm.length} things happened. 📜 Last turn has the full story.`);
     bump();
+    lastTodo.current = '';
+    // a house has risen: the choice of side cannot wait in the to-do list
+    if (me.civilWar?.pending) setDialog({ kind: 'dynasties' });
     if (!selectNext()) setSel(null);
   };
 
@@ -168,7 +348,21 @@ export function Game({
     const chk = canAttack(game, mySelF.id, hex);
     if (chk.problem) return toast(chk.problem, true);
     const go = () => {
+      const from = mySelF.hex;
       const r = attack(game, mySelF.id, hex);
+      if (r.report) {
+        const a = r.report.attacker,
+          d = r.report.defender;
+        fx.flash(hex, '#ffe3a3');
+        if (d.lost) fx.float(hex, `−${d.lost}`, d.broke ? '#ffd166' : '#ff9b85');
+        if (a.lost) fx.float(from, `−${a.lost}`, a.broke ? '#ffd166' : '#ff9b85');
+        fx.shake(0.35 + Math.min(0.45, (a.lost + d.lost) / 900));
+        sound.clash();
+        if (game.cities.some(c => c.hex === hex && c.civId === me.id)) {
+          fx.float(hex, '★', '#ffe08a', 0.45);
+          setTimeout(() => sound.capture(), 350);
+        }
+      }
       report({ ok: r.ok, msg: r.ok ? undefined : r.msg } as Result);
       if (r.report) setDialog({ kind: 'battle', report: r.report });
       else if (r.msg) toast(r.msg, !r.ok);
@@ -188,6 +382,7 @@ export function Game({
     if (!mySelF) return;
     if (enemyAt(hex)) return doAttack(hex);
     const r = orderMove(game, mySelF.id, hex);
+    if (r.ok) (mySelF.kind === 'fleet' ? sound.sail : sound.march)();
     report(r);
     if (!game.formations.includes(mySelF)) {
       const host = formationsAt(game, hex).find(f => f.civId === me.id && f.kind === mySelF.kind);
@@ -195,25 +390,39 @@ export function Game({
     }
   };
 
-  const onClick = (hex: number) => {
+  /** On touch the first tap on a target only previews (route or battle); the second one acts. */
+  const [armed, setArmed] = useState(-1);
+  const confirmTap = (hex: number, touch: boolean, act: () => void) => {
+    if (touch && armed !== hex) {
+      setArmed(hex);
+      setHover(hex);
+      return;
+    }
+    setArmed(-1);
+    act();
+  };
+  const onClick = (hex: number, touch = false) => {
     const mineHere = formationsAt(game, hex).filter(f => f.civId === me.id);
     const cityHere = cityAt(game, hex);
+    if (armed >= 0 && armed !== hex) setArmed(-1);
     // troops board an own ship next to them; ships sail into own ports
     if (mySelF && hex !== mySelF.hex && !enemyAt(hex)) {
       if (mySelF.kind !== 'fleet' && isWaterHex(game, hex) && shipFor(game, mySelF, hex))
-        return moveTo(hex);
-      if (mySelF.kind === 'fleet' && isPort(game, me.id, hex)) return moveTo(hex);
+        return confirmTap(hex, touch, () => moveTo(hex));
+      if (mySelF.kind === 'fleet' && isPort(game, me.id, hex))
+        return confirmTap(hex, touch, () => moveTo(hex));
     }
     // with a unit selected, clicking an adjacent enemy attacks; clicking open ground moves
     if (mySelF && hex !== mySelF.hex) {
-      if (enemyAt(hex) && canAttack(game, mySelF.id, hex).target) return doAttack(hex);
+      if (enemyAt(hex) && canAttack(game, mySelF.id, hex).target)
+        return confirmTap(hex, touch, () => doAttack(hex));
       if (
         !mineHere.length &&
         !(cityHere && cityHere.civId === me.id) &&
         !enemyAt(hex) &&
         game.civs[me.id].explored[hex]
       )
-        return moveTo(hex);
+        return confirmTap(hex, touch, () => moveTo(hex));
     }
     const here = formationsAt(game, hex).filter(f => f.civId === me.id || vis[hex]);
     if (here.length) {
@@ -235,21 +444,49 @@ export function Game({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || dialog) return;
-      if (e.key === 'Enter') {
+      const tag = (e.target as HTMLElement).tagName;
+      if (e.key === 'Escape' && dialog && dialog.kind !== 'war') {
+        setDialog(null);
+        return;
+      }
+      // held keys repeat; modifiers belong to the browser; focused controls keep their keys
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (
+        ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(tag) ||
+        (e.target as HTMLElement).isContentEditable
+      )
+        return;
+      if (dialog || proposal || me.culture.choosing || busy) return;
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (key === 'Enter') {
         e.preventDefault();
+        // ask once when units still wait for orders
+        const left = todo();
+        if (left.length && !endArmed.current) {
+          endArmed.current = true;
+          setTimeout(() => (endArmed.current = false), 2500);
+          toast(`Still to do: ${todoSummary(left)}. Press Enter again to end the turn.`);
+          return;
+        }
+        endArmed.current = false;
         doEndTurn();
-      } else if (e.key === ' ' || e.key === 'n') {
+      } else if (key === ' ' || key === 'n') {
         e.preventDefault();
-        selectNext();
-      } else if (e.key === 'Escape') setSel(null);
-      else if (e.key === 'f' && mySelF) report(fortify(game, mySelF.id));
-      else if (e.key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
-      else if (e.key === 'd') setDialog({ kind: 'designs' });
-      else if (e.key === 'k') setDialog({ kind: 'culture' });
-      else if (e.key === 't') setDialog({ kind: 'research' });
-      else if (e.key === 'r' && mySelF) report(buildRoad(game, mySelF.id));
-      else if (e.key === 'c' && selCity && selCity.civId === me.id)
+        doNext();
+      } else if (key === 'Escape') {
+        setSel(null);
+        setArmed(-1);
+      } else if (key === 'f' && mySelF) report(fortify(game, mySelF.id));
+      else if (key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
+      else if (key === 'u') setDialog({ kind: 'designs' });
+      else if (key === 'p') setDialog({ kind: 'peoples' });
+      else if (key === 'g') setDialog({ kind: 'goods' });
+      else if (key === 'y') setDialog({ kind: 'dynasties' });
+      else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
+      else if (key === 'k') setDialog({ kind: 'culture' });
+      else if (key === 't') setDialog({ kind: 'research' });
+      else if (key === 'r' && mySelF) report(buildRoad(game, mySelF.id));
+      else if (key === 'c' && selCity && selCity.civId === me.id)
         setDialog({ kind: 'city', cityId: selCity.id });
     };
     window.addEventListener('keydown', onKey);
@@ -285,13 +522,23 @@ export function Game({
   }, [sel, hover, version, battlePreview]);
 
   const research_ = me.researching ? TECHS[me.researching] : null;
-  const culturePerTurn = Math.round(
-    game.cities
-      .filter(c => c.civId === me.id)
-      .reduce((a, c) => a + cityEconomy(game, c).total.culture, 0),
+  const culturePerTurn = useMemo(
+    () =>
+      Math.round(
+        game.cities
+          .filter(c => c.civId === me.id)
+          .reduce((a, c) => a + cityEconomy(game, c).total.culture, 0),
+      ),
+    [version],
   );
   const myCities = game.cities.filter(c => c.civId === me.id);
-  const idleCount = idle().length;
+  const todos = todo();
+  // goods running out within ten turns
+  const goodsShort = useMemo(
+    () =>
+      Object.values(ledgerOf(game, me.id)).filter(l => l.net < 0 && l.stock < -l.net * 10).length,
+    [version],
+  );
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
 
   const proposal = game.proposals.find(p => p.to === me.id);
@@ -364,10 +611,11 @@ export function Game({
           onClick={onClick}
           onMove={h => (mySelF ? moveTo(h) : onClick(h))}
           onHover={setHover}
+          insets={insets}
         />
       </div>
 
-      <header className="topbar">
+      <header className={`topbar ${menuOpen ? 'menu-open' : ''}`} ref={topRef}>
         <span className="civ-name">
           <span className="swatch" style={{ background: me.color }} />
           {me.name}
@@ -376,7 +624,7 @@ export function Game({
           Turn <b>{game.turn}</b>
           <small className="muted">/{game.settings.turnLimit ?? 400}</small>
         </span>
-        <span title="Gold">⛁ {me.gold}</span>
+        <span title="Gold">⛁ {Math.floor(me.gold)}</span>
         <button className="research-btn" onClick={() => setDialog({ kind: 'research' })}>
           {research_ ? (
             <>
@@ -394,17 +642,48 @@ export function Game({
             ''
           )}
         </button>
-        <span className="ident-bar">
+        <button
+          className="more-btn"
+          onClick={() => setMenuOpen(o => !o)}
+          aria-expanded={menuOpen}
+          aria-label="More"
+        >
+          ☰
+        </button>
+        <span className="ident-bar secondary">
           {identity(me)
             .slice(0, 2)
             .map(i => (
               <TagChip key={i.tag} tag={i.tag} />
             ))}
         </span>
-        <button onClick={() => setDialog({ kind: 'designs' })} title="D">
-          ⚔ Unit designs ({me.designs.length})
+        <button className="secondary" onClick={() => setDialog({ kind: 'designs' })} title="D">
+          ⚔ Designs ({me.designs.length})
         </button>
-        <button onClick={() => setDialog({ kind: 'peoples' })}>
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'dynasties' })}
+          title="Dynasties (Y)"
+        >
+          👑<span className="wide-only"> House {rulerOf(me).name}</span>
+          {me.civilWar ? (
+            <b className="war-pill">civil war</b>
+          ) : me.dynasties.some(d => d.unrest >= 60) ? (
+            <b className="war-pill">unrest</b>
+          ) : me.trinkets.length ? (
+            <b className="war-pill">{me.trinkets.length} to give</b>
+          ) : (
+            ''
+          )}
+        </button>
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'goods' })}
+          title="Goods per turn (G)"
+        >
+          📦 Goods{goodsShort ? <b className="war-pill">{goodsShort} short</b> : ''}
+        </button>
+        <button className="secondary" onClick={() => setDialog({ kind: 'peoples' })}>
           👥 Peoples
           {wars ? (
             <b className="war-pill">
@@ -414,19 +693,48 @@ export function Game({
             ''
           )}
         </button>
-        <span className="muted">
-          {myCities.length} {myCities.length === 1 ? 'city' : 'cities'}
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'report' })}
+          disabled={!lastReport.length}
+          title="What happened last turn"
+        >
+          📜<span className="wide-only"> Last turn</span>
+        </button>
+        <span className="muted secondary wide-only">
+          {myCities.length} {myCities.length === 1 ? 'settlement' : 'settlements'}
         </span>
         <span className="spacer" />
         <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'keys' })}
+          title="Keys (?)"
+          aria-label="Keys and help"
+        >
+          ?
+        </button>
+        <button
+          className="secondary"
           onClick={() => {
-            saveGame(game);
-            toast('Saved.');
+            setMuted(!muted);
+            setMute(!muted);
+          }}
+          aria-pressed={!muted}
+          title={muted ? 'Sound off' : 'Sound on'}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+        <button
+          className="secondary"
+          onClick={() => {
+            const r = saveGame(game, true);
+            toast(r.ok ? 'Saved.' : `Could not save: ${r.reason}.`, !r.ok);
           }}
         >
           Save
         </button>
         <button
+          className="secondary"
           onClick={() => {
             saveGame(game);
             onQuit();
@@ -436,7 +744,21 @@ export function Game({
         </button>
       </header>
 
-      <aside className="side">
+      <aside className={`side ${sheetOpen ? '' : 'peek'} ${sel ? 'has-sel' : ''}`} ref={sideRef}>
+        {sel && (
+          <div className="side-bar">
+            <button
+              className="sheet-handle"
+              onClick={() => setSheetOpen(o => !o)}
+              aria-label={sheetOpen ? 'Shrink panel' : 'Expand panel'}
+            >
+              <span />
+            </button>
+            <button className="x panel-close" onClick={() => setSel(null)} aria-label="Close">
+              ×
+            </button>
+          </div>
+        )}
         {selF && (
           <FormationPanel
             game={game}
@@ -457,9 +779,11 @@ export function Game({
             onFound={() => {
               const hex = selF.hex;
               const r = report(foundCity(game, selF.id));
-              const c = cityAt(game, hex);
-              if (r.ok && c) setSel({ kind: 'city', id: c.id });
-              if (r.ok && !me.researching) setDialog({ kind: 'research' });
+              // research and the city's first district wait in the to-do list
+              if (r.ok && !selectNext()) {
+                const c = cityAt(game, hex);
+                setSel(c ? { kind: 'city', id: c.id } : null);
+              }
             }}
             onFortify={() => report(fortify(game, selF.id))}
             onRename={n => report(rename(game, selF.id, n))}
@@ -486,6 +810,7 @@ export function Game({
             }}
             onOpen={() => setDialog({ kind: 'city', cityId: selCity.id })}
             onShip={designId => report(buildShip(game, selCity.id, designId))}
+            onGovernor={id => report(assignGovernor(game, me.id, selCity.id, id) as Result)}
             onSettlers={() => {
               const r = report(trainSettlers(game, selCity.id));
               if (r.ok) {
@@ -520,8 +845,19 @@ export function Game({
         )}
       </aside>
 
+      {armed >= 0 && mySelF && (
+        <div className="armed-bar" role="status">
+          <span>
+            {enemyAt(armed) ? 'Tap the enemy again to attack' : 'Tap the hex again to go there'}
+          </span>
+          <button className="primary" onClick={() => onClick(armed, false)}>
+            {enemyAt(armed) ? 'Attack' : 'Go'}
+          </button>
+          <button onClick={() => setArmed(-1)}>Cancel</button>
+        </div>
+      )}
       {battlePreview ? (
-        <div className="hover-info">
+        <div className="hover-info preview-box">
           <div className="panel preview">
             {'problem' in battlePreview ? (
               <p className="bad">{battlePreview.problem}</p>
@@ -561,22 +897,111 @@ export function Game({
         )
       )}
 
-      <div className="turn-box">
-        <button className="next" onClick={selectNext} disabled={!idleCount}>
-          {idleCount ? `Next unit (${idleCount})` : 'All units ordered'}
+      {turnBanner > 0 && !busy && (
+        <div
+          className="turn-banner"
+          key={turnBanner}
+          aria-hidden
+          onAnimationEnd={() => setTurnBanner(0)}
+        >
+          Turn {turnBanner}
+        </div>
+      )}
+      {busy && (
+        <div className="busy" role="status" aria-live="polite">
+          The peoples move…
+        </div>
+      )}
+      <div className="turn-box" ref={turnRef}>
+        <button
+          className="next"
+          onClick={doNext}
+          disabled={!todos.length}
+          title={todos.length ? `To do: ${todoSummary(todos)}` : undefined}
+        >
+          {todos.length ? nextLabel(todos, lastTodo.current, sel) : 'All done'}
         </button>
-        <button className="end-turn" onClick={doEndTurn}>
+        <button className="end-turn" onClick={doEndTurn} disabled={busy}>
           End turn ⏎
         </button>
       </div>
 
-      <div className="toasts">
-        {toasts.map(t => (
-          <div key={t.id} className={`toast ${t.bad ? 'bad' : ''}`}>
+      <div className="toasts" role="status" aria-live="polite">
+        {toasts.length > 3 && (
+          <button className="toast more" onClick={() => setToasts(x => x.slice(-3))}>
+            +{toasts.length - 3} earlier · clear
+          </button>
+        )}
+        {toasts.slice(-3).map(t => (
+          <button
+            key={t.id}
+            className={`toast ${t.bad ? 'bad' : ''}`}
+            onClick={() => setToasts(x => x.filter(y => y.id !== t.id))}
+            title="Dismiss"
+          >
+            {t.bad ? '⚠ ' : ''}
             {t.text}
-          </div>
+          </button>
         ))}
       </div>
+      {dialog?.kind === 'report' && (
+        <div className="modal-back" onClick={() => setDialog(null)}>
+          <div
+            className="modal report"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Last turn"
+            onClick={e => e.stopPropagation()}
+          >
+            <header>
+              <h2>Turn {game.turn - 1}</h2>
+              <button className="x" onClick={() => setDialog(null)} aria-label="Close">
+                ×
+              </button>
+            </header>
+            <ul className="report-list">
+              {lastReport.map((e, i) => (
+                <li key={i}>{e}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {dialog?.kind === 'keys' && (
+        <div className="modal-back" onClick={() => setDialog(null)}>
+          <div
+            className="modal keys"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Keys"
+            onClick={e => e.stopPropagation()}
+          >
+            <header>
+              <h2>Keys and mouse</h2>
+              <button className="x" onClick={() => setDialog(null)} aria-label="Close">
+                ×
+              </button>
+            </header>
+            <dl className="keys-list">
+              {KEYS.map(([k, what]) => (
+                <div key={k}>
+                  <dt>
+                    {k.split(' ').map(x => (
+                      <kbd key={x}>{x}</kbd>
+                    ))}
+                  </dt>
+                  <dd>{what}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="muted">
+              On a phone or tablet: tap to select, tap a hex once to see the route or battle, tap it
+              again to go. Pinch to zoom, drag to pan.
+            </p>
+          </div>
+        </div>
+      )}
 
       {dialog?.kind === 'designs' && (
         <DesignsDialog
@@ -619,6 +1044,25 @@ export function Game({
           onKeep={ids => {
             report(resolveUpheaval(game, me.id, ids));
             saveGame(game);
+          }}
+        />
+      )}
+      {dialog?.kind === 'dynasties' && (
+        <DynastiesDialog
+          game={game}
+          civId={me.id}
+          report={r => report({ ok: r.ok, msg: r.msg } as Result)}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'goods' && (
+        <GoodsDialog
+          game={game}
+          civId={me.id}
+          onClose={() => setDialog(null)}
+          onDeal={(id, o) => {
+            const r = proposeDeal(game, me.id, id, o);
+            report({ ok: r.ok, msg: r.msg } as Result);
           }}
         />
       )}

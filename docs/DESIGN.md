@@ -363,6 +363,35 @@ and residential, with banks, stock exchanges, iron and coal mines and infirmarie
   back) and the new one is queued. The rest keep working.
 - The city centre is a district of its own with the town hall fixed in the middle.
 
+### 7-0. Settlements on the map: six sizes, districts on hexes (as built)
+
+A settlement's land is its centre hex and the six hexes around it. Every district stands on one
+of them: the centre district (with the town hall) on the centre, the others on the neighbouring
+hexes the player picks on the land map. Settlements keep two hexes between them (centres at
+least 3 apart), so no two share land.
+
+| Size | Districts | Bonus to every building / research and industry |
+| --- | --- | --- |
+| Settlement | 1 (the centre) | — |
+| Town | 2 | — |
+| Large town | 3 | +5% / +10% |
+| City | 4 | +15% / +35% (City Charter) |
+| Large city | 5 | +22% / +50% (City Charter) |
+| Metropolis | 7 (all) | +30% / +70% (Seat of Empire; one per people) |
+
+Each step costs people, gold, wood and stone and a number of housing cells (town 2,500 people
+and 25 gold; up to a metropolis at 15,000 and 400). **Where a district stands matters**: it
+gathers the special resource on its own hex (ores, plantation crops, furs, whales…) and the plain
+ones (animals, grain, fish) on the hexes next to it; docks, harbours and yards need water next to
+the district's hex. The centre reaches the whole ring for plain land. A city and larger builds
+over its centre (no fields there) but keeps fields in its outer districts, and burns fuel. Older
+saves are migrated: their districts move onto the best free hexes around the centre. The AI
+places each new district on the free hex whose plan scores best.
+
+On the map a settlement grows like a place: each district's buildings take seeded spots that
+look scattered and never move, from the middle outward, each on its own patch of ground (paving,
+field, yard), with homes in the centre as its people grow; no 3×3 grid is shown.
+
 ### 7a. The settlement in low-poly 3D (as built)
 
 The city screen opens on the settlement in low-poly 3D (three.js, loaded only when a city screen

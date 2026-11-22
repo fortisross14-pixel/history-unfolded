@@ -13,7 +13,16 @@ import { distance, neighbors, within, type Grid } from './hex.ts';
 import { generateMap, isPassableLand, MAP_SIZES } from './mapgen.ts';
 import { findPath } from './path.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
-import type { City, Civ, Cohort, Design, Formation, GameSettings, GameState } from './types.ts';
+import type {
+  City,
+  Civ,
+  Cohort,
+  Design,
+  Formation,
+  GameSettings,
+  GameState,
+  Tier,
+} from './types.ts';
 import { aiTurn, planDistricts, playerAutomation } from './ai.ts';
 import {
   alliesOf,
@@ -41,6 +50,9 @@ import {
   shareFood,
   housingCells,
   TIER_NAME,
+  TIERS,
+  rankOf,
+  landOf,
   marketCities,
   marketSpend,
   marketStock,
@@ -89,11 +101,14 @@ import {
   isCivilian,
 } from './units.ts';
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
-/** Settlements may not touch: at least one hex between them. */
-export const MIN_CITY_DISTANCE = 2;
+/**
+ * Settlements keep two hexes between them: each one's land is its centre and the six hexes
+ * around it, where its districts stand, and no two settlements share a hex of land.
+ */
+export const MIN_CITY_DISTANCE = 3;
 export const LEVY_PEOPLE = LEVY_COHORTS * COHORT_SIZE;
 export const MIN_CITY_POP = 1000;
 export const START_CITY_POP = 2000;
@@ -747,7 +762,8 @@ export function canFoundCity(s: GameState, f: Formation): string | null {
   if (!isPassableLand(s.map, f.hex)) return 'Towns need open land.';
   const g = gridOf(s);
   const near = s.cities.find(c => distance(g, c.hex, f.hex) < MIN_CITY_DISTANCE);
-  if (near) return `Right next to ${near.name}: leave at least one hex between settlements.`;
+  if (near)
+    return `Too close to ${near.name}: leave two hexes between settlements (each needs the six hexes around it for its districts).`;
   return null;
 }
 
@@ -769,7 +785,7 @@ export function foundCity(s: GameState, fid: number): Result {
     civId: civ.id,
     name,
     hex: f.hex,
-    tier: 'town',
+    tier: 'settlement',
     pop: s.cities.some(x => x.civId === civ.id) ? SETTLED_CITY_POP : START_CITY_POP,
     food: 0,
     founded: s.turn,
@@ -1349,6 +1365,22 @@ const MIGRATIONS: Record<number, (d: GameState) => GameState> = {
   },
   // 9 → 10: history events (free peoples only appear in new games)
   9: d => ({ ...d, events: [], lastEvent: {}, version: 10 }),
+  // 10 → 11: districts stand on their own hexes around the centre (they all sat on the centre)
+  10: d => {
+    for (const c of d.cities) {
+      const ds = d.districts.filter(x => x.cityId === c.id);
+      for (const x of ds)
+        if (x.hex === c.hex && !x.slots.some(y => y.type === 'town-hall')) {
+          const h = bestDistrictHex(
+            d,
+            c,
+            x.slots.map(y => y.type),
+          );
+          if (h >= 0) x.hex = h;
+        }
+    }
+    return { ...d, version: 11 };
+  },
 };
 export const MIN_SAVE_VERSION = 5;
 
@@ -1568,8 +1600,10 @@ export function cedeCity(s: GameState, cityId: number, to: number) {
     c.tier === 'metropolis' &&
     s.cities.some(x => x !== c && x.civId === to && x.tier === 'metropolis')
   ) {
-    c.tier = 'city';
-    const extra = cityDistricts(s, c).slice(DISTRICT_CAP.city);
+    c.tier = 'large-city';
+    const extra = cityDistricts(s, c)
+      .filter(d => !isCentre(d))
+      .slice(DISTRICT_CAP['large-city'] - 1);
     s.districts = s.districts.filter(d => !extra.includes(d));
   }
   // the old owner's troops and crews withdraw to their nearest settlement
@@ -2181,8 +2215,10 @@ function captureCity(s: GameState, c: City, by: Formation): string {
     c.tier === 'metropolis' &&
     s.cities.some(x => x !== c && x.civId === by.civId && x.tier === 'metropolis')
   ) {
-    c.tier = 'city';
-    const extra = cityDistricts(s, c).slice(DISTRICT_CAP.city);
+    c.tier = 'large-city';
+    const extra = cityDistricts(s, c)
+      .filter(d => !isCentre(d))
+      .slice(DISTRICT_CAP['large-city'] - 1);
     s.districts = s.districts.filter(d => !extra.includes(d));
   }
   c.pop = Math.max(MIN_CITY_POP, Math.round((c.pop * 0.75) / 50) * 50);
@@ -2250,24 +2286,70 @@ export const districtRoom = (s: GameState, c: City) =>
   DISTRICT_CAP[c.tier] - s.districts.filter(d => d.cityId === c.id).length;
 
 /** Lay out a new district in a settlement, up to its rank's limit. */
+/** The hexes around a settlement where a district may still be laid out: its land, not water. */
+export function freeDistrictHexes(s: GameState, c: City): number[] {
+  const used = new Set(s.districts.filter(d => d.cityId === c.id).map(d => d.hex));
+  return landOf(s, c).filter(k => k !== c.hex && !used.has(k) && !isWater(s.map.terrain[k]));
+}
+
+/** Why a district cannot stand on this hex, or null. */
+export function districtHexProblem(s: GameState, c: City, hex: number): string | null {
+  if (hex === c.hex) return 'The centre district already stands there.';
+  if (!landOf(s, c).includes(hex))
+    return `Not ${c.name}'s land: districts go on the six hexes around it.`;
+  if (isWater(s.map.terrain[hex])) return 'Districts stand on land.';
+  if (s.districts.some(d => d.cityId === c.id && d.hex === hex))
+    return 'A district already stands there.';
+  return null;
+}
+
+/**
+ * The best free hex for a district with these buildings: on a deposit its buildings work, by
+ * the water for docks and yards, else open land.
+ */
+export function bestDistrictHex(s: GameState, c: City, slots: (string | null)[]): number {
+  const free = freeDistrictHexes(s, c);
+  if (!free.length) return -1;
+  const g = gridOf(s);
+  const types = new Set(slots.filter(Boolean) as string[]);
+  const score = (k: number) => {
+    let v = 0;
+    const dep = s.map.deposit[k];
+    if (dep && types.has(DEPOSITS[dep.kind].by)) v += 10;
+    const wet = neighbors(g, k).some(n => isWater(s.map.terrain[n]));
+    if (wet && [...types].some(t => SLOT_TYPES[t]?.needs?.water)) v += 6;
+    if (s.map.relief[k] === 'mountains') v -= 2;
+    if (dep && !types.has(DEPOSITS[dep.kind].by)) v -= 1;
+    return v;
+  };
+  return free.sort((a, b) => score(b) - score(a) || a - b)[0];
+}
+
 export function placeDistrict(
   s: GameState,
   cityId: number,
   name: string,
   slots: (string | null)[],
+  at?: number,
 ): Result & { id?: number } {
   const c = city(s, cityId);
   if (!c) return fail('No such settlement.');
-  if (districtRoom(s, c) <= 0)
+  if (districtRoom(s, c) <= 0) {
+    const next = TIERS[rankOf(c.tier) + 1];
     return fail(
-      c.tier === 'metropolis'
-        ? `${c.name} holds all six districts it can.`
-        : `${c.name} is full. A ${c.tier === 'town' ? 'city' : 'metropolis'} has room for more.`,
+      next
+        ? `${c.name} is full: as a ${TIER_NAME[next].toLowerCase()} it would hold ${DISTRICT_CAP[next]}.`
+        : `${c.name} holds all seven districts it can.`,
     );
+  }
+  const hex = at ?? bestDistrictHex(s, c, slots);
+  if (hex < 0) return fail(`No free land is left around ${c.name}.`);
+  const why = districtHexProblem(s, c, hex);
+  if (why) return fail(why);
   const d: District = {
     id: s.nextId++,
     cityId,
-    hex: c.hex,
+    hex,
     name: name.trim().slice(0, 28) || 'District',
     slots: Array.from({ length: 9 }, (_, i) =>
       emptySlot(slots[i] && !SLOT_TYPES[slots[i]!]?.fixed ? slots[i] : null),
@@ -2277,7 +2359,7 @@ export function placeDistrict(
   // a blueprint may hold buildings this place cannot take: leave those cells empty
   for (let i = 0; i < 9; i++) {
     const t = d.slots[i].type;
-    if (t && slotProblem(s, c.civId, c.hex, false, t, d.id)) d.slots[i] = emptySlot();
+    if (t && slotProblem(s, c.civId, d.hex, false, t, d.id)) d.slots[i] = emptySlot();
   }
   return { ok: true, msg: `${d.name} laid out.`, id: d.id };
 }
@@ -2295,29 +2377,36 @@ export interface UpgradeInfo {
   lost: number;
 }
 
-/** Housing cells a settlement must have built to rise, and the culture choice it needs. */
-export const RANK_NEEDS = {
+/** Housing cells a settlement must have built to rise, and the culture choice it needs (if any). */
+export const RANK_NEEDS: Partial<Record<Tier, { housing: number; culture?: string }>> = {
+  town: { housing: 2 },
+  'large-town': { housing: 4 },
   city: { housing: 6, culture: 'city-charter' },
+  'large-city': { housing: 7, culture: 'city-charter' },
   metropolis: { housing: 8, culture: 'seat-of-empire' },
-} as const;
+};
 
-export const UPGRADE: Record<
-  'city' | 'metropolis',
-  { pop: number; gold: number; goods: Record<string, number> }
+/** What each step up costs: people, gold and building goods from the market. */
+export const UPGRADE: Partial<
+  Record<Tier, { pop: number; gold: number; goods: Record<string, number> }>
 > = {
+  town: { pop: 2500, gold: 25, goods: { wood: 10 } },
+  'large-town': { pop: 4000, gold: 70, goods: { wood: 20, stone: 5 } },
   city: { pop: 6000, gold: 150, goods: { stone: 10, wood: 30 } },
+  'large-city': { pop: 10000, gold: 250, goods: { stone: 20, wood: 40 } },
   metropolis: { pop: 15000, gold: 400, goods: { stone: 30, wood: 50 } },
 };
 
-/** What raising a settlement to the next rank takes. */
+/** What raising a settlement to the next size takes. */
 export function upgradeInfo(s: GameState, c: City): UpgradeInfo {
-  const to = c.tier === 'town' ? 'city' : c.tier === 'city' ? 'metropolis' : null;
+  const to = TIERS[rankOf(c.tier) + 1] ?? null;
   if (!to) return { to, pop: 0, gold: 0, goods: {}, problem: 'Already a metropolis.', lost: 0 };
-  const need = UPGRADE[to];
+  const need = UPGRADE[to]!;
+  const rank = RANK_NEEDS[to]!;
   const civ = s.civs[c.civId];
-  const lost = s.districts
-    .filter(d => d.cityId === c.id)
-    .reduce((a, d) => a + d.slots.filter(x => isRural(x.type)).length, 0);
+  // becoming a city builds over the centre's fields and mines
+  const centre = s.districts.find(d => d.cityId === c.id && isCentre(d));
+  const lost = to === 'city' && centre ? centre.slots.filter(x => isRural(x.type)).length : 0;
   let problem: string | null = null;
   const stock = marketStock(s, c);
   const shortGoods = Object.entries(need.goods).filter(([k, n]) => (stock[k] ?? 0) < n);
@@ -2326,10 +2415,10 @@ export function upgradeInfo(s: GameState, c: City): UpgradeInfo {
     s.cities.some(x => x.civId === c.civId && x.tier === 'metropolis' && x !== c)
   )
     problem = 'A people can have only one metropolis.';
-  else if (!civ.culture.taken.includes(RANK_NEEDS[to].culture))
-    problem = `Needs the ${CULTURE[RANK_NEEDS[to].culture].name} culture choice.`;
-  else if (housingCells(s, c).built < RANK_NEEDS[to].housing)
-    problem = `Needs ${RANK_NEEDS[to].housing} housing cells built (${housingCells(s, c).built} now).`;
+  else if (rank.culture && !civ.culture.taken.includes(rank.culture))
+    problem = `Needs the ${CULTURE[rank.culture].name} culture choice.`;
+  else if (housingCells(s, c).built < rank.housing)
+    problem = `Needs ${rank.housing} housing cells built (${housingCells(s, c).built} now).`;
   else if (c.pop < need.pop)
     problem = `Needs ${need.pop.toLocaleString()} people (${c.pop.toLocaleString()} now).`;
   else if (civ.gold < need.gold) problem = `Needs ${need.gold} gold (${Math.floor(civ.gold)} now).`;
@@ -2351,21 +2440,22 @@ export function upgradeSettlement(s: GameState, cityId: number): Result {
   s.civs[c.civId].gold -= u.gold;
   const was = c.tier;
   c.tier = u.to;
-  // the fields and mines give way to streets
+  // becoming a city: the centre's fields and mines give way to streets (outer districts keep theirs)
   let cleared = 0;
-  for (const d of s.districts.filter(x => x.cityId === c.id))
-    for (let i = 0; i < 9; i++)
-      if (isRural(d.slots[i].type)) {
-        d.slots[i] = emptySlot();
-        cleared++;
-      }
+  if (c.tier === 'city')
+    for (const d of s.districts.filter(x => x.cityId === c.id && isCentre(x)))
+      for (let i = 0; i < 9; i++)
+        if (isRural(d.slots[i].type)) {
+          d.slots[i] = emptySlot();
+          cleared++;
+        }
   log(
     s,
     c.civId,
     `${c.name} grew from a ${TIER_NAME[was].toLowerCase()} into a ${TIER_NAME[c.tier].toLowerCase()}.`,
   );
   return ok(
-    `${c.name} is now a ${TIER_NAME[c.tier].toLowerCase()}: room for ${DISTRICT_CAP[c.tier]} districts${cleared ? `; ${cleared} farm and mine buildings gave way to streets` : ''}.`,
+    `${c.name} is now a ${TIER_NAME[c.tier].toLowerCase()}: room for ${DISTRICT_CAP[c.tier]} districts${cleared ? `; ${cleared} farm and mine buildings in its centre gave way to streets` : ''}.`,
   );
 }
 
@@ -2384,7 +2474,7 @@ export function setSlot(s: GameState, districtId: number, i: number, type: strin
   }
   d.slots[i] = emptySlot(type);
   if (type) {
-    const why = slotProblem(s, c.civId, c.hex, isCentre(d), type, d.id);
+    const why = slotProblem(s, c.civId, d.hex, isCentre(d), type, d.id);
     if (why) return ok(`${SLOT_TYPES[type].name} planned, but: ${why}`);
   }
   return ok();

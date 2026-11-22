@@ -17,7 +17,7 @@ import { isRural, SLOT_TYPES } from '../data/slots.ts';
 import { ageOf } from '../data/techs.ts';
 import { remember } from './diplomacy.ts';
 import { awardTrinket, honoursCost, levelOf, rulerOf } from './dynasty.ts';
-import { invalidateMarkets, marketStock } from './economy.ts';
+import { invalidateMarkets, isUrban, marketStock } from './economy.ts';
 import { growthCost, log, techCost } from './game.ts';
 import { distance, neighbors } from './hex.ts';
 import { isPassableLand, validDeposits } from './mapgen.ts';
@@ -128,7 +128,7 @@ const EVENTS: EventDef[] = [
       const c = pick(
         r,
         mine(s, civ).filter(
-          x => x.tier === 'town' && built(s, x, t => SLOT_TYPES[t].line === 'food').length >= 2,
+          x => !isUrban(x) && built(s, x, t => SLOT_TYPES[t].line === 'food').length >= 2,
         ),
       );
       return c ? { city: c.id } : null;

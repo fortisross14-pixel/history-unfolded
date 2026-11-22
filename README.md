@@ -84,6 +84,9 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   Renaissance; Diplomatic and Scientific in the Industrial age. Progress on the Victory screen (V).
 - **National directions**: on entering the Classical age and the Renaissance, choose a lasting
   direction with an edict (Nation screen, O); some are alternate developments earned by history.
+- **Settlements grow over their land**: a settlement is its centre hex and up to six districts on
+  the hexes around it, placed by the player (by the coast for yards, on an ore for mines); six
+  sizes from settlement to metropolis, one district more at each.
 - **A low-poly 3D map**: the world in low-poly 3D, settlements showing their real buildings in
   each district's hex; borders, fog, paths and battles on it (a button switches to the 2D map).
 - **Settlements in low-poly 3D**: the city screen shows the centre with its town hall, the

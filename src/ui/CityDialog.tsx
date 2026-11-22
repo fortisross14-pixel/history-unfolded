@@ -22,6 +22,9 @@ import {
   marketCities,
   TIER_BONUS,
   TIER_NAME,
+  TIERS,
+  rankOf,
+  isUrban,
   marketStock,
   slotProblem,
   type Totals,
@@ -31,6 +34,7 @@ import {
   applyBlueprint,
   deleteBlueprint,
   depositVisible,
+  districtHexProblem,
   growthCost,
   placeDistrict,
   removeDistrict,
@@ -218,7 +222,12 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                     )}
                     {h === c.hex && (
                       <text x={px} y={py + 5} className="hx-name">
-                        {c.tier === 'town' ? '⌂' : c.tier === 'city' ? '♜' : '♛'}
+                        {['⌂', '⌂', '⌂', '♜', '♜', '♛'][rankOf(c.tier)]}
+                      </text>
+                    )}
+                    {h !== c.hex && districts.some(d => d.hex === h) && (
+                      <text x={px} y={py + 5} className="hx-name">
+                        ▦
                       </text>
                     )}
                   </g>
@@ -227,11 +236,21 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
             </svg>
             <p className="muted small">
               {hexLabel(hex)}
-              {land.has(hex) ? '' : " · not this settlement's land"}
+              {!land.has(hex)
+                ? " · not this settlement's land"
+                : hex === c.hex
+                  ? ' · the centre'
+                  : districts.find(d => d.hex === hex)
+                    ? ` · ${districts.find(d => d.hex === hex)!.name}`
+                    : districtHexProblem(game, c, hex)
+                      ? ` · ${districtHexProblem(game, c, hex)}`
+                      : ' · free: a district can stand here'}
             </p>
             <p className="muted small">
-              Buildings use what lies on the bright hexes. A hex next to two settlements belongs to
-              the older one.
+              The centre and the six hexes around it are the settlement's land; every district
+              stands on one of them (▦). A district gathers the special resource on its own hex
+              (ores, crops, furs, whales…) and the plain ones next to it; one by the water can build
+              docks and yards. Pick a hex here before laying out a district.
             </p>
             <h3>Rank</h3>
             <p className="small">
@@ -243,17 +262,17 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
             {up.to && (
               <div className="upgrade">
                 <p className="small">
-                  <b>Become a {TIER_NAME[up.to].toLowerCase()}</b>:{' '}
-                  {up.to === 'city'
-                    ? `${DISTRICT_CAP.city} districts, +${TIER_BONUS.city.all}% to every building and +${TIER_BONUS.city.focus}% to research and industry.`
-                    : `${DISTRICT_CAP.metropolis} districts, +${TIER_BONUS.metropolis.all}% / +${TIER_BONUS.metropolis.focus}%. Only one per people.`}{' '}
-                  Needs {up.pop.toLocaleString()} people, {up.gold} gold and{' '}
-                  <Goods goods={up.goods} />.
+                  <b>Become a {TIER_NAME[up.to].toLowerCase()}</b>: {DISTRICT_CAP[up.to]} districts
+                  {TIER_BONUS[up.to].all
+                    ? `, +${TIER_BONUS[up.to].all}% to every building and +${TIER_BONUS[up.to].focus}% to research and industry`
+                    : ''}
+                  {up.to === 'metropolis' ? '. Only one per people.' : '.'} Needs{' '}
+                  {up.pop.toLocaleString()} people, {up.gold} gold and <Goods goods={up.goods} />.
                 </p>
                 {up.lost > 0 && (
                   <p className="small bad">
-                    Its {up.lost} farm, woodlot and mine buildings will be pulled down: a city lives
-                    on what the towns in its market send it.
+                    The {up.lost} farm, woodlot and mine buildings of its centre will be pulled
+                    down: a city builds over its centre (its outer districts keep their fields).
                   </p>
                 )}
                 <button
@@ -366,7 +385,7 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                   <small>{cap - districts.length} free</small>
                 </button>
               )}
-              {Array.from({ length: 6 - cap }, (_, k) => (
+              {Array.from({ length: Math.max(0, 7 - cap) }, (_, k) => (
                 <button
                   key={`l${k}`}
                   className={`locked ${dSel === 'locked' ? 'on' : ''}`}
@@ -375,15 +394,15 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                   <b>
                     <Icon name="lock" />
                   </b>
-                  <small>{cap + k < DISTRICT_CAP.city ? 'City' : 'Metropolis'}</small>
+                  <small>
+                    {TIER_NAME[TIERS.find(t => DISTRICT_CAP[t] > cap + k) ?? 'metropolis']}
+                  </small>
                 </button>
               ))}
             </div>
             {dSel === 'locked' ? (
               <p className="muted">
-                {c.tier === 'town'
-                  ? `A town holds ${DISTRICT_CAP.town} districts. As a city ${c.name} would hold ${DISTRICT_CAP.city}, and the people's one metropolis holds ${DISTRICT_CAP.metropolis}. See Rank on the left.`
-                  : `The metropolis holds ${DISTRICT_CAP.metropolis} districts; a people can have only one.`}
+                {`A ${TIER_NAME[c.tier].toLowerCase()} holds ${cap} district${cap > 1 ? 's' : ''}. Each size up opens one more: settlement 1, town 2, large town 3, city 4, large city 5, and the people's one metropolis all 7 (the centre and its six neighbours). See Rank on the left.`}
               </p>
             ) : mineD ? (
               <>
@@ -533,10 +552,12 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                   A district is a 3×3 grid of buildings you choose. It needs {MIN_HOUSING} housing
                   cells before anything else in it works. Producers make things; boosters raise
                   every producer of their kind in the same district: a library adds ½ to each
-                  university, a research lab doubles them.
-                  {c.tier === 'town'
-                    ? ' Towns can also farm, cut wood and mine their land.'
-                    : ' Cities leave farming and mining to their towns.'}
+                  university, a research lab doubles them. It stands on the hex picked on the land
+                  map
+                  {hex !== c.hex && !districtHexProblem(game, c, hex)
+                    ? ` (${hexLabel(hex)})`
+                    : ': pick a free hex there first, or it goes on the best free one'}
+                  .{isUrban(c) ? ' A city farms and mines in its outer districts only.' : ''}
                 </p>
                 <input
                   className="design-name"
@@ -566,6 +587,7 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                         c.id,
                         newName || b?.name || 'District',
                         b?.slots ?? [],
+                        hex !== c.hex && !districtHexProblem(game, c, hex) ? hex : undefined,
                       );
                       act(res);
                       if (res.ok && res.id) setDSel(res.id);
@@ -609,7 +631,7 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                         t.group === gr &&
                         (showAll ||
                           sel.st.type === t.id ||
-                          !slotProblem(game, c.civId, c.hex, centre, t.id, mineD.id)),
+                          !slotProblem(game, c.civId, mineD.hex, centre, t.id, mineD.id)),
                     );
                     if (!known.length) return null;
                     return (
@@ -619,7 +641,14 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                         </h3>
                         <div className="pal-items">
                           {known.map(t => {
-                            const why = slotProblem(game, c.civId, hex, centre, t.id, mineD.id);
+                            const why = slotProblem(
+                              game,
+                              c.civId,
+                              mineD.hex,
+                              centre,
+                              t.id,
+                              mineD.id,
+                            );
                             return (
                               <button
                                 key={t.id}
@@ -646,7 +675,7 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
                                   </small>
                                   {(() => {
                                     // what this land would add to it
-                                    const w = workable(game, c.civId, c.hex, t.id, 9);
+                                    const w = workable(game, c.civId, mineD.hex, t.id, 9);
                                     if (!w.open.length) return null;
                                     const sp = w.open.filter(k => DEPOSITS[k].special);
                                     return (

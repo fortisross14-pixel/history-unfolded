@@ -18,6 +18,8 @@ export interface DistrictView {
   id: number | null;
   name: string;
   slots: { type: string | null; built: boolean; group?: string }[] | null;
+  /** where it stands around the centre (its real hex direction), in scene units */
+  pos?: [number, number];
 }
 export interface CityView {
   key: string;
@@ -860,6 +862,11 @@ export class CityScene3D {
     this.ro.observe(host);
   }
 
+  /** Where district `i` stands: its real direction from the centre, or the default ring. */
+  private posOf(i: number): [number, number] {
+    return this.view?.districts[i]?.pos ?? RING[i] ?? [0, 0];
+  }
+
   /** Show a settlement; rebuilds only when its layout changed. */
   set(view: CityView) {
     const rebuild = !this.view || this.view.key !== view.key;
@@ -880,7 +887,7 @@ export class CityScene3D {
       this.target.set(0, 0, 0);
       this.zoom = n <= 2 ? 8 : n <= 4 ? 11 : 13.5;
     } else {
-      const [x, z] = RING[district];
+      const [x, z] = this.posOf(district);
       this.target.set(x, 0, z);
       this.zoom = 6;
     }
@@ -918,7 +925,7 @@ export class CityScene3D {
       0,
     ).castShadow = false;
     const r = rng(view.seed);
-    const used = RING.slice(0, n);
+    const used = view.districts.map((_, k) => this.posOf(k));
     for (let i = 0; i < 60 + n * 10; i++) {
       const a = r() * Math.PI * 2,
         d = 2.4 + r() * (span - 3.4);
@@ -950,7 +957,7 @@ export class CityScene3D {
 
   private district(d: DistrictView, i: number, seed: number) {
     const g = new THREE.Group();
-    const [x, z] = RING[i];
+    const [x, z] = this.posOf(i);
     g.position.set(x, 0, z);
     g.rotation.y = TURN[i];
     add(
@@ -1002,7 +1009,7 @@ export class CityScene3D {
     }
     const g = this.world.children.find(o => o.userData.index === sel.district);
     if (!g) return;
-    const [x, z] = RING[sel.district];
+    const [x, z] = this.posOf(sel.district);
     const k = sel.slot;
     const local = new THREE.Vector3(((k % 3) - 1) * PITCH, 0.01, (Math.floor(k / 3) - 1) * PITCH);
     local.applyAxisAngle(new THREE.Vector3(0, 1, 0), TURN[sel.district]);

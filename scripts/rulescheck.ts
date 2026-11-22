@@ -42,6 +42,7 @@ import {
   invalidateMarkets,
   isCentre,
   landOf,
+  DISTRICT_CAP,
   shareFood,
   marketCities,
   marketStock,
@@ -104,7 +105,13 @@ for (const seed of [1, 2, 3, 42]) {
     !!centreD && centreD.slots[4].type === 'town-hall' && centreD.slots[4].built,
     'centre district with town hall',
   );
-  check(capital.tier === 'town', 'a new settlement is a town');
+  check(capital.tier === 'settlement', 'a new settlement starts as a settlement (its centre only)');
+  check(
+    !placeDistrict(s, capital.id, 'Early', []).ok,
+    'a settlement has no room for a second district',
+  );
+  // grow it to a town by hand (its upgrade is checked below)
+  capital.tier = 'town';
   check(
     landOf(s, capital).includes(capital.hex) && landOf(s, capital).length <= 7,
     `the town works its hex and the ring around it (${landOf(s, capital).length} hexes)`,
@@ -123,6 +130,10 @@ for (const seed of [1, 2, 3, 42]) {
   const pd = placeDistrict(s, capital.id, 'Farm', farmSlots);
   check(pd.ok, 'place a "Farm" district: ' + pd.msg);
   const farm = s.districts.find(d => d.id === pd.id)!;
+  check(
+    farm.hex !== capital.hex && landOf(s, capital).includes(farm.hex),
+    'the district stands on its own hex around the centre',
+  );
   const bp = saveBlueprint(
     s,
     me.id,
@@ -148,7 +159,8 @@ for (const seed of [1, 2, 3, 42]) {
     const t = structuredClone(s);
     const tc = t.cities.find(c => c.id === capital.id)!;
     const td = t.districts.find(d => d.id === pd.id)!;
-    const spot = landOf(t, tc).find(h => h !== tc.hex && isPassableLand(t.map, h))!;
+    // the deposit lies on the district's own hex: that is what it gathers
+    const spot = td.hex;
     const others = landOf(t, tc).filter(h => h !== spot);
     for (const h of others) t.map.deposit[h] = null;
     t.civs[me.id].techs.push('mineralogy', 'mining', 'the-wheel');
@@ -297,14 +309,25 @@ for (const seed of [1, 2, 3, 42]) {
     const probe = { ...mine().find(f => f.kind === 'army')!, kind: 'settlers' as const };
     const next = neighbors(g1, capital.hex).find(h => isPassableLand(s.map, h))!;
     check(!!canFoundCity(s, { ...probe, hex: next }), 'no town right next to another');
-    const two = within(g1, capital.hex, 2).find(
-      h =>
-        distance(g1, h, capital.hex) === 2 &&
-        isPassableLand(s.map, h) &&
-        !s.cities.some(c => c !== capital && distance(g1, c.hex, h) < 2),
-    );
+    const at = (d: number) =>
+      within(g1, capital.hex, d).find(
+        h =>
+          distance(g1, h, capital.hex) === d &&
+          isPassableLand(s.map, h) &&
+          !s.cities.some(c => c !== capital && distance(g1, c.hex, h) < 3),
+      );
+    const two = at(2);
     if (two !== undefined)
-      check(canFoundCity(s, { ...probe, hex: two }) === null, 'a town two hexes away is fine');
+      check(
+        !!canFoundCity(s, { ...probe, hex: two }),
+        'nor with one hex between (their lands would touch)',
+      );
+    const three = at(3);
+    if (three !== undefined)
+      check(
+        canFoundCity(s, { ...probe, hex: three }) === null,
+        'a settlement three hexes away is fine',
+      );
   }
 
   // --- boosters: 3 universities, a library adds ½ to each, a research lab doubles them
@@ -343,11 +366,13 @@ for (const seed of [1, 2, 3, 42]) {
     );
   }
 
-  // --- town to city: needs people, gold and goods; farms give way; room for four districts
+  // --- up the ladder: town, large town, city (needs people, gold, goods, the charter)
   {
     const t = structuredClone(s);
     const tc = t.cities.find(c => c.id === capital.id)!;
-    check(!!upgradeInfo(t, tc).problem, 'a young town cannot become a city yet');
+    check(upgradeInfo(t, tc).to === 'large-town', 'a town grows into a large town next');
+    tc.tier = 'large-town';
+    check(!!upgradeInfo(t, tc).problem, 'a young large town cannot become a city yet');
     tc.pop = 7000;
     t.civs[me.id].gold = 1000;
     check(/City Charter/.test(upgradeInfo(t, tc).problem ?? ''), 'a city needs the City Charter');
@@ -360,13 +385,19 @@ for (const seed of [1, 2, 3, 42]) {
     tc.stockpile.wood = 100;
     const farmD = t.districts.find(d => d.id === pd.id)!;
     const rural = farmD.slots.filter(x => isRural(x.type)).length;
+    cen.slots[8] = { type: 'woodlot', built: true, progress: 0, paid: true };
     const up = upgradeSettlement(t, tc.id);
-    check(up.ok && tc.tier === 'city', 'the town becomes a city: ' + up.msg);
+    check(up.ok && (tc.tier as string) === 'city', 'the large town becomes a city: ' + up.msg);
     check(
-      farmD.slots.every(x => !isRural(x.type)) && farmD.slots.some(x => x.type) && rural > 0,
-      `farms and woodcutters are pulled down, the houses stay (${rural} rural buildings)`,
+      farmD.slots.filter(x => isRural(x.type)).length === rural &&
+        rural > 0 &&
+        !isRural(cen.slots[8].type),
+      `the centre's woodlot gives way to streets; the outer district keeps its ${rural} rural buildings`,
     );
-    check(!!slotProblem(t, me.id, tc.hex, false, 'grain-field'), 'a city cannot lay out fields');
+    check(
+      !!slotProblem(t, me.id, tc.hex, true, 'farm', cen.id),
+      'a city lays out no fields in its centre',
+    );
     check(placeDistrict(t, tc.id, 'Library quarter', []).ok, 'a city takes a third district');
     check(placeDistrict(t, tc.id, 'Fourth', []).ok, '... and a fourth');
     for (const d of cityDistricts(t, tc).slice(2))
@@ -377,12 +408,24 @@ for (const seed of [1, 2, 3, 42]) {
     tc.stockpile.stone = 100;
     tc.stockpile.wood = 100;
     check(
-      upgradeSettlement(t, tc.id).ok && tc.tier === 'metropolis',
-      'the city becomes a metropolis',
+      upgradeSettlement(t, tc.id).ok && (tc.tier as string) === 'large-city',
+      'the city becomes a large city',
+    );
+    for (const d of cityDistricts(t, tc).slice(1))
+      for (const i of [0, 1, 2])
+        d.slots[i] = { type: 'houses', built: true, progress: 0, paid: true };
+    tc.stockpile.stone = 100;
+    tc.stockpile.wood = 100;
+    t.civs[me.id].gold = 1000;
+    const um = upgradeSettlement(t, tc.id);
+    check(um.ok && (tc.tier as string) === 'metropolis', 'then a metropolis: ' + um.msg);
+    check(
+      DISTRICT_CAP.metropolis === 7,
+      'a metropolis uses the centre and all six hexes around it',
     );
     const other = t.cities.find(c => c.civId !== me.id)!;
     other.civId = me.id;
-    other.tier = 'city';
+    other.tier = 'large-city';
     other.pop = 16000;
     check(
       /only one metropolis/.test(upgradeInfo(t, other).problem ?? ''),
@@ -654,6 +697,25 @@ for (const seed of [1, 2, 3, 42]) {
 
   const back = deserialize(serialize(s));
   check(back.turn === s.turn && back.formations.length === s.formations.length, 'save round-trip');
+  // ---- an older save: its districts all sat on the centre; loading spreads them onto the land
+  {
+    const old = structuredClone(s) as GameState;
+    const c = old.cities.find(x => old.districts.filter(d => d.cityId === x.id).length >= 2)!;
+    for (const d of old.districts) if (d.cityId === c.id) d.hex = c.hex;
+    const back = deserialize(JSON.stringify({ ...old, version: 10 }));
+    const ds = back.districts.filter(d => d.cityId === c.id);
+    check(
+      back.version === 11 &&
+        new Set(ds.map(d => d.hex)).size === ds.length &&
+        ds.every(d =>
+          landOf(
+            back,
+            back.cities.find(x => x.id === c.id)!,
+          ).includes(d.hex),
+        ),
+      `an older save's districts move onto their own hexes (${ds.length} districts)`,
+    );
+  }
 }
 console.log(failures ? `${failures} failures` : 'all rules checks passed');
 process.exit(failures ? 1 : 0);

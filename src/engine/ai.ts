@@ -90,13 +90,21 @@ import {
   cityDistricts,
   marketStock,
   constructionQueue,
+  isUrban,
   isCentre,
   marketCities,
   slotProblem,
   workable,
 } from './economy.ts';
 import { ageOf } from '../data/techs.ts';
-import { districtRoom, placeDistrict, setSlot, upgradeInfo, upgradeSettlement } from './game.ts';
+import {
+  districtRoom,
+  freeDistrictHexes,
+  placeDistrict,
+  setSlot,
+  upgradeInfo,
+  upgradeSettlement,
+} from './game.ts';
 import type { City, District } from './types.ts';
 import { hexFood, isPassableLand } from './mapgen.ts';
 import { hashSeed, mulberry32, type Rng } from './rng.ts';
@@ -336,9 +344,7 @@ function chooseCulture(s: GameState, civ: Civ, rng: Rng) {
       nodeCost(s, civ, n) / 60 +
       // the ranks of settlement: a charter once there are towns to feed a city
       (n.id === 'city-charter' && s.cities.filter(c => c.civId === civ.id).length >= 3 ? 8 : 0) +
-      (n.id === 'seat-of-empire' && s.cities.some(c => c.civId === civ.id && c.tier === 'city')
-        ? 6
-        : 0),
+      (n.id === 'seat-of-empire' && s.cities.some(c => c.civId === civ.id && isUrban(c)) ? 6 : 0),
   }));
   const best = scored.reduce((a, b) => (b.v > a.v ? b : a)).n;
   if (civ.culture.points >= nodeCost(s, civ, best)) takeNode(s, civ.id, best.id);
@@ -599,7 +605,7 @@ function addBoosters(s: GameState, civ: Civ, c: City, d: District) {
     const role = b.role;
     if (!b.boost && (!role || role === 'base')) continue;
     if (types.includes(b.id)) continue;
-    if (slotProblem(s, civ.id, c.hex, centre, b.id, d.id)) continue;
+    if (slotProblem(s, civ.id, d.hex, centre, b.id, d.id)) continue;
     const targets = b.boost
       ? types.filter(t => t && b.boost!.of.includes(t)).length
       : bases(b.line!);
@@ -638,13 +644,13 @@ function fillDistrict(s: GameState, civ: Civ, c: City, d: District, plan: (strin
       Object.keys(SLOT_TYPES[want]?.inputs ?? {}).some(g => g !== 'wood' && (stock[g] ?? 0) < 10)
     )
       continue;
-    if (want && !slotProblem(s, civ.id, c.hex, centre, want, d.id)) setSlot(s, d.id, i, want);
+    if (want && !slotProblem(s, civ.id, d.hex, centre, want, d.id)) setSlot(s, d.id, i, want);
     else if (
       want === 'houses' ||
       (!want && i !== 4) ||
       (want && SLOT_TYPES[want] && !SLOT_TYPES[want].tech)
     ) {
-      if (!slotProblem(s, civ.id, c.hex, centre, 'houses', d.id)) setSlot(s, d.id, i, 'houses');
+      if (!slotProblem(s, civ.id, d.hex, centre, 'houses', d.id)) setSlot(s, d.id, i, 'houses');
     }
   }
 }
@@ -654,45 +660,49 @@ export function planDistricts(s: GameState, civ: Civ, c: City, force = false) {
   const ds = cityDistricts(s, c);
   if (!force && (s.turn + c.id) % 3 !== 0 && ds.length > 1) return;
   const centre = ds.find(isCentre);
-  if (c.tier === 'town') {
-    // a town's second district works the land
-    if (ds.length < 2) {
-      const p = planFor(s, civ, c.hex);
-      const main = p.slots.find(t => t && t !== 'houses' && t !== 'infirmary');
-      placeDistrict(
-        s,
-        c.id,
-        `${c.name} ${main ? SLOT_TYPES[main].name.toLowerCase() + 's' : 'fields'}`,
-        p.slots,
-      );
-      return;
+  if (!isUrban(c)) {
+    // a small settlement's districts work the land: each on the free hex that serves it best
+    if (districtRoom(s, c) > 0) {
+      const best = freeDistrictHexes(s, c)
+        .map(h => ({ h, p: planFor(s, civ, h) }))
+        .sort((a, b) => b.p.score - a.p.score)[0];
+      if (best) {
+        const main = best.p.slots.find(t => t && t !== 'houses' && t !== 'infirmary');
+        placeDistrict(
+          s,
+          c.id,
+          `${c.name} ${main ? SLOT_TYPES[main].name.toLowerCase() + 's' : 'fields'}`,
+          best.p.slots,
+          best.h,
+        );
+        return;
+      }
     }
     // cells waiting on research get filled once it arrives
     if (centre) fillDistrict(s, civ, c, centre, CENTRE);
     for (const d of ds) addBoosters(s, civ, c, d);
-    // cells left empty (a blueprint gap, research since) get another look
-    const fields = ds.find(d => !isCentre(d));
-    if (fields && fields.slots.some(x => !x.type)) {
-      const p = planFor(s, civ, c.hex);
-      fillDistrict(s, civ, c, fields, p.slots);
-    }
-    // research reveals new seams (iron, coal, oil): now and then a town re-lays its fields
-    if (fields && (s.turn + c.id) % 15 === 0) {
-      const p = planFor(s, civ, c.hex);
-      const count = (slots: (string | null)[], t: string) => slots.filter(x => x === t).length;
-      const main = ['mine', 'plantation', 'fishing-dock', 'hunting-lodge'].find(
-        t => count(p.slots, t) >= 4,
-      );
-      if (
-        main &&
-        count(
-          fields.slots.map(x => x.type),
-          main,
-        ) < 3
-      )
-        p.slots.forEach((t, i) => {
-          if (t && fields.slots[i].type !== t) setSlot(s, fields.id, i, t);
-        });
+    for (const fields of ds.filter(d => !isCentre(d))) {
+      // cells left empty (a blueprint gap, research since) get another look
+      if (fields.slots.some(x => !x.type))
+        fillDistrict(s, civ, c, fields, planFor(s, civ, fields.hex).slots);
+      // research reveals new seams (iron, coal, oil): now and then a district re-lays its fields
+      if ((s.turn + c.id + fields.id) % 15 === 0) {
+        const p = planFor(s, civ, fields.hex);
+        const count = (slots: (string | null)[], t: string) => slots.filter(x => x === t).length;
+        const main = ['mine', 'plantation', 'fishing-dock', 'hunting-lodge'].find(
+          t => count(p.slots, t) >= 4,
+        );
+        if (
+          main &&
+          count(
+            fields.slots.map(x => x.type),
+            main,
+          ) < 3
+        )
+          p.slots.forEach((t, i) => {
+            if (t && fields.slots[i].type !== t) setSlot(s, fields.id, i, t);
+          });
+      }
     }
     return;
   }
@@ -860,19 +870,22 @@ function crewOrders(s: GameState, civ: Civ, f: Formation) {
   if (f.hex === best[0] && f.moves > 0) buildRoad(s, f.id);
 }
 
-/** Raise the best town to a city once it has towns around it to feed it; then a metropolis. */
+/**
+ * Grow settlements: the small sizes (town, large town) as soon as they can pay; a city only with
+ * towns around to feed it (about one city for every three smaller settlements), and the larger
+ * sizes once there are a few cities.
+ */
 function planUpgrades(s: GameState, civ: Civ, cities: City[]) {
-  const towns = cities.filter(c => c.tier === 'town');
-  const big = cities.filter(c => c.tier !== 'town');
-  // about one city for every three towns: cities live on what towns send them
-  const wantCity = towns.length >= 3 * (big.length + 1) - 1;
+  const small = cities.filter(c => !isUrban(c));
+  const big = cities.filter(c => isUrban(c));
+  const wantCity = small.length >= 3 * (big.length + 1) - 1;
   const cands = [...cities].sort((a, b) => b.pop - a.pop);
   for (const c of cands) {
-    if (c.tier === 'town' && !wantCity) continue;
-    if (c.tier === 'metropolis') continue;
-    if (c.tier === 'city' && big.length < 3) continue;
     const u = upgradeInfo(s, c);
-    if (u.problem) continue;
+    if (!u.to || u.problem) continue;
+    if (u.to === 'city' && !wantCity) continue;
+    if (u.to === 'large-city' && big.length < 2) continue;
+    if (u.to === 'metropolis' && big.length < 3) continue;
     // keep a reserve of gold for war and refits
     if (civ.gold - u.gold < 40) continue;
     if (upgradeSettlement(s, c.id).ok) {
@@ -896,8 +909,8 @@ export function aiTurn(s: GameState, civ: Civ) {
   if ((s.turn + civ.id) % 4 === 0) planUpgrades(s, civ, cities);
   aiDynasties(s, civ);
   // one town at a time is left to grow into a city: no settlers or levies from it
-  const towns = cities.filter(c => c.tier === 'town');
-  const ranked = cities.filter(c => c.tier !== 'town');
+  const towns = cities.filter(c => !isUrban(c));
+  const ranked = cities.filter(c => isUrban(c));
   const rising =
     towns.length >= 3 * (ranked.length + 1) - 1
       ? towns.slice().sort((a, b) => b.pop - a.pop)[0]
@@ -918,7 +931,7 @@ export function aiTurn(s: GameState, civ: Civ) {
     const armies = mine().filter(f => f.kind === 'army' && f.name !== 'Scouts').length;
     if (c === rising && armies >= 1) continue;
     // towns send out settlers; a city keeps its people and only gives levies when large
-    const town = c.tier === 'town';
+    const town = !isUrban(c);
     if (
       town &&
       !settlersOut &&

@@ -94,7 +94,8 @@ export interface Formation {
 }
 
 /** Town: 2 districts, farms and mines allowed. City: 4, no rural buildings. Metropolis: 6, one per civ. */
-export type Tier = 'town' | 'city' | 'metropolis';
+/** a settlement's size: one more district at each step, up to the centre and its six neighbours */
+export type Tier = 'settlement' | 'town' | 'large-town' | 'city' | 'large-city' | 'metropolis';
 
 export interface City {
   /** the governor plans its districts and buildings each turn (the player's settlements) */

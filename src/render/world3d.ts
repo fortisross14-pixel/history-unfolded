@@ -102,6 +102,44 @@ const bakedMesh = (root: THREE.Object3D, shadow = true) => {
   return m;
 };
 
+/**
+ * Spots for buildings on a district's hex, in the order they fill: the middle, a ring around it,
+ * then an outer ring. Seeded per district, so a place keeps its look as it grows.
+ * Each: x, z, turn, scale.
+ */
+function spotsFor(seed: number): [number, number, number, number][] {
+  const r = rng(seed);
+  const out: [number, number, number, number][] = [[0, 0, r() * 6.28, 0.36]];
+  const ring = (n: number, rad: number, scale: number) => {
+    const start = r() * Math.PI * 2;
+    const ks = Array.from({ length: n }, (_, k) => k).sort(() => r() - 0.5);
+    for (const k of ks) {
+      const a = start + (k / n) * Math.PI * 2 + (r() - 0.5) * 0.4;
+      const d = rad * (0.88 + r() * 0.2);
+      out.push([
+        Math.cos(a) * d,
+        Math.sin(a) * d,
+        a + Math.PI / 2 + (r() - 0.5) * 0.6,
+        scale * (0.9 + r() * 0.2),
+      ]);
+    }
+  };
+  ring(6, 0.42, 0.3);
+  ring(10, 0.74, 0.24);
+  return out;
+}
+
+/** a cottage or two on a yard: the homes of a place's people */
+const home: Builder = (g, r) => {
+  house(g, (r() - 0.5) * 0.2, (r() - 0.5) * 0.2, 0.42, 0.34, 0.26 + r() * 0.1, {
+    roof: r() < 0.6 ? C.roof : C.roof2,
+    wall: r() < 0.5 ? C.wall : C.wall2,
+  });
+  if (r() < 0.6) house(g, 0.3, 0.25, 0.26, 0.22, 0.2, { roof: C.roof2, rot: Math.PI / 2 });
+  if (r() < 0.5) tree(g, -0.32, 0.3, 0.9, 'leaf', r);
+  return C.grass;
+};
+
 interface Camera {
   x: number;
   y: number;
@@ -439,74 +477,68 @@ export class World3DRenderer {
     const ds = cityDistricts(s, c);
     const civ = s.civs[c.civId];
     const r = rng(c.id * 97 + 5);
-    // every district on its own hex: a paved base and its buildings in miniature
-    const hexes = ds.length ? ds : [];
+    const hexes = ds;
+    // each district grows on its hex like a real place: buildings take spots that look scattered
+    // but never move (seeded by the district), filling from the middle outwards as they are built
     for (const d of hexes) {
       if (!known[d.hex]) continue;
       const [x, z] = centerUnit(g, d.hex);
       const grp = new THREE.Group();
       grp.position.set(x, this.top(s, d.hex), z);
       root.add(grp);
-      const centre = d.slots.some(x => x.type === 'town-hall');
-      // the district: a low earthen base, streets between its plots, each plot on its own ground
-      add(grp, new THREE.CylinderGeometry(0.93, 0.95, 0.05, 6), '#bfae84', 0, 0.025, 0);
-      const P = 0.53,
-        S = 0.47;
-      for (const k of [-0.5, 0.5]) {
-        add(
-          grp,
-          new THREE.BoxGeometry(1.62, 0.012, 0.07),
-          centre ? '#d8cbaa' : '#cdbb92',
-          0,
-          0.056,
-          k * P,
-        );
-        add(
-          grp,
-          new THREE.BoxGeometry(0.07, 0.012, 1.62),
-          centre ? '#d8cbaa' : '#cdbb92',
-          k * P,
-          0.056,
-          0,
-        );
+      const centre = d.slots.some(st => st.type === 'town-hall');
+      const spots = spotsFor(d.id * 7919 + c.id);
+      // what stands here: the built buildings, then those being built, then (in the centre)
+      // homes for its people
+      const things: Builder[] = [];
+      if (centre) things.push(builderFor('town-hall')!);
+      for (const st of d.slots) {
+        if (!st.type || st.type === 'town-hall') continue;
+        if (st.built) things.push(builderFor(st.type) ?? generic(SLOT_TYPES[st.type]?.group));
       }
-      // a young settlement's empty plots fill with homes as its people grow
-      let houses = centre ? Math.min(8, Math.max(2, Math.round(c.pop / 700))) : 0;
-      d.slots.forEach((st, k) => {
-        const px = ((k % 3) - 1) * P,
-          pz = (Math.floor(k / 3) - 1) * P;
+      for (const st of d.slots) if (st.type && !st.built) things.push(scaffold);
+      if (centre) {
+        const homes = Math.min(10, Math.max(1, Math.round(c.pop / 600)));
+        for (let k = 0; k < homes; k++) things.push(home);
+      }
+      const used = things.slice(0, spots.length);
+      used.forEach((make, k) => {
+        const [px, pz, rot, scale] = spots[k];
         const sub = new THREE.Group();
-        sub.position.set(px, 0.05, pz);
-        sub.scale.setScalar(S);
-        const rr = rng(c.id * 131 + k * 17 + d.id);
-        let make: Builder | null = null;
-        if (st.type && st.built) make = builderFor(st.type) ?? generic(SLOT_TYPES[st.type]?.group);
-        else if (st.type) make = scaffold;
-        else if (houses > 0) {
-          houses--;
-          make = builderFor('houses');
-        } else
-          // an empty plot: grass and a tree or two
-          make = gg => {
-            if (rr() < 0.7)
-              tree(
-                gg,
-                (rr() - 0.5) * 0.5,
-                (rr() - 0.5) * 0.5,
-                1.1,
-                rr() < 0.5 ? 'leaf' : 'pine',
-                rr,
-              );
-            if (rr() < 0.4) tree(gg, (rr() - 0.5) * 0.6, (rr() - 0.5) * 0.6, 0.9, 'leaf', rr);
-            return C.grass;
-          };
+        sub.position.set(px, 0.01, pz);
+        sub.rotation.y = rot;
+        sub.scale.setScalar(scale);
+        const rr = rng(d.id * 131 + k * 17);
         const ground = make(sub, rr) || C.grass;
-        // the plot's own ground (fields, paving, grass) under what stands on it
-        add(sub, new THREE.BoxGeometry(1, 0.04, 1), ground, 0, -0.02, 0);
+        // its own patch of ground: paving, a field, a yard
+        const patch = add(
+          sub,
+          new THREE.CylinderGeometry(0.62, 0.66, 0.04, 7),
+          ground,
+          0,
+          -0.01,
+          0,
+        );
+        patch.castShadow = false;
         grp.add(sub);
+        // a path to the middle of the place
+        // the inner ring only: lanes, not spokes
+        if (k > 0 && k <= 6 && Math.hypot(px, pz) > 0.2) {
+          const L = Math.hypot(px, pz);
+          const path = add(
+            grp,
+            new THREE.BoxGeometry(L * 0.7, 0.01, 0.035),
+            '#c9b892',
+            px / 2,
+            0.012,
+            pz / 2,
+          );
+          path.rotation.y = -Math.atan2(pz, px);
+          path.castShadow = false;
+        }
       });
       if (centre) {
-        flag(grp, 0.6, 0.05, -0.62, civ.color, 0.7);
+        flag(grp, 0.08, 0.2, -0.12, civ.color, 0.6);
         if (c.siege) {
           const ring = add(grp, new THREE.TorusGeometry(0.98, 0.035, 4, 32), '#a02a1e', 0, 0.08, 0);
           ring.rotation.x = Math.PI / 2;

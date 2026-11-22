@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { SLOT_TYPES } from '../data/slots.ts';
 import { cityDistricts, DISTRICT_CAP, isCentre } from '../engine/economy.ts';
+import { freeDistrictHexes } from '../engine/game.ts';
+import { centerUnit } from '../engine/hex.ts';
 import type { City, District, GameState } from '../engine/types.ts';
 import type { CityScene3D, CityView } from '../render/city3d.ts';
 
@@ -33,22 +35,33 @@ export function CityScene({
   // the districts in scene order: the centre first, then the rest, then empty sites
   const ds = cityDistricts(game, c);
   const ordered: District[] = [...ds.filter(isCentre), ...ds.filter(d => !isCentre(d))];
-  const free = Math.max(0, Math.min(6, DISTRICT_CAP[c.tier]) - ordered.length);
+  // districts stand where their hexes are around the centre; free plots on hexes still open
+  const g = { w: game.map.w, h: game.map.h };
+  const [ox, oz] = centerUnit(g, c.hex);
+  const at = (hex: number): [number, number] => {
+    const [x, z] = centerUnit(g, hex);
+    return [(x - ox) * 2.55, (z - oz) * 2.55];
+  };
+  const open = freeDistrictHexes(game, c).slice(
+    0,
+    Math.max(0, DISTRICT_CAP[c.tier] - ordered.length),
+  );
   const view: CityView = {
-    key: `${c.id}|${c.tier}|${ordered.map(d => d.id + ':' + d.slots.map(x => (x.type ?? '-') + (x.built ? '+' : '')).join(',')).join(';')}`,
+    key: `${c.id}|${c.tier}|${open.join(',')}|${ordered.map(d => d.id + ':' + d.slots.map(x => (x.type ?? '-') + (x.built ? '+' : '')).join(',')).join(';')}`,
     seed: c.id * 7919 + 13,
     districts: [
       ...ordered.map(d => ({
         id: d.id,
         name: d.name,
+        pos: at(d.hex),
         slots: d.slots.map(x => ({
           type: x.type,
           built: x.built,
           group: x.type ? SLOT_TYPES[x.type]?.group : undefined,
         })),
       })),
-      ...Array.from({ length: free }, () => ({ id: null, name: 'Free site', slots: null })),
-    ].slice(0, 6),
+      ...open.map(h => ({ id: null, name: 'Free site', slots: null, pos: at(h) })),
+    ].slice(0, 7),
     selected:
       selected !== undefined && ordered.findIndex(d => d.id === selected) >= 0
         ? { district: ordered.findIndex(d => d.id === selected), slot: cell }

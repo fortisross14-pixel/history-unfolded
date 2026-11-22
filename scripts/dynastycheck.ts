@@ -106,6 +106,11 @@ check(
   t.civs[me.id].techs.push('writing');
   const tc = t.cities.find(c => c.id === town.id)!;
   tc.pop = 20000;
+  // a town (no rank bonus) with room for this district
+  tc.tier = 'town';
+  t.districts = t.districts.filter(
+    d => d.cityId !== tc.id || d.slots.some(x => x.type === 'town-hall'),
+  );
   const pd = placeDistrict(t, tc.id, 'Scholars', [
     'school',
     null,
@@ -267,6 +272,7 @@ check(
   civ.techs.push('electricity', 'renaissance-age', 'printing', 'education');
   const tc = t.cities.find(c => c.id === capital.id)!;
   tc.pop = 20000;
+  tc.tier = 'city';
   tc.stockpile.electricity = 20;
   const pd = placeDistrict(t, tc.id, 'Sages', [
     'university',

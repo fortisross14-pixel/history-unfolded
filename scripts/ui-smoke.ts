@@ -69,7 +69,29 @@ if (!(await page.$('.modal.city-screen'))) throw new Error('the to-do list never
 await page.screenshot({ path: `${out}/3-todo-city.png` });
 await page.waitForSelector('.modal.city-screen');
 await page.screenshot({ path: `${out}/3a-city-screen.png` });
-// a town has two district tabs: the centre and one free; the rest are locked until it grows
+// a new settlement holds only its centre: no free district yet, the rest locked until it grows
+if (await page.$('.district-tabs button.add'))
+  throw new Error('a new settlement offered a second district');
+// grow it to a town (by hand: the upgrade itself is covered by rulescheck), then add a district
+await page.keyboard.press('Escape');
+await page.evaluate(() => {
+  const h = (
+    globalThis as unknown as {
+      __hu: {
+        game: { cities: { id: number; civId: number; tier: string }[] };
+        bump: () => void;
+        selectCity: (id: number) => void;
+      };
+    }
+  ).__hu;
+  const c = h.game.cities.find(x => x.civId === 0)!;
+  c.tier = 'town';
+  h.selectCity(c.id);
+  h.bump();
+});
+await page.waitForTimeout(300);
+await page.click('button:has-text("City & districts")');
+await page.waitForSelector('.modal.city-screen');
 await page.click('.district-tabs button.add');
 await page.fill('.new-district .design-name', 'Farm');
 await page.click('.new-district button.primary');

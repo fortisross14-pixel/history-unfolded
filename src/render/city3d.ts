@@ -10,8 +10,8 @@
  */
 import * as THREE from 'three';
 
-type Rng = () => number;
-type Builder = (g: THREE.Group, r: Rng) => string;
+export type Rng = () => number;
+export type Builder = (g: THREE.Group, r: Rng) => string;
 
 /** One district as the scene shows it; slots null = a plot where a district may still go. */
 export interface DistrictView {
@@ -305,7 +305,7 @@ function factory(g: THREE.Object3D, roof = C.dark) {
 
 // ---------------------------------------------------------------- one builder per building
 
-const BUILDERS: Record<string, Builder> = {
+export const BUILDERS: Record<string, Builder> = {
   'town-hall': g => {
     box(g, 0.62, 0.05, 0.62, C.stone);
     box(g, 0.42, 0.24, 0.36, C.wall);
@@ -756,7 +756,7 @@ const ALIAS: Record<string, string> = {
 export const builderFor = (type: string) => BUILDERS[type] ?? BUILDERS[ALIAS[type] ?? ''];
 
 /** a building of no model of its own: a hall with its group's roof */
-const generic =
+export const generic =
   (group?: string): Builder =>
   g => {
     house(g, 0, 0, 0.5, 0.36, 0.2, { roof: GROUP_ROOF[group ?? ''] ?? C.roof });
@@ -764,7 +764,7 @@ const generic =
   };
 
 /** scaffolding over a plot: being built */
-const scaffold: Builder = g => {
+export const scaffold: Builder = g => {
   BUILDERS.empty(g, () => 0.5);
   for (const [x, z] of [
     [-0.2, -0.16],

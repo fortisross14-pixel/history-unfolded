@@ -2,6 +2,38 @@ import { useEffect, useRef } from 'react';
 import type { GameState } from '../engine/types.ts';
 import type { Assets } from '../render/assets.ts';
 import { MapRenderer, type Insets, type Overlay } from '../render/mapRenderer.ts';
+
+/** What MapView needs from a map renderer: the 2D one and the 3D one both provide it. */
+interface Renderer {
+  cam: { x: number; y: number; zoom: number };
+  coarse: boolean;
+  wantsFrame: boolean;
+  wantsSettle: boolean;
+  resize(w: number, h: number): void;
+  clamp(s: GameState, ins?: Insets): void;
+  centerOn(s: GameState, hex: number, ins?: Insets): void;
+  hexAtScreen(s: GameState, x: number, y: number): number;
+  zoomAt(x: number, y: number, f: number): void;
+  draw(s: GameState, civId: number, ov: Overlay): void;
+  dispose?(): void;
+}
+
+const MAP_MODE = 'hu-map-mode';
+/** The player's choice of map: the 3D one unless they chose 2D (or the device cannot do 3D). */
+export const mapMode = (): '2d' | '3d' => {
+  try {
+    return localStorage.getItem(MAP_MODE) === '2d' ? '2d' : '3d';
+  } catch {
+    return '3d';
+  }
+};
+export const setMapMode = (m: '2d' | '3d') => {
+  try {
+    localStorage.setItem(MAP_MODE, m);
+  } catch {
+    /* private mode: the choice lasts this session only */
+  }
+};
 import { fx } from '../render/fx.ts';
 
 interface Props {
@@ -32,7 +64,7 @@ export function MapView({
   insets,
 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const rr = useRef<MapRenderer | null>(null);
+  const rr = useRef<Renderer | null>(null);
   const frame = useRef(0);
   const props = useRef({ game, civId, overlay, onClick, onMove, onHover, insets });
   props.current = { game, civId, overlay, onClick, onMove, onHover, insets };
@@ -56,10 +88,44 @@ export function MapView({
 
   useEffect(() => {
     const canvas = ref.current!;
-    const r = new MapRenderer(canvas, assets);
-    rr.current = r;
     const parent = canvas.parentElement!;
+    let alive = true;
+    // a stand-in until the chosen renderer is ready: every handler waits for it
+    const r = new Proxy({} as Renderer, {
+      get: (_t, k) => {
+        const real = rr.current as unknown as Record<string | symbol, unknown> | null;
+        if (!real) return k === 'cam' ? { x: 0, y: 0, zoom: 1 } : () => -1;
+        const v = real[k];
+        return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(real) : v;
+      },
+      set: (_t, k, v) => {
+        if (rr.current) (rr.current as unknown as Record<string | symbol, unknown>)[k] = v;
+        return true;
+      },
+    });
+    const ready = (real: Renderer) => {
+      if (!alive) return real.dispose?.();
+      rr.current = real;
+      // a handle for the browser checks (scripts/*-smoke.ts)
+      (window as unknown as { __map?: Renderer }).__map = real;
+      real.resize(parent.clientWidth, parent.clientHeight);
+      const c = centerRef.current;
+      if (c) real.centerOn(props.current.game, c.hex, props.current.insets);
+      real.clamp(props.current.game, props.current.insets);
+      redraw();
+    };
+    (async () => {
+      if (mapMode() === '3d')
+        try {
+          const m = await import('../render/world3d.ts');
+          if (m.webglAvailable()) return ready(new m.World3DRenderer(canvas, assets));
+        } catch {
+          /* no 3D here: the 2D map */
+        }
+      ready(new MapRenderer(canvas, assets));
+    })();
     const ro = new ResizeObserver(() => {
+      if (!rr.current) return;
       r.resize(parent.clientWidth, parent.clientHeight);
       r.clamp(props.current.game, props.current.insets);
       redraw();
@@ -122,7 +188,6 @@ export function MapView({
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
-    r.resize(parent.clientWidth, parent.clientHeight);
 
     // pointer handling: one pointer pans (or taps if it barely moved), two pointers pinch-zoom and pan
     const pts = new Map<number, { x: number; y: number }>();
@@ -217,6 +282,9 @@ export function MapView({
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('contextmenu', noMenu);
     return () => {
+      alive = false;
+      rr.current?.dispose?.();
+      rr.current = null;
       ro.disconnect();
       offFx();
       window.removeEventListener('keydown', onKeyDown);
@@ -233,6 +301,8 @@ export function MapView({
     };
   }, [assets]);
 
+  const centerRef = useRef(centerOn);
+  centerRef.current = centerOn;
   useEffect(() => {
     if (centerOn && rr.current) {
       rr.current.centerOn(game, centerOn.hex, insets);

@@ -6,7 +6,6 @@ import { VICTORY } from '../engine/victory.ts';
 import { VictoryDialog } from './VictoryDialog.tsx';
 import { NationDialog } from './NationDialog.tsx';
 import { CrisisDialog } from './CrisisDialog.tsx';
-import { Map3DView } from './Map3DView.tsx';
 import { CRISIS } from '../engine/crises.ts';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
@@ -58,7 +57,7 @@ import { CityPanel } from './CityPanel.tsx';
 import { DesignsDialog } from './DesignsDialog.tsx';
 import { FormationPanel } from './FormationPanel.tsx';
 import { HexPanel } from './HexPanel.tsx';
-import { MapView } from './MapView.tsx';
+import { MapView, mapMode, setMapMode } from './MapView.tsx';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
 import { DynastiesDialog } from './DynastiesDialog.tsx';
@@ -174,7 +173,7 @@ export function Game({
   const [hover, setHover] = useState(-1);
   const [toasts, setToasts] = useState<{ id: number; text: string; bad?: boolean }[]>([]);
   const [dialog, setDialog] = useState<Dialog>(null);
-  const [show3d, setShow3d] = useState(false);
+  const [map3d, setMap3d] = useState(mapMode() === '3d');
   const [center, setCenter] = useState<{ hex: number; n: number } | null>(null);
   const toastId = useRef(0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -617,13 +616,6 @@ export function Game({
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
 
   const proposal = game.proposals.find(p => p.to === me.id);
-  // the hex the 3D preview opens on: what is selected, else the realm's first settlement
-  const center3d =
-    selF?.hex ??
-    selCity?.hex ??
-    game.cities.find(c => c.civId === me.id)?.hex ??
-    game.formations.find(f => f.civId === me.id)?.hex ??
-    0;
   // a rival holding a victory goal: shown on the Victory button
   const rivalHold = Object.values(game.holding ?? {}).filter(h => h.civId !== me.id).length;
   const pendingEvent = playerEvent(game);
@@ -690,6 +682,7 @@ export function Game({
     <div className="game">
       <div className="map-wrap">
         <MapView
+          key={map3d ? '3d' : '2d'}
           game={game}
           civId={me.id}
           assets={assets}
@@ -856,10 +849,14 @@ export function Game({
         <span className="spacer" />
         <button
           className="secondary"
-          onClick={() => setShow3d(true)}
-          title="See the map around you in low-poly 3D (preview)"
+          onClick={() => {
+            const next = map3d ? '2d' : '3d';
+            setMapMode(next);
+            setMap3d(next === '3d');
+          }}
+          title={map3d ? 'Switch to the flat 2D map' : 'Switch to the low-poly 3D map'}
         >
-          <Icon name="layers" /> 3D
+          <Icon name="layers" /> {map3d ? '2D map' : '3D map'}
         </button>
         <button
           className="secondary round"
@@ -1232,15 +1229,6 @@ export function Game({
           civId={me.id}
           report={r => report({ ok: r.ok, msg: r.msg } as Result)}
           onClose={() => setDialog(null)}
-        />
-      )}
-      {show3d && (
-        <Map3DView
-          game={game}
-          civId={me.id}
-          center={center3d}
-          selected={selF?.civId === me.id ? selF.id : undefined}
-          onClose={() => setShow3d(false)}
         />
       )}
       {dialog?.kind === 'crisis' && (

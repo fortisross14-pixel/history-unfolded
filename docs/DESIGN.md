@@ -378,21 +378,34 @@ Every building goes through one table (`BUILDERS` in `src/render/city3d.ts`, wit
 buildings that share a look and a generic hall in the building group's colour for the rest), so
 a procedural model can be replaced by a real one later without touching anything else.
 
-### 7b. The map in low-poly 3D (preview, as built)
+### 7b. The map in low-poly 3D (as built: the playing map)
 
-A "3D" button on the top bar opens the map around the selected unit or settlement (13 hexes
-around) in low-poly 3D, built from the real game state with the same kit as the city view:
-hexes as prisms raised by relief, peaks with snow on mountains, mounds on hills, trees in
-forests, broadleaf in jungle, reeds and pools in marsh, water sunk below the land with swell on
-the open sea, rivers flowing hex to hex, roads and railways, settlements as small towns by rank
-with their people's flag (and a red ring when besieged), troops as figures in their people's
-colour and fleets as boats. Only explored land is drawn, and foreign troops only where the
-player sees them. Drag to pan, right-drag or the arrows to turn, wheel to zoom; Esc returns to
-the map. The concept also draws territory borders in each people's colour, fades land the player knows
-but cannot see under a light mist, rings the selected troops in gold and plots their march in
-gold dots to a flag. It is a preview to judge the look; the 2D map is still where the game is
-played. To make it the playing map: hex picking and orders, instanced meshes for the whole
-world, hover and reachable-hex highlights.
+The game is played on a low-poly 3D map (`src/render/world3d.ts`). It keeps the 2D renderer's
+contract (camera in screen units, zoomAt, clamp, centerOn, hexAtScreen, draw with overlays), so
+MapView drives either: all input (click, right-click, drag, pinch, wheel, WASD, the two-tap
+move on touch) is unchanged. A tilted orthographic camera keeps north up, and hexes are picked
+exactly under the pointer.
+
+- **Land** in chunks of 10×10 hexes, each baked into one mesh with vertex colours and rebuilt only
+  when what it shows changes (exploration, roads, deposits, a new settlement); a few chunks are
+  built per frame, nearest the view first. Hexes are prisms raised by relief, with peaks, mounds,
+  forests, jungle, marsh, sunk water and swell, ore heaps on revealed deposits, rivers bending
+  through shared edges, roads and railways.
+- **Settlements** are baked per settlement, on demand: every district on its own hex, with streets
+  between its 3×3 plots and each plot showing its real building in miniature on its own ground
+  (scaffolding while building); a young centre's empty plots fill with homes as its people grow,
+  outer empty plots grow trees. The flag is the people's; a besieged settlement has a red ring.
+- **Troops** as small squads in their people's colour (up to three bands a hex), fleets as boats,
+  sliding between hexes; foreign ones only where seen.
+- **Borders** in each people's colour; **fog of war** as a light mist over land known but unseen.
+- **Overlays**: gold ring on the selection, hover outline, reachable hexes, the march in gold dots,
+  a red ring on the attack target.
+- **Labels** on a 2D canvas over the scene: settlement banners (name, people, ⚔ when besieged),
+  cohort counts, battle flashes and floating numbers.
+- A "2D map / 3D map" button switches renderer (remembered); devices without WebGL get the 2D map.
+
+On software rendering a late large map (88×54, 94 settlements, 186 armies) draws a steady frame
+in 7–21 ms; a new view builds over a few frames.
 
 ## 8. Economy and goods
 

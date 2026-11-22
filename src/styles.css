@@ -2329,3 +2329,18 @@ input.rename {
   color: var(--iv-bronze);
   margin-left: 4px;
 }
+
+/* crises: why it struck, what it does, the ways out */
+.modal.crisis {
+  width: min(600px, 100%);
+}
+.crisis-why {
+  margin: 4px 0;
+}
+.crisis-risks {
+  padding-left: 18px;
+  font-size: 14px;
+}
+.crisis-line {
+  margin: 4px 0 8px;
+}

@@ -5,6 +5,8 @@ import { difficultyOf } from '../engine/difficulty.ts';
 import { VICTORY } from '../engine/victory.ts';
 import { VictoryDialog } from './VictoryDialog.tsx';
 import { NationDialog } from './NationDialog.tsx';
+import { CrisisDialog } from './CrisisDialog.tsx';
+import { CRISIS } from '../engine/crises.ts';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
 import {
@@ -90,6 +92,7 @@ type Dialog =
   | { kind: 'goods' }
   | { kind: 'victory' }
   | { kind: 'nation'; age?: number }
+  | { kind: 'crisis' }
   | { kind: 'dynasties' }
   | { kind: 'realm-event' }
   | { kind: 'battle'; report: BattleReport }
@@ -144,7 +147,7 @@ const KEYS: [string, string][] = [
   ['P', 'Peoples and diplomacy'],
   ['G', 'Goods: made, used and traded per turn'],
   ['V', 'Victory: the ways to win and who is closest'],
-  ['O', 'Nation: national directions and their edicts'],
+  ['O', 'Nation: national directions, edicts and crises'],
   ['Y', 'Dynasties: houses, governors, trinkets'],
   ['Esc', 'Close a window, or clear the selection'],
   ['?', 'This list'],
@@ -257,6 +260,12 @@ export function Game({
         key: 'research',
         label: 'Choose research',
         go: () => setDialog({ kind: 'research' }),
+      });
+    if (me.crisis && !me.crisis.response)
+      out.push({
+        key: 'crisis',
+        label: `Crisis: answer the ${CRISIS[me.crisis.id]?.name.toLowerCase() ?? 'crisis'}`,
+        go: () => setDialog({ kind: 'crisis' }),
       });
     if (me.pathDue)
       out.push({
@@ -375,6 +384,11 @@ export function Game({
     else if (game.ageCard) {
       setDialog({ kind: 'nation', age: game.ageCard });
       game.ageCard = undefined;
+    }
+    // a crisis has struck: shown once, then it waits in the to-do list
+    else if (game.crisisCard) {
+      setDialog({ kind: 'crisis' });
+      game.crisisCard = undefined;
     }
     // a new event is shown once; closed, it waits in the to-do list
     else if (game.realmEvents?.pending?.turn === game.turn) setDialog({ kind: 'realm-event' });
@@ -765,7 +779,13 @@ export function Game({
           title="Nation: national directions and edicts (O)"
         >
           <Icon name="flag" /> Nation
-          {me.pathDue ? <b className="war-pill">choose</b> : ''}
+          {me.crisis ? (
+            <b className="war-pill">crisis</b>
+          ) : me.pathDue ? (
+            <b className="war-pill">choose</b>
+          ) : (
+            ''
+          )}
         </button>
         <button
           className="secondary"
@@ -1178,11 +1198,20 @@ export function Game({
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'crisis' && (
+        <CrisisDialog
+          game={game}
+          civ={me}
+          report={r => report(r as Result)}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === 'nation' && (
         <NationDialog
           game={game}
           civ={me}
           age={dialog.age}
+          onCrisis={() => setDialog({ kind: 'crisis' })}
           report={r => report(r as Result)}
           onClose={() => setDialog(null)}
         />

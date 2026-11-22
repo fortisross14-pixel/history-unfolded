@@ -11,6 +11,7 @@ import {
 } from '../engine/paths.ts';
 import type { Civ, GameState } from '../engine/types.ts';
 import { VICTORIES } from '../engine/victory.ts';
+import { activeCrisis, crisisRisks } from '../engine/crises.ts';
 
 /**
  * The nation: the directions taken, their edicts, and a direction still to choose. Opened as the
@@ -22,11 +23,13 @@ export function NationDialog({
   age,
   report,
   onClose,
+  onCrisis,
 }: {
   game: GameState;
   civ: Civ;
   /** set when shown as the card for a newly entered age */
   age?: number;
+  onCrisis: () => void;
   report: (r: { ok: boolean; msg?: string }) => void;
   onClose: () => void;
 }) {
@@ -35,6 +38,8 @@ export function NationDialog({
   const taken = (civ.paths ?? []).map(id => PATHS[id]).filter(Boolean);
   const sys = age ? AGE_SYSTEMS[age] : undefined;
   const opened = age ? VICTORIES.filter(v => v.opensAt === age) : [];
+  const crisis = activeCrisis(game, civ);
+  const risks = crisisRisks(game, civ);
   return (
     <div className="modal-back" onClick={onClose}>
       <div
@@ -54,6 +59,25 @@ export function NationDialog({
           </button>
         </header>
         {sys && <p className="age-text">{sys.text}</p>}
+        {!age && (
+          <p className="small crisis-line">
+            {crisis ? (
+              <>
+                <b>Crisis: {crisis.def.name}</b>, {crisis.left} turns left at most
+                {crisis.state.response ? ` (answered: ${crisis.state.response})` : ''}.{' '}
+              </>
+            ) : risks.length ? (
+              <>
+                Building up: <b>{risks[0].def.name}</b> at {Math.round(risks[0].value * 100)}%.{' '}
+              </>
+            ) : (
+              <>No crisis is building. </>
+            )}
+            <button className="link" onClick={onCrisis}>
+              {crisis && !crisis.state.response ? 'Answer it' : 'See crises'}
+            </button>
+          </p>
+        )}
         {opened.length > 0 && (
           <p className="small">
             Victories now open: <b>{opened.map(v => v.name).join(' and ')}</b>. See Victory (V).

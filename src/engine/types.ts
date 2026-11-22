@@ -119,7 +119,25 @@ export interface Civ {
   /** a free people: one city, never expands; can be befriended, allied, absorbed or conquered */
   independent?: boolean;
   /** last turn's output, for the dominance victories: wealth made (GDP) and culture */
-  stats?: { gdp: number; culture: number };
+  stats?: {
+    gdp: number;
+    culture: number;
+    /** the most crowded settlement: people per housing */
+    crowd?: number;
+    /** settlements short of food */
+    starving?: number;
+    /** troop upkeep and gold income per turn */
+    upkeep?: number;
+    income?: number;
+    /** industrial buildings, and the average comfort bonus in % (negative: short of luxuries) */
+    industry?: number;
+    comfort?: number;
+  };
+  /** a crisis the realm is going through (crises.ts) */
+  crisis?: { id: string; since: number; until: number; eased?: boolean; response?: string };
+  /** last turn each crisis struck, and the earliest turn the next may */
+  crisisLast?: Record<string, number>;
+  crisisNext?: number;
   /** national directions taken (data/paths.ts), in order */
   paths?: string[];
   /** an age (2 or 4) whose national direction is still to be chosen */
@@ -345,6 +363,8 @@ export interface GameState {
   holding?: Record<string, { civId: number; since: number }>;
   /** the age the player just entered: shows the "Entering the age" card until closed */
   ageCard?: number;
+  /** a crisis has just struck the player: its dialog opens once */
+  crisisCard?: boolean;
   districts: District[];
   /** 1 where a road runs, per hex */
   roads: number[];

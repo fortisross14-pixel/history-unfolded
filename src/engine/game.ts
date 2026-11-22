@@ -62,6 +62,7 @@ import { AREA_NAMES, type Area } from '../data/dynasties.ts';
 import { difficultyOf, yieldFactor } from './difficulty.ts';
 import { victoryTurn } from './victory.ts';
 import { aiPathTurn, enterAge } from './paths.ts';
+import { crisisTurn } from './crises.ts';
 import { realmEventTurn, settleRealmEvent } from './realmEvents.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
@@ -1084,7 +1085,29 @@ export function endTurn(s: GameState): string[] {
       for (const [k, n] of Object.entries(e.total.goods))
         gdp += n * (GDP_WEIGHT[GOODS[k]?.kind ?? 'raw'] ?? 1);
     }
-    civ.stats = { gdp: Math.round(gdp), culture: Math.round(culture * yf) };
+    // the realm's pressures, read by crises (crises.ts): crowding, hunger, debt, industry, comfort
+    let crowd = 0,
+      starving = 0,
+      industry = 0,
+      comfort = 0;
+    for (const c of mine) {
+      const e = econ.get(c.id)!;
+      if (c.pop >= 4000 && e.total.housing > 0) crowd = Math.max(crowd, c.pop / e.total.housing);
+      if (e.surplus < 0 && (fed.get(c.id) ?? e.surplus) < 0) starving++;
+      comfort += e.comfort.pct;
+      for (const d of cityDistricts(s, c))
+        for (const x of d.slots) if (x.built && x.type && INDUSTRY.has(x.type)) industry++;
+    }
+    civ.stats = {
+      gdp: Math.round(gdp),
+      culture: Math.round(culture * yf),
+      crowd: Math.round(crowd * 100) / 100,
+      starving,
+      upkeep,
+      income: Math.round(gold * yf),
+      industry,
+      comfort: mine.length ? Math.round(comfort / mine.length) : 0,
+    };
     if (!civ.researching) civ.researching = nextResearch(s, civ);
     // science is stored even while nothing is chosen, so choosing late costs nothing
     civ.science += science * yf;
@@ -1118,6 +1141,9 @@ export function endTurn(s: GameState): string[] {
     if (civ.isPlayer) events.push(...dyn);
     // AI peoples choose their national direction and issue edicts
     if (!civ.isPlayer) aiPathTurn(s, civ);
+    // hard times that grow out of the realm's own state
+    const cr = crisisTurn(s, civ);
+    if (civ.isPlayer) events.push(...cr);
   }
   events.push(...diplomacyTurn(s));
   events.push(...historyTurn(s));
@@ -1492,6 +1518,19 @@ export function score(s: GameState, civId: number): number {
 }
 
 export const DEFAULT_TURN_LIMIT = 400;
+
+/** Buildings of the industrial economy: where strikes start. */
+const INDUSTRY = new Set([
+  'factory',
+  'foundry',
+  'ironworks',
+  'power-plant',
+  'railway-station',
+  'paper-mill',
+  'cannery',
+  'sawmill',
+  'pumping-station',
+]);
 
 /** Goods by kind, as wealth in the GDP: made goods are worth most. */
 const GDP_WEIGHT: Record<string, number> = { food: 0.5, raw: 1, luxury: 2, made: 3 };

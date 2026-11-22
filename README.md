@@ -84,6 +84,9 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   Renaissance; Diplomatic and Scientific in the Industrial age. Progress on the Victory screen (V).
 - **National directions**: on entering the Classical age and the Renaissance, choose a lasting
   direction with an edict (Nation screen, O); some are alternate developments earned by history.
+- **Crises**: famine, debt, plague, schism and strikes grow out of the realm's own state (crowding,
+  hunger, overspending, religious tension, factories); each changes play for a while and has
+  several ways out. The Nation screen shows the pressures building.
 - **Events**: a story to decide every 5 to 15 turns, varied, with costs shown up front.
 - **Renaming**: rename any settlement from its panel (✎).
 - **War and peace, cities falling**: declare war, capture cities by breaking their guard,

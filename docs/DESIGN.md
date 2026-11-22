@@ -770,6 +770,28 @@ choose by culture and their own seeded taste, and issue edicts when they pay. Ne
 system per age (tribal settlement, feudal obligations, labour and unrest) and crises driven by
 the realm's state.
 
+## 12c. Crises (as built)
+
+Hard times that grow out of a realm's own state, change play for a while, and always leave more
+than one way out. A crisis can strike only while its cause is real (pressure 100% or more),
+never before turn 40, at most one at a time, at least 35 turns apart, and the same crisis at most
+once in 60 turns. The chance is 12% a turn while the cause holds (×0.5 on Discovery, ×1.3 on
+Veteran for the player). The Nation screen (O) shows the pressures building before anything
+happens; the crisis card explains why it struck. Each crisis can be answered once; some end early
+when their cause is fixed. AI peoples answer at once.
+
+| Crisis | Ages | Cause | While it lasts | Ways out |
+| --- | --- | --- | --- | --- |
+| Famine | Ancient–Medieval | a third of settlements short of food | growth −40%, houses +2 unrest/turn | buy grain abroad (ends); send the hungry as settlers (eases); ration (eases, +5 unrest); feeding the realm ends it |
+| Debt Crisis | Classical+ | troop upkeep near income, treasury under 40 | gold −15%, morale −1 | borrow from the houses (ends, +10 unrest); debase the coinage (gold, eases); send the veterans home (ends); a healthy treasury ends it |
+| Plague | Classical+ | crowded settlements in a realm of 15,000+ | growth −60%, gold −15%, two largest lose 3% a turn | physicians (2 turns, eased); quarantine (no deaths, half as long); prayer (eases, −10 unrest) |
+| Schism | Medieval–Renaissance | religious tension 60+ with houses of worship | culture −25%, houses +3 unrest/turn | council (ends, tension −50); suppress (ends, −20 culture); let the faith divide (religious upheaval); tension under 30 ends it |
+| Strikes | Industrial | factories, worse with crowding or too few comforts | production −30%, gold −10% | concede wages (ends); labour laws (−30 culture, ends); break the strike (ends, +15 unrest); better conditions end it |
+
+In 320-turn AI games each realm met one or two crises, from mid-game on, mostly plague and
+schism: AI realms keep food and gold in hand, so famine and debt are the player's own risks.
+Next: world crises that touch several peoples at once (a continental plague).
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

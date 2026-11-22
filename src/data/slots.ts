@@ -766,6 +766,18 @@ const list: SlotType[] = [
     glyph: '♛',
     note: 'Great building, one in the realm: +200% to the industry of its district.',
   },
+  {
+    id: 'war-college',
+    name: 'War College',
+    group: 'craft',
+    role: 'great',
+    tech: 'medieval-age',
+    labour: 100,
+    build: { prod: 70, goods: { stone: 6, iron: 2 } },
+    out: {},
+    glyph: '♛',
+    note: 'Great building, one in the realm: every levy of the realm starts a battle seasoned, and the house governing it learns war three times as fast.',
+  },
   // ---------------- residential
   {
     id: 'houses',

@@ -55,10 +55,11 @@ import {
   honoursCost,
   powerOf,
   rulerOf,
-  trinketsOf,
+  levelOf,
+  armyStrength,
   yieldThrone,
 } from './dynasty.ts';
-import type { Line } from '../data/slots.ts';
+import type { Area } from '../data/dynasties.ts';
 import { isHousing, MIN_HOUSING } from '../data/slots.ts';
 import {
   buildShip,
@@ -633,8 +634,7 @@ function aiDynasties(s: GameState, civ: Civ) {
   const power = powerOf(s, civ);
   for (const t of [...civ.trinkets]) {
     const best = [...civ.dynasties].sort(
-      (a, b) =>
-        trinketsOf(b, t.line) - trinketsOf(a, t.line) || a.trinkets.length - b.trinkets.length,
+      (a, b) => levelOf(b, t.line) - levelOf(a, t.line) || a.trinkets.length - b.trinkets.length,
     )[0];
     const to = power.get(ruler.id)!.share < 0.4 ? ruler : best;
     giveTrinket(s, civ.id, t.id, to.id);
@@ -659,11 +659,11 @@ function aiDynasties(s: GameState, civ: Civ) {
               const l = SLOT_TYPES[x.type].line!;
               lines[l] = (lines[l] ?? 0) + 1;
             }
-      const top = Object.entries(lines).sort((a, b) => b[1] - a[1])[0]?.[0] as Line | undefined;
+      const top = Object.entries(lines).sort((a, b) => b[1] - a[1])[0]?.[0] as Area | undefined;
       // the house that favours this line, spread so no one house grows too heavy
       const others = civ.dynasties.filter(d => d.id !== ruler.id);
       const score = (d: (typeof others)[number]) =>
-        (top ? trinketsOf(d, top) * 2 : 0) - ((given.get(d.id) ?? 0) / Math.max(1, total)) * 20;
+        (top ? levelOf(d, top) * 2 : 0) - ((given.get(d.id) ?? 0) / Math.max(1, total)) * 20;
       const pick = [...others].sort((a, b) => score(b) - score(a))[0];
       if (!pick) continue;
       given.set(pick.id, (given.get(pick.id) ?? 0) + c.pop);
@@ -673,11 +673,10 @@ function aiDynasties(s: GameState, civ: Civ) {
   for (const d of civ.dynasties)
     if (d.id !== ruler.id && d.unrest >= 60 && civ.gold >= honoursCost(s, civ) + 40)
       grantHonours(s, civ.id, d.id);
-  // a war it is losing badly is given up
-  if (civ.civilWar && s.turn - civ.civilWar.since >= 4) {
-    const rebel = civ.dynasties.find(d => d.id === civ.civilWar!.rebel);
-    if (rebel && power.get(rebel.id)!.share > power.get(ruler.id)!.share * 1.5)
-      yieldThrone(s, civ.id);
+  // a civil war it is losing badly is given up
+  const war = civ.civilWar;
+  if (war?.rival !== undefined && !war.pending && s.turn - war.since >= 5) {
+    if (armyStrength(s, civ.id) < armyStrength(s, war.rival) * 0.5) yieldThrone(s, civ.id);
   }
 }
 

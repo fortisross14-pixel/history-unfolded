@@ -6,6 +6,7 @@
 import { OPPOSED, TAGS } from '../data/culture.ts';
 import { GOODS } from '../data/goods.ts';
 import { civGoods, type GoodLine } from './economy.ts';
+import { inCivilWar } from './dynasty.ts';
 import { marketSpend, marketStock } from './economy.ts';
 import { distance } from './hex.ts';
 import { tagCounts } from './mods.ts';
@@ -229,6 +230,12 @@ export function evaluateOffer(s: GameState, from: number, to: number, o: Offer):
   let value = bundleValue(s, to, o.give, turns) - bundleValue(s, to, o.get, turns);
   if (o.peace) {
     if (!war) return { accept: false, value: 0, reason: 'You are not at war.' };
+    if (inCivilWar(s, from, to))
+      return {
+        accept: false,
+        value: 0,
+        reason: 'A civil war ends in victory or stalemate, not in a treaty.',
+      };
     const w = s.wars.find(x => pairIs(x, from, to))!;
     const length = s.turn - w.since;
     if (length < 6)

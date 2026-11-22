@@ -10,6 +10,7 @@ import {
   powerOf,
   rulerOf,
   yieldThrone,
+  chooseSide,
 } from '../src/engine/dynasty.ts';
 import { cityEconomy, slotProblem } from '../src/engine/economy.ts';
 import {
@@ -47,6 +48,11 @@ const s: GameState = newGame({
   playerName: 'Test',
 });
 const me = player(s);
+check(
+  Object.values(me.dynasties[0].traits).reduce((a, b) => a + (b ?? 0), 0) === 3,
+  `the founding house is born with 3 points (${JSON.stringify(me.dynasties[0].traits)})`,
+);
+for (const c of s.civs) for (const d of c.dynasties) d.traits = {};
 foundCity(s, s.formations.find(f => f.civId === me.id && f.kind === 'settlers')!.id);
 const capital = s.cities.find(c => c.civId === me.id)!;
 
@@ -139,24 +145,102 @@ check(
   msgs.some(m => /Civil war/.test(m)),
   'the player is told',
 );
-check(!assignGovernor(s, me.id, town.id, b.id).ok, 'the rebel house cannot be stripped mid-war');
-const ecTown = cityEconomy(s, town).total.science;
-check(ecTown >= 0, 'rebel settlements still count (at half)');
-// it ends after the war's turns; or the throne can give way
+check(!!me.civilWar?.pending, 'the realm waits for the player to choose a side');
+check(!assignGovernor(s, me.id, town.id, b.id).ok, 'no reassigning until a side is chosen');
 const saved = structuredClone(s);
+const mineBefore = s.cities.filter(c => c.civId === me.id).length;
+const rebelTowns = s.cities.filter(c => c.civId === me.id && c.governor === a.id).length;
+// stand with the throne: the rebels' settlements break away as a realm at war
+const side = chooseSide(s, me.id, ruler.id);
+const rivalId = me.civilWar?.rival;
+check(side.ok && rivalId !== undefined, 'choosing the throne splits the realm: ' + side.msg);
+const rival = s.civs[rivalId!];
+check(
+  s.cities.filter(c => c.civId === rival.id).length === rebelTowns &&
+    s.cities.filter(c => c.civId === me.id).length === mineBefore - rebelTowns,
+  `the rebels hold their ${rebelTowns} settlements as the ${rival.name}`,
+);
+check(
+  rival.dynasties.length === 1 && rival.ruling === a.id && !me.dynasties.some(d => d.id === a.id),
+  'the rebel house rules the breakaway realm',
+);
+check(
+  me.dynasties.some(d => d.id === b.id),
+  'the other houses stay with the side the player chose',
+);
+check(
+  s.wars.some(w => (w.a === me.id && w.b === rival.id) || (w.b === me.id && w.a === rival.id)),
+  'the two realms are at war',
+);
+// the bigger army wins after the war's turns: give the throne the bigger army
+for (const f of s.formations)
+  if (f.civId === rival.id && f.kind === 'army') f.cohorts = f.cohorts.slice(0, 1);
+const army = s.formations.find(f => f.civId === me.id && f.kind === 'army')!;
+for (let k = 0; k < 6; k++) army.cohorts.push({ ...army.cohorts[0], id: s.nextId++ });
 for (let k = 0; k < CIVIL_WAR_TURNS + 1 && me.civilWar; k++) {
   s.turn++;
   dynastyTurn(s, me);
 }
-check(!me.civilWar, 'the civil war ends after its turns');
+check(!me.civilWar && !rival.alive, 'after the war the realm is one again');
 check(
-  rulerOf(me).id === a.id || town.governor === ruler.id,
-  `either House ${a.name} took the throne or lost its charges (ruler now ${rulerOf(me).name})`,
+  rulerOf(me).id === ruler.id && s.cities.every(c => c.civId !== rival.id),
+  'the throne, with the bigger army, keeps the crown and the breakaway settlements',
 );
+// a stalemate: armies within 10% of each other leave two realms
 {
-  const t = saved;
+  const t = structuredClone(saved);
+  const civ = t.civs[me.id];
+  chooseSide(t, me.id, rulerOf(civ).id);
+  const rv = t.civs[civ.civilWar!.rival!];
+  // the same army on both sides
+  const proto = t.formations.find(f => f.kind === 'army')!;
+  t.formations = t.formations.filter(
+    f => f.kind !== 'army' || (f.civId !== me.id && f.civId !== rv.id),
+  );
+  for (const [who, hex] of [
+    [me.id, t.cities.find(c => c.civId === me.id)!.hex],
+    [rv.id, t.cities.find(c => c.civId === rv.id)!.hex],
+  ])
+    t.formations.push({
+      ...proto,
+      id: t.nextId++,
+      civId: who,
+      hex,
+      aboard: undefined,
+      cohorts: proto.cohorts.map(c => ({ ...c, id: t.nextId++ })),
+    });
+  for (let k = 0; k < CIVIL_WAR_TURNS + 1 && civ.civilWar; k++) {
+    t.turn++;
+    dynastyTurn(t, civ);
+  }
+  check(
+    !civ.civilWar && rv.alive && rv.splitFrom === undefined,
+    'evenly matched armies: stalemate, two realms',
+  );
+  check(
+    !t.wars.some(w => (w.a === me.id && w.b === rv.id) || (w.b === me.id && w.a === rv.id)),
+    'and peace between them',
+  );
+}
+// standing with the rebels: the old throne's settlements break away instead
+{
+  const t = structuredClone(saved);
+  const civ = t.civs[me.id];
+  const r = chooseSide(t, me.id, a.id);
+  check(
+    r.ok && civ.ruling === a.id,
+    'standing with the rebels puts their house on the throne at once',
+  );
+  const rv = t.civs[civ.civilWar!.rival!];
+  check(rv.ruling === ruler.id, `the old throne, House ${ruler.name}, holds the breakaway realm`);
+}
+{
+  const t = structuredClone(saved);
   const r = yieldThrone(t, me.id);
-  check(r.ok && rulerOf(t.civs[me.id]).id === a.id, 'yielding the throne hands it over at once');
+  check(
+    r.ok && rulerOf(t.civs[me.id]).id === a.id,
+    'yielding before the split hands the throne over',
+  );
 }
 
 // ---- democracy: the party with most people governs; bonuses shrink
@@ -208,7 +292,7 @@ check(
   d.slots[4] = { type: 'academy', built: true, progress: 0, paid: true };
   const withAcademy = base();
   check(
-    Math.abs(withAcademy - withLab * 3 - 1.1) < 1e-6,
+    Math.abs(withAcademy - withLab * 3 - cityEconomy(t, tc).slots.get(d.id)![4].out.science) < 1e-6,
     `a great building triples the line (${withLab} → ${withAcademy}, +1.1 of its own, with the throne's trinket)`,
   );
   const other = t.cities.find(c => c.civId === me.id && c !== tc)!;

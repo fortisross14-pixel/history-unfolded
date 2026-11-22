@@ -1,9 +1,22 @@
 import { useState } from 'react';
-import { CIVIL_WAR_TURNS, REVOLT_AT, TRINKET_PCT } from '../data/dynasties.ts';
-import { LINES, SLOT_TYPES, type Line } from '../data/slots.ts';
 import {
+  AREA_ICON,
+  AREA_NAMES,
+  AREAS,
+  CIVIL_WAR_TURNS,
+  LEVEL_PCT,
+  MAX_LEVEL,
+  REVOLT_AT,
+  type Area,
+} from '../data/dynasties.ts';
+import { SLOT_TYPES } from '../data/slots.ts';
+import {
+  armyStrength,
   assignGovernor,
+  chooseSide,
   giveTrinket,
+  levelOf,
+  xpProgress,
   governorOf,
   grantHonours,
   honoursCost,
@@ -24,19 +37,9 @@ interface Props {
   onClose: () => void;
 }
 
-const LINE_ICON: Record<Line, string> = {
-  food: '🌾',
-  wood: '🌲',
-  mining: '⛏',
-  research: '🔬',
-  culture: '🎭',
-  gold: '⛁',
-  industry: '⚒',
-};
-
 /** What a settlement works most, by its buildings' lines. */
-function mainLine(game: GameState, c: City): Line | null {
-  const n: Partial<Record<Line, number>> = {};
+function mainLine(game: GameState, c: City): Area | null {
+  const n: Partial<Record<Area, number>> = {};
   for (const d of game.districts)
     if (d.cityId === c.id)
       for (const x of d.slots) {
@@ -44,7 +47,7 @@ function mainLine(game: GameState, c: City): Line | null {
         if (l) n[l] = (n[l] ?? 0) + 1;
       }
   const top = Object.entries(n).sort((a, b) => b[1] - a[1])[0];
-  return (top?.[0] as Line) ?? null;
+  return (top?.[0] as Area) ?? null;
 }
 
 /**
@@ -91,18 +94,31 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
         <p className="muted small">
           {demo
             ? `Under Democracy the houses are parties: give them settlements freely; the party that governs the most people leads. Rivalry rarely turns to war, but trinkets count for ${Math.round(0.4 * 100)}% of their worth.`
-            : `Each settlement is governed by a house. A house's trinkets give +${TRINKET_PCT}% each to their line where it governs, and the ruling house lends half of its own to the whole realm. Power is the people a house governs (trinkets add weight): a house that outweighs the throne grows restless, and at ${REVOLT_AT} it rises in civil war.`}
+            : `Each settlement is governed by a house. A house's level in an area (0–${MAX_LEVEL}: what it was born with, what governing has taught it, and its trinkets) gives +${LEVEL_PCT}% per level to that line where it governs; the ruling house lends half of its levels to the whole realm. Power is the people a house governs and its levels: a house that outweighs the throne grows restless, and at ${REVOLT_AT} the realm splits in civil war.`}
         </p>
 
-        {war && rebel && (
+        {war?.pending && rebel && (
           <div className="civil-war">
-            <b>Civil war:</b> House {rebel.name} has risen against House {ruler.name}. Its
-            settlements make half; the rest a tenth less. In{' '}
-            {Math.max(0, CIVIL_WAR_TURNS - (game.turn - war.since))} turns the war is decided by the
-            people each side holds, and your armies stand with the throne.
-            <button onClick={() => act(yieldThrone(game, civId))}>
-              Yield the throne to House {rebel.name}
+            <b>Civil war!</b> House {rebel.name} has risen against House {ruler.name}. The realm
+            will split: choose your side. Your side keeps the other houses and your alliances; the
+            other becomes a realm of its own, at war with you for {CIVIL_WAR_TURNS} turns.
+            <button className="primary" onClick={() => act(chooseSide(game, civId, ruler.id))}>
+              Stand with House {ruler.name} (the throne)
             </button>
+            <button onClick={() => act(chooseSide(game, civId, rebel.id))}>
+              Stand with House {rebel.name} (the rebels)
+            </button>
+          </div>
+        )}
+        {war && !war.pending && war.rival !== undefined && (
+          <div className="civil-war">
+            <b>Civil war</b> against the {game.civs[war.rival].name}: turn{' '}
+            {Math.min(CIVIL_WAR_TURNS, game.turn - war.since)} of {CIVIL_WAR_TURNS}. Take all their
+            settlements to win outright; otherwise the bigger army takes the throne, and armies
+            within 10% of each other end in a stalemate (two realms). Armies now: yours{' '}
+            {Math.round(armyStrength(game, civId))}, theirs{' '}
+            {Math.round(armyStrength(game, war.rival))}.
+            <button onClick={() => act(yieldThrone(game, civId))}>Yield the throne</button>
           </div>
         )}
 
@@ -111,7 +127,7 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
             const pw = power.get(d.id)!;
             const isRuler = d.id === ruler.id;
             const governs = mine.filter(c => governorOf(game, c)?.id === d.id);
-            const lines = (Object.keys(LINES) as Line[]).filter(l => trinketsOf(d, l) > 0);
+            const areas = AREAS.filter(a => levelOf(d, a) > 0 || xpProgress(d, a) > 0);
             return (
               <div key={d.id} className={`house ${isRuler ? 'ruler' : ''}`}>
                 <div className="house-head">
@@ -150,25 +166,34 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
                     </button>
                   </div>
                 )}
-                <p className="small">
-                  {lines.length ? (
-                    lines.map(l => (
-                      <span
-                        key={l}
-                        className="trinket-chip"
-                        title={d.trinkets
-                          .filter(t => t.line === l)
-                          .map(t => t.name)
-                          .join(', ')}
+                <div className="levels">
+                  {areas.length ? (
+                    areas.map(a => (
+                      <div
+                        key={a}
+                        className="level-row"
+                        title={`${d.traits?.[a] ?? 0} born · ${trinketsOf(d, a)} trinkets · experience ${Math.round(xpProgress(d, a) * 100)}% to the next`}
                       >
-                        {LINE_ICON[l]} {LINES[l].name} ×{trinketsOf(d, l)} (+
-                        {trinketsOf(d, l) * TRINKET_PCT}%)
-                      </span>
+                        <span>
+                          {AREA_ICON[a]} {AREA_NAMES[a]}
+                        </span>
+                        <span className="pips">
+                          {Array.from({ length: MAX_LEVEL }, (_, k) => (
+                            <i key={k} className={k < levelOf(d, a) ? 'on' : ''} />
+                          ))}
+                        </span>
+                        <small>
+                          {levelOf(d, a)} · +{levelOf(d, a) * LEVEL_PCT}%
+                        </small>
+                      </div>
                     ))
                   ) : (
-                    <span className="muted">No trinkets yet.</span>
+                    <span className="muted small">No strengths yet.</span>
                   )}
-                </p>
+                </div>
+                {d.trinkets.length > 0 && (
+                  <p className="small muted">Trinkets: {d.trinkets.map(t => t.name).join(', ')}</p>
+                )}
                 <p className="small muted">
                   Governs: {governs.length ? governs.map(c => c.name).join(', ') : 'nothing'}
                 </p>
@@ -184,8 +209,8 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
               {civ.trinkets.map(t => (
                 <div key={t.id} className="row">
                   <span className="trinket-chip">
-                    {LINE_ICON[t.line]} {t.name}{' '}
-                    <small className="muted">({LINES[t.line].name})</small>
+                    {AREA_ICON[t.line]} {t.name}{' '}
+                    <small className="muted">({AREA_NAMES[t.line]})</small>
                   </span>
                   <select
                     value={giveTo[t.id] ?? ruler.id}
@@ -227,7 +252,7 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
                     {c.name} <small className="muted">{TIER_NAME[c.tier]}</small>
                   </td>
                   <td>{c.pop.toLocaleString()}</td>
-                  <td>{ml ? `${LINE_ICON[ml]} ${LINES[ml].name}` : '—'}</td>
+                  <td>{ml ? `${AREA_ICON[ml]} ${AREA_NAMES[ml]}` : '—'}</td>
                   <td>
                     <select
                       value={governorOf(game, c)?.id}
@@ -236,8 +261,8 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
                       {civ.dynasties.map(d => (
                         <option key={d.id} value={d.id}>
                           House {d.name}
-                          {ml && trinketsOf(d, ml)
-                            ? ` (${LINES[ml].name} +${trinketsOf(d, ml) * TRINKET_PCT}%)`
+                          {ml && levelOf(d, ml)
+                            ? ` (${AREA_NAMES[ml]} ${levelOf(d, ml)}: +${levelOf(d, ml) * LEVEL_PCT}%)`
                             : ''}
                         </option>
                       ))}

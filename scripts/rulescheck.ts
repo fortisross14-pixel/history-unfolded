@@ -74,6 +74,8 @@ for (const seed of [1, 2, 3, 42]) {
     playerName: 'Test',
   });
   const me = player(s);
+  // plain numbers below: the houses start with no strengths
+  for (const c of s.civs) for (const d of c.dynasties) d.traits = {};
   check(s.civs.length === 6, '6 civs');
   check(s.cities.length === 5, 'AI civs founded their capitals');
   const mine = () => s.formations.filter(f => f.civId === me.id);

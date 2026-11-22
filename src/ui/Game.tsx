@@ -332,6 +332,8 @@ export function Game({
     else toast(`${calm.length} things happened. 📜 Last turn has the full story.`);
     bump();
     lastTodo.current = '';
+    // a house has risen: the choice of side cannot wait in the to-do list
+    if (me.civilWar?.pending) setDialog({ kind: 'dynasties' });
     if (!selectNext()) setSel(null);
   };
 

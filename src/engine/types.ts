@@ -151,8 +151,13 @@ export interface Civ {
   ruling: number;
   /** trinkets earned by building, not yet given to a house */
   trinkets: Trinket[];
-  /** a house has risen against the throne */
-  civilWar?: { rebel: number; since: number };
+  /**
+   * A house has risen. `pending`: the player has yet to choose a side (the realm has not split).
+   * Once split, `rival` is the breakaway realm and the war runs CIVIL_WAR_TURNS.
+   */
+  civilWar?: { rebel: number; since: number; pending?: boolean; rival?: number };
+  /** a realm that broke away in a civil war (from this civ id) */
+  splitFrom?: number;
   science: number;
   gold: number;
   /** 1 = explored, per hex */
@@ -173,7 +178,7 @@ export interface Civ {
 export interface Trinket {
   id: number;
   name: string;
-  line: import('../data/slots.ts').Line;
+  line: import('../data/dynasties.ts').Area;
 }
 
 export interface Dynasty {
@@ -181,6 +186,10 @@ export interface Dynasty {
   name: string;
   color: string;
   trinkets: Trinket[];
+  /** points it was born with, by area (2 in one, 1 in another) */
+  traits: Partial<Record<import('../data/dynasties.ts').Area, number>>;
+  /** experience from governing, by area */
+  xp: Partial<Record<import('../data/dynasties.ts').Area, number>>;
   /** 0..REVOLT_AT: how close the house is to rising */
   unrest: number;
   founded: number;

@@ -45,8 +45,17 @@ import {
   capStores,
   slotProblem,
 } from './economy.ts';
-import { isRural, LINES, SLOT_TYPES } from '../data/slots.ts';
-import { dynastyTurn, foundingDynasty, maybeTrinket } from './dynasty.ts';
+import { isRural, SLOT_TYPES } from '../data/slots.ts';
+import {
+  awardTrinket,
+  dynastyTurn,
+  foundingDynasty,
+  levyXpFrom,
+  maybeTrinket,
+  settlementAreas,
+  settlePending,
+} from './dynasty.ts';
+import { AREA_NAMES, type Area } from '../data/dynasties.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
 import {
@@ -693,7 +702,12 @@ export function levy(s: GameState, cityId: number): Result {
     nextLevyName(s, c.civId),
   );
   f.moves = 0;
-  if (hasSlot(s, c, 'barracks')) for (const co of f.cohorts) co.xp = 1;
+  // barracks, a house seasoned in war, and the realm's War College all season new levies
+  const seasoned =
+    (hasSlot(s, c, 'barracks') ? 1 : 0) +
+    levyXpFrom(s, c) +
+    (s.cities.some(x => x.civId === c.civId && hasSlot(s, x, 'war-college')) ? 1 : 0);
+  for (const co of f.cohorts) co.xp = Math.max(co.xp, seasoned);
   log(s, c.civId, `${c.name} raised the ${f.name} (${people} people).`);
   return ok(`${f.name} raised in ${c.name}.`);
 }
@@ -906,6 +920,8 @@ export function setResearch(s: GameState, civId: number, techId: string): Result
 export function endTurn(s: GameState): string[] {
   const events: string[] = [];
   const me = player(s);
+  // a civil war choice left open: the player stands with the throne
+  events.push(...settlePending(s, me));
   const logStart = s.log.length;
   // AI acts after the player, in the same turn
   for (const civ of s.civs) if (!civ.isPlayer && civ.alive) aiTurn(s, civ);
@@ -944,11 +960,22 @@ export function endTurn(s: GameState): string[] {
       for (const done of build(s, c, e.total.prod)) {
         if (civ.isPlayer) events.push(`${c.name}: ${done.text} finished.`);
         // a finished building of a line may bring a trinket for the houses
-        const line = SLOT_TYPES[done.type]?.line;
-        const t = line ? maybeTrinket(s, civ, line, c.id * 13 + done.type.length) : null;
+        const st = SLOT_TYPES[done.type];
+        const line: Area | undefined = st?.id === 'war-college' ? 'military' : st?.line;
+        // a great building always brings two treasures of its line
+        if (st?.role === 'great' && line) {
+          const a = awardTrinket(s, civ, line, c.id * 17);
+          const b = awardTrinket(s, civ, line, c.id * 19);
+          if (civ.isPlayer)
+            events.push(`${st.name} brings the ${a.name} and the ${b.name} to your treasury.`);
+        }
+        const t =
+          line && st?.role !== 'great'
+            ? maybeTrinket(s, civ, line, c.id * 13 + done.type.length)
+            : null;
         if (t && civ.isPlayer)
           events.push(
-            `A trinket is found in ${c.name}: the ${t.name} (${LINES[line!].name}). Give it to a house.`,
+            `A trinket is found in ${c.name}: the ${t.name} (${AREA_NAMES[line!]}). Give it to a house.`,
           );
       }
       if (c.food < -5) {
@@ -1197,6 +1224,11 @@ export function deserialize(json: string): GameState {
     throw new SaveError('This save comes from an early test version and cannot be loaded.');
   while (s.version < SAVE_VERSION) s = MIGRATIONS[s.version]({ ...s, version: s.version });
   for (const c of s.cities) c.tier ??= 'town';
+  for (const c of s.civs)
+    for (const d of c.dynasties ?? []) {
+      d.traits ??= {};
+      d.xp ??= {};
+    }
   validate(s);
   return s;
 }
@@ -1393,7 +1425,13 @@ export function defenderAt(s: GameState, hex: number): { f?: Formation; city?: C
 /** The city guard: townsfolk with spears and hide shields, more of them in bigger cities. */
 export function cityGuard(s: GameState, c: City): Cohort[] {
   const walls = cityWalls(s, c);
-  const n = 3 + Math.floor(c.pop / 2000) + walls.guard + Math.floor(civMods(s, c.civId).guard);
+  const n =
+    3 +
+    Math.floor(c.pop / 2000) +
+    walls.guard +
+    Math.floor(civMods(s, c.civId).guard) +
+    // a governor house seasoned in war musters more of the townsfolk
+    Math.floor(levyXpFrom(s, c) * 1.5);
   return Array.from({ length: n }, (_, i) => ({
     id: -1 - i,
     strength: Math.max(1, Math.round(COHORT_SIZE * c.guard)),
@@ -1733,6 +1771,16 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
       b.city.guard * (1 - report.defender.lost / Math.max(1, report.defender.start)),
     );
   }
+  // a broken enemy that lost heavily: the victors may carry off a war trophy
+  if (report.outcome === 'defender-broke' && report.defender.lost >= 300) {
+    const civ = s.civs[f.civId];
+    const roll = mulberry32(hashSeed(s.settings.map.seed, s.turn * 331 + f.id))();
+    if (roll < 0.25) {
+      const t = awardTrinket(s, civ, 'military', f.id);
+      if (civ.isPlayer)
+        log(s, civ.id, `A trophy from the field: the ${t.name}. Give it to a house.`);
+    }
+  }
   if (report.outcome === 'defender-broke' && b.df && defenderAlive) {
     // retreat away from the attacker, or be cut down if there is nowhere to go
     const pass = passable(s, b.df);
@@ -1828,8 +1876,11 @@ function captureCity(s: GameState, c: City, by: Formation): string {
     war.taken ??= {};
     war.taken[civ.id] = (war.taken[civ.id] ?? 0) + 1;
   }
+  // the conquerors carry off a treasure of what the place was known for
+  const areas = Object.entries(settlementAreas(s, c)).sort((x, y) => y[1] - x[1]);
+  const loot = awardTrinket(s, civ, (areas[0]?.[0] as Area) ?? 'military', c.id);
   log(s, by.civId, msg);
-  return msg;
+  return `${msg} Among the spoils: the ${loot.name}.`;
 }
 
 /** A people with no cities and no settlers is gone; its troops scatter. */

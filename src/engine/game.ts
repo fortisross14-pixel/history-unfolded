@@ -498,7 +498,9 @@ export function advance(s: GameState, f: Formation): Result {
       f.aboard = undefined;
     }
     // troops at war can cut (or reopen) roads and sea lanes as they move
-    if (s.wars.some(w => w.a === f.civId || w.b === f.civId)) invalidateMarkets();
+    const carries = (h: number) => s.roads[h] || s.map.river[h] || isWaterHex(s, h);
+    if ((carries(from) || carries(next)) && s.wars.some(w => w.a === f.civId || w.b === f.civId))
+      invalidateMarkets();
     updateExplored(s, f.civId);
     if (end?.mergeWith) merged = mergeInto(s, f, end.mergeWith);
     if (end?.embark) merged = `${f.name} boarded ${end.embark.name}.`;
@@ -862,6 +864,7 @@ export function endTurn(s: GameState): string[] {
   for (const e of s.log.slice(logStart))
     if (e.civId !== me.id && e.text.includes(me.name)) events.push(e.text);
 
+  const cultureOf = new Map<number, number>();
   for (const civ of s.civs) {
     if (!civ.alive) continue;
     let science = 0,
@@ -892,6 +895,7 @@ export function endTurn(s: GameState): string[] {
         if (civ.isPlayer) events.push(`${c.name} is starving.`);
       }
     }
+    cultureOf.set(civ.id, culture);
     let upkeep = 0;
     for (const f of s.formations)
       if (f.civId === civ.id) for (const co of f.cohorts) upkeep += cohortUpkeep(co);
@@ -915,10 +919,7 @@ export function endTurn(s: GameState): string[] {
 
   for (const civ of s.civs) {
     if (!civ.alive) continue;
-    const culture = s.cities
-      .filter(c => c.civId === civ.id)
-      .reduce((a, c) => a + cityEconomy(s, c).total.culture, 0);
-    const msgs = cultureTurn(s, civ, culture);
+    const msgs = cultureTurn(s, civ, cultureOf.get(civ.id) ?? 0);
     if (civ.isPlayer) events.push(...msgs);
   }
   events.push(...diplomacyTurn(s));

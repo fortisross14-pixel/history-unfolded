@@ -36,16 +36,31 @@ export const emptySlot = (type: string | null = null): SlotState => ({
 });
 
 /** True when another district already works the deposit on `depHex`. */
+const districtIndex = new WeakMap<District[], { n: number; byHex: Map<number, District> }>();
+/** Districts by hex, rebuilt when the list changes length. */
+function districtsByHex(s: GameState): Map<number, District> {
+  let ix = districtIndex.get(s.districts);
+  if (!ix || ix.n !== s.districts.length) {
+    ix = { n: s.districts.length, byHex: new Map(s.districts.map(d => [d.hex, d])) };
+    districtIndex.set(s.districts, ix);
+  }
+  return ix.byHex;
+}
+
+/** True when another district already works the deposit on `depHex`. */
 function claimedElsewhere(s: GameState, depHex: number, kind: string, districtId: number): boolean {
-  const g = gridOf(s);
+  const byHex = districtsByHex(s);
   const uses = (d: District) =>
     d.slots.some(x => x.type && SLOT_TYPES[x.type]?.needs?.deposit?.includes(kind));
-  const onHex = s.districts.find(d => d.hex === depHex);
+  const onHex = byHex.get(depHex);
   // the district standing on the deposit has first call on it
   if (onHex) return onHex.id !== districtId && uses(onHex);
-  return s.districts.some(
-    d => d.id !== districtId && d.id < districtId && distance(g, d.hex, depHex) <= 1 && uses(d),
-  );
+  // otherwise the oldest district in reach that uses it (only the six neighbours can reach)
+  for (const n of neighbors(gridOf(s), depHex)) {
+    const d = byHex.get(n);
+    if (d && d.id !== districtId && d.id < districtId && uses(d)) return true;
+  }
+  return false;
 }
 
 /**

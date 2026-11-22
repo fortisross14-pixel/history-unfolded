@@ -401,6 +401,8 @@ function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[
 }
 
 function planDistricts(s: GameState, civ: Civ, c: City) {
+  // replanning is costly: each city looks again every few turns, staggered
+  if ((s.turn + c.id) % 3 !== 0 && cityDistricts(s, c).length > 1) return;
   const outer = cityDistricts(s, c).filter(d => d.hex !== c.hex);
   // the city centre fills in once there is a district bringing in goods
   const centre = districtAt(s, c.hex);

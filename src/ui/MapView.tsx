@@ -41,7 +41,14 @@ export function MapView({
     frame.current = requestAnimationFrame(() => {
       frame.current = 0;
       const r = rr.current;
-      if (r) r.draw(props.current.game, props.current.civId, props.current.overlay);
+      if (!r) return;
+      const t0 = performance.now();
+      r.draw(props.current.game, props.current.civId, props.current.overlay);
+      // frame timings for the perf check (scripts/perf-smoke.ts)
+      const w = window as unknown as { __drawMs?: number[] };
+      (w.__drawMs ??= []).push(performance.now() - t0);
+      if (w.__drawMs.length > 300) w.__drawMs.shift();
+      if (r.wantsSettle) setTimeout(redraw, 200);
     });
   };
 

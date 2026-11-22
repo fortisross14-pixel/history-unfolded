@@ -2421,3 +2421,44 @@ input.rename {
   bottom: 8px;
   min-height: 36px;
 }
+
+/* the map in low-poly 3D (preview) */
+.map3d {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: radial-gradient(ellipse at center, #e8dfc6, #cbbd98);
+}
+.map3d-scene {
+  position: absolute;
+  inset: 0;
+}
+.map3d-scene canvas {
+  display: block;
+}
+.map3d-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  max-width: calc(100% - 32px);
+  background: var(--iv-panel);
+  border: 1px solid var(--iv-line);
+  border-radius: 10px;
+  box-shadow: var(--iv-shadow);
+}
+.map3d-bar button {
+  min-height: 40px;
+}
+.map3d-fail {
+  position: absolute;
+  top: 40%;
+  width: 100%;
+  text-align: center;
+}

@@ -31,7 +31,7 @@ export type Pick = { district: number; slot: number | null };
 // ---------------------------------------------------------------- materials and a small kit
 
 const mats = new Map<string, THREE.MeshStandardMaterial>();
-const M = (c: string, o: THREE.MeshStandardMaterialParameters = {}) => {
+export const M = (c: string, o: THREE.MeshStandardMaterialParameters = {}) => {
   const k = c + JSON.stringify(o);
   let m = mats.get(k);
   if (!m) {
@@ -46,7 +46,7 @@ const M = (c: string, o: THREE.MeshStandardMaterialParameters = {}) => {
   }
   return m;
 };
-function add(
+export function add(
   g: THREE.Object3D,
   geo: THREE.BufferGeometry,
   c: string,
@@ -62,9 +62,17 @@ function add(
   g.add(m);
   return m;
 }
-const box = (g: THREE.Object3D, w: number, h: number, d: number, c: string, x = 0, y = 0, z = 0) =>
-  add(g, new THREE.BoxGeometry(w, h, d), c, x, y + h / 2, z);
-const cyl = (
+export const box = (
+  g: THREE.Object3D,
+  w: number,
+  h: number,
+  d: number,
+  c: string,
+  x = 0,
+  y = 0,
+  z = 0,
+) => add(g, new THREE.BoxGeometry(w, h, d), c, x, y + h / 2, z);
+export const cyl = (
   g: THREE.Object3D,
   r1: number,
   r2: number,
@@ -75,11 +83,19 @@ const cyl = (
   z = 0,
   seg = 7,
 ) => add(g, new THREE.CylinderGeometry(r1, r2, h, seg), c, x, y + h / 2, z);
-const cone = (g: THREE.Object3D, r: number, h: number, c: string, x = 0, y = 0, z = 0, seg = 6) =>
-  add(g, new THREE.ConeGeometry(r, h, seg), c, x, y + h / 2, z);
-const ball = (g: THREE.Object3D, r: number, c: string, x = 0, y = 0, z = 0) =>
+export const cone = (
+  g: THREE.Object3D,
+  r: number,
+  h: number,
+  c: string,
+  x = 0,
+  y = 0,
+  z = 0,
+  seg = 6,
+) => add(g, new THREE.ConeGeometry(r, h, seg), c, x, y + h / 2, z);
+export const ball = (g: THREE.Object3D, r: number, c: string, x = 0, y = 0, z = 0) =>
   add(g, new THREE.IcosahedronGeometry(r, 0), c, x, y, z);
-function prism(w: number, h: number, d: number) {
+export function prism(w: number, h: number, d: number) {
   const s = new THREE.Shape();
   s.moveTo(-w / 2, 0);
   s.lineTo(w / 2, 0);
@@ -89,7 +105,7 @@ function prism(w: number, h: number, d: number) {
   g.translate(0, 0, -d / 2);
   return g;
 }
-function rng(seed: number): Rng {
+export function rng(seed: number): Rng {
   let a = seed >>> 0;
   return () => {
     a |= 0;
@@ -101,7 +117,7 @@ function rng(seed: number): Rng {
 }
 
 /** the palette of the Ivory Codex city */
-const C = {
+export const C = {
   grass: '#a7b86f',
   grass2: '#94a95e',
   meadow: '#b6c47c',
@@ -144,7 +160,7 @@ const GROUP_ROOF: Record<string, string> = {
   civic: '#6b4a8a',
 };
 
-function house(
+export function house(
   g: THREE.Object3D,
   x: number,
   z: number,
@@ -162,14 +178,21 @@ function house(
   add(p, prism(w + 0.05, roofH, d + 0.05), roof, 0, h, 0);
   return p;
 }
-function tree(g: THREE.Object3D, x: number, z: number, s = 1, kind = 'leaf', r: Rng = Math.random) {
+export function tree(
+  g: THREE.Object3D,
+  x: number,
+  z: number,
+  s = 1,
+  kind = 'leaf',
+  r: Rng = Math.random,
+) {
   cyl(g, 0.022 * s, 0.03 * s, 0.12 * s, C.timber, x, 0, z, 5);
   if (kind === 'pine') {
     cone(g, 0.11 * s, 0.22 * s, C.pine, x, 0.08 * s, z, 6);
     cone(g, 0.08 * s, 0.18 * s, C.pine, x, 0.2 * s, z, 6);
   } else ball(g, 0.12 * s, r() < 0.5 ? C.leaf : C.leaf2, x, 0.2 * s, z);
 }
-function rock(g: THREE.Object3D, x: number, z: number, s: number, c = C.stone2) {
+export function rock(g: THREE.Object3D, x: number, z: number, s: number, c = C.stone2) {
   const m = add(g, new THREE.DodecahedronGeometry(s, 0), c, x, s * 0.45, z);
   m.scale.y = 0.7;
   m.rotation.y = x * 7;
@@ -216,7 +239,7 @@ function sheep(g: THREE.Object3D, x: number, z: number) {
 }
 const water = (g: THREE.Object3D, x: number, z: number, w: number, d: number) =>
   box(g, w, 0.02, d, C.water, x, -0.005, z);
-function boat(g: THREE.Object3D, x: number, z: number, rot = 0, s = 1) {
+export function boat(g: THREE.Object3D, x: number, z: number, rot = 0, s = 1) {
   const p = new THREE.Group();
   p.position.set(x, 0.015, z);
   p.rotation.y = rot;
@@ -248,7 +271,7 @@ function chimney(g: THREE.Object3D, x: number, y: number, z: number, h = 0.14, c
   ball(g, 0.04, '#d9d2c4', x, y + h + 0.05, z).scale.set(1, 0.7, 1);
   ball(g, 0.03, '#e6e0d4', x + 0.03, y + h + 0.11, z - 0.02);
 }
-function flag(g: THREE.Object3D, x: number, y: number, z: number, c = C.teal, h = 0.26) {
+export function flag(g: THREE.Object3D, x: number, y: number, z: number, c = C.teal, h = 0.26) {
   cyl(g, 0.007, 0.007, h, C.timber, x, y, z, 4);
   add(g, new THREE.PlaneGeometry(0.1, 0.06), c, x + 0.05, y + h - 0.04, z, {
     side: THREE.DoubleSide,

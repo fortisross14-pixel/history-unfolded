@@ -378,6 +378,18 @@ Every building goes through one table (`BUILDERS` in `src/render/city3d.ts`, wit
 buildings that share a look and a generic hall in the building group's colour for the rest), so
 a procedural model can be replaced by a real one later without touching anything else.
 
+### 7b. The map in low-poly 3D (preview, as built)
+
+A "3D" button on the top bar opens the map around the selected unit or settlement (13 hexes
+around) in low-poly 3D, built from the real game state with the same kit as the city view:
+hexes as prisms raised by relief, peaks with snow on mountains, mounds on hills, trees in
+forests, broadleaf in jungle, reeds and pools in marsh, water sunk below the land with swell on
+the open sea, rivers flowing hex to hex, roads and railways, settlements as small towns by rank
+with their people's flag (and a red ring when besieged), troops as figures in their people's
+colour and fleets as boats. Only explored land is drawn, and foreign troops only where the
+player sees them. Drag to pan, right-drag or the arrows to turn, wheel to zoom; Esc returns to
+the map. It is a preview to judge the look; the 2D map is still where the game is played.
+
 ## 8. Economy and goods
 
 - **Yields:** Food, Production, Gold, Science, Culture, plus **goods**.

@@ -6,6 +6,7 @@ import { VICTORY } from '../engine/victory.ts';
 import { VictoryDialog } from './VictoryDialog.tsx';
 import { NationDialog } from './NationDialog.tsx';
 import { CrisisDialog } from './CrisisDialog.tsx';
+import { Map3DView } from './Map3DView.tsx';
 import { CRISIS } from '../engine/crises.ts';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
@@ -173,6 +174,7 @@ export function Game({
   const [hover, setHover] = useState(-1);
   const [toasts, setToasts] = useState<{ id: number; text: string; bad?: boolean }[]>([]);
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [show3d, setShow3d] = useState(false);
   const [center, setCenter] = useState<{ hex: number; n: number } | null>(null);
   const toastId = useRef(0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -615,6 +617,13 @@ export function Game({
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
 
   const proposal = game.proposals.find(p => p.to === me.id);
+  // the hex the 3D preview opens on: what is selected, else the realm's first settlement
+  const center3d =
+    selF?.hex ??
+    selCity?.hex ??
+    game.cities.find(c => c.civId === me.id)?.hex ??
+    game.formations.find(f => f.civId === me.id)?.hex ??
+    0;
   // a rival holding a victory goal: shown on the Victory button
   const rivalHold = Object.values(game.holding ?? {}).filter(h => h.civId !== me.id).length;
   const pendingEvent = playerEvent(game);
@@ -845,6 +854,13 @@ export function Game({
           {myCities.length === 1 ? 'settlement' : 'settlements'}
         </span>
         <span className="spacer" />
+        <button
+          className="secondary"
+          onClick={() => setShow3d(true)}
+          title="See the map around you in low-poly 3D (preview)"
+        >
+          <Icon name="layers" /> 3D
+        </button>
         <button
           className="secondary round"
           onClick={() => setDialog({ kind: 'keys' })}
@@ -1217,6 +1233,9 @@ export function Game({
           report={r => report({ ok: r.ok, msg: r.msg } as Result)}
           onClose={() => setDialog(null)}
         />
+      )}
+      {show3d && (
+        <Map3DView game={game} civId={me.id} center={center3d} onClose={() => setShow3d(false)} />
       )}
       {dialog?.kind === 'crisis' && (
         <CrisisDialog

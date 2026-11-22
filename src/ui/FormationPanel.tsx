@@ -345,7 +345,19 @@ export function FormationPanel(p: Props) {
             {f.fortified ? 'Wake' : 'Fortify'}
           </button>
           {f.path.length > 0 && <button onClick={p.onClearOrders}>Cancel orders</button>}
-          {foundWhy && f.kind === 'settlers' && <p className="muted small">{foundWhy}</p>}
+          {(() => {
+            // touch screens show no tooltips: say why a button is greyed out
+            const why = [
+              f.kind === 'settlers' ? foundWhy : null,
+              selected.length && selected.length === f.cohorts.length && f.cohorts.length > 1
+                ? 'To split, leave at least one cohort behind.'
+                : null,
+              f.kind !== 'fleet' && !game.roads[f.hex] && f.moves <= 0
+                ? 'No moves left this turn for a road.'
+                : null,
+            ].filter(Boolean);
+            return why.length ? <p className="muted small why">{why.join(' ')}</p> : null;
+          })()}
         </div>
       )}
 

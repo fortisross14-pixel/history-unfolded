@@ -66,6 +66,7 @@ type Sel =
 type Dialog =
   | { kind: 'research' }
   | { kind: 'report' }
+  | { kind: 'keys' }
   | { kind: 'culture' }
   | { kind: 'city'; cityId: number; hex?: number }
   | { kind: 'designs'; open?: number | 'new' }
@@ -73,6 +74,23 @@ type Dialog =
   | { kind: 'battle'; report: BattleReport }
   | { kind: 'war'; civId: number; then?: () => void }
   | null;
+
+const KEYS: [string, string][] = [
+  ['Click', 'Select a unit, city or hex'],
+  ['Right-click', 'Move the selected unit there, or attack'],
+  ['Enter', 'End the turn (asks once if units still wait)'],
+  ['Space N', 'Next unit waiting for orders'],
+  ['F', 'Fortify'],
+  ['B', 'Found a city (settlers)'],
+  ['R', 'Build a road'],
+  ['C', 'Open the selected city'],
+  ['T', 'Research'],
+  ['K', 'Culture'],
+  ['D', 'Unit designs'],
+  ['P', 'Peoples and diplomacy'],
+  ['Esc', 'Close a window, or clear the selection'],
+  ['?', 'This list'],
+];
 
 export function Game({
   initial,
@@ -214,9 +232,13 @@ export function Game({
     sound.turn();
     const saved = saveGame(game);
     if (!saved.ok) toast(`Autosave failed: ${saved.reason}`, true);
-    events.forEach(e =>
-      toast(e, /declared war on the|captured .* from|attacked/.test(e) && e.includes(me.name)),
-    );
+    // the news that needs the player stays up; the rest is summed up in the turn report
+    const urgent = (e: string) =>
+      /declared war on the|captured .* from|attacked/.test(e) && e.includes(me.name);
+    const calm = events.filter(e => !urgent(e));
+    events.filter(urgent).forEach(e => toast(e, true));
+    if (calm.length <= 2) calm.forEach(e => toast(e));
+    else toast(`${calm.length} things happened. 📜 Last turn has the full story.`);
     if (
       !me.researching &&
       game.cities.some(c => c.civId === me.id) &&
@@ -365,6 +387,8 @@ export function Game({
       } else if (key === 'f' && mySelF) report(fortify(game, mySelF.id));
       else if (key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
       else if (key === 'd') setDialog({ kind: 'designs' });
+      else if (key === 'p') setDialog({ kind: 'peoples' });
+      else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
       else if (key === 'k') setDialog({ kind: 'culture' });
       else if (key === 't') setDialog({ kind: 'research' });
       else if (key === 'r' && mySelF) report(buildRoad(game, mySelF.id));
@@ -557,6 +581,14 @@ export function Game({
           {myCities.length} {myCities.length === 1 ? 'city' : 'cities'}
         </span>
         <span className="spacer" />
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'keys' })}
+          title="Keys (?)"
+          aria-label="Keys and help"
+        >
+          ?
+        </button>
         <button
           className="secondary"
           onClick={() => {
@@ -763,7 +795,12 @@ export function Game({
       </div>
 
       <div className="toasts" role="status" aria-live="polite">
-        {toasts.map(t => (
+        {toasts.length > 3 && (
+          <button className="toast more" onClick={() => setToasts(x => x.slice(-3))}>
+            +{toasts.length - 3} earlier · clear
+          </button>
+        )}
+        {toasts.slice(-3).map(t => (
           <button
             key={t.id}
             className={`toast ${t.bad ? 'bad' : ''}`}
@@ -795,6 +832,41 @@ export function Game({
                 <li key={i}>{e}</li>
               ))}
             </ul>
+          </div>
+        </div>
+      )}
+
+      {dialog?.kind === 'keys' && (
+        <div className="modal-back" onClick={() => setDialog(null)}>
+          <div
+            className="modal keys"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Keys"
+            onClick={e => e.stopPropagation()}
+          >
+            <header>
+              <h2>Keys and mouse</h2>
+              <button className="x" onClick={() => setDialog(null)} aria-label="Close">
+                ×
+              </button>
+            </header>
+            <dl className="keys-list">
+              {KEYS.map(([k, what]) => (
+                <div key={k}>
+                  <dt>
+                    {k.split(' ').map(x => (
+                      <kbd key={x}>{x}</kbd>
+                    ))}
+                  </dt>
+                  <dd>{what}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="muted">
+              On a phone or tablet: tap to select, tap a hex once to see the route or battle, tap it
+              again to go. Pinch to zoom, drag to pan.
+            </p>
           </div>
         </div>
       )}

@@ -708,7 +708,8 @@ export class MapRenderer {
         ctx.fill();
       }
 
-      // 11. cities
+      // 11. cities (their name banners wait until the troops are drawn, so they stay readable)
+      const cityBanners: (() => void)[] = [];
       for (const c of s.cities) {
         if (!known(c.hex)) continue;
         const x = cx(c.hex),
@@ -730,12 +731,14 @@ export class MapRenderer {
           y + R * 0.45,
           R * 1.55,
         );
-        this.banner(
-          x,
-          y + R * 0.62,
-          `${c.name}  ${(c.pop / 1000).toFixed(1)}k`,
-          s.civs[c.civId].color,
-          zoom,
+        cityBanners.push(() =>
+          this.banner(
+            x,
+            y + R * 0.62,
+            `${c.name}  ${(c.pop / 1000).toFixed(1)}k`,
+            s.civs[c.civId].color,
+            zoom,
+          ),
         );
       }
 
@@ -889,6 +892,7 @@ export class MapRenderer {
         }
       }
       this.motion.prune(drawn);
+      for (const b of cityBanners) b();
     }
   }
 

@@ -21,8 +21,11 @@ node --no-warnings scripts/aidiag.ts    # AI-only game: how each people does ove
 node --no-warnings scripts/citydiag.ts  # one AI city's districts and economy over time
 node --no-warnings scripts/pace.ts      # research, culture and upheaval pace of AI peoples
 node --no-warnings scripts/archdiag.ts  # AI on an archipelago: fleets, crossings, speed per turn
+npm run check:ai             # AI wars: fighting, captures, campaigns that commit, sea landings
 npm run test:ui -- <outDir>  # drives the built game in headless Chromium and saves screenshots
-                             # (needs `npx vite preview --port 4173` running)
+npm run test:mobile -- <outDir>  # the same on an emulated phone (touch, bottom sheet, menu)
+npm run check:perf           # map frame times with the CPU slowed 4x
+                             # (the browser checks need `npx vite preview --port 4173` running)
 ```
 
 ## What works now
@@ -65,9 +68,17 @@ npm run test:ui -- <outDir>  # drives the built game in headless Chromium and sa
 - **Diplomacy**: opinion with reasons and memories, deals (gold, goods, per-turn trade), pacts,
   alliances that drag allies into wars, AI offers and tribute demands.
 - **Victory**: conquest, or the best score at the turn limit.
-- Fog of war, path preview with turn markers, go-to orders across turns, autosave.
+- Fog of war, path preview with turn markers, go-to orders across turns, saved games with
+  autosaves.
 - Rival peoples expand (by sea too), design and equip troops and ships, gather armies for
-  sieges, defend their cities, make deals and go to war.
+  sieges, send home battered troops, invade across the sea, make deals and go to war.
+- **Feel**: units slide between hexes, battles flash and shake and float their losses, a
+  "Turn N" banner follows the AI's moves, and small synthesized sounds play (🔊 to mute). Motion
+  follows the system's reduced-motion setting. `?` lists the keys.
+- **Phones and tablets**: tap to select, tap a target once to preview and again to act, pinch
+  to zoom; the panel is a bottom sheet and the top bar folds into a menu.
+- **Art**: the game draws its own fallback symbols and uses generated art wherever it exists.
+  `art/PROMPTS.md` holds the image prompts and `tools/cut_sprites.py` cuts the sheets.
 
 ## Code
 

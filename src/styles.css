@@ -474,13 +474,39 @@ table.stats td:first-child {
 .toast {
   background: rgba(54, 37, 20, 0.92);
   color: #f6ead0;
-  padding: 8px 14px;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: auto;
+  animation: toast-in 0.18s ease-out;
   border-radius: 8px;
   box-shadow: var(--shadow);
   max-width: 90vw;
 }
 .toast.bad {
   background: rgba(130, 40, 30, 0.95);
+}
+.toast.more {
+  background: rgba(54, 37, 20, 0.7);
+  font-size: 12px;
+  padding: 3px 10px;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+/* buttons have their own pressed look; the browser's blue tap flash only gets left behind */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ---------- modals ---------- */
@@ -1666,8 +1692,18 @@ button.toast {
   .topbar.menu-open {
     flex-wrap: wrap;
   }
+  /* the menu opens as a tidy two-column grid under the always-on row */
   .topbar.menu-open .secondary {
     display: inline-flex;
+    order: 10;
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+  }
+  .topbar.menu-open span.secondary {
+    display: none;
+  }
+  .topbar.menu-open .more-btn {
+    order: 9;
   }
   .more-btn {
     display: inline-block;
@@ -1826,4 +1862,44 @@ button.toast {
     opacity: 0;
     transform: translate(-50%, 0);
   }
+}
+
+.modal.keys {
+  width: min(460px, 100%);
+}
+.keys-list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+.keys-list > div {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.keys-list dt {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.keys-list dd {
+  margin: 0;
+}
+kbd {
+  display: inline-block;
+  min-width: 22px;
+  padding: 1px 6px;
+  border: 1px solid var(--ink-soft, #8a6f4d);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #fffaf0;
+  font:
+    600 12px system-ui,
+    sans-serif;
+  text-align: center;
+}
+.why {
+  flex-basis: 100%;
+  margin: 2px 0 0;
 }

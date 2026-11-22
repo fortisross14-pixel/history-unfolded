@@ -117,6 +117,13 @@ export function CityPanel({
               Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
             </button>
           </div>
+          {(!canLevy || c.pop - SETTLERS_PEOPLE < MIN_CITY_POP) && (
+            <p className="muted small why">
+              {!canLevy && `A levy needs ${(MIN_CITY_POP + LEVY_PEOPLE).toLocaleString()} people. `}
+              {c.pop - SETTLERS_PEOPLE < MIN_CITY_POP &&
+                `Settlers need ${(MIN_CITY_POP + SETTLERS_PEOPLE).toLocaleString()} people.`}
+            </p>
+          )}
           {hasSlot(game, c, 'shipyard') ? (
             <div className="row ship-row">
               <select value={ship} onChange={e => setShip(Number(e.target.value))}>

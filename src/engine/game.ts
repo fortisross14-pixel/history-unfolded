@@ -2,7 +2,9 @@
  * Game state and every action a player (human or AI) can take. All functions mutate the state
  * in place and return a result message; the UI re-renders from the state afterwards.
  */
-import { CITY_NAMES, CIV_PRESETS } from '../data/civs.ts';
+import { CITY_NAMES, CIV_PRESETS, INDEPENDENT_PRESETS } from '../data/civs.ts';
+import { independentTurn } from './independents.ts';
+import { historyTurn } from './events.ts';
 import { DEPOSITS } from '../data/goods.ts';
 import { isWater } from '../data/terrain.ts';
 import { DEFAULT_LOADOUT, isNavalLoadout, ITEMS, SLOTS, type Loadout } from '../data/items.ts';
@@ -12,7 +14,7 @@ import { generateMap, isPassableLand, MAP_SIZES } from './mapgen.ts';
 import { findPath } from './path.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
 import type { City, Civ, Cohort, Design, Formation, GameSettings, GameState } from './types.ts';
-import { aiTurn } from './ai.ts';
+import { aiTurn, planDistricts } from './ai.ts';
 import {
   alliesOf,
   breakTreaties,
@@ -61,7 +63,7 @@ import {
   SETTLER_COHORTS,
 } from './units.ts';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const CITY_RADIUS = 1;
 export const TERRITORY_RADIUS = 2;
 export const MIN_CITY_DISTANCE = 4;
@@ -98,6 +100,8 @@ export function newGame(settings: GameSettings): GameState {
     proposals: [],
     districts: [],
     roads: new Array(map.w * map.h).fill(0),
+    events: [],
+    lastEvent: {},
   };
   for (let i = 0; i < civCount; i++) {
     const preset = CIV_PRESETS[i];
@@ -145,9 +149,54 @@ export function newGame(settings: GameSettings): GameState {
       foundCity(s, settlers.id);
     }
   }
+  placeIndependents(s, civCount);
   for (const c of s.civs) updateExplored(s, c.id);
-  log(s, 0, `Turn 1. ${s.civs.length} peoples begin on a ${map.type.replace('-', ' ')} world.`);
+  log(s, 0, `Turn 1. ${civCount} peoples begin on a ${map.type.replace('-', ' ')} world.`);
   return s;
+}
+
+/** Free peoples take the start spots no major people uses: one city and a garrison each. */
+function placeIndependents(s: GameState, civCount: number) {
+  const want = MAP_SIZES[s.settings.map.size].independents;
+  const spots = s.map.starts.slice(civCount, civCount + want);
+  spots.forEach((hex, k) => {
+    const preset = INDEPENDENT_PRESETS[k % INDEPENDENT_PRESETS.length];
+    const civ: Civ = {
+      id: s.civs.length,
+      name: preset.name,
+      color: preset.color,
+      isPlayer: false,
+      independent: true,
+      techs: [],
+      researching: null,
+      science: 0,
+      gold: 30,
+      explored: new Array(s.map.w * s.map.h).fill(0),
+      designs: [],
+      blueprints: [],
+      cityNames: 0,
+      levies: 0,
+      researchGoal: null,
+      culture: newCultureState(),
+      leanings: [],
+      met: [],
+      alive: true,
+      kills: 0,
+      losses: 0,
+    };
+    s.civs.push(civ);
+    const settlers = addFormation(s, civ.id, 'settlers', hex, SETTLER_COHORTS, 'Settlers');
+    foundCity(s, settlers.id);
+    const c = s.cities.find(x => x.civId === civ.id);
+    if (!c) return;
+    c.name = preset.city;
+    c.pop = 1600;
+    const last = s.log[s.log.length - 1];
+    if (last?.civId === civ.id) last.text = `The ${civ.name} keep the free city of ${c.name}.`;
+    const garrison = addFormation(s, civ.id, 'army', hex, 4, `${preset.city} Guard`);
+    for (const co of garrison.cohorts) co.loadout = { ...co.loadout, weapon: 'spear' };
+    garrison.fortified = true;
+  });
 }
 
 function addFormation(
@@ -857,7 +906,14 @@ export function endTurn(s: GameState): string[] {
   const me = player(s);
   const logStart = s.log.length;
   // AI acts after the player, in the same turn
-  for (const civ of s.civs) if (!civ.isPlayer && civ.alive) aiTurn(s, civ);
+  for (const civ of s.civs)
+    if (!civ.isPlayer && civ.alive) {
+      if (civ.independent) {
+        events.push(...independentTurn(s, civ, id => levy(s, id)));
+        for (const c of s.cities) if (c.civId === civ.id) planDistricts(s, civ, c);
+      }
+      else aiTurn(s, civ);
+    }
   // tell the player about anything the AI did to them
   for (const e of s.log.slice(logStart))
     if (e.civId !== me.id && e.text.includes(me.name)) events.push(e.text);
@@ -914,7 +970,7 @@ export function endTurn(s: GameState): string[] {
   }
 
   for (const civ of s.civs) {
-    if (!civ.alive) continue;
+    if (!civ.alive || civ.independent) continue;
     const culture = s.cities
       .filter(c => c.civId === civ.id)
       .reduce((a, c) => a + cityEconomy(s, c).total.culture, 0);
@@ -922,6 +978,7 @@ export function endTurn(s: GameState): string[] {
     if (civ.isPlayer) events.push(...msgs);
   }
   events.push(...diplomacyTurn(s));
+  events.push(...historyTurn(s));
   heal(s);
   for (const c of s.cities) c.guard = Math.min(1, c.guard + 0.1);
   s.turn++;
@@ -1119,7 +1176,8 @@ export function checkVictory(s: GameState) {
     s.ended = { winner: -1, reason: 'defeat' };
     return;
   }
-  const alive = s.civs.filter(c => c.alive);
+  // free peoples do not count: the game is between the great peoples
+  const alive = s.civs.filter(c => c.alive && !c.independent);
   if (alive.length === 1) {
     s.ended = { winner: alive[0].id, reason: 'conquest' };
     return;
@@ -1525,6 +1583,10 @@ function captureCity(s: GameState, c: City, by: Formation): string {
   by.hex = c.hex;
   const msg = `${civ.name} captured ${c.name} from the ${old.name}!`;
   remember(s, old.id, civ.id, 'conquest', 'Took our cities', -30, 0.1);
+  if (old.independent)
+    for (const o of s.civs)
+      if (o.alive && o.independent && o.id !== old.id)
+        remember(s, o.id, civ.id, 'crushed', 'Crushed a free people', -15, 0.1);
   log(s, by.civId, msg);
   return msg;
 }

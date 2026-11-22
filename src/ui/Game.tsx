@@ -49,6 +49,9 @@ import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { ResearchDialog } from './ResearchDialog.tsx';
 import { ProposalDialog } from './ProposalDialog.tsx';
 import { answerProposal, proposeDeal } from '../engine/diplomacy.ts';
+import { playerEvent, resolveEvent } from '../engine/events.ts';
+import { absorb, giveGift } from '../engine/independents.ts';
+import { EventDialog } from './EventDialog.tsx';
 import { CultureDialog, KeepDialog, TagChip } from './CultureDialog.tsx';
 import { resolveUpheaval, startUpheaval, takeNode } from '../engine/culture.ts';
 import { cityEconomy } from '../engine/economy.ts';
@@ -292,6 +295,7 @@ export function Game({
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
 
   const proposal = game.proposals.find(p => p.to === me.id);
+  const pendingEvent = playerEvent(game);
   if (game.ended || !me.alive) {
     const e = game.ended;
     const won = e && e.winner === me.id;
@@ -625,6 +629,8 @@ export function Game({
           onClose={() => setDialog(null)}
           onWar={id => setDialog({ kind: 'war', civId: id })}
           onPeace={id => report(offerPeace(game, me.id, id))}
+          onGift={(id, gold) => report(giveGift(game, me.id, id, gold) as Result)}
+          onAbsorb={id => report(absorb(game, me.id, id) as Result)}
           onDeal={(id, o) => {
             const r = proposeDeal(game, me.id, id, o);
             report({ ok: r.ok, msg: r.msg } as Result);
@@ -664,6 +670,17 @@ export function Game({
           onClose={() => {
             setDialog(null);
             bump();
+          }}
+        />
+      )}
+      {pendingEvent && !dialog && !proposal && (
+        <EventDialog
+          game={game}
+          p={pendingEvent}
+          onChoose={i => {
+            const r = resolveEvent(game, pendingEvent.id, i);
+            report({ ok: r.ok, msg: r.msg } as Result);
+            saveGame(game);
           }}
         />
       )}

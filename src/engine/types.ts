@@ -107,6 +107,8 @@ export interface Civ {
   name: string;
   color: string;
   isPlayer: boolean;
+  /** a free people: one city, never expands; can be befriended, allied, absorbed or conquered */
+  independent?: boolean;
   techs: string[];
   researching: string | null;
   /** a later tech the player aims for; research follows its prerequisites */
@@ -267,4 +269,20 @@ export interface GameState {
   districts: District[];
   /** 1 where a road runs, per hex */
   roads: number[];
+  /** history events waiting for the player's choice */
+  events: PendingEvent[];
+  /** last turn each civ had a history event */
+  lastEvent: Record<number, number>;
+}
+
+/** A history event that has happened to a people and waits for a choice. */
+export interface PendingEvent {
+  id: number;
+  eventId: string;
+  civId: number;
+  turn: number;
+  /** the city it happens in, if any */
+  cityId?: number;
+  /** the other people involved, if any */
+  other?: number;
 }

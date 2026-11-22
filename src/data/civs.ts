@@ -10,6 +10,34 @@ export const CIV_PRESETS: { name: string; color: string }[] = [
   { name: 'Sehra', color: '#c2507a' },
   { name: 'Ilvar', color: '#6b4a24' },
   { name: 'Quenu', color: '#8aa02a' },
+  { name: 'Harroth', color: '#d0612a' },
+  { name: 'Ysmeni', color: '#3a7fc4' },
+  { name: 'Calbrin', color: '#8f2f5e' },
+  { name: 'Ondu', color: '#3f6f2a' },
+  { name: 'Teshkar', color: '#a6752f' },
+  { name: 'Velmora', color: '#4b3f9a' },
+];
+
+/**
+ * Free peoples: a single city each that never expands. They can be befriended with gifts,
+ * allied (the efficient path: tribute and troops for nothing), absorbed at a price once allied,
+ * or conquered. Each has a gift it is known for, which it sends its friends and allies.
+ */
+export const INDEPENDENT_PRESETS: { name: string; city: string; good: string; color: string }[] = [
+  { name: 'Tarsi', city: 'Tarsa', good: 'hides', color: '#8c7b62' },
+  { name: 'Oru', city: 'Oruvel', good: 'fish', color: '#6f8483' },
+  { name: 'Belkan', city: 'Belk', good: 'stone', color: '#7f7466' },
+  { name: 'Meshwen', city: 'Meshwa', good: 'grain', color: '#8f8556' },
+  { name: 'Kadrai', city: 'Kadra', good: 'horses', color: '#7a6a55' },
+  { name: 'Ulvi', city: 'Ulvik', good: 'furs', color: '#6c7266' },
+  { name: 'Sarnu', city: 'Sarnath', good: 'copper', color: '#866d5c' },
+  { name: 'Pelagi', city: 'Pelag', good: 'fish', color: '#64798a' },
+  { name: 'Hethra', city: 'Hethrin', good: 'wine', color: '#80646c' },
+  { name: 'Gaudi', city: 'Gaudon', good: 'wood', color: '#6a7a5c' },
+  { name: 'Amrit', city: 'Amrita', good: 'spices', color: '#8a7158' },
+  { name: 'Zoltri', city: 'Zolt', good: 'iron', color: '#6e6c70' },
+  { name: 'Nevai', city: 'Nevan', good: 'dyes', color: '#76708a' },
+  { name: 'Quaro', city: 'Quarra', good: 'meat', color: '#8a6e5e' },
 ];
 
 export const CITY_NAMES = [

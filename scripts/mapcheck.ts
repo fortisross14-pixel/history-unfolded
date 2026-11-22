@@ -38,10 +38,11 @@ for (const type of types) {
       };
       const land = count(i => !['ocean', 'coast', 'lake'].includes(m.terrain[i]));
       const want = MAP_SIZES[size].civs;
-      const ok = m.starts.length === want;
+      // every major people needs a start; free peoples fill what is left
+      const ok = m.starts.length >= want;
       if (!ok) fails++;
       console.log(
-        `${type.padEnd(11)} ${size.padEnd(8)} seed ${seed} → ${m.type.padEnd(11)} land ${((land / N) * 100).toFixed(0)}%  mtn ${count(i => m.relief[i] === 'mountains')}  rivers ${count(i => m.river[i] > 0)}  lakes ${count(i => m.terrain[i] === 'lake')}  deposits ${count(i => !!m.deposit[i])}  starts ${m.starts.length}/${want} ${ok ? '' : 'FAIL'}  ${ms.toFixed(0)}ms`,
+        `${type.padEnd(11)} ${size.padEnd(8)} seed ${seed} → ${m.type.padEnd(11)} land ${((land / N) * 100).toFixed(0)}%  mtn ${count(i => m.relief[i] === 'mountains')}  rivers ${count(i => m.river[i] > 0)}  lakes ${count(i => m.terrain[i] === 'lake')}  deposits ${count(i => !!m.deposit[i])}  starts ${m.starts.length}/${want}+${MAP_SIZES[size].independents} ${ok ? '' : 'FAIL'}  ${ms.toFixed(0)}ms`,
       );
       if (preview && seed === 1) {
         const ch: Record<string, string> = {

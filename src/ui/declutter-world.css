@@ -168,3 +168,74 @@
   background: #efe3c8;
   flex: none;
 }
+/* the designs roster: every design, how many troops use it, and what to do with it */
+.design-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px;
+}
+.roster-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.roster-bar .new-design {
+  width: auto;
+}
+.roster-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.roster-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(120, 90, 50, 0.3);
+}
+.roster-table td {
+  padding: 6px;
+  border-bottom: 1px solid rgba(120, 90, 50, 0.15);
+  vertical-align: middle;
+}
+button.roster-name,
+span.roster-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  min-height: 0;
+}
+.roster-name span {
+  display: flex;
+  flex-direction: column;
+}
+.roster-stats {
+  white-space: nowrap;
+}
+.roster-stats .chip {
+  margin-right: 8px;
+}
+.roster-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+.roster-actions button {
+  margin-left: 6px;
+}
+.roster-back {
+  align-self: flex-start;
+  margin-bottom: 4px;
+}
+@media (max-width: 700px) {
+  .roster-table th:nth-child(2),
+  .roster-table td:nth-child(2) {
+    display: none;
+  }
+}

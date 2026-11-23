@@ -145,6 +145,8 @@ await page.screenshot({ path: `${out}/3-city-levy.png` });
 await page.click('.rail-btn[aria-label="Military"]');
 await page.click('.hub-tabs button:has-text("Designs")');
 await page.waitForSelector('.modal.designs');
+// the roster of designs comes first; a new one opens the editor
+await page.click('.design-row:has-text("New design")');
 await page.fill('.design-name', 'Foot Falcons');
 await page.click('.slot:has(h3:text("Weapon")) .item:has-text("Spear")');
 await page.click('.slot:has(h3:text("Shield")) .item:has-text("Wicker shield")');
@@ -170,6 +172,21 @@ await page.selectOption('.assign select', { label: 'Hornets' });
 await page.click('.assign button.primary');
 await page.waitForTimeout(150);
 await page.screenshot({ path: `${out}/5-two-designs.png` });
+// the roster shows both designs and how many cohorts carry each
+await page.click('.rail-btn[aria-label="Military"]');
+await page.click('.hub-tabs button:has-text("Designs")');
+await page.waitForSelector('.roster-table');
+const rows: string[] = await page.$$eval(
+  '.roster-table tbody tr',
+  (trs: { textContent: string | null }[]) => trs.map(t => t.textContent ?? ''),
+);
+if (
+  !rows.some((r: string) => r.includes('Foot Falcons')) ||
+  !rows.some((r: string) => r.includes('Hornets'))
+)
+  throw new Error('the designs roster misses a design: ' + rows.join(' | '));
+await page.screenshot({ path: `${out}/5b-roster.png` });
+await page.click('.modal.designs .x');
 
 // battle: put the formation next to a rival city, declare war, attack by clicking it
 const target = await page.evaluate(() => {
@@ -324,6 +341,7 @@ if (coastal) {
   await page.click('.rail-btn[aria-label="Military"]');
   await page.click('.hub-tabs button:has-text("Designs")');
   await page.click('.land-sea button:has-text("Ships")');
+  await page.click('.design-row:has-text("New design")');
   await page.fill('.design-name', 'Ferry');
   await page.click('.slot:has(h3:text("Hull")) .item:has-text("Galley")');
   await page.click('.slot:has(h3:text("Rig")) .item:has-text("Square sail")');

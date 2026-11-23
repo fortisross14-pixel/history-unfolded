@@ -56,7 +56,7 @@ export function faithTenets(s: GameState, civ: Civ): string[] {
 export function heldWonders(s: GameState, civId: number): string[] {
   if (!s.wonders?.length) return [];
   return s.wonders
-    .filter(w => s.cities.find(c => c.id === w.cityId)?.civId === civId)
+    .filter(w => WONDERS[w.id] && s.cities.find(c => c.id === w.cityId)?.civId === civId)
     .map(w => w.id);
 }
 

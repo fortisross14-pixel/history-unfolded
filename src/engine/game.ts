@@ -79,7 +79,7 @@ import { aiPathTurn, enterAge } from './paths.ts';
 import { crisisTurn } from './crises.ts';
 import { faithTurn } from './faith.ts';
 import { aiWonderTurn, wonderCulture, wondersOf, workOnWonder } from './wonders.ts';
-import { WONDER_SCORE } from '../data/wonders.ts';
+import { WONDER_SCORE, WONDERS } from '../data/wonders.ts';
 import { coalitionTurn } from './coalition.ts';
 import { chronicle, recordStats } from './stats.ts';
 import { aiPolicyTurn, policyTurn } from './policies.ts';
@@ -1451,7 +1451,12 @@ export function deserialize(json: string): GameState {
   if (s.version < MIN_SAVE_VERSION)
     throw new SaveError('This save comes from an early test version and cannot be loaded.');
   while (s.version < SAVE_VERSION) s = MIGRATIONS[s.version]({ ...s, version: s.version });
-  for (const c of s.cities) c.tier ??= 'town';
+  for (const c of s.cities) {
+    c.tier ??= 'town';
+    // a wonder taken out of the game since the save: its work stops
+    if (c.wonder && !WONDERS[c.wonder.id]) delete c.wonder;
+  }
+  if (s.wonders) s.wonders = s.wonders.filter(w => WONDERS[w.id]);
   for (const c of s.civs)
     for (const d of c.dynasties ?? []) {
       d.traits ??= {};

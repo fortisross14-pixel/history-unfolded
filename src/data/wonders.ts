@@ -51,18 +51,6 @@ export const WONDER_LIST: WonderDef[] = [
     shape: 'garden',
     tags: ['agrarian'],
   },
-  {
-    id: 'colossus',
-    name: 'Colossus',
-    tech: 'sailing',
-    prod: 80,
-    goods: { stone: 4 },
-    coast: true,
-    mods: { coastalPct: 15, goldPct: 5 },
-    note: '+15% yields in coastal settlements, +5% gold.',
-    shape: 'statue',
-    tags: ['maritime', 'mercantile'],
-  },
   // classical
   {
     id: 'great-library',
@@ -74,18 +62,6 @@ export const WONDER_LIST: WonderDef[] = [
     note: 'Research costs 10% less.',
     shape: 'hall',
     tags: ['rationalist'],
-  },
-  {
-    id: 'great-lighthouse',
-    name: 'Great Lighthouse',
-    tech: 'navigation',
-    prod: 150,
-    goods: { stone: 8 },
-    coast: true,
-    mods: { navalPct: 20, sight: 1 },
-    note: '+20% at sea, +1 sight for every unit.',
-    shape: 'tower',
-    tags: ['maritime'],
   },
   {
     id: 'great-wall',
@@ -121,17 +97,6 @@ export const WONDER_LIST: WonderDef[] = [
     shape: 'hall',
     tags: ['mercantile'],
   },
-  {
-    id: 'royal-citadel',
-    name: 'Royal Citadel',
-    tech: 'castles',
-    prod: 260,
-    goods: { stone: 14, iron: 2 },
-    mods: { morale: 5, guard: 1, levyCohorts: 1 },
-    note: '+5 morale, a stronger guard, one more cohort in every levy.',
-    shape: 'wall',
-    tags: ['martial', 'absolutist'],
-  },
   // renaissance
   {
     id: 'house-of-printing',
@@ -155,17 +120,6 @@ export const WONDER_LIST: WonderDef[] = [
     note: '+25% at sea, one more cohort under each command.',
     shape: 'tower',
     tags: ['maritime', 'expansionist'],
-  },
-  {
-    id: 'grand-palace',
-    name: 'Grand Palace',
-    tech: 'banking',
-    prod: 420,
-    goods: { stone: 16 },
-    mods: { culturePct: 10, tensionPct: -20 },
-    note: '+10% culture; tension builds 20% slower.',
-    shape: 'dome',
-    tags: ['absolutist', 'artistic'],
   },
   // industrial
   {

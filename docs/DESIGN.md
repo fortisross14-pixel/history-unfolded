@@ -1000,10 +1000,9 @@ Kept light: nothing to move or manage. Faith screen (I); also from the Nation sc
 
 A race, with nothing to manage. Wonders screen (W), the settlement panel's "Build a wonder", or
 the Nation screen.
-- **14 wonders**, two or three per age, each opened by a tech: Great Pyramid, Hanging Gardens,
-  Colossus (coast); Great Library, Great Lighthouse (coast), Great Wall; Dome of Heaven, Grand
-  Bazaar, Royal Citadel; House of Printing, Grand Admiralty (coast), Grand Palace; Crystal Palace,
-  Grand Terminus.
+- **10 wonders**, two per age, each opened by a tech: Great Pyramid, Hanging Gardens; Great
+  Library, Great Wall; Dome of Heaven, Grand Bazaar; House of Printing, Grand Admiralty (coast);
+  Crystal Palace, Grand Terminus.
 - **One in the world each.** A town or bigger starts one by paying its goods from its market.
   Half its production goes to the wonder while other work is queued, all of it when nothing is.
   The first to finish takes it; everyone else building it gets half their work back as gold.
@@ -1014,7 +1013,7 @@ the Nation screen.
   "someone") and how far along (just begun, well begun, past half, nearly done).
 - **AI:** a people with no wonder under way starts one now and then (4% / 6% / 9% a turn by
   difficulty; two at once on Veteran) in its most productive town, preferring wonders that suit
-  its culture and avoiding races nearly lost. In 250-turn AI games about 8 of 14 are built, the
+  its culture and avoiding races nearly lost. In 250-turn AI games about 6 of 10 are built, the
   ancient ones around turns 85–110.
 - **On the map** a wonder stands as a landmark by the settlement centre (pyramid, gardens, statue,
   tower, wall, hall, dome, glass hall), with scaffolding while one is being built.

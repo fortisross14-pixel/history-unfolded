@@ -104,6 +104,9 @@ const bakedMesh = (root: THREE.Object3D, shadow = true) => {
   return m;
 };
 
+/** how much larger than the land troops and ships are drawn */
+const UNIT_SCALE = 3;
+
 /**
  * Spots for buildings on a district's hex, in the order they fill: the middle, a ring around it,
  * then an outer ring. Seeded per district, so a place keeps its look as it grows.
@@ -243,10 +246,16 @@ export class World3DRenderer {
   }
 
   hexAtScreen(s: GameState, sx: number, sy: number): number {
-    // the ground a little above sea level: most land stands about there
+    // follow the view ray down from above the highest ground: the first hex whose top it
+    // meets is the one under the pointer (hills and mountains stand in front of what is behind)
+    const g = { w: s.map.w, h: s.map.h };
     const wx = this.cam.x + sx / this.cam.zoom;
-    const wz = (this.cam.y + sy / this.cam.zoom + 0.15 * COS) / SIN;
-    return hexAtUnit({ w: s.map.w, h: s.map.h }, wx, wz);
+    const at = (h: number) => (this.cam.y + sy / this.cam.zoom + h * COS) / SIN;
+    for (let h = 0.45; h >= 0; h -= 0.03) {
+      const hex = hexAtUnit(g, wx, at(h));
+      if (hex >= 0 && Math.max(0, this.top(s, hex)) >= h - 0.015) return hex;
+    }
+    return hexAtUnit(g, wx, at(0));
   }
 
   zoomAt(sx: number, sy: number, factor: number) {
@@ -612,7 +621,10 @@ export class World3DRenderer {
       }
       flag(grp, -0.12, 0, -0.08, f.kind === 'army' ? col : '#c9b48a', 0.36);
     }
-    return bakedMesh(grp) ?? grp;
+    // troops stand much larger than life, as in most strategy maps, so they read at a glance
+    const unit = bakedMesh(grp) ?? grp;
+    unit.scale.setScalar(UNIT_SCALE);
+    return unit;
   }
 
   // ---------------------------------------------------------------- drawing
@@ -1045,7 +1057,7 @@ export class World3DRenderer {
         const f = s.formations.find(x => x.id === id);
         if (!f || f.kind === 'fleet') continue;
         const p = u.mesh.position;
-        const [sx, sy] = this.project(p.x + 0.18, p.y + 0.42, p.z);
+        const [sx, sy] = this.project(p.x + 0.18 * UNIT_SCALE, p.y + 0.42 * UNIT_SCALE, p.z);
         const r = Math.min(10, zoom * 0.14);
         ctx.fillStyle = s.civs[f.civId].color;
         ctx.beginPath();

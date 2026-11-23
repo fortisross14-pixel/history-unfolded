@@ -1212,8 +1212,7 @@ export function Game({
               to attack. Drag to pan, scroll to zoom.
             </p>
             <p className="muted small">
-              Keys: Space next unit · Enter end turn · F fortify · B found city · R road · C city ·
-              D designs · T research · K culture · Esc deselect
+              Keys: W A S D move the map · Space next unit · Enter end turn · Esc deselect
             </p>
           </div>
         )}

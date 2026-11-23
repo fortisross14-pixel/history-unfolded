@@ -414,7 +414,14 @@ export interface GameState {
   /** notable moments, kept for good (stats.ts) */
   chronicle?: import('./stats.ts').ChronicleEntry[];
   /** the peoples banded together against a runaway leader (coalition.ts) */
-  coalition?: { against: number; members: number[]; since: number; reason: string };
+  coalition?: {
+    against: number;
+    members: number[];
+    since: number;
+    reason: string;
+    /** turn the coalition warned the player it would march */
+    warned?: number;
+  };
   /** raider camps and bands of the early ages (raiders.ts) */
   raiders?: import('./raiders.ts').RaiderState;
   /** world wonders finished, in order (wonders.ts) */

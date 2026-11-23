@@ -6,7 +6,10 @@
  * No hidden bonuses: this is the counterplay of the other peoples, not a rubber band.
  */
 import { allied, hasPact, remember } from './diplomacy.ts';
-import { declareWar, militaryPower, score } from './game.ts';
+import { declareWar, log, militaryPower, score } from './game.ts';
+
+/** turns between a coalition's warning to the player and its march */
+const WAR_WARNING_TURNS = 5;
 import type { GameState } from './types.ts';
 import { VICTORY, type VictoryKind } from './victory.ts';
 
@@ -136,9 +139,27 @@ function jointWar(s: GameState): string[] {
   const together = c.members
     .filter(m => s.civs[m].alive && !s.civs[m].isPlayer)
     .reduce((a, m) => a + militaryPower(s, m), 0);
-  if (free.length < 2 || together < militaryPower(s, leader) * 0.9) return [];
-  for (const m of free) declareWar(s, m, leader);
+  if (free.length < 2 || together < militaryPower(s, leader) * 0.9) {
+    delete c.warned;
+    return [];
+  }
   const me = s.civs.find(x => x.isPlayer);
+  // against the player, the coalition gathers in the open first: the same warning as any rival
+  if (me?.id === leader && (c.warned === undefined || s.turn - c.warned < WAR_WARNING_TURNS)) {
+    if (c.warned !== undefined) return [];
+    c.warned = s.turn;
+    for (const m of free)
+      log(
+        s,
+        m,
+        `The ${s.civs[m].name} are massing troops on the ${me.name} border (the coalition means to march on you).`,
+      );
+    return [
+      `Warning: the coalition gathers (${free.map(m => `the ${s.civs[m].name}`).join(', ')}): they mean to march on you together.`,
+    ];
+  }
+  delete c.warned;
+  for (const m of free) declareWar(s, m, leader);
   const names = free.map(m => `the ${s.civs[m].name}`).join(', ');
   return me?.id === leader
     ? [`The coalition marches: ${names} declare war on you together.`]

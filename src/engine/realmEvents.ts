@@ -1,7 +1,8 @@
 /**
  * Events: small stories that ask the player to choose.
  *
- * - Pacing: one event every 5 to 15 turns (the first after turn 8); never two at once.
+ * - Pacing: one event every 5 to 15 turns (4 to 9 in the Ancient age, the first at turn 5); never
+ *   two at once.
  * - Variety: each event has a cooldown (some happen once a game); the same kind of event
  *   (land, people, court, trade, war, faith, knowledge) is unlikely twice in a row; each has
  *   several wordings.
@@ -866,7 +867,7 @@ export const REALM_EVENTS: Record<string, EventDef> = Object.fromEntries(
 
 // ---------------------------------------------------------------- pacing
 
-export const newRealmEventState = (): RealmEventState => ({ next: 8 + 0, history: [], queued: [] });
+export const newRealmEventState = (): RealmEventState => ({ next: 5, history: [], queued: [] });
 
 function queue(s: GameState, id: string, inTurns: number, subject: Subject) {
   s.realmEvents ??= newRealmEventState();
@@ -924,7 +925,8 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
     }
   }
   if (!id) {
-    if (s.turn < st.next) return null;
+    // never a long quiet: after 8 turns with no story the next one may come at once
+    if (s.turn < st.next && s.turn - last < 8) return null;
     const lastTurn = (eid: string) => st.history.filter(h => h.id === eid).pop()?.turn ?? -Infinity;
     const options: { e: EventDef; sub: Subject; w: number }[] = [];
     for (const e of [...EVENTS, ...STORY_EVENTS]) {
@@ -948,7 +950,10 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
     const chosen = options.find(o => (roll -= o.w) <= 0) ?? options[options.length - 1];
     id = chosen.e.id;
     subject = chosen.sub;
-    st.next = s.turn + 5 + Math.floor(r() * 11);
+    // the opening age moves quicker (4 to 9 turns), so the first hours are never quiet; later
+    // ages have more of their own to do (5 to 15)
+    st.next =
+      ageOf(civ.techs) <= 1 ? s.turn + 4 + Math.floor(r() * 6) : s.turn + 5 + Math.floor(r() * 11);
   }
   const e = REALM_EVENTS[id];
   if (s.lastEvent) s.lastEvent[civ.id] = s.turn;

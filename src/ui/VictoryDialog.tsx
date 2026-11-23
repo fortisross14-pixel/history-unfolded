@@ -1,6 +1,6 @@
 import { DEFAULT_TURN_LIMIT, score } from '../engine/game.ts';
 import type { GameState } from '../engine/types.ts';
-import { holdLeft, isOpen, opensText, progress, VICTORIES } from '../engine/victory.ts';
+import { holdLeft, isOpen, opensText, progress, VICTORIES, victoryOn } from '../engine/victory.ts';
 
 /** Every way to win: what it asks, when it opens, how close you and the leading rival are. */
 export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () => void }) {
@@ -49,6 +49,15 @@ export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () 
           {VICTORIES.map(v => {
             const mine = progress(game, me, v.id);
             const open = isOpen(me, v);
+            if (!victoryOn(game, v.id))
+              return (
+                <section key={v.id} className="victory-row locked">
+                  <h3>
+                    {v.name} <small>off in this game</small>
+                  </h3>
+                  <p className="small muted">Turned off when the game was set up.</p>
+                </section>
+              );
             const lead = rivals
               .map(c => ({ c, p: progress(game, c, v.id) }))
               .sort((a, b) => b.p.value - a.p.value)[0];

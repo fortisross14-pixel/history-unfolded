@@ -49,6 +49,8 @@ interface Props {
   onClearOrders: () => void;
   onRoad: () => void;
   onAuto?: (mode: 'crew' | 'explore' | null) => void;
+  onSkip?: () => void;
+  onSentry?: () => void;
 }
 
 export function FormationPanel(p: Props) {
@@ -390,6 +392,19 @@ export function FormationPanel(p: Props) {
           <button onClick={p.onFortify} title="F">
             <Icon name="fortify" /> {f.fortified ? 'Wake' : 'Fortify'}
           </button>
+          {p.onSentry && f.kind !== 'settlers' && (
+            <button
+              onClick={p.onSentry}
+              title="Z: wait here, out of the to-do list, until enemies come within 3 hexes"
+            >
+              {f.sentry ? 'Off sentry' : 'Sentry'}
+            </button>
+          )}
+          {p.onSkip && f.moves > 0 && f.skip !== game.turn && (
+            <button onClick={p.onSkip} title="X: nothing for it this turn">
+              Skip turn
+            </button>
+          )}
           {f.path.length > 0 && <button onClick={p.onClearOrders}>Cancel orders</button>}
           {(() => {
             // touch screens show no tooltips: say why a button is greyed out

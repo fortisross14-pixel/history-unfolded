@@ -14,6 +14,19 @@ npm run build      # type-check and build
 
 ## Checks
 
+A clean clone needs Node 22 or later. Playwright is a dev dependency (for the browser checks);
+fetch its Chromium once:
+
+```bash
+npm install
+npx playwright install chromium   # once, for test:ui, test:mobile and check:perf
+npm test                          # all headless checks
+npm run build && npx vite preview --port 4173 &
+npm run test:ui -- /tmp/shots     # then the browser checks
+```
+
+More:
+
 ```bash
 npm test                     # data, maps, rules, culture and research, diplomacy, ships
 node --no-warnings scripts/battles.ts   # matchup table of army compositions (balance)

@@ -28,6 +28,7 @@ import {
   formation,
   formationsAt,
   fortify,
+  sentry,
   foundCity,
   levy,
   merge,
@@ -161,6 +162,8 @@ const KEYS: [string, string][] = [
   ['V', 'Victory: the ways to win and who is closest'],
   ['O', 'Nation: national directions, edicts and crises'],
   ['L', 'Chronicle and statistics: rankings, charts, history'],
+  ['Z', 'Sentry: wait until enemies come near'],
+  ['X', 'Skip the selected unit this turn'],
   ['E', 'Empire: all settlements and armies, find by name'],
   ['I', 'Faith: found one, choose its tenets, see the faiths of the world'],
   ['W', 'World wonders: the race, and building one'],
@@ -174,10 +177,13 @@ export function Game({
   initial,
   assets,
   onQuit,
+  onRematch,
 }: {
   initial: GameState;
   assets: Assets;
   onQuit: () => void;
+  /** a new game on the same map and settings */
+  onRematch?: () => void;
 }) {
   const gref = useRef(initial);
   const game = gref.current;
@@ -271,7 +277,14 @@ export function Game({
 
   const idle = () =>
     game.formations.filter(
-      f => f.civId === me.id && f.moves > 0 && !f.fortified && !f.path.length && !f.auto,
+      f =>
+        f.civId === me.id &&
+        f.moves > 0 &&
+        !f.fortified &&
+        !f.sentry &&
+        f.skip !== game.turn &&
+        !f.path.length &&
+        !f.auto,
     );
   const focus = (hex: number) => setCenter({ hex, n: Date.now() });
   /** The next unit waiting for orders, after the one selected. */
@@ -593,7 +606,14 @@ export function Game({
         setSel(null);
         setArmed(-1);
       } else if (key === 'f' && mySelF) report(fortify(game, mySelF.id));
-      else if (key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
+      else if (key === 'z' && mySelF) {
+        report(sentry(game, mySelF.id));
+        selectNext();
+      } else if (key === 'x' && mySelF) {
+        mySelF.skip = game.turn;
+        if (!selectNext()) setSel(null);
+        bump();
+      } else if (key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
       else if (key === 'u') setDialog({ kind: 'designs' });
       else if (key === 'p') setDialog({ kind: 'peoples' });
       else if (key === 'g') setDialog({ kind: 'goods' });
@@ -736,6 +756,11 @@ export function Game({
               }}
             >
               Keep playing (100 more turns)
+            </button>
+          )}
+          {onRematch && (
+            <button className="wide" onClick={onRematch}>
+              Play again on the same map
             </button>
           )}
           <button className="primary wide" onClick={onQuit}>
@@ -1043,6 +1068,15 @@ export function Game({
               }
             }}
             onFortify={() => report(fortify(game, selF.id))}
+            onSentry={() => {
+              report(sentry(game, selF.id));
+              selectNext();
+            }}
+            onSkip={() => {
+              selF.skip = game.turn;
+              if (!selectNext()) setSel(null);
+              bump();
+            }}
             onRename={n => report(rename(game, selF.id, n))}
             onClearOrders={() => {
               selF.path = [];

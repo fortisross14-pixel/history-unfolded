@@ -285,6 +285,40 @@ function addFormation(
   return f;
 }
 
+/** How near an enemy must come to wake a formation on sentry. */
+export const SENTRY_RANGE = 3;
+
+/** Put a formation on sentry (or take it off): it waits, out of the to-do list, until enemies come near. */
+export function sentry(s: GameState, fid: number): Result {
+  const f = formation(s, fid);
+  if (!f) return fail('No such formation.');
+  f.sentry = !f.sentry || undefined;
+  if (f.sentry) {
+    f.path = [];
+    f.auto = undefined;
+  }
+  return ok(f.sentry ? `${f.name} stands sentry.` : `${f.name} is off sentry.`);
+}
+
+/** Sentries of a people that see an enemy within range wake up. */
+export function wakeSentries(s: GameState, civId: number): string[] {
+  const out: string[] = [];
+  const g = gridOf(s);
+  for (const f of s.formations) {
+    if (f.civId !== civId || !f.sentry) continue;
+    const foe = s.formations.find(
+      o =>
+        o.civId !== civId &&
+        (atWar(s, civId, o.civId) || raiderHostile(s, civId, o.civId)) &&
+        distance(g, f.hex, o.hex) <= SENTRY_RANGE,
+    );
+    if (!foe) continue;
+    f.sentry = undefined;
+    out.push(`${f.name} wakes: ${s.civs[foe.civId].name} ${foe.name.toLowerCase()} nearby.`);
+  }
+  return out;
+}
+
 /** A formation made outside the usual ways (raider bands). */
 export const spawnFormation = (
   s: GameState,
@@ -612,8 +646,9 @@ export function planPath(s: GameState, f: Formation, target: number): number[] |
 export function orderMove(s: GameState, fid: number, target: number): Result {
   const f = formation(s, fid);
   if (!f) return fail('No such formation.');
-  // a direct order takes the unit back from automation
+  // a direct order takes the unit back from automation, and off sentry
   f.auto = undefined;
+  f.sentry = undefined;
   if (target === f.hex) {
     f.path = [];
     return ok();
@@ -1121,6 +1156,8 @@ export function endTurn(s: GameState): string[] {
     }
   // raider camps and bands of the early ages
   events.push(...raidersTurn(s));
+  // the player's sentries see what came near
+  events.push(...wakeSentries(s, me.id));
   // tell the player about anything the AI did to them
   for (const e of s.log.slice(logStart))
     if (e.civId !== me.id && e.text.includes(me.name)) events.push(e.text);

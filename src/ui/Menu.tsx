@@ -5,6 +5,7 @@ import type { GameSettings, Level3, MapSize, MapType } from '../engine/types.ts'
 import { deleteGame, listGames } from './save.ts';
 import { artUrl } from '../render/art.ts';
 import { DIFFICULTIES, DIFFICULTY_ORDER, type Difficulty } from '../engine/difficulty.ts';
+import { VICTORY } from '../engine/victory.ts';
 
 const L3 = (labels: [string, string, string]) =>
   (['low', 'normal', 'high'] as Level3[]).map((v, i) => ({ v, label: labels[i] }));
@@ -29,6 +30,7 @@ export function Menu({
   const [games, setGames] = useState(listGames);
   const [turnLimit, setTurnLimit] = useState(400);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+  const [noVictory, setNoVictory] = useState<NonNullable<GameSettings['noVictory']>>([]);
 
   const select = <T extends string>(
     label: string,
@@ -108,6 +110,25 @@ export function Menu({
             <li key={n}>{n}</li>
           ))}
         </ul>
+        <fieldset className="victory-toggles">
+          <legend>Victories</legend>
+          <label title="Always on">
+            <input type="checkbox" checked disabled /> Conquest
+          </label>
+          {(['cultural', 'economic', 'diplomatic', 'scientific'] as const).map(k => (
+            <label key={k} title={VICTORY[k].goal}>
+              <input
+                type="checkbox"
+                checked={!noVictory.includes(k)}
+                onChange={e =>
+                  setNoVictory(v => (e.target.checked ? v.filter(x => x !== k) : [...v, k]))
+                }
+              />{' '}
+              {VICTORY[k].name}
+            </label>
+          ))}
+          <span className="muted small">The best score wins at the last turn either way.</span>
+        </fieldset>
         <div className="map-types">
           {MAP_TYPES.map(t => (
             <button
@@ -195,6 +216,7 @@ export function Menu({
               playerName: name.trim(),
               turnLimit,
               difficulty,
+              noVictory: noVictory.length ? noVictory : undefined,
             })
           }
         >

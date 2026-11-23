@@ -12,7 +12,7 @@ import {
   useEdict,
 } from '../engine/paths.ts';
 import type { Civ, GameState } from '../engine/types.ts';
-import { VICTORIES } from '../engine/victory.ts';
+import { VICTORIES, victoryOn } from '../engine/victory.ts';
 import { activeCrisis, crisisRisks } from '../engine/crises.ts';
 import { POLICY_COOLDOWN, POLICY_LIST, sideOf } from '../data/policies.ts';
 import { openPolicies, policyProblem, positionOf, setPolicy } from '../engine/policies.ts';
@@ -45,7 +45,7 @@ export function NationDialog({
   const locked = lockedOptions(game, civ);
   const taken = (civ.paths ?? []).map(id => PATHS[id]).filter(Boolean);
   const sys = age ? AGE_SYSTEMS[age] : undefined;
-  const opened = age ? VICTORIES.filter(v => v.opensAt === age) : [];
+  const opened = age ? VICTORIES.filter(v => v.opensAt === age && victoryOn(game, v.id)) : [];
   const crisis = activeCrisis(game, civ);
   const risks = crisisRisks(game, civ);
   // on an age card only the policy that age opens; otherwise every open lever

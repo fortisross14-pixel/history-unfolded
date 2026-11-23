@@ -74,6 +74,9 @@ const popOf = (s: GameState, civId: number) =>
   s.cities.filter(c => c.civId === civId).reduce((a, c) => a + c.pop, 0);
 
 export const isOpen = (civ: Civ, v: VictoryInfo) => ageOf(civ.techs) >= v.opensAt;
+/** Is this victory played in this game (peaceful ones can be turned off at setup)? */
+export const victoryOn = (s: GameState, kind: VictoryKind) =>
+  kind === 'conquest' || !(s.settings.noVictory ?? []).includes(kind as never);
 export const opensText = (v: VictoryInfo) =>
   v.opensAt <= 1 ? 'Open from the start' : `Opens in the ${ERAS[v.opensAt]} age`;
 
@@ -149,7 +152,7 @@ export function victoryTurn(s: GameState): {
   const news: string[] = [];
   const me = s.civs.find(c => c.isPlayer);
   for (const v of VICTORIES) {
-    if (v.id === 'conquest') continue;
+    if (v.id === 'conquest' || !victoryOn(s, v.id)) continue;
     const holder = great(s).find(c => isOpen(c, v) && progress(s, c, v.id).met);
     const was = s.holding[v.id];
     if (!holder) {

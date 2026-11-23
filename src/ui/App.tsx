@@ -9,6 +9,8 @@ import { loadGame, saveGame } from './save.ts';
 export function App() {
   const [assets, setAssets] = useState<Assets | null>(null);
   const [game, setGame] = useState<GameState | null>(null);
+  // a fresh game on the same seed still needs a fresh screen
+  const [run, setRun] = useState(0);
 
   useEffect(() => {
     loadAssets().then(setAssets);
@@ -33,10 +35,16 @@ export function App() {
   }
   return (
     <Game
-      key={game.settings.map.seed}
+      key={`${game.settings.map.seed}-${run}`}
       initial={game}
       assets={assets}
       onQuit={() => setGame(null)}
+      onRematch={() => {
+        const g = newGame(game.settings);
+        saveGame(g);
+        setRun(n => n + 1);
+        setGame(g);
+      }}
     />
   );
 }

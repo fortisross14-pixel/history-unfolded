@@ -26,6 +26,8 @@ export interface GameSettings {
   playerName: string;
   /** the game ends on this turn with a score victory */
   turnLimit?: number;
+  /** peaceful victories turned off for this game (conquest and score are always on) */
+  noVictory?: ('cultural' | 'economic' | 'diplomatic' | 'scientific')[];
   /** opponent strength and forgiveness; absent in older saves = normal */
   difficulty?: 'casual' | 'normal' | 'hard';
 }
@@ -77,6 +79,10 @@ export interface Design {
 export type FormationKind = 'army' | 'settlers' | 'fleet' | 'workers' | 'engineers';
 
 export interface Formation {
+  /** skipped by the player this turn: left out of the to-do list until the next turn */
+  skip?: number;
+  /** on sentry: stays put and out of the to-do list until enemies come near */
+  sentry?: boolean;
   /** works on its own each turn: a crew builds roads and rails, a scout explores */
   auto?: 'crew' | 'explore';
   id: number;

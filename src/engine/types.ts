@@ -97,7 +97,24 @@ export interface Formation {
 /** a settlement's size: one more district at each step, up to the centre and its six neighbours */
 export type Tier = 'settlement' | 'town' | 'large-town' | 'city' | 'large-city' | 'metropolis';
 
+/** A faith founded by a people (faith.ts): it spreads from settlement to settlement by itself. */
+export interface Faith {
+  id: number;
+  name: string;
+  /** the people who founded it */
+  founder: number;
+  /** the settlement it was founded in */
+  holy: number;
+  founded: number;
+  /** chosen tenet ids, founding belief first */
+  tenets: string[];
+}
+
 export interface City {
+  /** the faith most of its people keep (faith.ts) */
+  faith?: number;
+  /** another faith gaining ground: turns it has been the stronger */
+  conv?: { f: number; n: number };
   /** the governor plans its districts and buildings each turn (the player's settlements) */
   auto?: boolean;
   /** enemy troops around it since this turn (siege); guard falls, walls breach in time */
@@ -123,6 +140,8 @@ export interface Civ {
   name: string;
   color: string;
   isPlayer: boolean;
+  /** the faith most of its people keep, if any (faith.ts) */
+  faith?: number;
   /** a free people: one city, never expands; can be befriended, allied, absorbed or conquered */
   independent?: boolean;
   /** last turn's output, for the dominance victories: wealth made (GDP) and culture */
@@ -380,6 +399,8 @@ export interface GameState {
   chronicle?: import('./stats.ts').ChronicleEntry[];
   /** the peoples banded together against a runaway leader (coalition.ts) */
   coalition?: { against: number; members: number[]; since: number; reason: string };
+  /** the faiths of the world, in the order they were founded (faith.ts) */
+  faiths?: Faith[];
   /** a crisis has just struck the player: its dialog opens once */
   crisisCard?: boolean;
   districts: District[];

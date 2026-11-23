@@ -61,6 +61,8 @@ import { HexPanel } from './HexPanel.tsx';
 import { MapView, mapMode, setMapMode } from './MapView.tsx';
 import { Minimap } from './Minimap.tsx';
 import { EmpireDialog } from './EmpireDialog.tsx';
+import { FaithDialog } from './FaithDialog.tsx';
+import { foundProblem, tenetDue } from '../engine/faith.ts';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
 import { DynastiesDialog } from './DynastiesDialog.tsx';
@@ -100,6 +102,7 @@ type Dialog =
   | { kind: 'crisis' }
   | { kind: 'stats' }
   | { kind: 'empire' }
+  | { kind: 'faith' }
   | { kind: 'dynasties' }
   | { kind: 'realm-event' }
   | { kind: 'battle'; report: BattleReport }
@@ -157,6 +160,7 @@ const KEYS: [string, string][] = [
   ['O', 'Nation: national directions, edicts and crises'],
   ['L', 'Chronicle and statistics: rankings, charts, history'],
   ['E', 'Empire: all settlements and armies, find by name'],
+  ['I', 'Faith: found one, choose its tenets, see the faiths of the world'],
   ['M', 'Show or hide the minimap'],
   ['Y', 'Dynasties: houses, governors, trinkets'],
   ['Esc', 'Close a window, or clear the selection'],
@@ -302,6 +306,18 @@ export function Game({
         key: 'nation',
         label: 'Choose a national direction',
         go: () => setDialog({ kind: 'nation' }),
+      });
+    if (!foundProblem(game, me.id))
+      out.push({
+        key: 'faith',
+        label: 'Found a faith',
+        go: () => setDialog({ kind: 'faith' }),
+      });
+    if (tenetDue(game, me.id))
+      out.push({
+        key: 'tenet',
+        label: 'Choose a tenet for your faith',
+        go: () => setDialog({ kind: 'faith' }),
       });
     const ev = pendingRealmEvent(game, me);
     if (ev)
@@ -582,6 +598,7 @@ export function Game({
       else if (key === 'o') setDialog({ kind: 'nation' });
       else if (key === 'l') setDialog({ kind: 'stats' });
       else if (key === 'e') setDialog({ kind: 'empire' });
+      else if (key === 'i') setDialog({ kind: 'faith' });
       else if (key === 'm') toggleMini();
       else if (key === 'y') setDialog({ kind: 'dynasties' });
       else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
@@ -1306,6 +1323,17 @@ export function Game({
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'faith' && (
+        <FaithDialog
+          game={game}
+          civ={me}
+          report={r => {
+            report(r as Result);
+            bump();
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === 'empire' && (
         <EmpireDialog
           game={game}
@@ -1342,6 +1370,7 @@ export function Game({
           civ={me}
           age={dialog.age}
           onCrisis={() => setDialog({ kind: 'crisis' })}
+          onFaith={() => setDialog({ kind: 'faith' })}
           report={r => report(r as Result)}
           onClose={() => setDialog(null)}
         />

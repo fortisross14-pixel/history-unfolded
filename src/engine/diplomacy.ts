@@ -81,6 +81,16 @@ export function opinionParts(s: GameState, of: number, about: number): OpinionPa
   for (const [x, y] of OPPOSED)
     if ((strong(ta, x) && strong(tb, y)) || (strong(ta, y) && strong(tb, x)))
       parts.push({ label: `Clashing ideas (${TAGS[x].name} / ${TAGS[y].name})`, value: -15 });
+  // faith: shared warms, different cools (more for zealous peoples, not at all for tolerant ones)
+  if (A.faith !== undefined && B.faith !== undefined) {
+    const name = (id: number) => s.faiths?.find(f => f.id === id)?.name ?? 'a faith';
+    if (A.faith === B.faith) parts.push({ label: `Shared faith (${name(A.faith)})`, value: 10 });
+    else if (!strong(ta, 'tolerant'))
+      parts.push({
+        label: `Another faith (${name(B.faith)})`,
+        value: strong(ta, 'zealous') ? -15 : -5,
+      });
+  }
   if (atWarPair(s, of, about)) parts.push({ label: 'At war', value: -40 });
   for (const t of treatiesOf(s, of, about)) {
     if (t.kind === 'pact') parts.push({ label: 'Non-aggression pact', value: 10 });

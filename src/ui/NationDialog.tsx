@@ -1,3 +1,4 @@
+import { faithById, foundProblem, tenetDue } from '../engine/faith.ts';
 import { AGE_SYSTEMS, PATHS, type NationalPath } from '../data/paths.ts';
 import { TAGS } from '../data/culture.ts';
 import { ERAS } from '../data/techs.ts';
@@ -26,12 +27,14 @@ export function NationDialog({
   report,
   onClose,
   onCrisis,
+  onFaith,
 }: {
   game: GameState;
   civ: Civ;
   /** set when shown as the card for a newly entered age */
   age?: number;
   onCrisis: () => void;
+  onFaith: () => void;
   report: (r: { ok: boolean; msg?: string }) => void;
   onClose: () => void;
 }) {
@@ -79,6 +82,24 @@ export function NationDialog({
             )}
             <button className="link" onClick={onCrisis}>
               {crisis && !crisis.state.response ? 'Answer it' : 'See crises'}
+            </button>
+          </p>
+        )}
+        {!age && (
+          <p className="small crisis-line">
+            {faithById(game, civ.faith) ? (
+              <>
+                Faith: <b>{faithById(game, civ.faith)!.name}</b>.{' '}
+              </>
+            ) : (
+              <>Your people keep no one faith yet. </>
+            )}
+            <button className="link" onClick={onFaith}>
+              {!foundProblem(game, civ.id)
+                ? 'Found a faith'
+                : tenetDue(game, civ.id)
+                  ? 'Choose a tenet'
+                  : 'See faiths (I)'}
             </button>
           </p>
         )}

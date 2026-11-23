@@ -1,3 +1,4 @@
+import { CONVERT_TURNS, faithById } from '../engine/faith.ts';
 import { governorOf } from '../engine/dynasty.ts';
 import { Icon } from './icons.tsx';
 import { DISTRICT_CAP, marketCities, marketStock, TIER_NAME } from '../engine/economy.ts';
@@ -164,6 +165,7 @@ export function CityPanel({
                   ready
                 </td>
               </tr>
+              <FaithRow game={game} c={c} />
               {c.siege && (
                 <tr className="bad">
                   <td>Siege</td>
@@ -293,5 +295,33 @@ export function CityPanel({
         </p>
       )}
     </div>
+  );
+}
+
+/** The faith a settlement keeps, and any other gaining ground. */
+function FaithRow({ game, c }: { game: GameState; c: City }) {
+  const f = faithById(game, c.faith);
+  const g = c.conv ? faithById(game, c.conv.f) : undefined;
+  if (!f && !g) return null;
+  return (
+    <tr>
+      <td>Faith</td>
+      <td>
+        {f ? (
+          <>
+            {f.name}
+            {f.holy === c.id ? <b> · holy city</b> : null}
+          </>
+        ) : (
+          <span className="muted">none yet</span>
+        )}
+        {g && (
+          <small className="muted">
+            {' '}
+            · {g.name} gaining ({c.conv!.n}/{CONVERT_TURNS})
+          </small>
+        )}
+      </td>
+    </tr>
   );
 }

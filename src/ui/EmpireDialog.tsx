@@ -1,3 +1,4 @@
+import { faithById } from '../engine/faith.ts';
 import { useState } from 'react';
 import { DISTRICT_CAP, TIER_NAME } from '../engine/economy.ts';
 import type { GameState } from '../engine/types.ts';
@@ -119,6 +120,7 @@ export function EmpireDialog({
                   <th>Size</th>
                   <th>People</th>
                   <th>Districts</th>
+                  <th>Faith</th>
                   <th>State</th>
                 </tr>
               </thead>
@@ -132,6 +134,9 @@ export function EmpireDialog({
                     <td>{c.pop.toLocaleString()}</td>
                     <td>
                       {districts(c.id)}/{DISTRICT_CAP[c.tier]}
+                    </td>
+                    <td>
+                      <small>{faithById(game, c.faith)?.name ?? '—'}</small>
                     </td>
                     <td>
                       {c.siege ? <b className="war-pill">besieged</b> : null}

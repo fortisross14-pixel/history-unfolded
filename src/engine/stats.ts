@@ -84,6 +84,7 @@ export interface ChronicleEntry {
     | 'direction'
     | 'dynasty'
     | 'victory'
+    | 'faith'
     | 'other';
   text: string;
 }
@@ -91,6 +92,7 @@ export interface ChronicleEntry {
 /** The log lines worth keeping for good, and what kind of moment each is. */
 const KEEP: [RegExp, ChronicleEntry['kind']][] = [
   [/ enter the .* age\./, 'age'],
+  [/ found a new faith, | now keep | drift away from |takes up a new tenet/, 'faith'],
   [/ declared war on /, 'war'],
   [/ joined their allies against /, 'war'],
   [/ made peace\./, 'peace'],

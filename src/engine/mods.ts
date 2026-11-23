@@ -5,6 +5,7 @@ import { TECHS } from '../data/techs.ts';
 import { PATHS } from '../data/paths.ts';
 import { CRISIS_MODS } from '../data/crisisMods.ts';
 import { policySides } from '../data/policies.ts';
+import { TENETS } from '../data/faiths.ts';
 import type { Civ, GameState } from './types.ts';
 
 const cache = new WeakMap<Civ, { key: string; mods: Mods }>();
@@ -40,6 +41,16 @@ export const UPHEAVAL_PENALTY: Partial<Mods> = {
   morale: -5,
 };
 
+/** The tenets that help a people (see faith.ts; kept here so mods need no engine import). */
+export function faithTenets(s: GameState, civ: Civ): string[] {
+  const out: string[] = [];
+  const kept = civ.faith === undefined ? undefined : s.faiths?.find(f => f.id === civ.faith);
+  if (kept) out.push(...kept.tenets.filter(t => TENETS[t]?.slot !== 'founding'));
+  const own = s.faiths?.find(f => f.founder === civ.id);
+  if (own?.tenets[0]) out.push(own.tenets[0]);
+  return out;
+}
+
 export function civMods(s: GameState, civId: number): Mods {
   const civ = s.civs[civId];
   const c = civ.culture;
@@ -47,7 +58,7 @@ export function civMods(s: GameState, civId: number): Mods {
     civ.policies ?? {},
   )
     .map(([k, v]) => k + v.pos)
-    .join()}`;
+    .join()}|${faithTenets(s, civ).join()}`;
   const hit = cache.get(civ);
   if (hit && hit.key === key) return hit.mods;
   const m = ZERO_MODS();
@@ -68,6 +79,8 @@ export function civMods(s: GameState, civId: number): Mods {
     addMods(m, CRISIS_MODS[civ.crisis.id], civ.crisis.eased ? 0.5 : 1);
   // age policies: the side each lever sits on
   for (const side of policySides(civ)) addMods(m, side.mods);
+  // faith: the teachings of the faith the people keeps, and its own founding belief
+  for (const t of faithTenets(s, civ)) if (TENETS[t]?.mods) addMods(m, TENETS[t].mods!);
   cache.set(civ, { key, mods: m });
   return m;
 }

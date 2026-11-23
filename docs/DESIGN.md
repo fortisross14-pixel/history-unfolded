@@ -970,6 +970,32 @@ last 800 moments (a 220-turn save is about 340 KB in all).
   automated, exploring), plus a Find box across them and the foreign settlements the player has
   seen. A row looks there and selects it; Enter in Find goes to the first match.
 
+## 12j. Faith (as built)
+
+Kept light: nothing to move or manage. Faith screen (I); also from the Nation screen.
+- **Founding is a race.** With Mysticism and a shrine built, a people can found a faith (a name and
+  a founding belief). The world has room for one faith per two great peoples (two at least). AI
+  peoples found none before turn 40 / 30 / 20 (Discovery / Standard / Veteran), then by chance
+  each turn, so a player who goes for it can win a place.
+- **It spreads by itself.** Each settlement within 6 hexes of another pulls it toward that one's
+  faith: 1 + shrines + 2×temples + 4×cathedral + 5 for the holy city, divided by distance; ×1.5
+  when both are on roads, ×1.5 within one realm, ×1.25 between trading partners. A settlement's
+  own faith resists at twice its strength (×1.5 more for a zealous people). A faith that stays the
+  stronger for 5 turns is taken up. On founding, the holy city and the realm's settlements nearby
+  with no faith take it up at once.
+- **Three tenets.** A founding belief rewards the founder (Tithes: +½ gold per follower settlement;
+  Pilgrimage: +1 culture per foreign follower settlement; Missionaries: spreads 1.5× faster; Holy
+  Warriors: +5 morale). A teaching (Priesthood) and a doctrine (Theology) help every people whose
+  faith it is (growth, science and culture, slower tension, production; culture, home defence,
+  science, faster spread and gold).
+- **A people's faith** is the one most of its people keep, a third at least.
+- **Opinion:** shared faith +10; another faith −5 (−15 for a zealous people, none for a tolerant
+  one).
+- **Schism tie-in:** a realm with over 35% of its people outside its own faith builds religious
+  tension (+0.8 a turn, up to 80), which can bring on the schism crisis.
+- Settlement panel and the Empire list show each settlement's faith and any faith gaining ground;
+  the chronicle keeps foundings, tenets and peoples changing faith.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

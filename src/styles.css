@@ -2695,3 +2695,60 @@ input.rename {
 .empire-found li {
   padding: 3px 0;
 }
+
+/* faith */
+.modal.faith {
+  width: min(780px, 96vw);
+}
+.modal.faith h3 {
+  margin: 14px 0 6px;
+}
+.tenet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+.tenet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  padding: 10px 12px;
+  white-space: normal;
+}
+.tenet small {
+  font-weight: normal;
+  line-height: 1.3;
+}
+.tenet.on {
+  outline: 2px solid var(--accent, #2b6a5f);
+  outline-offset: -2px;
+}
+.tenet-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+}
+.tenet-list li {
+  padding: 3px 0;
+}
+.faith-name input {
+  font-size: 15px;
+  padding: 6px 8px;
+  width: min(320px, 70%);
+  margin: 4px 0 8px;
+}
+.faith-bar {
+  display: flex;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(90, 70, 40, 0.35);
+  margin: 4px 0 6px;
+}
+.faith-bar span {
+  display: block;
+  height: 100%;
+}

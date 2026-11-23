@@ -76,6 +76,7 @@ import { difficultyOf, yieldFactor } from './difficulty.ts';
 import { victoryTurn } from './victory.ts';
 import { aiPathTurn, enterAge } from './paths.ts';
 import { crisisTurn } from './crises.ts';
+import { faithTurn } from './faith.ts';
 import { coalitionTurn } from './coalition.ts';
 import { chronicle, recordStats } from './stats.ts';
 import { aiPolicyTurn, policyTurn } from './policies.ts';
@@ -1214,6 +1215,7 @@ export function endTurn(s: GameState): string[] {
     policyTurn(s, civ);
     if (!civ.isPlayer) aiPolicyTurn(s, civ);
   }
+  events.push(...faithTurn(s));
   events.push(...diplomacyTurn(s));
   events.push(...coalitionTurn(s));
   events.push(...historyTurn(s));

@@ -3,6 +3,7 @@
  * in place and return a result message; the UI re-renders from the state afterwards.
  */
 import { CITY_NAMES, CIV_PRESETS, INDEPENDENT_PRESETS } from '../data/civs.ts';
+import { RULER_BY_ID, RULERS, type RulerChoice } from '../data/rulers.ts';
 import { independentTurn } from './independents.ts';
 import { historyTurn } from './events.ts';
 import { DEPOSITS, GOODS } from '../data/goods.ts';
@@ -36,8 +37,8 @@ import {
   setPowerFn,
 } from './diplomacy.ts';
 import { civMods, pct } from './mods.ts';
-import { cultureTurn, newCultureState } from './culture.ts';
-import { CULTURE, TAGS } from '../data/culture.ts';
+import { cultureTurn, newCultureState, nodeCost } from './culture.ts';
+import { CULTURE, CULTURE_LIST, TAGS } from '../data/culture.ts';
 import { tagCounts as tagCountsOf } from './mods.ts';
 import {
   build,
@@ -154,12 +155,15 @@ export function newGame(settings: GameSettings): GameState {
     events: [],
     lastEvent: {},
   };
+  const leads = assignRulers(settings, civCount);
   for (let i = 0; i < civCount; i++) {
-    const preset = CIV_PRESETS[i];
+    const lead = leads[i];
     const civ: Civ = {
       id: i,
-      name: i === 0 && settings.playerName ? settings.playerName : preset.name,
-      color: preset.color,
+      name: lead.name,
+      color: lead.color,
+      ruler: lead.ruler,
+      cityList: lead.cityList,
       isPlayer: i === 0,
       techs: [],
       researching: null,
@@ -202,13 +206,15 @@ export function newGame(settings: GameSettings): GameState {
     civ.designs.push(scoutDesign);
     scout.cohorts[0].loadout = { ...scoutDesign.loadout };
     scout.cohorts[0].designId = scoutDesign.id;
-    scout.moves = formationMoves(scout);
+    scout.moves = fullMoves(s, scout);
     if (!civ.isPlayer) {
       const settlers = s.formations.find(f => f.civId === civ.id && f.kind === 'settlers')!;
       foundCity(s, settlers.id);
     }
   }
   placeIndependents(s, civCount);
+  // a ruler's gifts for the first age
+  for (const c of s.civs) if (c.ruler) ageGifts(s, c);
   for (const c of s.civs) updateExplored(s, c.id);
   log(s, 0, `Turn 1. ${civCount} peoples begin on a ${map.type.replace('-', ' ')} world.`);
   placeRuins(s);
@@ -216,6 +222,104 @@ export function newGame(settings: GameSettings): GameState {
 }
 
 /** Free peoples take the start spots no major people uses: one city and a garrison each. */
+/**
+ * Who leads each great people. The player's ruler comes from the settings (a historical one, or
+ * one of their own); rivals are other historical rulers, drawn by the map seed, unless the game
+ * asks for the invented peoples of earlier versions. A ruler of one's own takes a historical
+ * nation's names or invented ones; no two peoples share a colour.
+ */
+function assignRulers(
+  settings: GameSettings,
+  count: number,
+): { name: string; color: string; ruler?: RulerChoice; cityList?: string[] }[] {
+  const rng = mulberry32(hashSeed(settings.map.seed, 4242));
+  const mine = settings.ruler;
+  const taken = new Set<string>(mine?.id ? [mine.id] : []);
+  const pool = RULERS.filter(r => !taken.has(r.id));
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const out: { name: string; color: string; ruler?: RulerChoice; cityList?: string[] }[] = [];
+  const used = new Set<string>();
+  const freeColour = (want: string, i: number) => {
+    if (!used.has(want)) return want;
+    return CIV_PRESETS.map(p => p.color).find(c => !used.has(c)) ?? CIV_PRESETS[i].color;
+  };
+  for (let i = 0; i < count; i++) {
+    let o: { name: string; color: string; ruler?: RulerChoice; cityList?: string[] };
+    if (i === 0 && mine) {
+      const hist = mine.id ? RULER_BY_ID[mine.id] : undefined;
+      const borrow = mine.names && mine.names !== 'invented' ? RULER_BY_ID[mine.names] : hist;
+      o = {
+        name:
+          mine.nation?.trim() || settings.playerName?.trim() || hist?.nation || CIV_PRESETS[0].name,
+        color: mine.color ?? hist?.color ?? CIV_PRESETS[0].color,
+        ruler: {
+          id: mine.id,
+          name: mine.name,
+          face: mine.face,
+          major: mine.major,
+          minor: mine.minor,
+        },
+        cityList: mine.names === 'invented' ? undefined : borrow?.cities,
+      };
+    } else if (i > 0 && settings.rivals !== 'fictional' && pool.length) {
+      const r = pool.shift()!;
+      o = {
+        name: r.nation,
+        color: r.color,
+        ruler: { id: r.id, name: r.name, face: r.face, major: r.major, minor: r.minor },
+        cityList: r.cities,
+      };
+    } else {
+      // older settings: the invented peoples; the player's name if given
+      const p = CIV_PRESETS[i];
+      o = { name: i === 0 && settings.playerName ? settings.playerName : p.name, color: p.color };
+    }
+    o.color = freeColour(o.color, i);
+    used.add(o.color);
+    out.push(o);
+  }
+  return out;
+}
+
+/** What a ruler hands over on entering an age: research and culture, in techs' and choices' worth. */
+export function ageGifts(s: GameState, civ: Civ) {
+  const m = civMods(s, civ.id);
+  if (m.freeTechs > 0) {
+    const next = availableTechs(civ);
+    const cost = next.length ? Math.min(...next.map(t => techCost(s, civ, t.id))) : 0;
+    if (cost) {
+      civ.science += cost * m.freeTechs;
+      log(
+        s,
+        civ.id,
+        `${civ.ruler?.name ?? civ.name} brings learning: ${Math.round(cost * m.freeTechs)} science.`,
+      );
+    }
+  }
+  if (m.freeCulture > 0) {
+    const open = CULTURE_LIST.filter(n => !civ.culture.taken.includes(n.id));
+    const cost = open.length ? Math.min(...open.map(n => nodeCost(s, civ, n))) : 0;
+    if (cost) {
+      civ.culture.points += cost * m.freeCulture;
+      log(
+        s,
+        civ.id,
+        `${civ.ruler?.name ?? civ.name} inspires the people: ${Math.round(cost * m.freeCulture)} culture.`,
+      );
+    }
+  }
+}
+
+/** A formation's full moves for a turn: its slowest cohort, plus its ruler's gift to troops. */
+export function fullMoves(s: GameState, f: Formation): number {
+  const base = formationMoves(f);
+  if (f.kind === 'fleet' || !base) return base;
+  return base + civMods(s, f.civId).moves;
+}
+
 function placeIndependents(s: GameState, civCount: number) {
   const want = MAP_SIZES[s.settings.map.size].independents;
   const spots = s.map.starts.slice(civCount, civCount + want);
@@ -284,7 +388,7 @@ function addFormation(
     fortified: false,
     cohorts: Array.from({ length: cohorts }, () => newCohort(s)),
   };
-  f.moves = formationMoves(f);
+  f.moves = fullMoves(s, f);
   s.formations.push(f);
   return f;
 }
@@ -631,9 +735,11 @@ export function stepCost(s: GameState, f: Formation, from: number, to: number): 
     return enterCost(s.map, f, to);
   }
   if (isWaterHex(s, to)) return shipFor(s, f, to) ? Math.max(1, formationMoves(f)) : Infinity;
-  const base = enterCost(s.map, f, to);
+  let base = enterCost(s.map, f, to);
   if (!isFinite(base)) return base;
   if (isWaterHex(s, from)) return Math.max(1, formationMoves(f)); // landing
+  // a ruler whose troops ignore the ground: every passable land hex costs one move
+  if (civMods(s, f.civId).ignoreTerrain > 0) base = Math.min(base, 1);
   // railways: a fifth of a move from rail to rail
   if (s.roads[from] === RAIL && s.roads[to] === RAIL) return RAIL_COST;
   if (s.roads[from] && s.roads[to]) return Math.max(0.2, 0.5 + civMods(s, f.civId).roadCost);
@@ -780,8 +886,8 @@ export function split(
           : nextLevyName(s, f.civId)),
     moves: 0,
   };
-  n.moves = Math.min(f.moves, formationMoves(n));
-  f.moves = Math.min(f.moves, formationMoves(f));
+  n.moves = Math.min(f.moves, fullMoves(s, n));
+  f.moves = Math.min(f.moves, fullMoves(s, f));
   s.formations.push(n);
   return { ok: true, msg: `${n.name} split from ${f.name}.`, id: n.id };
 }
@@ -922,7 +1028,9 @@ export function foundCity(s: GameState, fid: number): Result {
   const civ = s.civs[f.civId];
   const used = new Set(s.cities.map(c => c.name));
   const rng = mulberry32(hashSeed(s.settings.map.seed, 1000 + civ.id * 97 + civ.cityNames));
-  let name = CITY_NAMES[Math.floor(rng() * CITY_NAMES.length)];
+  // the people's own names in order (its capital first), then the shared list
+  let name =
+    civ.cityList?.find(n => !used.has(n)) ?? CITY_NAMES[Math.floor(rng() * CITY_NAMES.length)];
   for (let k = 0; used.has(name) && k < CITY_NAMES.length; k++)
     name = CITY_NAMES[(CITY_NAMES.indexOf(name) + 1) % CITY_NAMES.length];
   if (used.has(name)) name = `${name} ${civ.cityNames + 2}`;
@@ -1392,7 +1500,7 @@ export function endTurn(s: GameState): string[] {
   events.push(...siegeTurn(s));
   recordStats(s);
   s.turn++;
-  for (const f of s.formations) f.moves = formationMoves(f);
+  for (const f of s.formations) f.moves = fullMoves(s, f);
   for (const c of s.civs) updateExplored(s, c.id);
   // now and then a story asks for a choice
   if (me.alive) {
@@ -1680,7 +1788,7 @@ export function reachable(s: GameState, f: Formation): Set<number> {
 
 /** For each step of a path, the turn (0 = this turn) in which the formation gets there. */
 export function pathTurns(s: GameState, f: Formation, path: number[]): number[] {
-  const full = formationMoves(f);
+  const full = fullMoves(s, f);
   let left = f.moves,
     turn = 0;
   const out: number[] = [];

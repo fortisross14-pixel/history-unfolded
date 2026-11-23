@@ -6,7 +6,7 @@
  */
 import { PATH_LIST, PATHS, type NationalPath } from '../data/paths.ts';
 import { ERAS } from '../data/techs.ts';
-import { gridOf, levy, log, trainSettlers } from './game.ts';
+import { ageGifts, gridOf, levy, log, trainSettlers } from './game.ts';
 import { neighbors } from './hex.ts';
 import { isWater } from '../data/terrain.ts';
 import { identity } from './mods.ts';
@@ -55,6 +55,7 @@ export function choosePath(s: GameState, civId: number, id: string): { ok: boole
 
 /** Called when a people enters a new age. */
 export function enterAge(s: GameState, civ: Civ, age: number) {
+  ageGifts(s, civ);
   if (age === 2 || age === 4) civ.pathDue = age;
   if (civ.isPlayer) s.ageCard = age;
   else if (civ.pathDue) aiChoosePath(s, civ);

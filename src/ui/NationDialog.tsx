@@ -20,7 +20,9 @@ import { VICTORIES, victoryOn } from '../engine/victory.ts';
 import { activeCrisis, crisisRisks } from '../engine/crises.ts';
 import { POLICY_COOLDOWN, POLICY_LIST, type Policy, type PolicySide } from '../data/policies.ts';
 import { openPolicies, policyProblem, positionOf, setPolicy } from '../engine/policies.ts';
-import { GoodIcon, Ico, InfoButton } from './bits.tsx';
+import { Art, GoodIcon, Ico, InfoButton } from './bits.tsx';
+import { TRAITS } from '../data/rulers.ts';
+import './declutter-ruler.css';
 import './declutter-nation.css';
 
 // ------------------------------------------------------------------ effect chips (shared by the
@@ -72,6 +74,10 @@ const MOD_ICON: Record<Exclude<keyof Mods, 'groupPct'>, [string, string, boolean
   researchPct: ['research', 'research cost', true],
   cultureCostPct: ['culture', 'culture cost', true],
   tensionPct: ['warning', 'tension build-up', true],
+  moves: ['moves', 'moves for troops'],
+  ignoreTerrain: ['moves', 'troops ignore terrain'],
+  freeTechs: ['research', 'free techs each age'],
+  freeCulture: ['culture', 'free culture choices each age'],
 };
 
 /** A people's bonuses as effects, in the order they are written. */
@@ -371,6 +377,24 @@ export function NationDialog({
           </button>
         </header>
 
+        {!age && civ.ruler && (
+          <div className="nd-ruler">
+            <Art k={civ.ruler.face} size={52} className="rp-face" />
+            <span className="nd-ruler-who">
+              <b>{civ.ruler.name}</b>
+              <span className="chips">
+                <span title={`Major: ${TRAITS[civ.ruler.major].name}`}>
+                  {TRAITS[civ.ruler.major].name}
+                </span>
+                <EffChips effs={modEffs(TRAITS[civ.ruler.major].major)} />
+                <small className="muted" title={`Minor: ${TRAITS[civ.ruler.minor].name}`}>
+                  {TRAITS[civ.ruler.minor].name}
+                </small>
+                <EffChips effs={modEffs(TRAITS[civ.ruler.minor].minor)} />
+              </span>
+            </span>
+          </div>
+        )}
         {!age && (
           <div className="nd-status">
             <button className="link" onClick={onCrisis} title="Crises">

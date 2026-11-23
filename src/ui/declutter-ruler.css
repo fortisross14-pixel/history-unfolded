@@ -1,0 +1,190 @@
+/* the ruler picker on the new-game screen */
+.ruler-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rp-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rp-head h2 {
+  margin: 0;
+  flex: 1;
+}
+.rp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 2px;
+}
+button.rp-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 8px;
+  min-height: 0;
+}
+button.rp-card.on,
+button.rp-facebtn.on,
+button.rp-traitbtn.on {
+  outline: 3px solid var(--gold, #c9a14a);
+  outline-offset: -2px;
+  background: #f4ead3;
+}
+.rp-face {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 50%;
+  border: 2px solid rgba(120, 90, 50, 0.45);
+  background: #efe3c8;
+  flex: none;
+}
+.rp-face.blank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font:
+    600 18px Georgia,
+    serif;
+  color: #6b5537;
+}
+.rp-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rp-who small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.rp-traits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+.rp-trait {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+}
+.rp-trait.minor {
+  opacity: 0.8;
+}
+.rp-faces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+button.rp-facebtn {
+  padding: 3px;
+  border-radius: 50%;
+  min-height: 0;
+}
+.rp-facebtn .rp-face {
+  width: 56px;
+  height: 56px;
+}
+.rp-pick2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.rp-traitpick {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 34vh;
+  overflow-y: auto;
+}
+button.rp-traitbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  padding: 6px 8px;
+  min-height: 0;
+}
+.rp-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+button.rp-color {
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+}
+button.rp-color.on {
+  outline: 3px solid var(--gold, #c9a14a);
+  outline-offset: 2px;
+}
+.rp-foot {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.rp-foot .primary {
+  flex: 1;
+}
+.rp-own h3 {
+  margin: 10px 0 4px;
+}
+@media (max-width: 700px) {
+  .rp-pick2 {
+    grid-template-columns: 1fr;
+  }
+  .rp-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.menu-next {
+  display: flex;
+  gap: 8px;
+}
+.menu-next .primary {
+  flex: 2;
+}
+.menu-next button:not(.primary) {
+  flex: 1;
+}
+/* your ruler at the top of the Nation screen */
+.nd-ruler {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.nd-ruler .rp-face {
+  width: 52px;
+  height: 52px;
+}
+.nd-ruler-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ruler-tag b {
+  font-weight: 600;
+}
+/* strength buttons keep their height inside the scrolling column */
+.rp-traitpick > * {
+  flex: none;
+}

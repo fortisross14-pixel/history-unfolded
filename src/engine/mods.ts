@@ -7,6 +7,7 @@ import { CRISIS_MODS } from '../data/crisisMods.ts';
 import { policySides } from '../data/policies.ts';
 import { TENETS } from '../data/faiths.ts';
 import { WONDERS } from '../data/wonders.ts';
+import { rulerMods } from '../data/rulers.ts';
 import type { Civ, GameState } from './types.ts';
 
 const cache = new WeakMap<Civ, { key: string; mods: Mods }>();
@@ -63,7 +64,7 @@ export function heldWonders(s: GameState, civId: number): string[] {
 export function civMods(s: GameState, civId: number): Mods {
   const civ = s.civs[civId];
   const c = civ.culture;
-  const key = `${civ.techs.length}|${c.taken.length}|${c.legacy.length}|${c.upheaval ? c.upheaval.domain : ''}|${civ.paths?.length ?? 0}|${civ.crisis ? civ.crisis.id + (civ.crisis.eased ? 'e' : '') : ''}|${Object.entries(
+  const key = `${civ.ruler?.major ?? ''}${civ.ruler?.minor ?? ''}|${civ.techs.length}|${c.taken.length}|${c.legacy.length}|${c.upheaval ? c.upheaval.domain : ''}|${civ.paths?.length ?? 0}|${civ.crisis ? civ.crisis.id + (civ.crisis.eased ? 'e' : '') : ''}|${Object.entries(
     civ.policies ?? {},
   )
     .map(([k, v]) => k + v.pos)
@@ -71,6 +72,8 @@ export function civMods(s: GameState, civId: number): Mods {
   const hit = cache.get(civ);
   if (hit && hit.key === key) return hit.mods;
   const m = ZERO_MODS();
+  // the ruler: the major strength in full, the minor one's weaker form
+  if (civ.ruler) for (const r of rulerMods(civ.ruler)) addMods(m, r);
   for (const t of civ.techs) if (TECHS[t]?.mods) addMods(m, TECHS[t].mods!);
   for (const id of c.taken) if (CULTURE[id]) addMods(m, CULTURE[id].mods);
   for (const id of c.legacy) if (CULTURE[id]) addMods(m, CULTURE[id].mods, 0.5);

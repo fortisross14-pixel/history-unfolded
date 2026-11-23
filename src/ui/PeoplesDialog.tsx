@@ -25,6 +25,7 @@ import type { Bundle, GameState, Offer } from '../engine/types.ts';
 import { TagChip } from './CultureDialog.tsx';
 import { Art, Chip, Delta, GoodIcon, Ico, InfoButton } from './bits.tsx';
 import { leaderArt } from './leaderArt.ts';
+import { TraitChips } from './RulerPicker.tsx';
 import './declutter-world.css';
 import { PeaceTerms } from './PeaceTerms.tsx';
 
@@ -111,7 +112,7 @@ export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, on
               <div key={c.id} className={`people ${c.alive ? '' : 'gone'}`}>
                 <div className="people-head">
                   {!c.independent && (
-                    <Art k={leaderArt(game, c)} size={44} className="leader-art" />
+                    <Art k={c.ruler?.face ?? leaderArt(game, c)} size={44} className="leader-art" />
                   )}
                   <span className="swatch" style={{ background: c.color }} />
                   <b>{c.name}</b>
@@ -429,6 +430,12 @@ function LeaderTags({ game, civId, them }: { game: GameState; civId: number; the
   const intent = intentToward(game, them, civId);
   return (
     <>
+      {c.ruler && (
+        <span className="chip ruler-tag" title="Their ruler">
+          <b>{c.ruler.name}</b>
+        </span>
+      )}
+      {c.ruler && <TraitChips major={c.ruler.major} minor={c.ruler.minor} />}
       {house && (
         <span className="chip" title={`House ${house.name} rules`}>
           <Ico name="crown" fallback="👑" size={16} /> {house.name}

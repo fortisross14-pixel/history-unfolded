@@ -9,6 +9,9 @@ import { artUrl } from '../render/art.ts';
 import { DIFFICULTIES, DIFFICULTY_ORDER, type Difficulty } from '../engine/difficulty.ts';
 import { VICTORY } from '../engine/victory.ts';
 import { InfoButton } from './bits.tsx';
+import { RulerPicker } from './RulerPicker.tsx';
+import { RULERS } from '../data/rulers.ts';
+import type { RulerSetup } from '../engine/types.ts';
 import './declutter-world.css';
 
 const L3 = (labels: [string, string, string]) =>
@@ -35,8 +38,21 @@ export function Menu({
   const [resources, setRes] = useState<Level3>('normal');
   const [mountains, setMtn] = useState<Level3>('normal');
   const [seed, setSeed] = useState<number>(randomSeed());
-  const [name, setName] = useState('');
+  const [step, setStep] = useState<'map' | 'ruler'>('map');
+  const [rivals, setRivals] = useState<'historical' | 'fictional'>('historical');
+  const [ruler, setRuler] = useState<RulerSetup | null>(null);
   const [games, setGames] = useState(listGames);
+  const begin = (r: RulerSetup) =>
+    onStart({
+      map: { type, size, seaLevel, climate, rainfall, resources, mountains, seed },
+      civCount: civs,
+      playerName: '',
+      turnLimit,
+      difficulty,
+      noVictory: noVictory.length ? noVictory : undefined,
+      ruler: r,
+      rivals,
+    });
   const [turnLimit, setTurnLimit] = useState(400);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [noVictory, setNoVictory] = useState<NonNullable<GameSettings['noVictory']>>([]);
@@ -68,202 +84,218 @@ export function Menu({
           : undefined
       }
     >
-      <div className="menu-card">
-        <h1>History Unfolded</h1>
-        <div className="menu-tools">
-          <label className="button-like" title="Load a game saved to a file with Export">
-            Import save
-            <input
-              type="file"
-              accept=".json,application/json"
-              hidden
-              onChange={async e => {
-                const file = e.target.files?.[0];
-                e.target.value = '';
-                if (!file) return;
-                try {
-                  const st = importSave(await file.text());
-                  setImportError('');
-                  onImport?.(st);
-                } catch (err) {
-                  setImportError(err instanceof Error ? err.message : 'Could not read that file.');
-                }
-              }}
-            />
-          </label>
-          <button className="secondary" onClick={() => setShowSettings(true)}>
-            Settings
-          </button>
-          <InstallButton />
+      {step === 'ruler' ? (
+        <div className="menu-card">
+          <RulerPicker
+            initial={
+              ruler ?? {
+                id: RULERS[Math.abs(seed) % RULERS.length].id,
+                name: '',
+                face: '',
+                major: 'scholar',
+                minor: 'merchant',
+              }
+            }
+            rivals={rivals}
+            onRivals={setRivals}
+            onBack={() => setStep('map')}
+            onBegin={r => {
+              setRuler(r);
+              begin(r);
+            }}
+          />
         </div>
-        {importError && <p className="bad small">{importError}</p>}
-        {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
-        {games.length > 0 && (
-          <div className="saves">
-            <button className="primary wide" onClick={() => onContinue(games[0].id)}>
-              Continue: {games[0].civ}, turn {games[0].turn}
-            </button>
-            {games.length > 1 && (
-              <div className="save-list">
-                {games.slice(1).map(g => (
-                  <span key={g.id} className="save-row">
-                    <button onClick={() => onContinue(g.id)}>
-                      {g.civ} · {g.mapType} · turn {g.turn}
-                    </button>
-                    <button
-                      className="x small"
-                      title="Delete this game"
-                      onClick={() => {
-                        deleteGame(g.id);
-                        setGames(listGames());
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <h2>
-          New game{' '}
-          <InfoButton label={`About ${DIFFICULTIES[difficulty].name}`}>
-            <b>{DIFFICULTIES[difficulty].promise}</b>
-            {DIFFICULTIES[difficulty].notes.map(n => (
-              <span key={n}>· {n}</span>
-            ))}
-          </InfoButton>
-        </h2>
-        <div className="map-types difficulty" role="radiogroup" aria-label="Difficulty">
-          {DIFFICULTY_ORDER.map(d => (
-            <button
-              key={d}
-              role="radio"
-              aria-checked={difficulty === d}
-              className={`map-type ${difficulty === d ? 'on' : ''}`}
-              onClick={() => setDifficulty(d)}
-              title={DIFFICULTIES[d].promise}
-            >
-              <b>{DIFFICULTIES[d].name}</b>
-            </button>
-          ))}
-        </div>
-        <fieldset className="victory-toggles">
-          <legend>Victories</legend>
-          <label title="Always on">
-            <input type="checkbox" checked disabled /> Conquest
-          </label>
-          {(['cultural', 'economic', 'diplomatic', 'scientific'] as const).map(k => (
-            <label key={k} title={VICTORY[k].goal}>
+      ) : (
+        <div className="menu-card">
+          <h1>History Unfolded</h1>
+          <div className="menu-tools">
+            <label className="button-like" title="Load a game saved to a file with Export">
+              Import save
               <input
-                type="checkbox"
-                checked={!noVictory.includes(k)}
-                onChange={e =>
-                  setNoVictory(v => (e.target.checked ? v.filter(x => x !== k) : [...v, k]))
-                }
-              />{' '}
-              {VICTORY[k].name}
-            </label>
-          ))}
-          <InfoButton label="About victories">
-            {(['cultural', 'economic', 'diplomatic', 'scientific'] as const).map(k => (
-              <span key={k}>
-                <b>{VICTORY[k].name}:</b> {VICTORY[k].goal}
-              </span>
-            ))}
-            <span>Last turn: best score wins.</span>
-          </InfoButton>
-        </fieldset>
-        <div className="map-types">
-          {MAP_TYPES.map(t => (
-            <button
-              key={t.id}
-              className={`map-type ${type === t.id ? 'on' : ''}`}
-              onClick={() => setType(t.id)}
-              title={t.note}
-            >
-              <b>{t.name}</b>
-            </button>
-          ))}
-        </div>
-        <div className="fields">
-          {select(
-            'Map size',
-            size,
-            v => {
-              setSize(v);
-              setCivs(MAP_SIZES[v].civs);
-            },
-            (Object.keys(MAP_SIZES) as MapSize[]).map(k => ({
-              v: k,
-              label: `${k[0].toUpperCase() + k.slice(1)} (${MAP_SIZES[k].w}×${MAP_SIZES[k].h})`,
-            })),
-          )}
-          <label className="field">
-            <span>Peoples</span>
-            <select value={civs} onChange={e => setCivs(Number(e.target.value))}>
-              {Array.from({ length: MAP_SIZES[size].civs - 1 }, (_, i) => i + 2).map(n => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          {select('Sea level', seaLevel, setSea, L3(['Low', 'Normal', 'High']))}
-          {select('Climate', climate, setClimate, L3(['Cold', 'Temperate', 'Hot']))}
-          {select('Rainfall', rainfall, setRain, L3(['Dry', 'Normal', 'Wet']))}
-          {select('Resources', resources, setRes, L3(['Sparse', 'Normal', 'Abundant']))}
-          {select('Mountains', mountains, setMtn, L3(['Few', 'Normal', 'Many']))}
-          <label className="field">
-            <span>Seed</span>
-            <span className="row">
-              <input
-                type="number"
-                value={seed}
-                onChange={e => setSeed(Number(e.target.value) || 0)}
+                type="file"
+                accept=".json,application/json"
+                hidden
+                onChange={async e => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  try {
+                    const st = importSave(await file.text());
+                    setImportError('');
+                    onImport?.(st);
+                  } catch (err) {
+                    setImportError(
+                      err instanceof Error ? err.message : 'Could not read that file.',
+                    );
+                  }
+                }}
               />
-              <button onClick={() => setSeed(randomSeed())} title="New random seed">
-                ↻
+            </label>
+            <button className="secondary" onClick={() => setShowSettings(true)}>
+              Settings
+            </button>
+            <InstallButton />
+          </div>
+          {importError && <p className="bad small">{importError}</p>}
+          {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+          {games.length > 0 && (
+            <div className="saves">
+              <button className="primary wide" onClick={() => onContinue(games[0].id)}>
+                Continue: {games[0].civ}, turn {games[0].turn}
               </button>
-            </span>
-          </label>
-          <label className="field">
-            <span>Game length</span>
-            <select value={turnLimit} onChange={e => setTurnLimit(Number(e.target.value))}>
-              {[200, 300, 400, 600].map(n => (
-                <option key={n} value={n}>
-                  {n} turns
-                </option>
+              {games.length > 1 && (
+                <div className="save-list">
+                  {games.slice(1).map(g => (
+                    <span key={g.id} className="save-row">
+                      <button onClick={() => onContinue(g.id)}>
+                        {g.civ} · {g.mapType} · turn {g.turn}
+                      </button>
+                      <button
+                        className="x small"
+                        title="Delete this game"
+                        onClick={() => {
+                          deleteGame(g.id);
+                          setGames(listGames());
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <h2>
+            New game{' '}
+            <InfoButton label={`About ${DIFFICULTIES[difficulty].name}`}>
+              <b>{DIFFICULTIES[difficulty].promise}</b>
+              {DIFFICULTIES[difficulty].notes.map(n => (
+                <span key={n}>· {n}</span>
               ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Your people</span>
-            <input
-              placeholder="Aurelians"
-              value={name}
-              maxLength={24}
-              onChange={e => setName(e.target.value)}
-            />
-          </label>
+            </InfoButton>
+          </h2>
+          <div className="map-types difficulty" role="radiogroup" aria-label="Difficulty">
+            {DIFFICULTY_ORDER.map(d => (
+              <button
+                key={d}
+                role="radio"
+                aria-checked={difficulty === d}
+                className={`map-type ${difficulty === d ? 'on' : ''}`}
+                onClick={() => setDifficulty(d)}
+                title={DIFFICULTIES[d].promise}
+              >
+                <b>{DIFFICULTIES[d].name}</b>
+              </button>
+            ))}
+          </div>
+          <fieldset className="victory-toggles">
+            <legend>Victories</legend>
+            <label title="Always on">
+              <input type="checkbox" checked disabled /> Conquest
+            </label>
+            {(['cultural', 'economic', 'diplomatic', 'scientific'] as const).map(k => (
+              <label key={k} title={VICTORY[k].goal}>
+                <input
+                  type="checkbox"
+                  checked={!noVictory.includes(k)}
+                  onChange={e =>
+                    setNoVictory(v => (e.target.checked ? v.filter(x => x !== k) : [...v, k]))
+                  }
+                />{' '}
+                {VICTORY[k].name}
+              </label>
+            ))}
+            <InfoButton label="About victories">
+              {(['cultural', 'economic', 'diplomatic', 'scientific'] as const).map(k => (
+                <span key={k}>
+                  <b>{VICTORY[k].name}:</b> {VICTORY[k].goal}
+                </span>
+              ))}
+              <span>Last turn: best score wins.</span>
+            </InfoButton>
+          </fieldset>
+          <div className="map-types">
+            {MAP_TYPES.map(t => (
+              <button
+                key={t.id}
+                className={`map-type ${type === t.id ? 'on' : ''}`}
+                onClick={() => setType(t.id)}
+                title={t.note}
+              >
+                <b>{t.name}</b>
+              </button>
+            ))}
+          </div>
+          <div className="fields">
+            {select(
+              'Map size',
+              size,
+              v => {
+                setSize(v);
+                setCivs(MAP_SIZES[v].civs);
+              },
+              (Object.keys(MAP_SIZES) as MapSize[]).map(k => ({
+                v: k,
+                label: `${k[0].toUpperCase() + k.slice(1)} (${MAP_SIZES[k].w}×${MAP_SIZES[k].h})`,
+              })),
+            )}
+            <label className="field">
+              <span>Peoples</span>
+              <select value={civs} onChange={e => setCivs(Number(e.target.value))}>
+                {Array.from({ length: MAP_SIZES[size].civs - 1 }, (_, i) => i + 2).map(n => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {select('Sea level', seaLevel, setSea, L3(['Low', 'Normal', 'High']))}
+            {select('Climate', climate, setClimate, L3(['Cold', 'Temperate', 'Hot']))}
+            {select('Rainfall', rainfall, setRain, L3(['Dry', 'Normal', 'Wet']))}
+            {select('Resources', resources, setRes, L3(['Sparse', 'Normal', 'Abundant']))}
+            {select('Mountains', mountains, setMtn, L3(['Few', 'Normal', 'Many']))}
+            <label className="field">
+              <span>Seed</span>
+              <span className="row">
+                <input
+                  type="number"
+                  value={seed}
+                  onChange={e => setSeed(Number(e.target.value) || 0)}
+                />
+                <button onClick={() => setSeed(randomSeed())} title="New random seed">
+                  ↻
+                </button>
+              </span>
+            </label>
+            <label className="field">
+              <span>Game length</span>
+              <select value={turnLimit} onChange={e => setTurnLimit(Number(e.target.value))}>
+                {[200, 300, 400, 600].map(n => (
+                  <option key={n} value={n}>
+                    {n} turns
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="menu-next">
+            <button className="primary wide" onClick={() => setStep('ruler')}>
+              Choose ruler →
+            </button>
+            <button
+              className="wide"
+              title="Begin now, led by a ruler chosen for you"
+              onClick={() => {
+                const r = RULERS[Math.abs(seed) % RULERS.length];
+                begin({ id: r.id, name: r.name, face: r.face, major: r.major, minor: r.minor });
+              }}
+            >
+              Begin
+            </button>
+          </div>
         </div>
-        <button
-          className="primary wide"
-          onClick={() =>
-            onStart({
-              map: { type, size, seaLevel, climate, rainfall, resources, mountains, seed },
-              civCount: civs,
-              playerName: name.trim(),
-              turnLimit,
-              difficulty,
-              noVictory: noVictory.length ? noVictory : undefined,
-            })
-          }
-        >
-          Begin
-        </button>
-      </div>
+      )}
     </div>
   );
 }

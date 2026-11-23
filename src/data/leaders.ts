@@ -3,6 +3,7 @@
  * the AI judges war and peace and what it thinks of others (see ai.ts and diplomacy.ts).
  */
 import { hashSeed } from '../engine/rng.ts';
+import { RULERS } from './rulers.ts';
 
 export type PersonalityId =
   'conqueror' | 'builder' | 'merchant' | 'zealot' | 'diplomat' | 'opportunist';
@@ -73,10 +74,18 @@ const ORDER: PersonalityId[] = [
 ];
 
 /** A people's leader personality: fixed for the game by the seed (none for the player or free peoples). */
+/** a historical ruler's way as a rival */
+const RULER_PERSONALITY: Record<string, PersonalityId> = Object.fromEntries(
+  RULERS.map(r => [r.id, r.personality]),
+);
+
 export function personalityOf(
   seed: number,
-  civ: { id: number; isPlayer: boolean; independent?: boolean },
+  civ: { id: number; isPlayer: boolean; independent?: boolean; ruler?: { id?: string } },
 ): Personality | null {
   if (civ.isPlayer || civ.independent) return null;
+  // a historical ruler behaves as they did
+  const r = civ.ruler?.id ? RULER_PERSONALITY[civ.ruler.id] : undefined;
+  if (r) return PERSONALITIES[r];
   return PERSONALITIES[ORDER[hashSeed(seed, civ.id * 977 + 41) % ORDER.length]];
 }

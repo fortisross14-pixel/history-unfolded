@@ -1,3 +1,4 @@
+import type { RulerChoice } from '../data/rulers.ts';
 import type { ReliefId, TerrainId, VegetationId } from '../data/terrain.ts';
 import type { Loadout } from '../data/items.ts';
 import type { Domain } from '../data/culture.ts';
@@ -30,6 +31,19 @@ export interface GameSettings {
   noVictory?: ('cultural' | 'economic' | 'diplomatic' | 'scientific')[];
   /** opponent strength and forgiveness; absent in older saves = normal */
   difficulty?: 'casual' | 'normal' | 'hard';
+  /** the player's ruler; absent = a ruler chosen for them */
+  ruler?: RulerSetup;
+  /** rivals led by historical rulers (default) or the invented peoples of earlier versions */
+  rivals?: 'historical' | 'fictional';
+}
+
+/** The player's ruler as set up before the game. */
+export interface RulerSetup extends RulerChoice {
+  /** the people's name; for a historical ruler, their nation by default */
+  nation?: string;
+  color?: string;
+  /** settlement names: a historical ruler's id to borrow from, or 'invented' */
+  names?: string;
 }
 
 export interface Deposit {
@@ -150,6 +164,10 @@ export interface Civ {
   name: string;
   color: string;
   isPlayer: boolean;
+  /** who leads this people: a historical ruler or a player's own (absent in older saves) */
+  ruler?: RulerChoice;
+  /** the names its settlements take, in order, before the shared list */
+  cityList?: string[];
   /** an AI people's war on someone, announced: it strikes at turn `at` if it still wants to */
   warPlan?: { target: number; at: number; since: number };
   /** when goods run short, who comes first: factories (default), homes' hearths, or the army */

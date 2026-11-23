@@ -1223,6 +1223,23 @@ settlement is always a town. Founded further out, it is a **colony**:
   and are removed from it. The game asks the browser to keep its storage (persist). Without
   IndexedDB it falls back to localStorage. `scripts/save-smoke.ts` checks all of this.
 
+## 12w. Rulers (as built)
+
+- Every great people is led by a ruler with a **major strength** (in full) and a **minor** one
+  (a lighter form): `src/data/rulers.ts`. Thirteen strengths: swift armies (+1 move), pathfinder
+  (troops cross any land at one move a hex), warlord, drillmaster (upkeep), defender, admiral,
+  scholar (science), sage (research handed over on entering each age), patron (culture),
+  visionary (culture each age), merchant (gold), provider (food and growth), builder (production).
+- **19 historical rulers**, four an age from the Ancient to the Renaissance and three in the
+  Industrial: each with their nation's name, banner colour, twelve settlement names (capital
+  first) and a way as a rival (personality). Rivals are drawn from them by the map seed; a game
+  can ask for the invented peoples instead.
+- **New game, second step:** after the map and game settings, lead a historical ruler or make
+  one's own: name, people, one of 12 faces (art sheet M7), any major and minor strength (the same
+  area or different), banner colour, and settlement names borrowed from a nation or invented.
+  "Begin" on the first step starts at once with a ruler chosen by the seed.
+- Diplomacy shows each rival's ruler, face and strengths; the Nation screen shows yours.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

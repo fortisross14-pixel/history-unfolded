@@ -58,6 +58,14 @@ export interface Mods {
   cultureCostPct: number;
   /** slower build-up of tension (negative = slower) */
   tensionPct: number;
+  /** extra moves a turn for armies and settlers */
+  moves: number;
+  /** 1 = armies cross any land at one move a hex, whatever the ground */
+  ignoreTerrain: number;
+  /** research handed over on entering each age, in techs' worth */
+  freeTechs: number;
+  /** culture handed over on entering each age, in choices' worth */
+  freeCulture: number;
 }
 
 export const ZERO_MODS = (): Mods => ({
@@ -95,6 +103,10 @@ export const ZERO_MODS = (): Mods => ({
   researchPct: 0,
   cultureCostPct: 0,
   tensionPct: 0,
+  moves: 0,
+  ignoreTerrain: 0,
+  freeTechs: 0,
+  freeCulture: 0,
 });
 
 export function addMods(into: Mods, m: Partial<Mods>, k = 1) {
@@ -140,6 +152,10 @@ const LABEL: Record<Exclude<keyof Mods, 'groupPct'>, [string, boolean]> = {
   researchPct: ['research cost', true],
   cultureCostPct: ['culture cost', true],
   tensionPct: ['tension build-up', true],
+  moves: ['moves for troops', false],
+  ignoreTerrain: ['troops ignore terrain', false],
+  freeTechs: ['free techs each age', false],
+  freeCulture: ['free culture choices each age', false],
 };
 
 /** "+10% science, +1 cohorts per formation" */

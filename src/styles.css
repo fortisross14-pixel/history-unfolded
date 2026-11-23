@@ -2626,3 +2626,72 @@ input.rename {
   background: var(--iv-teal-2);
   color: var(--iv-on-teal);
 }
+
+/* minimap: the whole known world, small, above the turn box */
+.minimap-box {
+  position: absolute;
+  left: calc(108px + env(safe-area-inset-left));
+  top: calc(100% + 142px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+@media (max-height: 640px) {
+  .minimap-box {
+    display: none;
+  }
+}
+.minimap-bar {
+  display: flex;
+  gap: 6px;
+  background: rgba(247, 241, 227, 0.92);
+  border-radius: 6px;
+  padding: 2px 8px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+}
+.minimap {
+  position: relative;
+  border: 2px solid #5b4a33;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  cursor: crosshair;
+  touch-action: none;
+}
+.minimap canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+@media (max-width: 700px) {
+  .minimap-box {
+    display: none;
+  }
+}
+.modal.empire {
+  width: min(760px, 96vw);
+}
+.empire-table tr.go {
+  cursor: pointer;
+}
+.empire-table tr.go:hover td {
+  background: rgba(160, 120, 60, 0.12);
+}
+.empire-search {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 15px;
+  margin: 6px 0 8px;
+}
+.empire-found {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+.empire-found li {
+  padding: 3px 0;
+}

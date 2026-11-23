@@ -59,6 +59,8 @@ import { DesignsDialog } from './DesignsDialog.tsx';
 import { FormationPanel } from './FormationPanel.tsx';
 import { HexPanel } from './HexPanel.tsx';
 import { MapView, mapMode, setMapMode } from './MapView.tsx';
+import { Minimap } from './Minimap.tsx';
+import { EmpireDialog } from './EmpireDialog.tsx';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
 import { DynastiesDialog } from './DynastiesDialog.tsx';
@@ -97,6 +99,7 @@ type Dialog =
   | { kind: 'nation'; age?: number }
   | { kind: 'crisis' }
   | { kind: 'stats' }
+  | { kind: 'empire' }
   | { kind: 'dynasties' }
   | { kind: 'realm-event' }
   | { kind: 'battle'; report: BattleReport }
@@ -153,6 +156,8 @@ const KEYS: [string, string][] = [
   ['V', 'Victory: the ways to win and who is closest'],
   ['O', 'Nation: national directions, edicts and crises'],
   ['L', 'Chronicle and statistics: rankings, charts, history'],
+  ['E', 'Empire: all settlements and armies, find by name'],
+  ['M', 'Show or hide the minimap'],
   ['Y', 'Dynasties: houses, governors, trinkets'],
   ['Esc', 'Close a window, or clear the selection'],
   ['?', 'This list'],
@@ -178,6 +183,23 @@ export function Game({
   const [dialog, setDialog] = useState<Dialog>(null);
   const [map3d, setMap3d] = useState(mapMode() === '3d');
   const [center, setCenter] = useState<{ hex: number; n: number } | null>(null);
+  const [view, setView] = useState<[number, number, number, number] | null>(null);
+  const [mini, setMini] = useState(() => {
+    try {
+      return localStorage.getItem('hu-minimap') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const toggleMini = () =>
+    setMini(m => {
+      try {
+        localStorage.setItem('hu-minimap', m ? '0' : '1');
+      } catch {
+        /* no storage */
+      }
+      return !m;
+    });
   const toastId = useRef(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [muted, setMute] = useState(isMuted());
@@ -559,6 +581,8 @@ export function Game({
       else if (key === 'v') setDialog({ kind: 'victory' });
       else if (key === 'o') setDialog({ kind: 'nation' });
       else if (key === 'l') setDialog({ kind: 'stats' });
+      else if (key === 'e') setDialog({ kind: 'empire' });
+      else if (key === 'm') toggleMini();
       else if (key === 'y') setDialog({ kind: 'dynasties' });
       else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
       else if (key === 'k') setDialog({ kind: 'culture' });
@@ -714,6 +738,7 @@ export function Game({
           onMove={h => (mySelF ? moveTo(h) : onClick(h))}
           onHover={setHover}
           insets={insets}
+          onView={r => setView(v => (v && v.every((x, i) => Math.abs(x - r[i]) < 0.05) ? v : r))}
         />
       </div>
 
@@ -779,6 +804,28 @@ export function Game({
             )}
           </span>
         </button>
+        <div className={`minimap-box ${mini ? '' : 'closed'}`}>
+          <div className="minimap-bar">
+            <button
+              className="link"
+              onClick={() => setDialog({ kind: 'empire' })}
+              title="Empire: settlements, armies, find (E)"
+            >
+              <Icon name="sight" /> Find
+            </button>
+            <button
+              className="link"
+              onClick={toggleMini}
+              title="Show or hide the minimap (M)"
+              aria-pressed={mini}
+            >
+              {mini ? 'Hide map' : 'Minimap'}
+            </button>
+          </div>
+          {mini && (
+            <Minimap game={game} civId={me.id} version={version} view={view} onJump={focus} />
+          )}
+        </div>
         <button
           className="more-btn"
           onClick={() => setMenuOpen(o => !o)}
@@ -1256,6 +1303,25 @@ export function Game({
           game={game}
           civId={me.id}
           report={r => report({ ok: r.ok, msg: r.msg } as Result)}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'empire' && (
+        <EmpireDialog
+          game={game}
+          civId={me.id}
+          onCity={id => {
+            const c = game.cities.find(x => x.id === id)!;
+            setDialog(null);
+            if (c.civId === me.id) setSel({ kind: 'city', id });
+            focus(c.hex);
+          }}
+          onFormation={id => {
+            const f = game.formations.find(x => x.id === id)!;
+            setDialog(null);
+            setSel({ kind: 'formation', id });
+            focus(f.hex);
+          }}
           onClose={() => setDialog(null)}
         />
       )}

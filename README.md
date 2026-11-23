@@ -86,6 +86,8 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   direction with an edict (Nation screen, O); some are alternate developments earned by history.
 - **Chronicle & statistics** (L): rank and chart every people you know by population, settlements,
   techs, culture, wealth, military power and score, and read the chronicle of the game.
+- **Minimap and Empire overview** (M, E): see the known world at a glance and jump anywhere; list
+  every settlement and army and find any of them, or a known foreign settlement, by name.
 - **Settlements grow over their land**: a settlement is its centre hex and up to six districts on
   the hexes around it, placed by the player (by the coast for yards, on an ore for mines); six
   sizes from settlement to metropolis, one district more at each.

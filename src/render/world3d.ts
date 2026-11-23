@@ -232,6 +232,12 @@ export class World3DRenderer {
     this.cam.y = z * SIN - sy / this.cam.zoom;
   }
 
+  /** The part of the world on screen, in hex-radius units (the ground): x0, z0, x1, z1. */
+  viewRect(): [number, number, number, number] {
+    const z = this.cam.zoom;
+    return [this.cam.x, this.cam.y / SIN, this.cam.x + this.w / z, (this.cam.y + this.h / z) / SIN];
+  }
+
   hexAtScreen(s: GameState, sx: number, sy: number): number {
     // the ground a little above sea level: most land stands about there
     const wx = this.cam.x + sx / this.cam.zoom;
@@ -944,6 +950,29 @@ export class World3DRenderer {
         ctx.fillRect(sx - w / 2 + 2, sy - fs * 0.8 + 2, 4, fs * 1.6 - 4);
         ctx.fillStyle = '#2a2419';
         ctx.fillText(text, sx + 2, sy);
+      }
+    } else {
+      // strategic view: small names, the bigger settlements first, none drawn over another
+      ctx.font = `600 11px Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      const taken: [number, number, number, number][] = [];
+      const order = s.cities.filter(c => known[c.hex]).sort((a, b) => b.pop - a.pop);
+      for (const c of order) {
+        const [x, z] = centerUnit(g, c.hex);
+        const [sx, sy] = this.project(x, this.top(s, c.hex), z + 0.7);
+        if (sx < -60 || sy < -20 || sx > this.w + 60 || sy > this.h + 20) continue;
+        const w = ctx.measureText(c.name).width + 4;
+        const box: [number, number, number, number] = [sx - w / 2, sy - 7, sx + w / 2, sy + 7];
+        if (taken.some(t => box[0] < t[2] && box[2] > t[0] && box[1] < t[3] && box[3] > t[1]))
+          continue;
+        taken.push(box);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(250,245,232,0.9)';
+        ctx.strokeText(c.name, sx, sy);
+        ctx.fillStyle = s.civs[c.civId].color;
+        ctx.fillText(c.name, sx, sy);
       }
     }
     // cohort counts by troops

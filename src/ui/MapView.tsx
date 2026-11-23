@@ -15,6 +15,7 @@ interface Renderer {
   hexAtScreen(s: GameState, x: number, y: number): number;
   zoomAt(x: number, y: number, f: number): void;
   draw(s: GameState, civId: number, ov: Overlay): void;
+  viewRect(): [number, number, number, number];
   dispose?(): void;
 }
 
@@ -46,6 +47,8 @@ interface Props {
   onClick: (hex: number, touch: boolean) => void;
   onMove: (hex: number) => void;
   onHover: (hex: number) => void;
+  /** after each frame: the part of the world on screen (hex-radius units), for the minimap */
+  onView?: (r: [number, number, number, number]) => void;
   /** screen pixels covered by the interface (top bar, panels): centring and clamping avoid them */
   insets: Insets;
 }
@@ -61,13 +64,14 @@ export function MapView({
   onClick,
   onMove,
   onHover,
+  onView,
   insets,
 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const rr = useRef<Renderer | null>(null);
   const frame = useRef(0);
-  const props = useRef({ game, civId, overlay, onClick, onMove, onHover, insets });
-  props.current = { game, civId, overlay, onClick, onMove, onHover, insets };
+  const props = useRef({ game, civId, overlay, onClick, onMove, onHover, onView, insets });
+  props.current = { game, civId, overlay, onClick, onMove, onHover, onView, insets };
 
   const redraw = () => {
     if (frame.current) return;
@@ -77,6 +81,7 @@ export function MapView({
       if (!r) return;
       const t0 = performance.now();
       r.draw(props.current.game, props.current.civId, props.current.overlay);
+      props.current.onView?.(r.viewRect());
       // frame timings for the perf check (scripts/perf-smoke.ts)
       const w = window as unknown as { __drawMs?: number[] };
       (w.__drawMs ??= []).push(performance.now() - t0);

@@ -958,6 +958,18 @@ The end screen shows the score over the game and the player's chronicle. Saves s
 last 40 turns are kept turn by turn, older ones every fourth turn, and the chronicle keeps its
 last 800 moments (a 220-turn save is about 340 KB in all).
 
+## 12i. Finding your way (as built)
+
+- **Minimap** under the left trackers (M hides it; hidden on phones and short screens): the
+  explored world, cropped to what is known, each people's land in its colour, settlements as
+  dots and the part on screen framed. Click or drag on it to look there.
+- **Strategic zoom**: zoomed out below the banner level, the 3D map writes small settlement names
+  in their people's colour, the biggest first and none over another.
+- **Empire** (E, or Find by the minimap): every settlement (size, people, districts used,
+  besieged or governed) and every formation (kind, cohorts, orders: waiting, moving, fortified,
+  automated, exploring), plus a Find box across them and the foreign settlements the player has
+  seen. A row looks there and selects it; Enter in Find goes to the first match.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

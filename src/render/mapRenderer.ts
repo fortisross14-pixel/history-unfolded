@@ -116,6 +116,17 @@ export class MapRenderer {
     this.cam.y = y * R - cys / this.cam.zoom;
   }
 
+  /** The part of the world on screen, in hex-radius units: x0, y0, x1, y1. */
+  viewRect(): [number, number, number, number] {
+    const z = this.cam.zoom;
+    return [
+      this.cam.x / R,
+      this.cam.y / R,
+      (this.cam.x + this.viewW / z) / R,
+      (this.cam.y + this.viewH / z) / R,
+    ];
+  }
+
   hexAtScreen(s: GameState, sx: number, sy: number): number {
     const wx = this.cam.x + sx / this.cam.zoom,
       wy = this.cam.y + sy / this.cam.zoom;

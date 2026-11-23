@@ -105,6 +105,8 @@ npm run check:perf           # map frame times with the CPU slowed 4x
 - **Stories across the ages**: eight event stories in three chapters each (a founder's legend, a
   lost expedition, a marriage of houses, a merchant guild, a preacher, a river town, an old
   grudge, a teacher), branching on what you chose before.
+- **Learning the game**: a guided first game (ten steps, ticked by what you do), a searchable
+  Codex (H), and "why?" breakdowns on gold, science and culture.
 - **Saves and settings**: named saves, export a game to a file and import it in any browser;
   interface and text size, animation speed, reduced motion, volume and autosave frequency.
 - **Readable rivals**: every AI people has a leader personality, an intent toward you with its

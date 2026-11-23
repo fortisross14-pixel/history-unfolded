@@ -3012,3 +3012,122 @@ input.rename {
 .side .panel {
   zoom: var(--text-scale, 1);
 }
+
+/* "why?" popovers on the main numbers */
+.whypop {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.why-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 240px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: #fbf7ee;
+  border: 1px solid rgba(120, 90, 50, 0.35);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  font-weight: normal;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #2a2419;
+  white-space: normal;
+}
+.why-lines {
+  display: flex;
+  flex-direction: column;
+}
+.why-lines > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px dotted rgba(120, 90, 50, 0.2);
+}
+
+/* the Codex */
+.modal.codex {
+  width: min(880px, 96vw);
+}
+.codex-search {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 8px;
+}
+.codex-search input {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 15px;
+}
+.codex-body {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) 1.4fr;
+  gap: 14px;
+  max-height: 60vh;
+}
+.codex-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border-right: 1px solid rgba(120, 90, 50, 0.2);
+}
+.codex-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 3px 4px;
+  white-space: normal;
+}
+.codex-list button.on {
+  background: rgba(43, 106, 95, 0.12);
+  border-radius: 4px;
+}
+.codex-entry {
+  overflow: auto;
+}
+.codex-entry h3 {
+  margin-top: 0;
+}
+@media (max-width: 700px) {
+  .codex-body {
+    grid-template-columns: 1fr;
+  }
+  .codex-list {
+    max-height: 30vh;
+    border-right: none;
+  }
+}
+
+/* the guided first game */
+.guide-card {
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: rgba(250, 245, 232, 0.97);
+  border: 1px solid #c79a3e;
+  border-left: 4px solid #c79a3e;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.guide-card b {
+  font-size: 14px;
+}
+.guide-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}

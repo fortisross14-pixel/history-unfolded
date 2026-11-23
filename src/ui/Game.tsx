@@ -63,6 +63,10 @@ import { MapView, mapMode, setMapMode } from './MapView.tsx';
 import { Minimap } from './Minimap.tsx';
 import { EmpireDialog } from './EmpireDialog.tsx';
 import { FaithDialog } from './FaithDialog.tsx';
+import { WhyPop } from './WhyPop.tsx';
+import { GUIDE, guideSeen, guideStep, startGuide, type GuideStep } from './guide.ts';
+import { CodexDialog } from './CodexDialog.tsx';
+import { whyCulture, whyGold, whyScience } from '../engine/breakdown.ts';
 import { SettingsDialog } from './SettingsDialog.tsx';
 import { SavesDialog } from './SavesDialog.tsx';
 import { settings } from './settings.ts';
@@ -111,6 +115,7 @@ type Dialog =
   | { kind: 'empire' }
   | { kind: 'faith' }
   | { kind: 'settings' }
+  | { kind: 'codex'; q?: string }
   | { kind: 'saves' }
   | { kind: 'wonders'; cityId?: number }
   | { kind: 'dynasties' }
@@ -178,6 +183,7 @@ const KEYS: [string, string][] = [
   ['Y', 'Dynasties: houses, governors, trinkets'],
   ['Esc', 'Close a window, or clear the selection'],
   ['?', 'This list'],
+  ['H', 'Codex: search the help'],
 ];
 
 export function Game({
@@ -303,6 +309,39 @@ export function Game({
         !f.auto,
     );
   const focus = (hex: number) => setCenter({ hex, n: Date.now() });
+  // the guided first game: started for a new game, ticked by the game itself
+  useEffect(() => {
+    if (game.turn === 1 && !game.guide) {
+      startGuide(game, me.id);
+      bump();
+    }
+  }, []);
+  useEffect(() => {
+    if (dialog?.kind === 'peoples' || dialog?.kind === 'victory') guideSeen(game, dialog.kind);
+  }, [dialog]);
+  const guide = guideStep(game, me.id);
+  const showGuide = (what: GuideStep['show']) => {
+    const mineCities = game.cities.filter(c => c.civId === me.id).sort((a, b) => b.pop - a.pop);
+    const pick = (kind: string) => game.formations.find(f => f.civId === me.id && f.kind === kind);
+    if (what === 'settlers' || what === 'scouts') {
+      const f =
+        what === 'settlers'
+          ? pick('settlers')
+          : (game.formations.find(
+              x => x.civId === me.id && x.kind === 'army' && /scout/i.test(x.name),
+            ) ?? pick('army'));
+      if (f) {
+        setSel({ kind: 'formation', id: f.id });
+        focus(f.hex);
+      }
+    } else if (what === 'city' || what === 'city-dialog') {
+      const c = mineCities[0];
+      if (!c) return;
+      setSel({ kind: 'city', id: c.id });
+      focus(c.hex);
+      if (what === 'city-dialog') setDialog({ kind: 'city', cityId: c.id });
+    } else setDialog({ kind: what } as Dialog);
+  };
   /** Take the player to what a piece of news is about. */
   const go = (t: NewsTarget) => {
     if (t.kind === 'city') {
@@ -660,7 +699,8 @@ export function Game({
         setDialog({ kind: 'wonders', cityId: selCity?.civId === me.id ? selCity.id : undefined });
       else if (key === 'm') toggleMini();
       else if (key === 'y') setDialog({ kind: 'dynasties' });
-      else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
+      else if (key === '?') setDialog({ kind: 'keys' });
+      else if (key === 'h') setDialog({ kind: 'codex' });
       else if (key === 'k') setDialog({ kind: 'culture' });
       else if (key === 't') setDialog({ kind: 'research' });
       else if (key === 'r' && mySelF) report(buildRoad(game, mySelF.id));
@@ -836,9 +876,17 @@ export function Game({
           Turn <b>{game.turn}</b>
           <small className="muted">/{game.settings.turnLimit ?? 400}</small>
         </span>
-        <span className="stat" title="Gold">
-          <Icon name="gold" /> {Math.floor(me.gold)}
-        </span>
+        <WhyPop
+          className="stat"
+          title="Gold a turn"
+          unit="gold"
+          why={() => whyGold(game, me.id)}
+          onCodex={() => setDialog({ kind: 'codex', q: 'gold' })}
+        >
+          <span tabIndex={0} aria-label={`Gold ${Math.floor(me.gold)}`}>
+            <Icon name="gold" /> {Math.floor(me.gold)}
+          </span>
+        </WhyPop>
         <button
           className="research-btn tracker"
           onClick={() => setDialog({ kind: 'research' })}
@@ -859,9 +907,11 @@ export function Game({
                     }}
                   />
                 </span>
-                <small className="trk-num">
-                  {Math.floor(me.science)} / {techCost(game, me, research_.id)}
-                </small>
+                <WhyPop title="Science a turn" unit="science" why={() => whyScience(game, me.id)}>
+                  <small className="trk-num">
+                    {Math.floor(me.science)} / {techCost(game, me, research_.id)}
+                  </small>
+                </WhyPop>
               </>
             )}
           </span>
@@ -877,7 +927,9 @@ export function Game({
           <span className="trk-body">
             <small className="trk-label">Culture</small>
             <b className="trk-name">
-              {Math.floor(me.culture.points)} <small>(+{culturePerTurn})</small>
+              <WhyPop title="Culture a turn" unit="culture" why={() => whyCulture(game, me.id)}>
+                {Math.floor(me.culture.points)} <small>(+{culturePerTurn})</small>
+              </WhyPop>
             </b>
             {me.culture.upheaval ? (
               <b className="war-pill">{DOMAINS[me.culture.upheaval.domain].upheaval}</b>
@@ -904,6 +956,29 @@ export function Game({
               {mini ? 'Hide map' : 'Minimap'}
             </button>
           </div>
+          {guide && (
+            <div className="guide-card" role="note" aria-label="Guide">
+              <small className="muted">
+                Guide {guide.n}/{GUIDE.length}
+              </small>
+              <b>{guide.step.title}</b>
+              <span>{guide.step.hint}</span>
+              <span className="guide-actions">
+                <button className="small" onClick={() => showGuide(guide.step.show)}>
+                  Show me
+                </button>
+                <button
+                  className="link small"
+                  onClick={() => {
+                    game.guide!.off = true;
+                    bump();
+                  }}
+                >
+                  Hide the guide
+                </button>
+              </span>
+            </div>
+          )}
           {mini && (
             <Minimap game={game} civId={me.id} version={version} view={view} onJump={focus} />
           )}
@@ -1022,9 +1097,9 @@ export function Game({
         </button>
         <button
           className="secondary round"
-          onClick={() => setDialog({ kind: 'keys' })}
-          title="Keys (?)"
-          aria-label="Keys and help"
+          onClick={() => setDialog({ kind: 'codex' })}
+          title="Codex: help for every part of the game (H)"
+          aria-label="Codex and help"
         >
           <Icon name="help" />
         </button>
@@ -1047,8 +1122,13 @@ export function Game({
         >
           Save
         </button>
-        <button className="secondary" onClick={() => setDialog({ kind: 'settings' })}>
-          Settings
+        <button
+          className="secondary round"
+          onClick={() => setDialog({ kind: 'settings' })}
+          title="Settings: sizes, motion, sound, autosave"
+          aria-label="Settings"
+        >
+          <Icon name="settings" />
         </button>
         <button
           className="secondary"
@@ -1444,6 +1524,13 @@ export function Game({
         />
       )}
       {dialog?.kind === 'settings' && <SettingsDialog onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'codex' && (
+        <CodexDialog
+          q={dialog.q}
+          onKeys={() => setDialog({ kind: 'keys' })}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === 'saves' && (
         <SavesDialog
           game={game}

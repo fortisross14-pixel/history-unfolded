@@ -13,6 +13,9 @@ import { victoryOn, victoryTurn } from '../src/engine/victory.ts';
 import type { GameState } from '../src/engine/types.ts';
 import { classify, groupNews, locate } from '../src/ui/news.ts';
 import { exportSave, importSave } from '../src/ui/save.ts';
+import { whyCulture, whyGold, whyScience } from '../src/engine/breakdown.ts';
+import { codexEntries, searchCodex } from '../src/ui/codex.ts';
+import { GUIDE, guideSeen, guideStep, startGuide } from '../src/ui/guide.ts';
 
 let failures = 0;
 const check = (cond: unknown, what: string) => {
@@ -123,6 +126,56 @@ const make = (noVictory?: GameState['settings']['noVictory']): GameState =>
   }
   check(/not a History Unfolded save|save/i.test(msg), `a wrong file is refused: ${msg}`);
   check(make().uid !== make().uid, 'two games on the same map are told apart');
+}
+
+// ---------------------------------------------------------------- the teaching layer
+{
+  // why?: the lines add up, settlements included
+  const s = make();
+  const me = player(s);
+  foundCity(s, s.formations.find(f => f.civId === me.id && f.kind === 'settlers')!.id);
+  const g = whyGold(s, me.id);
+  check(
+    Math.abs(g.lines.reduce((a, l) => a + l.value, 0) - g.total) < 0.01,
+    `gold: the lines add up to ${g.total}`,
+  );
+  const army = s.formations.find(f => f.civId === me.id && f.kind === 'army')!;
+  for (const co of army.cohorts) co.loadout = { ...co.loadout, weapon: 'axe' };
+  check(
+    whyGold(s, me.id).lines.some(l => l.value < 0 && /upkeep/.test(l.label)),
+    'troop upkeep shows as a cost',
+  );
+  check(whyScience(s, me.id).total >= 0 && whyCulture(s, me.id).total >= 0, 'science and culture');
+
+  // the Codex
+  const all = codexEntries();
+  check(all.length > 200, `the Codex has ${all.length} entries`);
+  check(new Set(all.map(e => e.id)).size === all.length, 'every entry has its own id');
+  for (const q of ['siege', 'raiders', 'bronze', 'faith', 'great pyramid', 'sentry'])
+    check(searchCodex(q).length > 0, `search “${q}” finds ${searchCodex(q)[0]?.title}`);
+  check(
+    searchCodex('').every(e => e.group === 'Basics'),
+    'an empty search shows the basics',
+  );
+  check(searchCodex('zzqqx').length === 0, 'nonsense finds nothing');
+}
+{
+  // the guide: on for a new Standard game, steps ticked by the game itself
+  const s = make();
+  const me = player(s);
+  startGuide(s, me.id);
+  check(guideStep(s, me.id)?.step.id === 'found', 'the guide starts with founding');
+  foundCity(s, s.formations.find(f => f.civId === me.id && f.kind === 'settlers')!.id);
+  check(guideStep(s, me.id)?.step.id === 'research', 'founding ticks itself');
+  me.researching = 'pottery';
+  check(guideStep(s, me.id)?.step.id === 'district', 'then plan a building');
+  guideSeen(s, 'victory');
+  check(GUIDE.length === 10, 'ten steps');
+  s.guide!.off = true;
+  check(guideStep(s, me.id) === null, 'the guide can be hidden');
+  const hard = newGame({ ...s.settings, difficulty: 'hard' });
+  startGuide(hard, player(hard).id);
+  check(guideStep(hard, player(hard).id) === null, 'off on Veteran');
 }
 
 if (failures) {

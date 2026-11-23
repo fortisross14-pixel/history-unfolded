@@ -1095,6 +1095,19 @@ A threat of the early ages that belongs to no people (engine/raiders.ts).
 - **Settings** (top bar and menu): interface size 90–150%, text size for panels and dialogs,
   animation speed, reduced motion, effects volume, autosave every 1, 2 or 5 turns or never.
   Kept per browser and applied at once. (Music is not in the game yet.)
+- **"Why?" on the main numbers** (engine/breakdown.ts): hover or focus gold, the research
+  progress or culture in the top bar for the lines behind them: each settlement (the biggest
+  four named), troop upkeep, tithes, deals, free peoples' gifts, wonders, pilgrims. Opinion
+  already lists its reasons in Peoples.
+- **Codex** (H, or the ? button): searchable help. 22 basics written for players, plus entries
+  made from the game's own data (techs, buildings, wonders, tenets, victories, crises, policies,
+  directions, leader types, culture domains and tags, goods, terrain, difficulty), so it never
+  says what the game does not do. The gold popover links into it.
+- **Guided first game** (ui/guide.ts): ten steps (found, research, plan a building, explore,
+  workers and a road, a second settlement, meet neighbours, a levy, a culture choice, the victory
+  screen), each shown only when it is next and ticked by the game itself, with a Show me button.
+  On for new games on Discovery and Standard, off on Veteran; Hide the guide turns it off.
+  Shown under the minimap (not on phones yet).
 
 ## 13. Core screens and flows
 

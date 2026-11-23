@@ -383,6 +383,8 @@ export interface LogEntry {
 }
 
 export interface GameState {
+  /** the guided first game (ui/guide.ts): off, screens seen, hexes known at the start */
+  guide?: { off?: boolean; seen: string[]; explored0?: number };
   /** tells two games on the same map apart (saves); absent in older saves */
   uid?: string;
   version: number;

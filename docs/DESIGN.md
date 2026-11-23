@@ -1257,7 +1257,7 @@ settlement is always a town. Founded further out, it is a **colony**:
   shield toward the viewer with its face in the people's colour, and the weapon (club, spear,
   pike, sword, axe, sling, javelins, bows, crossbow, gun with or without bayonet). Riders sit on
   horses (barded in the people's colour); field guns have wheels and a gunner; settlers an ox cart;
-  workers carry picks. One to four figures by size (three riders, two guns).
+  workers carry picks. One to four figures by size (three riders, two guns). Every formation, ships too, stands on a round base: a dark outline, a ring in its people's colour and a paler middle.
 - No hand-made models: every gear combination draws itself, nothing to download, one draw call a
   formation. `tools/preview/troops.html` (dev server) shows every look in a row.
 

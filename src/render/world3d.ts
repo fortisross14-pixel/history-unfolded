@@ -106,6 +106,17 @@ const bakedMesh = (root: THREE.Object3D, shadow = true) => {
   return m;
 };
 
+/**
+ * A formation's base: a dark outline, a ring in the people's colour and a paler middle, so a
+ * formation's owner shows at any zoom and on any ground.
+ */
+function nationBase(g: THREE.Object3D, colour: string, r: number) {
+  const pale = new THREE.Color(colour).lerp(new THREE.Color('#fff8ea'), 0.55).getStyle();
+  cyl(g, r + 0.012, r + 0.016, 0.01, '#2a2620', 0, -0.006, 0, 20);
+  cyl(g, r, r, 0.014, colour, 0, -0.004, 0, 20);
+  cyl(g, r * 0.72, r * 0.72, 0.016, pale, 0, -0.004, 0, 20);
+}
+
 /** how much larger than the land troops and ships are drawn */
 const UNIT_SCALE = 3;
 
@@ -625,9 +636,11 @@ export class World3DRenderer {
       flag(grp, 0, 0.32, 0, col, 0.18);
     } else {
       // figures in the formation's own gear, one to four by its size
-      buildTroops(grp, f, f.kind === 'army' ? col : col);
+      buildTroops(grp, f, col);
       flag(grp, -0.16, 0, -0.12, col, 0.4);
     }
+    // a round base in the people's colour: whose troops these are, at a glance
+    nationBase(grp, col, f.kind === 'fleet' ? 0.2 : 0.15);
     // troops stand much larger than life, as in most strategy maps, so they read at a glance
     const unit = bakedMesh(grp) ?? grp;
     unit.scale.setScalar(UNIT_SCALE);

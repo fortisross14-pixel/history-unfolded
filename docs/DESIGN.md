@@ -1248,6 +1248,19 @@ settlement is always a town. Founded further out, it is a **colony**:
   average score, wins spread. Julius Caesar stays the lowest (a conqueror who fights a lot);
   Suleiman the highest.
 
+## 12x. Troops on the map (as built)
+
+- Figures are put together in code (`src/render/troops.ts`) from the formation's main design, in
+  the same low-poly shapes as the rest of the map, and baked into one mesh per formation: body
+  and tunic in the people's colour, armour by material (padded, leather, bronze scale, mail,
+  plate…), helmet (cap, crested bronze, iron with nasal, great helm, brimmed hat in the gun ages),
+  shield toward the viewer with its face in the people's colour, and the weapon (club, spear,
+  pike, sword, axe, sling, javelins, bows, crossbow, gun with or without bayonet). Riders sit on
+  horses (barded in the people's colour); field guns have wheels and a gunner; settlers an ox cart;
+  workers carry picks. One to four figures by size (three riders, two guns).
+- No hand-made models: every gear combination draws itself, nothing to download, one draw call a
+  formation. `tools/preview/troops.html` (dev server) shows every look in a row.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

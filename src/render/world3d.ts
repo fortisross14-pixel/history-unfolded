@@ -40,6 +40,7 @@ import {
 import { wondersIn } from '../engine/wonders.ts';
 import { industryStatus } from '../engine/economy.ts';
 import { fx, Motion, reducedMotion } from './fx.ts';
+import { buildTroops, troopLook } from './troops.ts';
 import type { Insets, Overlay } from './mapRenderer.ts';
 
 const ELEV = (55 * Math.PI) / 180;
@@ -613,7 +614,7 @@ export class World3DRenderer {
   // ---------------------------------------------------------------- troops
 
   private unitKey(s: GameState, f: Formation) {
-    return `${f.kind}|${Math.min(4, Math.ceil(f.cohorts.length / 3))}|${s.civs[f.civId].color}`;
+    return `${f.kind}|${Math.min(4, Math.ceil(f.cohorts.length / 3))}|${s.civs[f.civId].color}|${troopLook(f)}`;
   }
 
   private buildUnit(s: GameState, f: Formation): THREE.Object3D {
@@ -623,16 +624,9 @@ export class World3DRenderer {
       boat(grp, 0, 0, 0.6, 2.6);
       flag(grp, 0, 0.32, 0, col, 0.18);
     } else {
-      const n = Math.min(4, Math.max(1, Math.ceil(f.cohorts.length / 3)));
-      for (let q = 0; q < n; q++) {
-        const qx = (q % 2) * 0.13 - 0.06,
-          qz = Math.floor(q / 2) * 0.13 - 0.06;
-        cyl(grp, 0.045, 0.055, 0.16, f.kind === 'army' ? col : '#c9b48a', qx, 0, qz, 6);
-        ball(grp, 0.04, '#e6c9a8', qx, 0.2, qz);
-        if (f.kind === 'army') cyl(grp, 0.006, 0.006, 0.26, C.timber, qx + 0.05, 0, qz, 3);
-        else box(grp, 0.05, 0.03, 0.03, C.timber, qx + 0.06, 0.08, qz);
-      }
-      flag(grp, -0.12, 0, -0.08, f.kind === 'army' ? col : '#c9b48a', 0.36);
+      // figures in the formation's own gear, one to four by its size
+      buildTroops(grp, f, f.kind === 'army' ? col : col);
+      flag(grp, -0.16, 0, -0.12, col, 0.4);
     }
     // troops stand much larger than life, as in most strategy maps, so they read at a glance
     const unit = bakedMesh(grp) ?? grp;

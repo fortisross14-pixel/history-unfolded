@@ -78,6 +78,7 @@ import { victoryTurn } from './victory.ts';
 import { aiPathTurn, enterAge } from './paths.ts';
 import { crisisTurn } from './crises.ts';
 import { faithTurn } from './faith.ts';
+import { aiHuntRaiders, raiderHostile, raidersTurn } from './raiders.ts';
 import { aiWonderTurn, wonderCulture, wondersOf, workOnWonder } from './wonders.ts';
 import { WONDER_SCORE, WONDERS } from '../data/wonders.ts';
 import { coalitionTurn } from './coalition.ts';
@@ -284,6 +285,48 @@ function addFormation(
   return f;
 }
 
+/** A formation made outside the usual ways (raider bands). */
+export const spawnFormation = (
+  s: GameState,
+  civId: number,
+  hex: number,
+  cohorts: number,
+  name: string,
+) => addFormation(s, civId, 'army', hex, cohorts, name);
+
+/** The hidden people of raiders (raiders.ts): no land, no diplomacy, sees everything. */
+export function addRaiderCiv(s: GameState): Civ {
+  const civ: Civ = {
+    id: s.civs.length,
+    name: 'Raiders',
+    color: '#3b3430',
+    isPlayer: false,
+    independent: true,
+    raiders: true,
+    techs: [],
+    researching: null,
+    science: 0,
+    gold: 0,
+    explored: new Array(s.map.w * s.map.h).fill(1),
+    designs: [],
+    blueprints: [],
+    cityNames: 0,
+    levies: 0,
+    researchGoal: null,
+    culture: newCultureState(),
+    leanings: [],
+    met: [],
+    alive: true,
+    kills: 0,
+    losses: 0,
+    dynasties: [],
+    ruling: -1,
+    trinkets: [],
+  };
+  s.civs.push(civ);
+  return civ;
+}
+
 function newCohort(s: GameState, loadout: Loadout = DEFAULT_LOADOUT): Cohort {
   return { id: s.nextId++, strength: COHORT_SIZE, xp: 0, designId: null, loadout: { ...loadout } };
 }
@@ -447,6 +490,8 @@ export function updateExplored(s: GameState, civId: number) {
   // meeting another people: seeing one of their formations or cities
   const seen = (other: number) => {
     if (other === civId || civ.met.includes(other)) return;
+    // raiders are never met: there is no one to talk to
+    if (civ.raiders || s.civs[other].raiders) return;
     civ.met.push(other);
     s.civs[other].met.includes(civId) || s.civs[other].met.push(civId);
     log(s, civId, `${civ.name} and the ${s.civs[other].name} have met.`);
@@ -1064,14 +1109,18 @@ export function endTurn(s: GameState): string[] {
   // AI acts after the player, in the same turn
   for (const civ of s.civs)
     if (!civ.isPlayer && civ.alive) {
+      if (civ.raiders) continue;
       if (civ.independent) {
         events.push(...independentTurn(s, civ, id => levy(s, id)));
         for (const c of s.cities) if (c.civId === civ.id) planDistricts(s, civ, c);
       } else {
         aiTurn(s, civ);
+        aiHuntRaiders(s, civ);
         aiWonderTurn(s, civ, c => cityEconomy(s, c).total.prod);
       }
     }
+  // raider camps and bands of the early ages
+  events.push(...raidersTurn(s));
   // tell the player about anything the AI did to them
   for (const e of s.log.slice(logStart))
     if (e.civId !== me.id && e.text.includes(me.name)) events.push(e.text);
@@ -1766,7 +1815,8 @@ export function canAttack(s: GameState, fid: number, hex: number): AttackCheck {
     return { problem: 'Land troops to take them.' };
   if (distance(gridOf(s), f.hex, hex) !== 1) return { problem: 'Move next to them first.' };
   if (f.moves <= 0) return { problem: 'No moves left this turn.' };
-  if (!atWar(s, f.civId, civId)) return { needsWar: civId, target: { f: df, city, civId } };
+  if (!atWar(s, f.civId, civId) && !raiderHostile(s, f.civId, civId))
+    return { needsWar: civId, target: { f: df, city, civId } };
   return { target: { f: df, city, civId } };
 }
 
@@ -2270,7 +2320,7 @@ function captureCity(s: GameState, c: City, by: Formation): string {
 /** A people with no cities and no settlers is gone; its troops scatter. */
 export function checkElimination(s: GameState) {
   for (const civ of s.civs) {
-    if (!civ.alive) continue;
+    if (!civ.alive || civ.raiders) continue;
     const hasCity = s.cities.some(c => c.civId === civ.id);
     const hasSettlers = s.formations.some(f => f.civId === civ.id && f.kind === 'settlers');
     if (hasCity || hasSettlers) continue;

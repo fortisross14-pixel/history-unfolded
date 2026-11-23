@@ -39,7 +39,7 @@ check(
 check(h[h.length - 1].t === s.turn - 1, 'the last row is the turn just played');
 const free = s.civs.filter(c => c.independent).map(c => c.id);
 check(
-  h.every(r => free.every(id => r.v[id] === null)),
+  h.every(r => free.every(id => r.v[id] == null)),
   'free peoples are left out',
 );
 const ai = s.civs.find(c => !c.isPlayer && !c.independent && c.alive)!;

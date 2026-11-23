@@ -142,6 +142,8 @@ export interface Civ {
   name: string;
   color: string;
   isPlayer: boolean;
+  /** the hidden people of raider bands (raiders.ts) */
+  raiders?: boolean;
   /** the faith most of its people keep, if any (faith.ts) */
   faith?: number;
   /** a free people: one city, never expands; can be befriended, allied, absorbed or conquered */
@@ -401,6 +403,8 @@ export interface GameState {
   chronicle?: import('./stats.ts').ChronicleEntry[];
   /** the peoples banded together against a runaway leader (coalition.ts) */
   coalition?: { against: number; members: number[]; since: number; reason: string };
+  /** raider camps and bands of the early ages (raiders.ts) */
+  raiders?: import('./raiders.ts').RaiderState;
   /** world wonders finished, in order (wonders.ts) */
   wonders?: { id: string; cityId: number; civId: number; turn: number }[];
   /** the faiths of the world, in the order they were founded (faith.ts) */

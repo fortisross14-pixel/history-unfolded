@@ -168,6 +168,8 @@ export class World3DRenderer {
   private game: GameState | null = null;
   private chunks = new Map<string, { key: string; mesh: THREE.Mesh | null }>();
   private cities = new Map<number, { key: string; mesh: THREE.Object3D | null }>();
+  /** raider camps on the map, by hex */
+  private camps = new Map<number, THREE.Object3D>();
   private units = new Map<number, { key: string; mesh: THREE.Object3D }>();
   private border: { key: string; mesh: THREE.Mesh | null } = { key: '', mesh: null };
   private overlay: { key: string; group: THREE.Group } = { key: '', group: new THREE.Group() };
@@ -626,6 +628,7 @@ export class World3DRenderer {
       this.chunks.clear();
       this.landGroup.clear();
       this.cities.clear();
+      this.camps.clear();
       this.cityGroup.clear();
       this.units.clear();
       this.unitGroup.clear();
@@ -799,6 +802,44 @@ export class World3DRenderer {
         if (v.mesh) this.cityGroup.remove(v.mesh);
         this.cities.delete(id);
       }
+
+    // ---- raider camps: tents and a fire, where the player has looked
+    const campHexes = new Set((s.raiders?.camps ?? []).filter(c => known[c.hex]).map(c => c.hex));
+    for (const [h, m] of this.camps)
+      if (!campHexes.has(h)) {
+        this.cityGroup.remove(m);
+        this.camps.delete(h);
+      }
+    for (const h of campHexes) {
+      if (this.camps.has(h)) continue;
+      const grp = new THREE.Group();
+      const [x, z] = centerUnit(g, h);
+      grp.position.set(x, this.top(s, h), z);
+      grp.scale.setScalar(1.6);
+      const r = rng(h * 31 + 7);
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * Math.PI * 2 + r() * 0.6;
+        cone(
+          grp,
+          0.12,
+          0.2,
+          k % 2 ? '#7a5a3a' : '#5d4630',
+          Math.cos(a) * 0.3,
+          0,
+          Math.sin(a) * 0.3,
+          4,
+        );
+      }
+      cyl(grp, 0.08, 0.1, 0.03, C.dark, 0, 0, 0, 6);
+      cone(grp, 0.05, 0.12, '#e8892f', 0, 0.03, 0, 5);
+      add(grp, new THREE.BoxGeometry(0.02, 0.4, 0.02), C.timber, 0.16, 0.2, -0.05);
+      add(grp, new THREE.PlaneGeometry(0.16, 0.1), '#3b3430', 0.24, 0.35, -0.05, {
+        side: THREE.DoubleSide,
+      });
+      const mesh = bakedMesh(grp) ?? grp;
+      this.cityGroup.add(mesh);
+      this.camps.set(h, mesh);
+    }
 
     // ---- troops: the player's own everywhere, others where the player sees them
     const shown = new Set<number>();

@@ -1,3 +1,4 @@
+import { campAt } from '../engine/raiders.ts';
 import { SLOT_TYPES } from '../data/slots.ts';
 import { landOf } from '../engine/economy.ts';
 import { within } from '../engine/hex.ts';
@@ -49,6 +50,12 @@ export function HexPanel({
   return (
     <div className="panel">
       <h2>{parts.join(' · ')}</h2>
+      {campAt(game, hex) && (
+        <p className="bad small">
+          <b>Raider camp.</b> Its bands pillage nearby settlements that are weakly held. March an
+          army into it to burn it and take its hoard.
+        </p>
+      )}
       <table className="stats">
         <tbody>
           <tr>

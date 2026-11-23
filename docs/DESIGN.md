@@ -1037,6 +1037,25 @@ each chapter goes into the chronicle.
 | The Old Grudge | a people met | forgive or swear vengeance → friendship or the oath → a hundred years on (opinion) |
 | The Teacher | Classical–Medieval, Writing | a schoolhouse or the temple → her students → a university |
 
+## 12m. Raiders (as built)
+
+A threat of the early ages that belongs to no people (engine/raiders.ts).
+- **Camps** appear in empty wild land 4–8 hexes from a settlement, from turn 35 / 25 / 18
+  (Discovery / Standard / Veteran), up to one per three, two or one and a half great peoples. No
+  new camps once a great people reaches the Medieval age; at the Renaissance the last scatter.
+- **Bands** (3 cohorts on Standard, more in later ages; two per camp) ride for the nearest
+  settlement within 10 hexes of their camp that is weakly held (troops inside plus half its ready
+  townsfolk guard fewer than the band's cohorts) and not raided in the last 16 turns. Next to it
+  they pillage: up to 12 gold per age plus 2 per cohort, and 250 people from a town over 1,500;
+  then they carry the loot home. On the way they strike workers, settlers and smaller armies.
+- **Burning a camp:** march any army into it; the burner takes its hoard (25 gold per age plus
+  the loot its bands brought home). Bands of a burned camp wander and break up within 8 turns.
+- Raiders are one hidden people: always hostile (attacking them needs no declaration of war),
+  never met, never in a diplomatic war, never eliminated. AI peoples strike weaker bands next to
+  their armies and send an army of 3+ cohorts to burn camps within 7 hexes of their towns.
+- The player is told when a camp is seen near their lands, when a band rides for one of their
+  towns, and when a town is pillaged. Camps show as tents on both maps; the hex panel explains.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

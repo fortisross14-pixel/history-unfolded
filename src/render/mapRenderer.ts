@@ -733,6 +733,24 @@ export class MapRenderer {
         ctx.fill();
       }
 
+      // raider camps: a tent glyph where the player has looked
+      for (const camp of s.raiders?.camps ?? []) {
+        if (!known(camp.hex)) continue;
+        const x = cx(camp.hex),
+          y = cy(camp.hex);
+        ctx.fillStyle = '#5d4630';
+        ctx.beginPath();
+        ctx.moveTo(x - R * 0.4, y + R * 0.3);
+        ctx.lineTo(x, y - R * 0.35);
+        ctx.lineTo(x + R * 0.4, y + R * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#e8892f';
+        ctx.beginPath();
+        ctx.arc(x, y + R * 0.18, R * 0.09, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       // 11. cities (their name banners wait until the troops are drawn, so they stay readable)
       const cityBanners: (() => void)[] = [];
       for (const c of s.cities) {

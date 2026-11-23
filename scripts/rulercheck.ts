@@ -156,8 +156,8 @@ const hist = (id: string): RulerSetup => {
   });
   check(player(borrow).cityList?.[0] === 'London', 'or a nation’s names, borrowed');
   check(
-    civMods(borrow, player(borrow).id).goldPct >= 25 &&
-      civMods(borrow, player(borrow).id).prodPct >= 8,
+    civMods(borrow, player(borrow).id).goldPct >= TRAITS.merchant.major.goldPct! &&
+      civMods(borrow, player(borrow).id).prodPct >= TRAITS.builder.minor.prodPct!,
     'major in full, minor lighter',
   );
   const back = deserialize(serialize(s));

@@ -1239,6 +1239,14 @@ settlement is always a town. Founded further out, it is a **colony**:
   area or different), banner colour, and settlement names borrowed from a nation or invented.
   "Begin" on the first step starts at once with a ruler chosen by the seed.
 - Diplomacy shows each rival's ruler, face and strengths; the Nation screen shows yours.
+- **Balance** (`scripts/rulerbalance.ts`, summed by `rulerbalance-sum.ts`): 64 games of 250 turns,
+  every people played by the AI, the player's ruler rotated through all 19. First run: Provider
+  (food and growth) snowballed (Cleopatra won 14 of 20) and Sage lagged. Three rounds of tuning:
+  Provider halved (+8% food, −8% food to grow), Sage +3 techs' worth an age and +12% science,
+  Warlord +20% attack, Merchant +32% gold, Builder +15%, Patron's minor +16%, Defender's minor
+  to +5% city defence and a guard cohort. Last run: majors between 0.91 and 1.15 of the game's
+  average score, wins spread. Julius Caesar stays the lowest (a conqueror who fights a lot);
+  Suleiman the highest.
 
 ## 13. Core screens and flows
 

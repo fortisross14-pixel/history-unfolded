@@ -1,11 +1,12 @@
 /**
- * Save slots in the browser. Each game (identified by its seed and start) keeps a ring of three
+ * Save slots in the browser (IndexedDB, see store.ts). Each game (identified by its seed and start) keeps a ring of three
  * autosaves and one manual save; an index lists the games. Writes go to a new key first and
  * the index is updated last, so a failed write never destroys the previous save. Loading tries
  * the newest save of a game and falls back to older ones if it is damaged.
  */
 import { deserialize, serialize, SaveError } from '../engine/game.ts';
 import type { GameState } from '../engine/types.ts';
+import { store } from './store.ts';
 
 const INDEX = 'hu-saves-index-v2';
 const LEGACY = 'history-unfolded-forge-save-v1';
@@ -37,7 +38,7 @@ const gameId = (s: GameState) =>
 
 function readIndex(): GameEntry[] {
   try {
-    const raw = localStorage.getItem(INDEX);
+    const raw = store.get(INDEX);
     return raw ? (JSON.parse(raw) as GameEntry[]) : [];
   } catch {
     return [];
@@ -45,7 +46,7 @@ function readIndex(): GameEntry[] {
 }
 
 function writeIndex(games: GameEntry[]) {
-  localStorage.setItem(INDEX, JSON.stringify(games));
+  store.set(INDEX, JSON.stringify(games));
 }
 
 export type SaveResult = { ok: true } | { ok: false; reason: string };
@@ -72,7 +73,7 @@ export function saveGame(s: GameState, manual = false, name?: string): SaveResul
       : manual
         ? `hu-save-${id}-manual`
         : `hu-save-${id}-auto-${s.turn % RING}`;
-    localStorage.setItem(key, serialize(s));
+    store.set(key, serialize(s));
     g.saves = [
       ...g.saves.filter(x => x.key !== key && !(label && x.name === label)),
       { key, turn: s.turn, savedAt: Date.now(), manual: manual || !!label, name: label },
@@ -80,21 +81,21 @@ export function saveGame(s: GameState, manual = false, name?: string): SaveResul
     // a name used again replaces that save; only the newest few named saves are kept
     const named = g.saves.filter(x => x.name).sort((a, b) => b.savedAt - a.savedAt);
     for (const old of named.slice(MAX_NAMED)) {
-      localStorage.removeItem(old.key);
+      store.remove(old.key);
       g.saves = g.saves.filter(x => x !== old);
     }
-    for (const k of Object.keys(localStorage))
-      if (k.startsWith(`hu-save-${id}-named-`) && !g.saves.some(x => x.key === k))
-        localStorage.removeItem(k);
+    for (const k of store.keys())
+      if (k.startsWith(`hu-save-${id}-named-`) && !g.saves.some(x => x.key === k)) store.remove(k);
     g.turn = s.turn;
     g.savedAt = Date.now();
     g.civ = s.civs.find(c => c.isPlayer)!.name;
     // keep a few games; the oldest one goes
     games.sort((a, b) => b.savedAt - a.savedAt);
-    for (const old of games.splice(MAX_GAMES))
-      for (const e of old.saves) localStorage.removeItem(e.key);
+    for (const old of games.splice(MAX_GAMES)) for (const e of old.saves) store.remove(e.key);
     writeIndex(games);
-    return { ok: true };
+    // a write the browser refused since the last save
+    const refused = store.takeFailure();
+    return refused ? { ok: false, reason: refused } : { ok: true };
   } catch (e) {
     const full = e instanceof DOMException && (e.name === 'QuotaExceededError' || e.code === 22);
     return { ok: false, reason: full ? 'browser storage is full' : 'browser storage is blocked' };
@@ -115,7 +116,7 @@ export function loadGame(id?: string): LoadResult {
   let warning: string | undefined;
   for (const e of [...g.saves].sort((a, b) => b.savedAt - a.savedAt)) {
     try {
-      const raw = localStorage.getItem(e.key);
+      const raw = store.get(e.key);
       if (!raw) continue;
       const state = deserialize(raw);
       return { state, warning };
@@ -129,7 +130,7 @@ export function loadGame(id?: string): LoadResult {
 /** Load one particular save. */
 export function loadSave(key: string): LoadResult {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = store.get(key);
     if (!raw) return { state: null, warning: 'That save is gone.' };
     return { state: deserialize(raw) };
   } catch (err) {
@@ -176,16 +177,16 @@ export function deleteGame(id: string) {
   const games = readIndex();
   const g = games.find(x => x.id === id);
   if (!g) return;
-  for (const e of g.saves) localStorage.removeItem(e.key);
+  for (const e of g.saves) store.remove(e.key);
   writeIndex(games.filter(x => x !== g));
 }
 
 /** One-time move of the single save slot used before slots existed. */
 function migrateLegacy() {
   try {
-    const raw = localStorage.getItem(LEGACY);
+    const raw = store.get(LEGACY);
     if (!raw) return;
-    localStorage.removeItem(LEGACY);
+    store.remove(LEGACY);
     const s = deserialize(raw);
     saveGame(s);
   } catch {

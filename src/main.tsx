@@ -7,13 +7,18 @@ import './ui/declutter.css';
 import { IconSprite } from './ui/icons.tsx';
 import { applySettings } from './ui/settings.ts';
 import { startInstall } from './ui/install.ts';
+import { initStore, persistStore } from './ui/store.ts';
 
 applySettings();
 startInstall();
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <IconSprite />
-    <App />
-  </StrictMode>,
-);
+// the saves load from IndexedDB before the menu asks whether there is a game to continue
+void initStore().then(() => {
+  persistStore();
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <IconSprite />
+      <App />
+    </StrictMode>,
+  );
+});

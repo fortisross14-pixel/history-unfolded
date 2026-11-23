@@ -188,3 +188,57 @@ button.rp-color.on {
 .rp-traitpick > * {
   flex: none;
 }
+/* a people's badge: shield in its colour, emblem on it */
+.badge {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  vertical-align: middle;
+}
+.badge svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 1px 1px rgba(40, 25, 10, 0.3));
+}
+.badge img {
+  position: relative;
+  width: 64%;
+  height: 64%;
+  object-fit: contain;
+  margin-bottom: 8%;
+}
+.badge b {
+  position: relative;
+  color: #f7efd8;
+  font-family: Georgia, serif;
+  margin-bottom: 8%;
+}
+.rp-emblems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+button.rp-emblembtn {
+  padding: 3px;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 8px;
+  background: none;
+}
+button.rp-emblembtn.on {
+  outline: 3px solid var(--gold, #c9a14a);
+  outline-offset: -1px;
+  background: #f4ead3;
+}
+.crest .badge {
+  margin-bottom: 4px;
+}
+.crest img.crest-emblem {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}

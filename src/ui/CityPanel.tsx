@@ -27,6 +27,7 @@ import type { City, GameState } from '../engine/types.ts';
 import { Chip, Delta, Ico, InfoButton } from './bits.tsx';
 import { GOODS } from '../data/goods.ts';
 import './declutter-city.css';
+import { CivBadge } from './Badge.tsx';
 
 export function CityPanel({
   game,
@@ -65,7 +66,7 @@ export function CityPanel({
   return (
     <div className="panel city">
       <div className="panel-head">
-        <span className="swatch" style={{ background: civ.color }} />
+        <CivBadge civ={civ} size={26} />
         <div>
           {renaming ? (
             <input

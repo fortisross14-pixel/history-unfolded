@@ -16,7 +16,10 @@ import { isWater } from '../data/terrain.ts';
 import { cityDistricts } from '../engine/economy.ts';
 import { depositVisible, territory, visibleHexes } from '../engine/game.ts';
 import { centerUnit, distance, hexAtUnit, neighbors, SQRT3, type Grid } from '../engine/hex.ts';
-import type { City, Formation, GameState } from '../engine/types.ts';
+import type { City, Civ, Formation, GameState } from '../engine/types.ts';
+import { emblemOf } from '../data/rulers.ts';
+import { artUrl } from './art.ts';
+import { SHIELD_PATH } from '../ui/shield.ts';
 import type { Assets } from './assets.ts';
 import {
   add,
@@ -303,6 +306,49 @@ export class World3DRenderer {
   }
 
   /** screen position of a point on the map (x, height, z) */
+  /** emblem pictures, loaded once; a redraw follows when one arrives */
+  private emblemImgs = new Map<string, HTMLImageElement>();
+  private emblemImg(key: string | undefined): HTMLImageElement | null {
+    if (!key) return null;
+    let im = this.emblemImgs.get(key);
+    if (!im) {
+      const url = artUrl(key);
+      if (!url) return null;
+      im = new Image();
+      im.onload = () => (this.wantsFrame = true);
+      im.src = url;
+      this.emblemImgs.set(key, im);
+    }
+    return im.complete && im.naturalWidth ? im : null;
+  }
+
+  /** A people's badge on the label layer: the shield in its colour, its emblem or initial. */
+  private badge(ctx: CanvasRenderingContext2D, civ: Civ, x: number, y: number, size: number) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(size / 100, size / 100);
+    const p = new Path2D(SHIELD_PATH);
+    ctx.fillStyle = civ.color;
+    ctx.fill(p);
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = '#2a2016';
+    ctx.stroke(p);
+    const im = this.emblemImg(emblemOf(civ.ruler));
+    if (im) {
+      const k = 62 / Math.max(im.naturalWidth, im.naturalHeight);
+      const iw = im.naturalWidth * k,
+        ih = im.naturalHeight * k;
+      ctx.drawImage(im, 50 - iw / 2, 46 - ih / 2, iw, ih);
+    } else {
+      ctx.fillStyle = '#f7efd8';
+      ctx.font = '700 46px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(civ.name.slice(0, 1).toUpperCase(), 50, 50);
+    }
+    ctx.restore();
+  }
+
   private project(x: number, y: number, z: number): [number, number] {
     return [(x - this.cam.x) * this.cam.zoom, (z * SIN - y * COS - this.cam.y) * this.cam.zoom];
   }
@@ -1067,7 +1113,8 @@ export class World3DRenderer {
         const [sx, sy] = this.project(x, this.top(s, c.hex), z + 0.95);
         if (sx < -100 || sy < -40 || sx > this.w + 100 || sy > this.h + 40) continue;
         const text = `${c.name}${c.colony ? ' (colony)' : ''}  ${(c.pop / 1000).toFixed(1)}k${c.siege ? ' ⚔' : ''}`;
-        const w = ctx.measureText(text).width + 16;
+        const bs = fs * 1.5; // the badge at the front of the tag
+        const w = ctx.measureText(text).width + 16 + bs * 0.7;
         ctx.fillStyle = 'rgba(247,241,227,0.94)';
         ctx.strokeStyle = s.civs[c.civId].color;
         ctx.lineWidth = 2;
@@ -1075,10 +1122,11 @@ export class World3DRenderer {
         ctx.roundRect(sx - w / 2, sy - fs * 0.8, w, fs * 1.6, 5);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = s.civs[c.civId].color;
-        ctx.fillRect(sx - w / 2 + 2, sy - fs * 0.8 + 2, 4, fs * 1.6 - 4);
+        this.badge(ctx, s.civs[c.civId], sx - w / 2 - bs * 0.25, sy - bs * 0.55, bs);
         ctx.fillStyle = '#2a2419';
-        ctx.fillText(text, sx + 2, sy);
+        ctx.font = `600 ${fs}px Georgia, serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(text, sx + bs * 0.35 + 2, sy);
       }
     } else {
       // strategic view: small names, the bigger settlements first, none drawn over another

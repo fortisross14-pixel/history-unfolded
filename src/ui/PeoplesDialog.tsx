@@ -28,6 +28,7 @@ import { leaderArt } from './leaderArt.ts';
 import { TraitChips } from './RulerPicker.tsx';
 import './declutter-world.css';
 import { PeaceTerms } from './PeaceTerms.tsx';
+import { CivBadge } from './Badge.tsx';
 
 interface Props {
   game: GameState;
@@ -114,7 +115,7 @@ export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, on
                   {!c.independent && (
                     <Art k={c.ruler?.face ?? leaderArt(game, c)} size={44} className="leader-art" />
                   )}
-                  <span className="swatch" style={{ background: c.color }} />
+                  <CivBadge civ={c} size={24} />
                   <b>{c.name}</b>
                   {c.independent && (
                     <span className="w-tag" title="A free people">

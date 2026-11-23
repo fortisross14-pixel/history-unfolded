@@ -1094,6 +1094,166 @@
   "w": 87,
   "h": 96
  },
+ "emblem/alexander": {
+  "path": "art/emblem/alexander.webp",
+  "w": 98,
+  "h": 96
+ },
+ "emblem/ashoka": {
+  "path": "art/emblem/ashoka.webp",
+  "w": 97,
+  "h": 96
+ },
+ "emblem/bismarck": {
+  "path": "art/emblem/bismarck.webp",
+  "w": 110,
+  "h": 96
+ },
+ "emblem/caesar": {
+  "path": "art/emblem/caesar.webp",
+  "w": 96,
+  "h": 96
+ },
+ "emblem/charlemagne": {
+  "path": "art/emblem/charlemagne.webp",
+  "w": 86,
+  "h": 96
+ },
+ "emblem/cleopatra": {
+  "path": "art/emblem/cleopatra.webp",
+  "w": 62,
+  "h": 96
+ },
+ "emblem/custom-1": {
+  "path": "art/emblem/custom-1.webp",
+  "w": 95,
+  "h": 96
+ },
+ "emblem/custom-10": {
+  "path": "art/emblem/custom-10.webp",
+  "w": 103,
+  "h": 96
+ },
+ "emblem/custom-11": {
+  "path": "art/emblem/custom-11.webp",
+  "w": 102,
+  "h": 96
+ },
+ "emblem/custom-12": {
+  "path": "art/emblem/custom-12.webp",
+  "w": 161,
+  "h": 96
+ },
+ "emblem/custom-13": {
+  "path": "art/emblem/custom-13.webp",
+  "w": 101,
+  "h": 96
+ },
+ "emblem/custom-2": {
+  "path": "art/emblem/custom-2.webp",
+  "w": 96,
+  "h": 96
+ },
+ "emblem/custom-3": {
+  "path": "art/emblem/custom-3.webp",
+  "w": 91,
+  "h": 96
+ },
+ "emblem/custom-4": {
+  "path": "art/emblem/custom-4.webp",
+  "w": 81,
+  "h": 96
+ },
+ "emblem/custom-5": {
+  "path": "art/emblem/custom-5.webp",
+  "w": 97,
+  "h": 96
+ },
+ "emblem/custom-6": {
+  "path": "art/emblem/custom-6.webp",
+  "w": 93,
+  "h": 96
+ },
+ "emblem/custom-7": {
+  "path": "art/emblem/custom-7.webp",
+  "w": 104,
+  "h": 96
+ },
+ "emblem/custom-8": {
+  "path": "art/emblem/custom-8.webp",
+  "w": 85,
+  "h": 96
+ },
+ "emblem/custom-9": {
+  "path": "art/emblem/custom-9.webp",
+  "w": 140,
+  "h": 96
+ },
+ "emblem/elizabeth": {
+  "path": "art/emblem/elizabeth.webp",
+  "w": 100,
+  "h": 96
+ },
+ "emblem/genghis-khan": {
+  "path": "art/emblem/genghis-khan.webp",
+  "w": 102,
+  "h": 96
+ },
+ "emblem/hammurabi": {
+  "path": "art/emblem/hammurabi.webp",
+  "w": 107,
+  "h": 96
+ },
+ "emblem/lincoln": {
+  "path": "art/emblem/lincoln.webp",
+  "w": 105,
+  "h": 96
+ },
+ "emblem/lorenzo": {
+  "path": "art/emblem/lorenzo.webp",
+  "w": 91,
+  "h": 96
+ },
+ "emblem/louis": {
+  "path": "art/emblem/louis.webp",
+  "w": 98,
+  "h": 96
+ },
+ "emblem/meiji": {
+  "path": "art/emblem/meiji.webp",
+  "w": 97,
+  "h": 96
+ },
+ "emblem/moctezuma": {
+  "path": "art/emblem/moctezuma.webp",
+  "w": 93,
+  "h": 96
+ },
+ "emblem/qin-shi-huang": {
+  "path": "art/emblem/qin-shi-huang.webp",
+  "w": 92,
+  "h": 96
+ },
+ "emblem/saladin": {
+  "path": "art/emblem/saladin.webp",
+  "w": 92,
+  "h": 96
+ },
+ "emblem/suleiman": {
+  "path": "art/emblem/suleiman.webp",
+  "w": 71,
+  "h": 96
+ },
+ "emblem/theodora": {
+  "path": "art/emblem/theodora.webp",
+  "w": 106,
+  "h": 96
+ },
+ "emblem/wu-zetian": {
+  "path": "art/emblem/wu-zetian.webp",
+  "w": 82,
+  "h": 96
+ },
  "era/ancient": {
   "path": "art/era/ancient.webp",
   "w": 96,

@@ -2,6 +2,7 @@ import { describeOffer, PACT_TURNS } from '../engine/diplomacy.ts';
 import type { GameState, Proposal } from '../engine/types.ts';
 import { Chip, InfoButton } from './bits.tsx';
 import { BundleChips } from './PeoplesDialog.tsx';
+import { CivBadge } from './Badge.tsx';
 
 /** An AI people's offer or demand: what you get and give as chips, the wording behind (i). */
 export function ProposalDialog({
@@ -31,8 +32,7 @@ export function ProposalDialog({
     <div className="modal-back">
       <div className="modal confirm proposal">
         <h2>
-          <span className="swatch" style={{ background: them.color }} />{' '}
-          {p.kind === 'demand' ? 'Demand' : 'Offer'}: {them.name}{' '}
+          <CivBadge civ={them} size={26} /> {p.kind === 'demand' ? 'Demand' : 'Offer'}: {them.name}{' '}
           <InfoButton label="In full" align="right">
             <span>{p.text}</span>
             <span className="muted">{describeOffer(game, o)}.</span>

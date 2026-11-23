@@ -95,6 +95,8 @@ import { cityEconomy, constructionQueue } from '../engine/economy.ts';
 import { identity } from '../engine/mods.ts';
 import { DOMAINS } from '../data/culture.ts';
 import { saveGame } from './save.ts';
+import { emblemOf } from '../data/rulers.ts';
+import { artUrl } from '../render/art.ts';
 
 type Sel =
   | { kind: 'formation'; id: number }
@@ -863,12 +865,13 @@ export function Game({
 
       <header className={`topbar ${menuOpen ? 'menu-open' : ''}`} ref={topRef}>
         <span className="crest" style={{ ['--civ' as string]: me.color }} aria-hidden>
-          <Icon name="crown" line />
+          {emblemOf(me.ruler) && artUrl(emblemOf(me.ruler)!) ? (
+            <img className="crest-emblem" src={artUrl(emblemOf(me.ruler)!)} alt="" />
+          ) : (
+            <Icon name="crown" line />
+          )}
         </span>
-        <span className="civ-name">
-          <span className="swatch" style={{ background: me.color }} />
-          {me.name}
-        </span>
+        <span className="civ-name">{me.name}</span>
         <span className="turn-count">
           Turn <b>{game.turn}</b>
           <small className="muted">/{game.settings.turnLimit ?? 400}</small>

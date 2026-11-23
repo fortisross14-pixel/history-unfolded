@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { CIV_PRESETS } from '../data/civs.ts';
-import { FACES, RULER_BY_ID, RULERS, TRAIT_LIST, TRAITS, type TraitId } from '../data/rulers.ts';
+import {
+  EMBLEMS,
+  FACES,
+  RULER_BY_ID,
+  RULERS,
+  TRAIT_LIST,
+  TRAITS,
+  type TraitId,
+} from '../data/rulers.ts';
+import { Badge } from './Badge.tsx';
 import type { RulerSetup } from '../engine/types.ts';
 import { Art, InfoButton } from './bits.tsx';
 import { EffChips, modEffs } from './NationDialog.tsx';
@@ -56,6 +65,9 @@ export function RulerPicker({
   const [minor, setMinor] = useState<TraitId>(initial.id ? 'merchant' : initial.minor);
   const [color, setColor] = useState(initial.color ?? CIV_PRESETS[0].color);
   const [names, setNames] = useState(initial.names ?? 'invented');
+  const [emblem, setEmblem] = useState(
+    initial.id ? 'emblem/custom-1' : (initial.emblem ?? 'emblem/custom-1'),
+  );
 
   const setup = (): RulerSetup => {
     if (mode === 'historical') {
@@ -70,6 +82,7 @@ export function RulerPicker({
       minor,
       color,
       names,
+      emblem,
     };
   };
 
@@ -112,7 +125,8 @@ export function RulerPicker({
               <span className="rp-who">
                 <b>{r.name}</b>
                 <small>
-                  <span className="swatch" style={{ background: r.color }} /> {r.nation}
+                  <Badge colour={r.color} emblem={`emblem/${r.id}`} name={r.nation} size={20} />{' '}
+                  {r.nation}
                 </small>
                 <TraitChips major={r.major} minor={r.minor} />
               </span>
@@ -188,6 +202,21 @@ export function RulerPicker({
                   );
                 })}
               </div>
+            ))}
+          </div>
+          <h3>Badge</h3>
+          <div className="rp-emblems" role="radiogroup" aria-label="Badge">
+            {EMBLEMS.map(e => (
+              <button
+                key={e}
+                role="radio"
+                aria-checked={emblem === e}
+                aria-label={e.replace('emblem/', '')}
+                className={`rp-emblembtn ${emblem === e ? 'on' : ''}`}
+                onClick={() => setEmblem(e)}
+              >
+                <Badge colour={color} emblem={e} name={nation || 'A'} size={36} />
+              </button>
             ))}
           </div>
           <h3>Banner</h3>

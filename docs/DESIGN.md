@@ -1239,6 +1239,11 @@ settlement is always a town. Founded further out, it is a **colony**:
   area or different), banner colour, and settlement names borrowed from a nation or invented.
   "Begin" on the first step starts at once with a ruler chosen by the seed.
 - Diplomacy shows each rival's ruler, face and strengths; the Nation screen shows yours.
+- **Badges:** each people's badge is a shield in its colour with its emblem (art sheet M8): each
+  historical ruler's own (ankh, Roman eagle, fleur-de-lis…), and for a ruler of one's own any of
+  the 32 (13 made for that: lion, wolf, stag, tower…). Shown on the top-bar crest, in Diplomacy,
+  Rankings and offers, on the settlement card and at the front of every settlement's name tag on
+  the map (`src/ui/Badge.tsx`, `src/ui/shield.ts`).
 - **Balance** (`scripts/rulerbalance.ts`, summed by `rulerbalance-sum.ts`): 64 games of 250 turns,
   every people played by the AI, the player's ruler rotated through all 19. First run: Provider
   (food and growth) snowballed (Cleopatra won 14 of 20) and Sage lagged. Three rounds of tuning:

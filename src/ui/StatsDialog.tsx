@@ -8,6 +8,7 @@ import {
   type ChronicleEntry,
   type MetricId,
 } from '../engine/stats.ts';
+import { CivBadge } from './Badge.tsx';
 
 type Tab = 'rank' | 'chart' | 'chronicle';
 
@@ -137,7 +138,7 @@ export function StatsDialog({
                     <tr key={c.id} className={c.id === civId ? 'me' : ''}>
                       {known.includes(c) ? (
                         <td>
-                          <span className="swatch" style={{ background: c.color }} /> {c.name}
+                          <CivBadge civ={c} size={20} /> {c.name}
                         </td>
                       ) : (
                         <td className="muted">
@@ -287,7 +288,7 @@ export function StatsChart({
       <div className="stats-legend">
         {known.map(c => (
           <span key={c.id} className={c.id === civId ? 'me' : ''}>
-            <span className="swatch" style={{ background: c.color }} /> {c.name}
+            <CivBadge civ={c} size={18} /> {c.name}
             {c.alive ? '' : ' (gone)'}
           </span>
         ))}

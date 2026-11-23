@@ -261,6 +261,7 @@ function assignRulers(
           face: mine.face,
           major: mine.major,
           minor: mine.minor,
+          emblem: mine.emblem ?? (mine.id ? `emblem/${mine.id}` : 'emblem/custom-1'),
         },
         cityList: mine.names === 'invented' ? undefined : borrow?.cities,
       };
@@ -269,7 +270,14 @@ function assignRulers(
       o = {
         name: r.nation,
         color: r.color,
-        ruler: { id: r.id, name: r.name, face: r.face, major: r.major, minor: r.minor },
+        ruler: {
+          id: r.id,
+          name: r.name,
+          face: r.face,
+          major: r.major,
+          minor: r.minor,
+          emblem: `emblem/${r.id}`,
+        },
         cityList: r.cities,
       };
     } else {

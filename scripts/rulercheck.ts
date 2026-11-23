@@ -65,6 +65,10 @@ const hist = (id: string): RulerSetup => {
     `every people has its own ruler (${ids.join(', ')})`,
   );
   check(!ids.slice(1).includes('alexander'), 'no rival is your ruler');
+  check(
+    great.every(c => c.ruler?.emblem === `emblem/${c.ruler?.id}`),
+    'every historical people carries its own emblem',
+  );
   check(new Set(great.map(c => c.color)).size === great.length, 'no two peoples share a colour');
   const rival = great[1];
   check(
@@ -131,6 +135,7 @@ const hist = (id: string): RulerSetup => {
     color: '#2f8a3c',
     nation: 'Lovelace',
     names: 'invented',
+    emblem: 'emblem/custom-4',
   });
   const me = player(s);
   check(
@@ -147,6 +152,7 @@ const hist = (id: string): RulerSetup => {
   ageGifts(s, me);
   check(me.science > sci && me.culture.points > cul, 'and again on each new age');
   check(!me.cityList, 'invented settlement names');
+  check(me.ruler?.emblem === 'emblem/custom-4', 'and the badge chosen');
   const borrow = make({
     name: 'Ada',
     face: 'face/3',

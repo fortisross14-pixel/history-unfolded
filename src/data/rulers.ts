@@ -605,6 +605,14 @@ export const RULERS: Ruler[] = [
 ];
 export const RULER_BY_ID: Record<string, Ruler> = Object.fromEntries(RULERS.map(r => [r.id, r]));
 
+/** Badge symbols (art/map-8-emblems): each historical ruler's own, then 13 for a nation of one's own. */
+export const EMBLEMS = [
+  ...RULERS.map(r => `emblem/${r.id}`),
+  ...Array.from({ length: 13 }, (_, i) => `emblem/custom-${i + 1}`),
+];
+export const emblemOf = (r: { id?: string; emblem?: string } | undefined) =>
+  r?.emblem ?? (r?.id ? `emblem/${r.id}` : undefined);
+
 /** Faces for a ruler of one's own (art/map-7-faces). */
 export const FACES = Array.from({ length: 12 }, (_, i) => `face/${i + 1}`);
 
@@ -616,6 +624,8 @@ export interface RulerChoice {
   face: string;
   major: TraitId;
   minor: TraitId;
+  /** the badge symbol; a historical ruler's own when absent */
+  emblem?: string;
 }
 
 /** The mods a ruler gives: the major strength in full and the minor one's weaker form. */

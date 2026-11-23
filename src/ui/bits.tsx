@@ -30,6 +30,28 @@ export function Art({
 }
 
 /** Interface icon: generated if available, else the given emoji/glyph. */
+/** Names the code uses for a symbol the interface sheet already drew under another name. */
+const ICON_ALIAS: Record<string, string> = {
+  coin: 'gold',
+  eye: 'sight',
+  wheat: 'food',
+  hammer: 'production',
+  lyre: 'culture',
+  flask: 'science',
+  house: 'housing',
+  boot: 'moves',
+  sword: 'melee',
+  bow: 'ranged',
+  shield: 'protection',
+  laurel: 'experience',
+  anvil: 'equip',
+  target: 'go-to',
+  hourglass: 'end-turn',
+  bell: 'notices',
+  scroll: 'save',
+  flag: 'morale',
+};
+
 export function Ico({
   name,
   fallback,
@@ -41,7 +63,7 @@ export function Ico({
 }) {
   return (
     <Art
-      k={`icon/${name}`}
+      k={`icon/${ICON_ALIAS[name] ?? name}`}
       size={size}
       className="ico"
       fallback={

@@ -100,5 +100,51 @@
    "terrain/ice-1",
    "terrain/ice-2"
   ]
+ },
+ {
+  "file": "map-5-wonders.png",
+  "cols": 4,
+  "rows": 3,
+  "style": "figure",
+  "height": 192,
+  "cells": [
+   "wonder/great-pyramid",
+   "wonder/hanging-gardens",
+   "wonder/great-library",
+   "wonder/great-wall",
+   "wonder/dome-of-heaven",
+   "wonder/grand-bazaar",
+   "wonder/house-of-printing",
+   "wonder/admiralty",
+   "wonder/crystal-palace",
+   "wonder/grand-terminus",
+   null,
+   null
+  ]
+ },
+ {
+  "file": "map-6-leaders.png",
+  "cols": 4,
+  "rows": 4,
+  "style": "figure",
+  "height": 192,
+  "cells": [
+   "leader/ancient-1",
+   "leader/ancient-2",
+   "leader/ancient-3",
+   "leader/classical-1",
+   "leader/classical-2",
+   "leader/classical-3",
+   "leader/medieval-1",
+   "leader/medieval-2",
+   "leader/medieval-3",
+   "leader/renaissance-1",
+   "leader/renaissance-2",
+   "leader/renaissance-3",
+   "leader/industrial-1",
+   "leader/industrial-2",
+   "leader/industrial-3",
+   "leader/raider"
+  ]
  }
 ]

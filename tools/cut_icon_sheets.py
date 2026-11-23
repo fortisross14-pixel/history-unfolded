@@ -65,6 +65,8 @@ def cut(sheet):
     boxes = cell_boxes(fg, cols, rows)
     out, problems = {}, []
     for key, (x0, y0, x1, y1) in zip(sheet["cells"], boxes):
+        if key is None:  # a cell left empty on purpose
+            continue
         cell = rgb[y0:y1, x0:x1]
         sprite = key_magenta(cell) if style == "figure" else cut_cell(cell, style)
         if sprite is None:
@@ -83,7 +85,7 @@ def cut(sheet):
         # WebP keeps the alpha at a fraction of PNG's size (about 4 KB an icon)
         sprite.save(os.path.join(OUT, group, f"{name}.webp"), "WEBP", quality=88, method=6)
         out[key] = {"path": f"art/{group}/{name}.webp", "w": sprite.width, "h": sprite.height}
-    print(f"[{sheet['file']}] {len(out)}/{len(sheet['cells'])} icons")
+    print(f"[{sheet['file']}] {len(out)}/{len([k for k in sheet['cells'] if k])} icons")
     for p in problems:
         print("   check:", p)
     return out

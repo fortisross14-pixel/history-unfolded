@@ -152,6 +152,8 @@ export interface Civ {
   isPlayer: boolean;
   /** an AI people's war on someone, announced: it strikes at turn `at` if it still wants to */
   warPlan?: { target: number; at: number; since: number };
+  /** when goods run short, who comes first: factories (default), homes' hearths, or the army */
+  supply?: 'industry' | 'homes' | 'army';
   /** what governed settlements and automated units work toward (ai.ts playerAutomation) */
   priority?: 'balanced' | 'growth' | 'trade' | 'expand' | 'war';
   /** the hidden people of raider bands (raiders.ts) */

@@ -43,6 +43,8 @@ export interface Overlay {
   path?: number[];
   /** adjacent enemy the selected formation would attack */
   target?: number;
+  /** a map lens: rail and power of the player's settlements */
+  lens?: 'industry';
 }
 
 const INK = '#4a321e';

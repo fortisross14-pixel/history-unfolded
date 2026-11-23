@@ -8,7 +8,7 @@ import {
   roadBuilderProblem,
   autoProblem,
   railProblem,
-  RAIL_GOLD,
+  railGold,
   cargoOf,
   formationsAt,
   refitPreview,
@@ -362,7 +362,8 @@ export function FormationPanel(p: Props) {
               onClick={p.onRoad}
               disabled={!!railWhy}
               title={
-                railWhy ?? `Lay a railway over this road: ${RAIL_GOLD} gold, the remaining moves.`
+                railWhy ??
+                `Lay a railway over this road: ${railGold(game, f.civId)} gold, the remaining moves.`
               }
             >
               <Icon name="road" /> Lay railway

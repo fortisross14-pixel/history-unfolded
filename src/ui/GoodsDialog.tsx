@@ -1,3 +1,4 @@
+import { setSupply, SUPPLY } from '../engine/game.ts';
 import { useState } from 'react';
 import { COMFORT_PEOPLE, GOODS, STORE_PER_CELL } from '../data/goods.ts';
 import { bestPrice, DEAL_TURNS, evaluateOffer, ledgerOf } from '../engine/diplomacy.ts';
@@ -26,6 +27,7 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
     c => c.alive && c.id !== civId && me.met.includes(c.id) && !atWar(game, civId, c.id),
   );
   const [selling, setSelling] = useState<string | null>(null);
+  const [, setV] = useState(0);
   const [to, setTo] = useState<number>(partners[0]?.id ?? -1);
   const [n, setN] = useState(1);
   const [price, setPrice] = useState(1);
@@ -59,6 +61,25 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
             ×
           </button>
         </header>
+        <div className="setting supply-row">
+          <span>When goods run short, first to</span>
+          <div className="setting-opts">
+            {(Object.keys(SUPPLY) as (keyof typeof SUPPLY)[]).map(k => (
+              <button
+                key={k}
+                className={(me.supply ?? 'industry') === k ? 'on' : ''}
+                title={SUPPLY[k].note}
+                onClick={() => {
+                  setSupply(game, civId, k);
+                  setV(v => v + 1);
+                }}
+              >
+                {SUPPLY[k].name}
+              </button>
+            ))}
+          </div>
+          <small className="muted">{SUPPLY[me.supply ?? 'industry'].note}</small>
+        </div>
         <p className="muted small">
           Special goods (minerals, plantation crops, furs, whales, pearls) need a town next to the
           deposit and at least 3 of the working building in one district; then every one of them

@@ -38,6 +38,7 @@ import {
   WONDER_BUILDERS,
 } from './city3d.ts';
 import { wondersIn } from '../engine/wonders.ts';
+import { industryStatus } from '../engine/economy.ts';
 import { fx, Motion, reducedMotion } from './fx.ts';
 import type { Insets, Overlay } from './mapRenderer.ts';
 
@@ -173,6 +174,8 @@ export class World3DRenderer {
   private cities = new Map<number, { key: string; mesh: THREE.Object3D | null }>();
   /** raider camps on the map, by hex */
   private camps = new Map<number, THREE.Object3D>();
+  /** the rail and power lens, worked out once a turn per settlement */
+  private industry = new Map<number, { key: string } & ReturnType<typeof industryStatus>>();
   /** ruins not yet searched, by hex */
   private ruinMeshes = new Map<number, THREE.Object3D>();
   private units = new Map<number, { key: string; mesh: THREE.Object3D }>();
@@ -1018,13 +1021,13 @@ export class World3DRenderer {
 
     this.renderer.render(this.scene, this.camera);
     const playing = fx.tick();
-    this.drawLabels(s, civId, vis, known);
+    this.drawLabels(s, civId, vis, known, ov);
     this.wantsFrame = more || playing || this.motion.active;
     this.wantsSettle = false;
   }
 
   /** Names over settlements, cohort counts by troops, and battle effects. */
-  private drawLabels(s: GameState, civId: number, vis: Uint8Array, known: number[]) {
+  private drawLabels(s: GameState, civId: number, vis: Uint8Array, known: number[], ov?: Overlay) {
     const ctx = this.lctx;
     const g = { w: s.map.w, h: s.map.h };
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -1077,6 +1080,39 @@ export class World3DRenderer {
         ctx.strokeText(c.name, sx, sy);
         ctx.fillStyle = s.civs[c.civId].color;
         ctx.fillText(c.name, sx, sy);
+      }
+    }
+    // the rail and power lens: each of the player's settlements says what its industry lacks
+    if (ov?.lens === 'industry') {
+      ctx.font = `600 12px Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const c of s.cities) {
+        if (c.civId !== civId) continue;
+        const [x, z] = centerUnit(g, c.hex);
+        const [sx, sy] = this.project(x, this.top(s, c.hex), z + 0.95);
+        if (sx < -100 || sy < -40 || sx > this.w + 100 || sy > this.h + 60) continue;
+        const key = `${s.turn}|${s.cities.length}|${c.id}`;
+        let st = this.industry.get(c.id);
+        if (!st || st.key !== key) {
+          st = { key, ...industryStatus(s, c) };
+          this.industry.set(c.id, st);
+        }
+        const parts = [
+          st.rail ? 'rail ✓' : 'no rail',
+          st.makesPower ? `power +${st.makesPower}` : st.power ? `power −${st.power}` : '',
+          st.fuel === null ? 'no fuel' : '',
+          st.short.length ? `short: ${st.short.join(', ')}` : '',
+        ].filter(Boolean);
+        const bad = !st.rail || st.fuel === null || st.short.length > 0;
+        const text = parts.join(' · ');
+        const w = ctx.measureText(text).width + 14;
+        ctx.fillStyle = bad ? 'rgba(160,42,30,0.92)' : 'rgba(43,106,95,0.92)';
+        ctx.beginPath();
+        ctx.roundRect(sx - w / 2, sy + 14, w, 20, 6);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.fillText(text, sx, sy + 24);
       }
     }
     // cohort counts by troops

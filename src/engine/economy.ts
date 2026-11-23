@@ -342,6 +342,9 @@ export function workable(
 }
 
 /** Everything a city makes this turn, slot by slot. */
+/** goods held back for troops' gear when the realm puts the army first */
+export const ARMY_GOODS = ['iron', 'steel', 'powder', 'horses'];
+
 export function cityEconomy(s: GameState, c: City): CityEconomy {
   const g = gridOf(s);
   const total = zero();
@@ -349,7 +352,25 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
   const workers = Math.floor((c.pop * (WORKER_SHARE + mods.workers / 100)) / 50) * 50;
   let free = workers;
   const inputs: Record<string, number> = {};
-  const stock = marketStock(s, c);
+  const marketHas = marketStock(s, c);
+  // when goods run short, who comes first (the realm's choice): factories, homes, or the army
+  const supply = s.civs[c.civId].supply ?? 'industry';
+  // the army first: buildings may not burn what the troops' gear needs
+  const stock: Record<string, number> =
+    supply === 'army'
+      ? Object.fromEntries(
+          Object.entries(marketHas).map(([k, n]) => [k, ARMY_GOODS.includes(k) ? 0 : n]),
+        )
+      : marketHas;
+  // homes first: the hearths take their fuel before any building does
+  const hearthFirst = supply === 'homes' && isUrban(c);
+  const early: CityEconomy['fuel'] = { need: 0, good: null };
+  if (hearthFirst) {
+    early.need = Math.ceil(c.pop / 4000);
+    early.good =
+      (stock.coal ?? 0) >= early.need ? 'coal' : (stock.wood ?? 0) >= early.need ? 'wood' : null;
+    if (early.good) inputs[early.good] = (inputs[early.good] ?? 0) + early.need;
+  }
   const slots = new Map<number, SlotReport[]>();
   const districts = cityDistricts(s, c);
 
@@ -530,8 +551,11 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
   }
   // cities burn fuel as they grow: coal when the market has it (a little extra industry), else
   // wood; with neither, everything slows
-  const fuel: CityEconomy['fuel'] = { need: 0, good: null };
-  if (isUrban(c)) {
+  const fuel: CityEconomy['fuel'] = hearthFirst ? early : { need: 0, good: null };
+  if (hearthFirst) {
+    if (fuel.good === 'coal') total.prod *= 1.05;
+    if (!fuel.good) scaleTotals(total, 0.85, false);
+  } else if (isUrban(c)) {
     fuel.need = Math.ceil(c.pop / 4000);
     const left = (gd: string) => (stock[gd] ?? 0) - (inputs[gd] ?? 0);
     fuel.good = left('coal') >= fuel.need ? 'coal' : left('wood') >= fuel.need ? 'wood' : null;
@@ -1010,4 +1034,22 @@ export function slotPreview(
     }
   if (rep?.staffed) for (const [k, n] of Object.entries(rep.out.goods)) if (r(n)) goods[k] = r(n);
   return { yields, goods, why: rep?.problem ?? rep?.idle ?? undefined };
+}
+
+/** What a settlement's industry lacks: railway, fuel, and the goods its buildings run short of. */
+export function industryStatus(s: GameState, c: City) {
+  const e = cityEconomy(s, c);
+  const short = new Set<string>();
+  for (const reps of e.slots.values())
+    for (const r of reps) {
+      const m = r.note?.match(/^Short of ([^:]+):/);
+      if (m) for (const g of m[1].split(', ')) short.add(g);
+    }
+  return {
+    rail: railLinked(s, c),
+    fuel: e.fuel.need ? e.fuel.good : 'none needed',
+    short: [...short],
+    power: e.inputs.electricity ?? 0,
+    makesPower: e.total.goods.electricity ?? 0,
+  };
 }

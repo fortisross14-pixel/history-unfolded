@@ -196,6 +196,8 @@ export function Game({
   >([]);
   // the start-of-turn summary, grouped; closed by the player or the next turn
   const [summary, setSummary] = useState<string[] | null>(null);
+  // the map lens for rail and power, once the realm has steam
+  const [lens, setLens] = useState<'industry' | null>(null);
   // which realm screen (left buttons) the open dialog belongs to, for its tabs
   const [hub, setHub] = useState<HubId | null>(null);
   const openHub = (h: HubId) => {
@@ -686,6 +688,7 @@ export function Game({
 
   const overlay = useMemo(() => {
     const o: Overlay = { hoverHex: hover };
+    if (lens) o.lens = lens;
     if (selF) o.selectedFormation = selF.id;
     if (sel?.kind === 'hex') o.selectedHex = sel.hex;
     if (selCity) o.selectedHex = selCity.hex;
@@ -702,7 +705,7 @@ export function Game({
       else if (mySelF.path.length) o.path = mySelF.path;
     }
     return o;
-  }, [sel, hover, version, battlePreview]);
+  }, [sel, hover, version, battlePreview, lens]);
 
   const research_ = me.researching ? TECHS[me.researching] : null;
   const culturePerTurn = useMemo(
@@ -936,6 +939,16 @@ export function Game({
             >
               {mini ? 'Hide map' : 'Minimap'}
             </button>
+            {me.techs.includes('steam-power') && (
+              <button
+                className={`link ${lens ? 'on' : ''}`}
+                onClick={() => setLens(l => (l ? null : 'industry'))}
+                title="Rail and power: which settlements are on the railway and what their industry lacks"
+                aria-pressed={!!lens}
+              >
+                Rail &amp; power
+              </button>
+            )}
           </div>
           {guide && (
             <div className="guide-card" role="note" aria-label="Guide">

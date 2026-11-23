@@ -4,6 +4,7 @@ import {
   endTurn,
   foundCity,
   setPriority,
+  setSupply,
   newGame,
   player,
   sentry,
@@ -16,7 +17,7 @@ import type { GameState } from '../src/engine/types.ts';
 import { classify, collapseRoutine, groupNews, locate } from '../src/ui/news.ts';
 import { exportSave, importSave } from '../src/ui/save.ts';
 import { whyCulture, whyGold, whyScience } from '../src/engine/breakdown.ts';
-import { cityDistricts, slotPreview } from '../src/engine/economy.ts';
+import { cityDistricts, cityEconomy, industryStatus, slotPreview } from '../src/engine/economy.ts';
 import { codexEntries, searchCodex } from '../src/ui/codex.ts';
 import { GUIDE, guideSeen, guideStep, startGuide } from '../src/ui/guide.ts';
 
@@ -239,6 +240,28 @@ const make = (noVictory?: GameState['settings']['noVictory']): GameState =>
   );
   setPriority(s, me.id, 'balanced');
   check(me.priority === undefined, 'balanced clears it');
+}
+
+// ---------------------------------------------------------------- shortages: who comes first
+{
+  const s = make();
+  const me = player(s);
+  foundCity(s, s.formations.find(f => f.civId === me.id && f.kind === 'settlers')!.id);
+  const town = s.cities.find(c => c.civId === me.id)!;
+  town.tier = 'city';
+  town.pop = 9000;
+  town.stockpile = { wood: 5, coal: 1, iron: 5 };
+  const d = cityDistricts(s, town)[0];
+  d.slots[0] = { type: 'houses', built: true, progress: 0, paid: true };
+  d.slots[1] = { type: 'houses', built: true, progress: 0, paid: true };
+  check(setSupply(s, me.id, 'homes').ok && me.supply === 'homes', 'homes first is set');
+  const homes = cityEconomy(s, town);
+  check(homes.fuel.good !== null, `homes first: the hearths get their fuel (${homes.fuel.good})`);
+  setSupply(s, me.id, 'army');
+  const st = industryStatus(s, town);
+  check(Array.isArray(st.short) && typeof st.rail === 'boolean', 'the rail and power status reads');
+  setSupply(s, me.id, 'industry');
+  check(me.supply === undefined, 'factories first is the default');
 }
 
 if (failures) {

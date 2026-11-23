@@ -866,6 +866,28 @@ export const PRIORITIES = {
   },
 } as const;
 
+export const SUPPLY = {
+  industry: {
+    name: 'Factories',
+    note: 'Buildings take scarce goods first; city hearths get what is left.',
+  },
+  homes: {
+    name: 'Homes',
+    note: 'City hearths take their fuel first: growth and output hold, industry may limp.',
+  },
+  army: {
+    name: 'Army',
+    note: 'Iron, steel, powder and horses are kept for troops’ gear; buildings that need them limp.',
+  },
+} as const;
+
+/** When goods run short, who comes first. */
+export function setSupply(s: GameState, civId: number, k: keyof typeof SUPPLY): Result {
+  s.civs[civId].supply = k === 'industry' ? undefined : k;
+  invalidateMarkets();
+  return ok(`Shortages: ${SUPPLY[k].name} first. ${SUPPLY[k].note}`);
+}
+
 /** Set what governed settlements and automated units work toward. */
 export function setPriority(s: GameState, civId: number, p: keyof typeof PRIORITIES): Result {
   s.civs[civId].priority = p === 'balanced' ? undefined : p;
@@ -2737,6 +2759,9 @@ export function trainCrew(s: GameState, cityId: number, kind: 'workers' | 'engin
 export const RAIL = 2;
 export const RAIL_COST = 0.2;
 export const RAIL_GOLD = 10;
+/** what a stretch of railway costs this people: Machine Tools halves it */
+export const railGold = (s: GameState, civId: number) =>
+  s.civs[civId].techs.includes('machine-tools') ? RAIL_GOLD / 2 : RAIL_GOLD;
 
 /** Why this formation cannot lay a railway where it stands, or null. */
 export function railProblem(s: GameState, f: Formation): string | null {
@@ -2745,7 +2770,8 @@ export function railProblem(s: GameState, f: Formation): string | null {
   if (s.roads[f.hex] === RAIL) return 'There is a railway here already.';
   if (!s.roads[f.hex]) return 'Railways are laid over a road: build the road first.';
   if (f.moves <= 0) return 'No moves left this turn.';
-  if (s.civs[f.civId].gold < RAIL_GOLD) return `A stretch of railway costs ${RAIL_GOLD} gold.`;
+  if (s.civs[f.civId].gold < railGold(s, f.civId))
+    return `A stretch of railway costs ${railGold(s, f.civId)} gold.`;
   return null;
 }
 
@@ -2756,11 +2782,12 @@ export function buildRail(s: GameState, fid: number): Result {
   const why = railProblem(s, f);
   if (why) return fail(why);
   s.roads[f.hex] = RAIL;
-  s.civs[f.civId].gold -= RAIL_GOLD;
+  const cost = railGold(s, f.civId);
+  s.civs[f.civId].gold -= cost;
   invalidateMarkets();
   f.moves = 0;
   f.path = [];
-  return ok(`Railway laid (${RAIL_GOLD} gold).`);
+  return ok(`Railway laid (${cost} gold).`);
 }
 
 export function buildRoad(s: GameState, fid: number): Result {

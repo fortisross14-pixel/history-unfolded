@@ -226,7 +226,6 @@ export const TECH_LIST: TechInfo[] = [
     420,
     [],
     'Pumping stations and steam sawmills burn coal to double their districts.',
-    { mods: { prodPct: 5 } },
   ),
   t(
     'railways',
@@ -237,9 +236,15 @@ export const TECH_LIST: TechInfo[] = [
     'Railway stations burn coal for production and trade; faster roads.',
     { favoured: 'mercantile', mods: { roadCost: -0.15 } },
   ),
-  t('machine-tools', 'Machine Tools', 5, 460, ['steam-power'], 'Industry grows more exact.', {
-    mods: { groupPct: { craft: 15 } },
-  }),
+  t(
+    'machine-tools',
+    'Machine Tools',
+    5,
+    460,
+    ['steam-power'],
+    'Interchangeable parts: equipping troops costs a quarter less, and railways half the gold.',
+    { mods: { refitPct: -25 } },
+  ),
   t(
     'preservation',
     'Food Preservation',

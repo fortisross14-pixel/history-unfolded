@@ -354,6 +354,11 @@
   "w": 355,
   "h": 256
  },
+ "culture/absolutism": {
+  "path": "art/culture/absolutism.webp",
+  "w": 73,
+  "h": 96
+ },
  "culture/academies": {
   "path": "art/culture/academies.webp",
   "w": 96,
@@ -364,9 +369,19 @@
   "w": 72,
   "h": 96
  },
+ "culture/ancestor-spirits": {
+  "path": "art/culture/ancestor-spirits.webp",
+  "w": 96,
+  "h": 85
+ },
  "culture/archery-tradition": {
   "path": "art/culture/archery-tradition.webp",
   "w": 96,
+  "h": 96
+ },
+ "culture/assembly": {
+  "path": "art/culture/assembly.webp",
+  "w": 90,
   "h": 96
  },
  "culture/banking-families": {
@@ -379,6 +394,16 @@
   "w": 80,
   "h": 96
  },
+ "culture/barter": {
+  "path": "art/culture/barter.webp",
+  "w": 96,
+  "h": 91
+ },
+ "culture/caste-system": {
+  "path": "art/culture/caste-system.webp",
+  "w": 96,
+  "h": 75
+ },
  "culture/celestial-navigation": {
   "path": "art/culture/celestial-navigation.webp",
   "w": 83,
@@ -389,10 +414,25 @@
   "w": 85,
   "h": 96
  },
+ "culture/chiefdom": {
+  "path": "art/culture/chiefdom.webp",
+  "w": 80,
+  "h": 96
+ },
  "culture/citizen-militia": {
   "path": "art/culture/citizen-militia.webp",
   "w": 96,
   "h": 82
+ },
+ "culture/city-charter": {
+  "path": "art/culture/city-charter.webp",
+  "w": 96,
+  "h": 86
+ },
+ "culture/clan-society": {
+  "path": "art/culture/clan-society.webp",
+  "w": 96,
+  "h": 95
  },
  "culture/coast-huggers": {
   "path": "art/culture/coast-huggers.webp",
@@ -404,9 +444,24 @@
   "w": 96,
   "h": 86
  },
+ "culture/coinage": {
+  "path": "art/culture/coinage.webp",
+  "w": 96,
+  "h": 86
+ },
  "culture/conquest-doctrine": {
   "path": "art/culture/conquest-doctrine.webp",
   "w": 78,
+  "h": 96
+ },
+ "culture/constitution": {
+  "path": "art/culture/constitution.webp",
+  "w": 90,
+  "h": 96
+ },
+ "culture/council-of-elders": {
+  "path": "art/culture/council-of-elders.webp",
+  "w": 92,
   "h": 96
  },
  "culture/court-arts": {
@@ -414,10 +469,30 @@
   "w": 90,
   "h": 96
  },
+ "culture/court-bureaucracy": {
+  "path": "art/culture/court-bureaucracy.webp",
+  "w": 96,
+  "h": 93
+ },
+ "culture/craft-guilds": {
+  "path": "art/culture/craft-guilds.webp",
+  "w": 95,
+  "h": 96
+ },
+ "culture/democracy": {
+  "path": "art/culture/democracy.webp",
+  "w": 85,
+  "h": 96
+ },
  "culture/divine-kingship": {
   "path": "art/culture/divine-kingship.webp",
   "w": 96,
   "h": 89
+ },
+ "culture/divine-right": {
+  "path": "art/culture/divine-right.webp",
+  "w": 95,
+  "h": 96
  },
  "culture/drilled-ranks": {
   "path": "art/culture/drilled-ranks.webp",
@@ -434,20 +509,40 @@
   "w": 96,
   "h": 66
  },
+ "culture/enlightened-despotism": {
+  "path": "art/culture/enlightened-despotism.webp",
+  "w": 96,
+  "h": 81
+ },
  "culture/epic-poetry": {
   "path": "art/culture/epic-poetry.webp",
   "w": 96,
   "h": 90
+ },
+ "culture/estates": {
+  "path": "art/culture/estates.webp",
+  "w": 96,
+  "h": 83
  },
  "culture/explorers": {
   "path": "art/culture/explorers.webp",
   "w": 96,
   "h": 92
  },
+ "culture/feudal-levy": {
+  "path": "art/culture/feudal-levy.webp",
+  "w": 88,
+  "h": 96
+ },
  "culture/folk-arts": {
   "path": "art/culture/folk-arts.webp",
   "w": 85,
   "h": 96
+ },
+ "culture/free-cities": {
+  "path": "art/culture/free-cities.webp",
+  "w": 96,
+  "h": 95
  },
  "culture/free-markets": {
   "path": "art/culture/free-markets.webp",
@@ -461,6 +556,11 @@
  },
  "culture/golden-age": {
   "path": "art/culture/golden-age.webp",
+  "w": 96,
+  "h": 95
+ },
+ "culture/granary-system": {
+  "path": "art/culture/granary-system.webp",
   "w": 96,
   "h": 95
  },
@@ -484,25 +584,80 @@
   "w": 83,
   "h": 96
  },
+ "culture/holy-war": {
+  "path": "art/culture/holy-war.webp",
+  "w": 96,
+  "h": 91
+ },
  "culture/horse-culture": {
   "path": "art/culture/horse-culture.webp",
   "w": 96,
   "h": 84
+ },
+ "culture/household-society": {
+  "path": "art/culture/household-society.webp",
+  "w": 93,
+  "h": 96
  },
  "culture/humanism": {
   "path": "art/culture/humanism.webp",
   "w": 96,
   "h": 95
  },
+ "culture/inquisition": {
+  "path": "art/culture/inquisition.webp",
+  "w": 90,
+  "h": 96
+ },
+ "culture/kinship": {
+  "path": "art/culture/kinship.webp",
+  "w": 95,
+  "h": 96
+ },
+ "culture/land-tenure": {
+  "path": "art/culture/land-tenure.webp",
+  "w": 96,
+  "h": 81
+ },
+ "culture/land-wealth": {
+  "path": "art/culture/land-wealth.webp",
+  "w": 96,
+  "h": 80
+ },
  "culture/lunar-calendar": {
   "path": "art/culture/lunar-calendar.webp",
   "w": 96,
   "h": 89
  },
+ "culture/many-gods": {
+  "path": "art/culture/many-gods.webp",
+  "w": 96,
+  "h": 85
+ },
  "culture/medicine": {
   "path": "art/culture/medicine.webp",
   "w": 96,
   "h": 96
+ },
+ "culture/mercantilism": {
+  "path": "art/culture/mercantilism.webp",
+  "w": 96,
+  "h": 72
+ },
+ "culture/merchant-houses": {
+  "path": "art/culture/merchant-houses.webp",
+  "w": 96,
+  "h": 70
+ },
+ "culture/militant-orders": {
+  "path": "art/culture/militant-orders.webp",
+  "w": 81,
+  "h": 96
+ },
+ "culture/mining-charters": {
+  "path": "art/culture/mining-charters.webp",
+  "w": 96,
+  "h": 93
  },
  "culture/monumental-astronomy": {
   "path": "art/culture/monumental-astronomy.webp",
@@ -534,6 +689,11 @@
   "w": 92,
   "h": 96
  },
+ "culture/one-god": {
+  "path": "art/culture/one-god.webp",
+  "w": 96,
+  "h": 93
+ },
  "culture/open-sea": {
   "path": "art/culture/open-sea.webp",
   "w": 96,
@@ -549,6 +709,21 @@
   "w": 96,
   "h": 83
  },
+ "culture/peasant-communes": {
+  "path": "art/culture/peasant-communes.webp",
+  "w": 96,
+  "h": 91
+ },
+ "culture/pilgrimage": {
+  "path": "art/culture/pilgrimage.webp",
+  "w": 75,
+  "h": 96
+ },
+ "culture/priesthood-caste": {
+  "path": "art/culture/priesthood-caste.webp",
+  "w": 78,
+  "h": 96
+ },
  "culture/professional-army": {
   "path": "art/culture/professional-army.webp",
   "w": 96,
@@ -563,6 +738,11 @@
   "path": "art/culture/record-keeping.webp",
   "w": 96,
   "h": 90
+ },
+ "culture/republic": {
+  "path": "art/culture/republic.webp",
+  "w": 96,
+  "h": 88
  },
  "culture/scholasticism": {
   "path": "art/culture/scholasticism.webp",
@@ -584,6 +764,21 @@
   "w": 96,
   "h": 95
  },
+ "culture/seat-of-empire": {
+  "path": "art/culture/seat-of-empire.webp",
+  "w": 96,
+  "h": 94
+ },
+ "culture/secular-state": {
+  "path": "art/culture/secular-state.webp",
+  "w": 85,
+  "h": 96
+ },
+ "culture/senate": {
+  "path": "art/culture/senate.webp",
+  "w": 96,
+  "h": 71
+ },
  "culture/shield-wall": {
   "path": "art/culture/shield-wall.webp",
   "w": 96,
@@ -599,6 +794,11 @@
   "w": 96,
   "h": 74
  },
+ "culture/shrines-of-all": {
+  "path": "art/culture/shrines-of-all.webp",
+  "w": 96,
+  "h": 92
+ },
  "culture/siege-engineers": {
   "path": "art/culture/siege-engineers.webp",
   "w": 96,
@@ -608,6 +808,11 @@
   "path": "art/culture/skirmish-warfare.webp",
   "w": 96,
   "h": 95
+ },
+ "culture/social-mobility": {
+  "path": "art/culture/social-mobility.webp",
+  "w": 94,
+  "h": 96
  },
  "culture/solar-calendar": {
   "path": "art/culture/solar-calendar.webp",
@@ -619,6 +824,11 @@
   "w": 96,
   "h": 92
  },
+ "culture/state-religion": {
+  "path": "art/culture/state-religion.webp",
+  "w": 90,
+  "h": 96
+ },
  "culture/storytelling": {
   "path": "art/culture/storytelling.webp",
   "w": 88,
@@ -628,6 +838,11 @@
   "path": "art/culture/sun-cult.webp",
   "w": 96,
   "h": 93
+ },
+ "culture/syncretism": {
+  "path": "art/culture/syncretism.webp",
+  "w": 96,
+  "h": 76
  },
  "culture/thalassocracy": {
   "path": "art/culture/thalassocracy.webp",
@@ -639,6 +854,11 @@
   "w": 96,
   "h": 80
  },
+ "culture/theocracy": {
+  "path": "art/culture/theocracy.webp",
+  "w": 67,
+  "h": 96
+ },
  "culture/tide-lore": {
   "path": "art/culture/tide-lore.webp",
   "w": 96,
@@ -649,10 +869,45 @@
   "w": 96,
   "h": 86
  },
+ "culture/trade-wealth": {
+  "path": "art/culture/trade-wealth.webp",
+  "w": 96,
+  "h": 90
+ },
+ "culture/tribal-law": {
+  "path": "art/culture/tribal-law.webp",
+  "w": 67,
+  "h": 96
+ },
+ "culture/tribute": {
+  "path": "art/culture/tribute.webp",
+  "w": 96,
+  "h": 83
+ },
+ "culture/urban-life": {
+  "path": "art/culture/urban-life.webp",
+  "w": 96,
+  "h": 87
+ },
  "culture/war-bands": {
   "path": "art/culture/war-bands.webp",
   "w": 96,
   "h": 86
+ },
+ "culture/war-chiefs": {
+  "path": "art/culture/war-chiefs.webp",
+  "w": 96,
+  "h": 93
+ },
+ "culture/warlord": {
+  "path": "art/culture/warlord.webp",
+  "w": 76,
+  "h": 96
+ },
+ "culture/warrior-caste": {
+  "path": "art/culture/warrior-caste.webp",
+  "w": 90,
+  "h": 96
  },
  "deposit/cattle": {
   "path": "art/deposit/cattle.webp",

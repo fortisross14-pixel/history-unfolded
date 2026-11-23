@@ -422,6 +422,8 @@ export interface GameState {
     /** turn the coalition warned the player it would march */
     warned?: number;
   };
+  /** ruins not yet searched (ruins.ts) */
+  ruins?: import('./ruins.ts').Ruin[];
   /** raider camps and bands of the early ages (raiders.ts) */
   raiders?: import('./raiders.ts').RaiderState;
   /** world wonders finished, in order (wonders.ts) */

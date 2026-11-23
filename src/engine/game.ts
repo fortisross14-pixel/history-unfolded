@@ -79,6 +79,7 @@ import { aiPathTurn, enterAge } from './paths.ts';
 import { crisisTurn } from './crises.ts';
 import { faithTurn } from './faith.ts';
 import { aiHuntRaiders, raiderHostile, raidersTurn } from './raiders.ts';
+import { placeRuins, searchRuins } from './ruins.ts';
 import { aiWonderTurn, wonderCulture, wondersOf, workOnWonder } from './wonders.ts';
 import { WONDER_SCORE, WONDERS } from '../data/wonders.ts';
 import { coalitionTurn } from './coalition.ts';
@@ -209,6 +210,7 @@ export function newGame(settings: GameSettings): GameState {
   placeIndependents(s, civCount);
   for (const c of s.civs) updateExplored(s, c.id);
   log(s, 0, `Turn 1. ${civCount} peoples begin on a ${map.type.replace('-', ' ')} world.`);
+  placeRuins(s);
   return s;
 }
 
@@ -318,6 +320,11 @@ export function wakeSentries(s: GameState, civId: number): string[] {
     out.push(`${f.name} wakes: ${s.civs[foe.civId].name} ${foe.name.toLowerCase()} nearby.`);
   }
   return out;
+}
+
+/** Add plain cohorts to a formation (survivors who join, events). */
+export function addCohorts(s: GameState, f: Formation, n: number) {
+  for (let k = 0; k < n; k++) f.cohorts.push(newCohort(s));
 }
 
 /** A formation made outside the usual ways (raider bands). */
@@ -698,6 +705,9 @@ export function advance(s: GameState, f: Formation): Result {
     if ((carries(from) || carries(next)) && s.wars.some(w => w.a === f.civId || w.b === f.civId))
       invalidateMarkets();
     updateExplored(s, f.civId);
+    // ruins on the way are searched by whoever gets there first
+    const found = s.ruins?.length ? searchRuins(s, f) : null;
+    if (found) merged = merged ? `${merged} ${found}` : found;
     if (end?.mergeWith) merged = mergeInto(s, f, end.mergeWith);
     if (end?.embark) merged = `${f.name} boarded ${end.embark.name}.`;
     // re-plan if the terrain just revealed makes the rest of the path impossible
@@ -1163,6 +1173,8 @@ export function endTurn(s: GameState): string[] {
         aiWonderTurn(s, civ, c => cityEconomy(s, c).total.prod);
       }
     }
+  // older saves get their ruins while the early game lasts
+  if (!s.ruins && s.turn < 40) placeRuins(s);
   // raider camps and bands of the early ages
   events.push(...raidersTurn(s));
   // the player's sentries see what came near

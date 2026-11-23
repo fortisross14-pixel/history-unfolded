@@ -88,6 +88,7 @@ import {
 import { findPath } from './path.ts';
 import { difficultyOf } from './difficulty.ts';
 import { personalityOf } from '../data/leaders.ts';
+import { nearRuin } from './ruins.ts';
 import {
   cityDistricts,
   marketStock,
@@ -803,6 +804,9 @@ export function playerAutomation(s: GameState, civ: Civ) {
 /** A scout heads for the nearest unexplored land; with none left in reach it rests. */
 function exploreOrders(s: GameState, civ: Civ, f: Formation, rng: Rng) {
   const g = gridOf(s);
+  // ruins in sight come first: they hold finds
+  const ruin = !f.path.length ? nearRuin(s, civ.id, f.hex) : undefined;
+  if (ruin !== undefined) f.path = planPath(s, f, ruin) ?? [];
   if (!f.path.length) {
     let best = -1,
       bd = Infinity;
@@ -1023,6 +1027,8 @@ export function aiTurn(s: GameState, civ: Civ) {
       continue;
     }
     if (f.name === 'Scouts') {
+      const ruin = !f.path.length ? nearRuin(s, civ.id, f.hex) : undefined;
+      if (ruin !== undefined) f.path = planPath(s, f, ruin) ?? [];
       if (!f.path.length) {
         let best = -1,
           bd = Infinity;

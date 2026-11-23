@@ -1126,6 +1126,16 @@ A threat of the early ages that belongs to no people (engine/raiders.ts).
 - **Standing orders** move when the turn ends. Troops are drawn three times life size; pointing
   at a hill or mountain picks that hex.
 
+## 12q. Ruins (as built)
+
+About one ruin per 55 hexes of open land away from the starting peoples (engine/ruins.ts),
+drawn as broken columns once seen. The first unit to step onto one searches it (AI scouts and
+exploring units head for ruins in sight). Finds, by weight: a buried hoard of gold; lost scrolls
+(half the current research); a cache of rare goods sent to the capital (ivory and hides, copper
+and tin, furs, wild horses); an ancient armoury that gives the finder's first two cohorts bronze
+swords and bronze scale; an old map revealing far land; survivors who join as a cohort; a relic
+for the houses. In AI-played games every ruin is found within about 80 turns.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

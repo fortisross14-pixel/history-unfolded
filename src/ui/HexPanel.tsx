@@ -1,3 +1,4 @@
+import { ruinAt } from '../engine/ruins.ts';
 import { campAt } from '../engine/raiders.ts';
 import { SLOT_TYPES } from '../data/slots.ts';
 import { landOf } from '../engine/economy.ts';
@@ -50,6 +51,12 @@ export function HexPanel({
   return (
     <div className="panel">
       <h2>{parts.join(' · ')}</h2>
+      {ruinAt(game, hex) && (
+        <p className="good small">
+          <b>Ruins.</b> Send any unit here to search them: gold, scrolls, rare goods, old gear or
+          maps may be inside. The first to arrive takes the find.
+        </p>
+      )}
       {campAt(game, hex) && (
         <p className="bad small">
           <b>Raider camp.</b> Its bands pillage nearby settlements that are weakly held. March an

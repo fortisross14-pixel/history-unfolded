@@ -17,7 +17,7 @@ const check = (cond: unknown, what: string) => {
   } else console.log('ok  ', what);
 };
 
-const settings = (difficulty?: Difficulty): GameSettings => ({
+const settings = (difficulty?: Difficulty, seed = 11): GameSettings => ({
   map: {
     type: 'continents',
     size: 'small',
@@ -26,7 +26,7 @@ const settings = (difficulty?: Difficulty): GameSettings => ({
     rainfall: 'normal',
     resources: 'normal',
     mountains: 'normal',
-    seed: 11,
+    seed,
   },
   civCount: 4,
   playerName: 'Test',
@@ -78,23 +78,27 @@ check(
 }
 
 // ---- play each level for a while: rivals are weaker on Casual, stronger on Hard
+// (two maps, averaged: one map alone is too much at the mercy of where raiders and ruins fall)
 const TURNS = 110;
 const result: Record<string, { rival: number; warOnMeBy: number }> = {};
 for (const d of DIFFICULTY_ORDER) {
-  const s = games[d];
-  const me = player(s);
-  let warOnMeBy = Infinity;
-  for (let k = 0; k < TURNS; k++) {
-    me.isPlayer = false;
-    aiTurn(s, me);
-    me.isPlayer = true;
-    endTurn(s);
-    const w = s.wars.find(x => (x.a === me.id || x.b === me.id) && x.a !== me.id);
-    if (w && warOnMeBy === Infinity) warOnMeBy = w.since;
+  let total = 0,
+    warOnMeBy = Infinity;
+  for (const seed of [11, 29]) {
+    const s = seed === 11 ? games[d] : newGame(settings(d, seed));
+    const me = player(s);
+    for (let k = 0; k < TURNS; k++) {
+      me.isPlayer = false;
+      aiTurn(s, me);
+      me.isPlayer = true;
+      endTurn(s);
+      const w = s.wars.find(x => (x.a === me.id || x.b === me.id) && x.a !== me.id);
+      if (w && warOnMeBy === Infinity) warOnMeBy = w.since;
+    }
+    const rivals = s.civs.filter(c => !c.isPlayer && !c.independent && c.alive);
+    total += rivals.reduce((a, c) => a + score(s, c.id), 0) / Math.max(1, rivals.length);
   }
-  const rivals = s.civs.filter(c => !c.isPlayer && !c.independent && c.alive);
-  const rival = rivals.reduce((a, c) => a + score(s, c.id), 0) / Math.max(1, rivals.length);
-  result[d] = { rival: Math.round(rival), warOnMeBy };
+  result[d] = { rival: Math.round(total / 2), warOnMeBy };
   console.log(
     `     ${DIFFICULTIES[d].name}: rival score ${result[d].rival}, first war on the player ${warOnMeBy === Infinity ? 'none' : 'turn ' + warOnMeBy}`,
   );

@@ -173,6 +173,8 @@ export class World3DRenderer {
   private cities = new Map<number, { key: string; mesh: THREE.Object3D | null }>();
   /** raider camps on the map, by hex */
   private camps = new Map<number, THREE.Object3D>();
+  /** ruins not yet searched, by hex */
+  private ruinMeshes = new Map<number, THREE.Object3D>();
   private units = new Map<number, { key: string; mesh: THREE.Object3D }>();
   private border: { key: string; mesh: THREE.Mesh | null } = { key: '', mesh: null };
   private overlay: { key: string; group: THREE.Group } = { key: '', group: new THREE.Group() };
@@ -641,6 +643,7 @@ export class World3DRenderer {
       this.landGroup.clear();
       this.cities.clear();
       this.camps.clear();
+      this.ruinMeshes.clear();
       this.cityGroup.clear();
       this.units.clear();
       this.unitGroup.clear();
@@ -851,6 +854,34 @@ export class World3DRenderer {
       const mesh = bakedMesh(grp) ?? grp;
       this.cityGroup.add(mesh);
       this.camps.set(h, mesh);
+    }
+
+    // ---- ruins: broken columns where the player has looked, until searched
+    const ruinHexes = new Set((s.ruins ?? []).filter(r => known[r.hex]).map(r => r.hex));
+    for (const [h, m] of this.ruinMeshes)
+      if (!ruinHexes.has(h)) {
+        this.cityGroup.remove(m);
+        this.ruinMeshes.delete(h);
+      }
+    for (const h of ruinHexes) {
+      if (this.ruinMeshes.has(h)) continue;
+      const grp = new THREE.Group();
+      const [x, z] = centerUnit(g, h);
+      grp.position.set(x, this.top(s, h), z);
+      grp.scale.setScalar(1.5);
+      const r = rng(h * 53 + 11);
+      box(grp, 0.5, 0.04, 0.36, C.stone2, 0, 0, 0);
+      for (let k = 0; k < 4; k++) {
+        const ht = 0.12 + r() * 0.22;
+        cyl(grp, 0.035, 0.04, ht, C.stone, -0.18 + k * 0.12, 0.04, -0.1, 6);
+      }
+      const fallen = cyl(grp, 0.035, 0.035, 0.26, C.stone, 0.05, 0.08, 0.12, 6);
+      fallen.rotation.z = Math.PI / 2;
+      ball(grp, 0.05, C.stone2, -0.22, 0.06, 0.12);
+      cone(grp, 0.05, 0.08, '#e6c35a', 0.2, 0.04, 0.1, 5);
+      const mesh = bakedMesh(grp) ?? grp;
+      this.cityGroup.add(mesh);
+      this.ruinMeshes.set(h, mesh);
     }
 
     // ---- troops: the player's own everywhere, others where the player sees them

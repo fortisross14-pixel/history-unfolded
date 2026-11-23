@@ -733,6 +733,24 @@ export class MapRenderer {
         ctx.fill();
       }
 
+      // ruins: broken columns where the player has looked
+      for (const ru of s.ruins ?? []) {
+        if (!known(ru.hex)) continue;
+        const x = cx(ru.hex),
+          y = cy(ru.hex);
+        ctx.fillStyle = '#b9ad94';
+        for (let k = 0; k < 3; k++)
+          ctx.fillRect(
+            x - R * 0.3 + k * R * 0.22,
+            y - R * (0.15 + (k % 2) * 0.12),
+            R * 0.1,
+            R * 0.4,
+          );
+        ctx.fillStyle = '#e6c35a';
+        ctx.beginPath();
+        ctx.arc(x + R * 0.28, y + R * 0.22, R * 0.08, 0, Math.PI * 2);
+        ctx.fill();
+      }
       // raider camps: a tent glyph where the player has looked
       for (const camp of s.raiders?.camps ?? []) {
         if (!known(camp.hex)) continue;

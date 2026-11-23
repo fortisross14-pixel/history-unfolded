@@ -86,6 +86,10 @@ const BASICS: [string, string][] = [
     'In the early ages raider camps appear in empty land. Their bands pillage weakly held towns; a garrison at least as strong as a band keeps it away. March an army into a camp to burn it and take its hoard. Raiders fade by the Renaissance.',
   ],
   [
+    'Ruins',
+    'Ruins lie scattered over the wild land at the start. The first unit to step onto them searches them: buried gold, lost scrolls (science), caches of rare goods (ivory and hides for ivory lamellar, copper and tin for bronze, furs, horses), an ancient armoury that re-arms your first cohorts with bronze swords and scale armour, an old map of far land, survivors who join, or a relic for your houses. Rivals explore too: be quick.',
+  ],
+  [
     'Dynasties and houses',
     'Great houses govern your settlements and gain experience in what those settlements do. Keep their unrest down with honours and trinkets; a house pushed too far rises in civil war.',
   ],

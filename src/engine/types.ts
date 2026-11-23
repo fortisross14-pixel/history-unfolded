@@ -111,6 +111,8 @@ export interface Faith {
 }
 
 export interface City {
+  /** a world wonder being built here (wonders.ts): half its production goes to it */
+  wonder?: { id: string; progress: number };
   /** the faith most of its people keep (faith.ts) */
   faith?: number;
   /** another faith gaining ground: turns it has been the stronger */
@@ -399,6 +401,8 @@ export interface GameState {
   chronicle?: import('./stats.ts').ChronicleEntry[];
   /** the peoples banded together against a runaway leader (coalition.ts) */
   coalition?: { against: number; members: number[]; since: number; reason: string };
+  /** world wonders finished, in order (wonders.ts) */
+  wonders?: { id: string; cityId: number; civId: number; turn: number }[];
   /** the faiths of the world, in the order they were founded (faith.ts) */
   faiths?: Faith[];
   /** a crisis has just struck the player: its dialog opens once */

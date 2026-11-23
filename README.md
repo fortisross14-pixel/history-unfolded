@@ -89,6 +89,9 @@ npm run check:perf           # map frame times with the CPU slowed 4x
 - **Faith, kept light** (I): race to found one of the few faiths, choose three tenets over the
   ages, and watch it spread by itself along roads and trade; shared faith warms opinion, a divided
   realm risks a schism.
+- **World wonders as a race** (W): 14 wonders across the ages, one in the world each; half a
+  settlement's production builds it, losers get half their work back as gold; each stands on
+  the map as a landmark.
 - **Minimap and Empire overview** (M, E): see the known world at a glance and jump anywhere; list
   every settlement and army and find any of them, or a known foreign settlement, by name.
 - **Settlements grow over their land**: a settlement is its centre hex and up to six districts on

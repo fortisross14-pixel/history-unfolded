@@ -996,6 +996,29 @@ Kept light: nothing to move or manage. Faith screen (I); also from the Nation sc
 - Settlement panel and the Empire list show each settlement's faith and any faith gaining ground;
   the chronicle keeps foundings, tenets and peoples changing faith.
 
+## 12k. World wonders (as built)
+
+A race, with nothing to manage. Wonders screen (W), the settlement panel's "Build a wonder", or
+the Nation screen.
+- **14 wonders**, two or three per age, each opened by a tech: Great Pyramid, Hanging Gardens,
+  Colossus (coast); Great Library, Great Lighthouse (coast), Great Wall; Dome of Heaven, Grand
+  Bazaar, Royal Citadel; House of Printing, Grand Admiralty (coast), Grand Palace; Crystal Palace,
+  Grand Terminus.
+- **One in the world each.** A town or bigger starts one by paying its goods from its market.
+  Half its production goes to the wonder while other work is queued, all of it when nothing is.
+  The first to finish takes it; everyone else building it gets half their work back as gold.
+- **What a wonder gives:** a realm bonus (production, growth, research cost, defence, culture,
+  gold, at sea…), +2 culture a turn and 5 score. It goes with its city when the city changes hands;
+  a captured or ceded city's work in progress is lost.
+- **The race is visible:** each wonder shows who is building it (peoples met by name, others as
+  "someone") and how far along (just begun, well begun, past half, nearly done).
+- **AI:** a people with no wonder under way starts one now and then (4% / 6% / 9% a turn by
+  difficulty; two at once on Veteran) in its most productive town, preferring wonders that suit
+  its culture and avoiding races nearly lost. In 250-turn AI games about 8 of 14 are built, the
+  ancient ones around turns 85–110.
+- **On the map** a wonder stands as a landmark by the settlement centre (pyramid, gardens, statue,
+  tower, wall, hall, dome, glass hall), with scaffolding while one is being built.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

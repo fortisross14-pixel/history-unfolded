@@ -1,7 +1,9 @@
+import { WONDERS } from '../data/wonders.ts';
+import { wondersIn } from '../engine/wonders.ts';
 import { CONVERT_TURNS, faithById } from '../engine/faith.ts';
 import { governorOf } from '../engine/dynasty.ts';
 import { Icon } from './icons.tsx';
-import { DISTRICT_CAP, marketCities, marketStock, TIER_NAME } from '../engine/economy.ts';
+import { DISTRICT_CAP, marketCities, marketStock, rankOf, TIER_NAME } from '../engine/economy.ts';
 import { useState } from 'react';
 import { ageOf } from '../data/techs.ts';
 import {
@@ -34,6 +36,7 @@ export function CityPanel({
   onRename,
   onCrew,
   onAuto,
+  onWonder,
 }: {
   game: GameState;
   c: City;
@@ -46,6 +49,7 @@ export function CityPanel({
   onRename?: (name: string) => void;
   onCrew?: (kind: 'workers' | 'engineers') => void;
   onAuto?: (on: boolean) => void;
+  onWonder?: () => void;
 }) {
   const y = cityYield(game, c);
   const civ = game.civs[c.civId];
@@ -166,6 +170,7 @@ export function CityPanel({
                 </td>
               </tr>
               <FaithRow game={game} c={c} />
+              <WonderRow game={game} c={c} />
               {c.siege && (
                 <tr className="bad">
                   <td>Siege</td>
@@ -217,6 +222,14 @@ export function CityPanel({
             >
               <Icon name="people" /> Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
             </button>
+            {onWonder && rankOf(c.tier) >= rankOf('town') && (
+              <button
+                onClick={onWonder}
+                title="World wonders: a race, one of each in the world (W)"
+              >
+                {c.wonder ? `Wonder: ${WONDERS[c.wonder.id].name}` : 'Build a wonder…'}
+              </button>
+            )}
             {onAuto && (
               <label
                 className="auto-toggle"
@@ -320,6 +333,27 @@ function FaithRow({ game, c }: { game: GameState; c: City }) {
             {' '}
             · {g.name} gaining ({c.conv!.n}/{CONVERT_TURNS})
           </small>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+/** The wonders a settlement holds, and the one being built. */
+function WonderRow({ game, c }: { game: GameState; c: City }) {
+  const held = wondersIn(game, c.id);
+  if (!held.length && !c.wonder) return null;
+  const w = c.wonder && WONDERS[c.wonder.id];
+  return (
+    <tr>
+      <td>Wonders</td>
+      <td>
+        {held.map(x => x.name).join(', ')}
+        {held.length && w ? ' · ' : ''}
+        {w && (
+          <span>
+            building the {w.name}, {Math.floor((c.wonder!.progress / w.prod) * 100)}%
+          </span>
         )}
       </td>
     </tr>

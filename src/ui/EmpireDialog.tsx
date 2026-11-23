@@ -1,3 +1,4 @@
+import { WONDERS } from '../data/wonders.ts';
 import { faithById } from '../engine/faith.ts';
 import { useState } from 'react';
 import { DISTRICT_CAP, TIER_NAME } from '../engine/economy.ts';
@@ -141,6 +142,9 @@ export function EmpireDialog({
                     <td>
                       {c.siege ? <b className="war-pill">besieged</b> : null}
                       {c.auto ? <span className="muted"> governor</span> : null}
+                      {c.wonder ? (
+                        <span className="muted"> building the {WONDERS[c.wonder.id].name}</span>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

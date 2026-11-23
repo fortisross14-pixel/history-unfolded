@@ -62,6 +62,7 @@ import { MapView, mapMode, setMapMode } from './MapView.tsx';
 import { Minimap } from './Minimap.tsx';
 import { EmpireDialog } from './EmpireDialog.tsx';
 import { FaithDialog } from './FaithDialog.tsx';
+import { WonderDialog } from './WonderDialog.tsx';
 import { foundProblem, tenetDue } from '../engine/faith.ts';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
@@ -103,6 +104,7 @@ type Dialog =
   | { kind: 'stats' }
   | { kind: 'empire' }
   | { kind: 'faith' }
+  | { kind: 'wonders'; cityId?: number }
   | { kind: 'dynasties' }
   | { kind: 'realm-event' }
   | { kind: 'battle'; report: BattleReport }
@@ -161,6 +163,7 @@ const KEYS: [string, string][] = [
   ['L', 'Chronicle and statistics: rankings, charts, history'],
   ['E', 'Empire: all settlements and armies, find by name'],
   ['I', 'Faith: found one, choose its tenets, see the faiths of the world'],
+  ['W', 'World wonders: the race, and building one'],
   ['M', 'Show or hide the minimap'],
   ['Y', 'Dynasties: houses, governors, trinkets'],
   ['Esc', 'Close a window, or clear the selection'],
@@ -599,6 +602,8 @@ export function Game({
       else if (key === 'l') setDialog({ kind: 'stats' });
       else if (key === 'e') setDialog({ kind: 'empire' });
       else if (key === 'i') setDialog({ kind: 'faith' });
+      else if (key === 'w')
+        setDialog({ kind: 'wonders', cityId: selCity?.civId === me.id ? selCity.id : undefined });
       else if (key === 'm') toggleMini();
       else if (key === 'y') setDialog({ kind: 'dynasties' });
       else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
@@ -1060,6 +1065,7 @@ export function Game({
             onGovernor={id => report(assignGovernor(game, me.id, selCity.id, id) as Result)}
             onRename={n => report(renameCity(game, selCity.id, n))}
             onAuto={on => report(automateCity(game, selCity.id, on))}
+            onWonder={() => setDialog({ kind: 'wonders', cityId: selCity.id })}
             onCrew={kind => {
               const r = report(trainCrew(game, selCity.id, kind));
               const f = r.ok
@@ -1323,6 +1329,18 @@ export function Game({
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'wonders' && (
+        <WonderDialog
+          game={game}
+          civ={me}
+          cityId={dialog.cityId}
+          report={r => {
+            report(r as Result);
+            bump();
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === 'faith' && (
         <FaithDialog
           game={game}
@@ -1371,6 +1389,7 @@ export function Game({
           age={dialog.age}
           onCrisis={() => setDialog({ kind: 'crisis' })}
           onFaith={() => setDialog({ kind: 'faith' })}
+          onWonders={() => setDialog({ kind: 'wonders' })}
           report={r => report(r as Result)}
           onClose={() => setDialog(null)}
         />

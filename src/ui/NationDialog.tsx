@@ -1,3 +1,4 @@
+import { wondersOf } from '../engine/wonders.ts';
 import { faithById, foundProblem, tenetDue } from '../engine/faith.ts';
 import { AGE_SYSTEMS, PATHS, type NationalPath } from '../data/paths.ts';
 import { TAGS } from '../data/culture.ts';
@@ -28,6 +29,7 @@ export function NationDialog({
   onClose,
   onCrisis,
   onFaith,
+  onWonders,
 }: {
   game: GameState;
   civ: Civ;
@@ -35,6 +37,7 @@ export function NationDialog({
   age?: number;
   onCrisis: () => void;
   onFaith: () => void;
+  onWonders: () => void;
   report: (r: { ok: boolean; msg?: string }) => void;
   onClose: () => void;
 }) {
@@ -100,6 +103,10 @@ export function NationDialog({
                 : tenetDue(game, civ.id)
                   ? 'Choose a tenet'
                   : 'See faiths (I)'}
+            </button>{' '}
+            · {wondersOf(game, civ.id).length} world wonders held.{' '}
+            <button className="link" onClick={onWonders}>
+              Wonders (W)
             </button>
           </p>
         )}

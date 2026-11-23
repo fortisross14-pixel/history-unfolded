@@ -35,7 +35,9 @@ import {
   scaffold,
   tree,
   type Builder,
+  WONDER_BUILDERS,
 } from './city3d.ts';
+import { wondersIn } from '../engine/wonders.ts';
 import { fx, Motion, reducedMotion } from './fx.ts';
 import type { Insets, Overlay } from './mapRenderer.ts';
 
@@ -470,6 +472,10 @@ export class World3DRenderer {
       c.siege ? 1 : 0,
       Math.round(c.pop / 1000),
       known[c.hex],
+      wondersIn(s, c.id)
+        .map(w => w.id)
+        .join(','),
+      c.wonder?.id ?? '',
       ...ds.map(
         d =>
           `${d.hex}:${known[d.hex]}:${d.slots.map(x => (x.type ?? '') + (x.built ? '+' : '')).join(',')}`,
@@ -498,6 +504,20 @@ export class World3DRenderer {
       // homes for its people
       const things: Builder[] = [];
       if (centre) things.push(builderFor('town-hall')!);
+      // world wonders stand by the centre, larger than any building
+      const landmarks = new Set<Builder>();
+      if (centre) {
+        for (const w of wondersIn(s, c.id)) {
+          const b = WONDER_BUILDERS[w.shape];
+          landmarks.add(b);
+          things.push(b);
+        }
+        if (c.wonder) {
+          const site: Builder = (g, rr) => scaffold(g, rr);
+          landmarks.add(site);
+          things.push(site);
+        }
+      }
       for (const st of d.slots) {
         if (!st.type || st.type === 'town-hall') continue;
         if (st.built) things.push(builderFor(st.type) ?? generic(SLOT_TYPES[st.type]?.group));
@@ -513,7 +533,7 @@ export class World3DRenderer {
         const sub = new THREE.Group();
         sub.position.set(px, 0.01, pz);
         sub.rotation.y = rot;
-        sub.scale.setScalar(scale);
+        sub.scale.setScalar(landmarks.has(make) && k > 0 ? scale * 1.7 : scale);
         const rr = rng(d.id * 131 + k * 17);
         const ground = make(sub, rr) || C.grass;
         // its own patch of ground: paving, a field, a yard

@@ -60,6 +60,7 @@ import {
   capStores,
   powderNeed,
   slotProblem,
+  constructionQueue,
 } from './economy.ts';
 import { isRural, SLOT_TYPES } from '../data/slots.ts';
 import {
@@ -77,6 +78,8 @@ import { victoryTurn } from './victory.ts';
 import { aiPathTurn, enterAge } from './paths.ts';
 import { crisisTurn } from './crises.ts';
 import { faithTurn } from './faith.ts';
+import { aiWonderTurn, wonderCulture, wondersOf, workOnWonder } from './wonders.ts';
+import { WONDER_SCORE } from '../data/wonders.ts';
 import { coalitionTurn } from './coalition.ts';
 import { chronicle, recordStats } from './stats.ts';
 import { aiPolicyTurn, policyTurn } from './policies.ts';
@@ -1064,7 +1067,10 @@ export function endTurn(s: GameState): string[] {
       if (civ.independent) {
         events.push(...independentTurn(s, civ, id => levy(s, id)));
         for (const c of s.cities) if (c.civId === civ.id) planDistricts(s, civ, c);
-      } else aiTurn(s, civ);
+      } else {
+        aiTurn(s, civ);
+        aiWonderTurn(s, civ, c => cityEconomy(s, c).total.prod);
+      }
     }
   // tell the player about anything the AI did to them
   for (const e of s.log.slice(logStart))
@@ -1098,7 +1104,11 @@ export function endTurn(s: GameState): string[] {
           c.pop += 250;
         } else c.food = need;
       }
-      for (const done of build(s, c, e.total.prod)) {
+      // a wonder under way takes its share of the production first
+      const ww = workOnWonder(s, c, e.total.prod, !constructionQueue(s, c).length);
+      events.push(...ww.msgs);
+      culture += wonderCulture(s, c.id);
+      for (const done of build(s, c, ww.left)) {
         if (civ.isPlayer) events.push(`${c.name}: ${done.text} finished.`);
         // a finished building of a line may bring a trinket for the houses
         const st = SLOT_TYPES[done.type];
@@ -1601,6 +1611,7 @@ export function cedeCity(s: GameState, cityId: number, to: number) {
   c.civId = to;
   c.governor = undefined;
   c.siege = undefined;
+  delete c.wonder;
   if (
     c.tier === 'metropolis' &&
     s.cities.some(x => x !== c && x.civId === to && x.tier === 'metropolis')
@@ -1638,6 +1649,7 @@ export function score(s: GameState, civId: number): number {
       cities.length * 10 +
       civ.techs.length * 3 +
       civ.culture.taken.length * 3 +
+      wondersOf(s, civId).length * WONDER_SCORE +
       civ.kills / 2000,
   );
 }

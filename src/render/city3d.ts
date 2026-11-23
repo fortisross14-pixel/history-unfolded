@@ -789,6 +789,121 @@ const ALIAS: Record<string, string> = {
 };
 export const builderFor = (type: string) => BUILDERS[type] ?? BUILDERS[ALIAS[type] ?? ''];
 
+/**
+ * World wonders: landmarks bigger than any building, one shape per kind (see data/wonders.ts).
+ * Drawn on a unit plot like other builders; the map draws them larger.
+ */
+export const WONDER_BUILDERS: Record<string, Builder> = {
+  pyramid: g => {
+    for (let i = 0; i < 5; i++)
+      box(g, 0.8 - i * 0.16, 0.1, 0.8 - i * 0.16, i % 2 ? C.wheat2 : C.wheat, 0, i * 0.1, 0);
+    box(g, 0.08, 0.06, 0.08, C.gold, 0, 0.5, 0);
+    return C.earth;
+  },
+  garden: g => {
+    for (let i = 0; i < 3; i++) {
+      const w = 0.74 - i * 0.2;
+      box(g, w, 0.12, w, C.stone, 0, i * 0.12, 0);
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * Math.PI * 2 + i;
+        ball(
+          g,
+          0.07,
+          k % 2 ? C.leaf : C.leaf2,
+          Math.cos(a) * w * 0.45,
+          i * 0.12 + 0.15,
+          Math.sin(a) * w * 0.45,
+        );
+      }
+    }
+    ball(g, 0.1, C.leaf, 0, 0.45, 0);
+    return C.grass;
+  },
+  statue: g => {
+    box(g, 0.34, 0.12, 0.34, C.stone, 0, 0, 0);
+    cyl(g, 0.05, 0.06, 0.34, C.gold, -0.05, 0.12, 0, 6);
+    cyl(g, 0.05, 0.06, 0.34, C.gold, 0.05, 0.12, 0, 6);
+    cyl(g, 0.09, 0.07, 0.3, C.gold, 0, 0.46, 0, 7);
+    ball(g, 0.07, C.gold, 0, 0.84, 0);
+    const arm = cyl(g, 0.025, 0.025, 0.3, C.gold, 0.12, 0.7, 0, 5);
+    arm.rotation.z = -0.4;
+    cone(g, 0.05, 0.1, '#f2b84b', 0.2, 0.98, 0, 5);
+    return C.paved;
+  },
+  tower: g => {
+    cyl(g, 0.24, 0.3, 0.16, C.stone2, 0, 0, 0, 8);
+    cyl(g, 0.16, 0.22, 0.5, C.stone, 0, 0.16, 0, 8);
+    cyl(g, 0.11, 0.14, 0.28, C.wall, 0, 0.66, 0, 8);
+    ball(g, 0.08, '#f6d36b', 0, 1.0, 0);
+    cone(g, 0.12, 0.12, C.roof, 0, 1.06, 0, 8);
+    return C.paved;
+  },
+  wall: g => {
+    for (let i = -2; i <= 2; i++) {
+      box(g, 0.2, 0.22, 0.12, C.stone, i * 0.18, 0, Math.sin(i) * 0.08);
+      for (let k = 0; k < 2; k++)
+        box(g, 0.05, 0.05, 0.12, C.stone2, i * 0.18 - 0.05 + k * 0.1, 0.22, Math.sin(i) * 0.08);
+    }
+    box(g, 0.2, 0.42, 0.2, C.stone2, -0.4, 0, -0.06);
+    box(g, 0.2, 0.42, 0.2, C.stone2, 0.4, 0, 0.06);
+    cone(g, 0.15, 0.16, C.roof2, -0.4, 0.42, -0.06, 4);
+    cone(g, 0.15, 0.16, C.roof2, 0.4, 0.42, 0.06, 4);
+    return C.grass2;
+  },
+  hall: g => {
+    box(g, 0.86, 0.06, 0.6, C.stone, 0, 0, 0);
+    box(g, 0.7, 0.3, 0.44, C.wall, 0, 0.06, 0);
+    columns(g, 0, 0.06, 0.74, 0.46, 0.3, 8);
+    add(g, prism(0.8, 0.14, 0.56), C.roof, 0, 0.36, 0).rotation.y = Math.PI / 2;
+    box(g, 0.2, 0.18, 0.2, C.wall, 0, 0.44, 0);
+    cone(g, 0.15, 0.14, C.gold, 0, 0.62, 0, 4);
+    return C.paved;
+  },
+  dome: g => {
+    box(g, 0.8, 0.06, 0.8, C.stone, 0, 0, 0);
+    cyl(g, 0.3, 0.3, 0.3, C.wall, 0, 0.06, 0, 12);
+    const d = add(
+      g,
+      new THREE.SphereGeometry(0.3, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+      C.gold,
+      0,
+      0.36,
+      0,
+    );
+    d.scale.y = 0.9;
+    cone(g, 0.03, 0.14, C.gold, 0, 0.62, 0, 5);
+    for (const [x, z] of [
+      [-0.34, -0.34],
+      [0.34, -0.34],
+      [-0.34, 0.34],
+      [0.34, 0.34],
+    ]) {
+      cyl(g, 0.045, 0.05, 0.5, C.wall, x, 0.06, z, 6);
+      cone(g, 0.05, 0.12, C.gold, x, 0.56, z, 6);
+    }
+    return C.paved;
+  },
+  spire: g => {
+    box(g, 0.84, 0.06, 0.56, C.stone, 0, 0, 0);
+    add(
+      g,
+      new THREE.CylinderGeometry(0.3, 0.3, 0.7, 10, 1, false, 0, Math.PI),
+      '#bfd6dc',
+      0,
+      0.3,
+      0,
+      {
+        transparent: true,
+        opacity: 0.85,
+      },
+    ).rotation.z = Math.PI / 2;
+    box(g, 0.72, 0.04, 0.5, C.dark, 0, 0.04, 0);
+    cyl(g, 0.04, 0.05, 0.7, C.dark, 0.3, 0.06, -0.2, 6);
+    cone(g, 0.05, 0.12, C.dark, 0.3, 0.76, -0.2, 6);
+    return C.paved;
+  },
+};
+
 /** a building of no model of its own: a hall with its group's roof */
 export const generic =
   (group?: string): Builder =>

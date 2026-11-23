@@ -174,7 +174,10 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   "Turn N" banner follows the AI's moves, and small synthesized sounds play (🔊 to mute). Motion
   follows the system's reduced-motion setting. `?` lists the keys.
 - **Phones and tablets**: tap to select, tap a target once to preview and again to act, pinch
-  to zoom; the panel is a bottom sheet and the top bar folds into a menu.
+  to zoom; on a phone the panel is a bottom sheet. On phones and tablets the top bar keeps the
+  realm's numbers on one row and folds the rest into a menu; a tablet starts the map further
+  out. In a settlement, tap a building once to see what it would make and again to build it;
+  press and hold a number in the top bar to see where it comes from.
 - **Art**: the game draws its own fallback symbols and uses generated art wherever it exists.
   `art/PROMPTS.md` holds the image prompts and `tools/cut_sprites.py` cuts the sheets.
 

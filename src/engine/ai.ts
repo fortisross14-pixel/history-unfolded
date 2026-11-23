@@ -500,7 +500,7 @@ const QUARTER_ORDER = ['research', 'industry', 'market', 'civic', 'research'];
 const QUARTER_BY_PRIORITY: Record<string, string[]> = {
   growth: ['market', 'civic', 'research', 'industry', 'research'],
   trade: ['market', 'market', 'research', 'civic', 'industry'],
-  war: ['industry', 'industry', 'research', 'market', 'civic'],
+  war: ['industry', 'research', 'market', 'industry', 'civic'],
   expand: QUARTER_ORDER,
   balanced: QUARTER_ORDER,
 };
@@ -833,7 +833,10 @@ export function playerAutomation(s: GameState, civ: Civ) {
   if (civ.priority === 'war') {
     const armies = s.formations.filter(f => f.civId === civ.id && f.kind === 'army').length;
     const from = governed.filter(c => c.pop >= 3500).sort((a, b) => b.pop - a.pop)[0];
-    if (from && armies < governed.length + 2 && (s.turn + from.id) % 4 === 0) levy(s, from.id);
+    // in peace a standing army the size of the realm; at war, two more
+    const fighting = s.wars.some(w => w.a === civ.id || w.b === civ.id);
+    const want = governed.length + (fighting ? 2 : 0);
+    if (from && armies < want && (s.turn + from.id) % 4 === 0) levy(s, from.id);
   }
 }
 

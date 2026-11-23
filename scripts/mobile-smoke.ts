@@ -1,6 +1,7 @@
 /**
  * Plays the start of a game on an emulated phone with touch: menu, map, bottom sheet, the
- * tap-twice rule for moves, a dialog, and the compact top bar. Saves screenshots.
+ * tap-twice rule for moves, a dialog, and the compact top bar; then a tablet's top bar and its
+ * More menu. Saves screenshots.
  * Usage: npx vite preview --port 4173 &  node --no-warnings scripts/mobile-smoke.ts <outDir>
  */
 import { createRequire } from 'node:module';
@@ -57,6 +58,27 @@ await page.tap('[data-k="research"]');
 await page.waitForSelector('.modal.research');
 await page.screenshot({ path: `${out}/m6-research.png` });
 console.log(armed ? 'first tap armed the move' : 'NO ARMED BAR after first tap');
+// a tablet in portrait: one row of numbers, the rest behind More, which folds away for a screen
+const tab = await browser.newContext({ ...devices['iPad (gen 7)'] });
+const tp = await tab.newPage();
+tp.on('pageerror', (e: Error) => errors.push(e.message));
+await tp.goto('http://localhost:4173/');
+await tp.evaluate(() => localStorage.clear());
+await tp.reload();
+await tp.tap('button:has-text("Begin")');
+await tp.waitForTimeout(600);
+const oneRow = await tp.evaluate(() => {
+  const doc = (globalThis as unknown as { document: any }).document;
+  return doc.querySelector('.topbar').getBoundingClientRect().height < 90;
+});
+await tp.tap('.more-btn');
+await tp.waitForTimeout(150);
+await tp.screenshot({ path: `${out}/t1-tablet-menu.png` });
+await tp.tap('.topbar .secondary:has-text("Goods")');
+await tp.waitForSelector('.modal.goods-ledger');
+const folded = !(await tp.$('.topbar.menu-open'));
+console.log(oneRow ? 'tablet top bar is one row' : 'TABLET TOP BAR WRAPS');
+console.log(folded ? 'tablet menu folds away for a screen' : 'TABLET MENU STAYS OPEN');
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no page errors');
 await browser.close();
-process.exit(errors.length || !armed ? 1 : 0);
+process.exit(errors.length || !armed || !oneRow || !folded ? 1 : 0);

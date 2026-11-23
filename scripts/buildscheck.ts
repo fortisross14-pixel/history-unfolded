@@ -2,9 +2,10 @@
  * Three ways to play, each needing a credible path: the player's settlements handed to governors
  * under a war, a growth (builder) and a trade priority, 400 turns on the same maps. Logs where
  * each finishes; each should reach the top two in at least one game, or win.
- * Usage: node --no-warnings scripts/buildscheck.ts [seeds]
+ * Usage: node --no-warnings scripts/buildscheck.ts [seeds] [styles]
  */
 import { aiTurn } from '../src/engine/ai.ts';
+import { answerProposal } from '../src/engine/diplomacy.ts';
 import { cityEconomy } from '../src/engine/economy.ts';
 import {
   availableTechs,
@@ -18,9 +19,10 @@ import { aiHuntRaiders } from '../src/engine/raiders.ts';
 import { aiWonderTurn } from '../src/engine/wonders.ts';
 
 const seeds = (process.argv[2] ?? '29,47').split(',').map(Number);
+const styles = (process.argv[3] ?? 'war,growth,trade').split(',') as ('war' | 'growth' | 'trade')[];
 let failures = 0;
 const best: Record<string, number> = {};
-for (const style of ['war', 'growth', 'trade'] as const)
+for (const style of styles)
   for (const seed of seeds) {
     const s = newGame({
       map: {
@@ -48,6 +50,9 @@ for (const style of ['war', 'growth', 'trade'] as const)
       // the player plays through governors: every settlement follows the priority
       for (const c of s.cities) if (c.civId === me.id) c.auto = true;
       if (!me.researching) me.researching = availableTechs(me)[0]?.id ?? null;
+      // offers to the player: take peace (as a player tired of a war would), turn down the rest
+      for (const p of s.proposals.filter(x => x.to === me.id))
+        answerProposal(s, p.id, p.kind === 'peace');
       endTurn(s);
     }
     const ranked = s.civs

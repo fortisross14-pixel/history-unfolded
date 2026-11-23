@@ -260,6 +260,11 @@ for (let i = 0; i < 6; i++) {
 }
 await page.waitForTimeout(200);
 await page.screenshot({ path: `${out}/10-zoomed-out.png` });
+// the first realm event can arrive this early: close it to decide later
+for (let i = 0; i < 3 && (await page.$('.modal-back .modal .x')); i++) {
+  await page.click('.modal-back .modal .x');
+  await page.waitForTimeout(150);
+}
 // ships: design a transport, launch it, board the troops by clicking the ship
 const coastal = await page.evaluate(() => {
   type Hu = {

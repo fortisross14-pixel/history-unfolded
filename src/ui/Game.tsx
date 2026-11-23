@@ -226,6 +226,10 @@ export function Game({
     });
   const toastId = useRef(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  // the More menu folds away once something from it is open
+  useEffect(() => {
+    if (dialog) setMenuOpen(false);
+  }, [dialog]);
   const [muted, setMute] = useState(isMuted());
   const [turnBanner, setTurnBanner] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(true);

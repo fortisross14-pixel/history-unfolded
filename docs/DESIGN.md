@@ -1161,7 +1161,7 @@ settlement is always a town. Founded further out, it is a **colony**:
   makes a town or a colony; banners mark colonies. AI peoples avoid colonies unless a rich deposit
   pays for one, and make their colonies towns as soon as they can.
 
-## 12s. Release 2: living ages (as built so far)
+## 12s. Release 2: living ages (as built)
 
 - **Balance matrix** (scripts/matrix.ts): each difficulty × seeds 11, 29, 47 × 200 and 400 turns,
   the player's people played by the AI. Found and fixed: difficulty made AI peoples fight and be
@@ -1182,6 +1182,24 @@ settlement is always a town. Founded further out, it is a **colony**:
   out each.
 - **Empire priority** (Nation): balanced, growth, trade, expand, war, followed by governed
   settlements; settlers can settle on their own. **Routine news** folds into one line.
+- **Three ways to play** (scripts/buildscheck.ts, kept out of `npm test` for its length): the
+  player's settlements under governors with a war, growth or trade priority, 400 turns on seeds
+  29 and 47. Each reaches the top two at least once (war 2nd, growth 1st, trade a cultural win).
+  War first wore itself out: it levied armies in peace and built two industry quarters before
+  any learning. Now it keeps a standing army the size of the realm in peace (two more at war)
+  and its second quarter is for learning. The harnesses answer offers as a player would: they
+  take peace and turn down the rest.
+
+## 12t. Touch and tablets (as built)
+
+- Phones and tablets (a coarse pointer up to 1180 px wide) keep the realm's numbers on one row
+  of the top bar and fold the rest into a More menu, which closes when a screen opens and sits
+  above the side panel while open.
+- A tablet starts the map further out (zoom scaled to the screen, not below 65%).
+- In a settlement a tap on a building shows what it would make (outlined); a second tap builds.
+- A long press on a number in the top bar shows where it comes from; the tap that ends the
+  press does not also open the screen, and a tap elsewhere closes it.
+- No hover card by touch; larger targets on the minimap bar.
 
 ## 13. Core screens and flows
 

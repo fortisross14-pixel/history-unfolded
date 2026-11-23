@@ -222,9 +222,17 @@ export class World3DRenderer {
 
   // ---------------------------------------------------------------- camera (2D contract)
 
+  private fitted = false;
   resize(w: number, h: number) {
     this.w = Math.max(1, w);
     this.h = Math.max(1, h);
+    // a tablet starts a little further out, to show as much of the land as a desktop does
+    if (!this.fitted && w > 1 && h > 1) {
+      this.fitted = true;
+      const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+      if (touch && Math.min(w, h) >= 600)
+        this.cam.zoom = Math.round(46 * Math.max(0.65, Math.min(1, Math.max(w, h) / 1500)));
+    }
     this.dpr = Math.min(2, window.devicePixelRatio || 1);
     this.renderer.setPixelRatio(this.dpr);
     this.renderer.setSize(this.w, this.h, false);

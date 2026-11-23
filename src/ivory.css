@@ -796,11 +796,11 @@ button.toast {
   font-style: italic;
 }
 
-/* the phone menu button only shows on phones */
+/* the menu button only shows on phones and tablets */
 .topbar .more-btn {
   display: none;
 }
-@media (max-width: 700px) {
+@media (max-width: 700px), (pointer: coarse) and (max-width: 1180px) {
   .topbar .more-btn {
     display: inline-flex;
   }

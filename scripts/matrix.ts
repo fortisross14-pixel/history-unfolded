@@ -7,6 +7,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { aiTurn } from '../src/engine/ai.ts';
+import { answerProposal } from '../src/engine/diplomacy.ts';
 import { aiHuntRaiders } from '../src/engine/raiders.ts';
 import { aiWonderTurn } from '../src/engine/wonders.ts';
 import { cityEconomy } from '../src/engine/economy.ts';
@@ -81,6 +82,9 @@ for (const length of lengths)
           aiWonderTurn(s, me, c => cityEconomy(s, c).total.prod);
           me.isPlayer = true;
           if (!me.researching) me.researching = availableTechs(me)[0]?.id ?? null;
+          // offers to the player: take peace (as a player tired of a war would), turn down the rest
+          for (const p of s.proposals.filter(x => x.to === me.id))
+            answerProposal(s, p.id, p.kind === 'peace');
           // the player answers its own pending choices like the AI would: first option
         }
         const t0 = performance.now();

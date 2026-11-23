@@ -3439,3 +3439,72 @@ input.rename {
 .game:has(.hub-tabs) .modal-back .modal {
   max-height: calc(100vh - 132px);
 }
+
+/* tablets: a finger, and room for the map but not for two rows of buttons. The top bar keeps
+   the realm's numbers on one row and folds the rest into the More menu, as on a phone. */
+@media (pointer: coarse) and (min-width: 701px) and (max-width: 1180px) {
+  .topbar {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  .topbar .secondary,
+  .topbar .spacer {
+    display: none;
+  }
+  .more-btn {
+    display: inline-block;
+    margin-left: auto;
+  }
+  .topbar.menu-open {
+    flex-wrap: wrap;
+  }
+  .topbar.menu-open .secondary {
+    display: inline-flex;
+    order: 10;
+  }
+  .topbar.menu-open span.secondary {
+    display: none;
+  }
+  .topbar.menu-open .more-btn {
+    order: 9;
+  }
+  .research-btn {
+    max-width: 30vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+/* a finger has no hover: the hover card would only cover the map */
+@media (pointer: coarse) {
+  .hover-info:not(.preview-box) {
+    display: none;
+  }
+  .minimap-bar button.link {
+    min-height: 36px;
+  }
+  .whypop {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  .plot-opt[aria-pressed='true'] {
+    outline: 3px solid var(--gold);
+    outline-offset: -3px;
+  }
+  .rail-btn {
+    touch-action: manipulation;
+  }
+  canvas {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+.topbar .more-btn > * {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+/* the opened menu sits above the side panel, which does not move down for it */
+.topbar.menu-open {
+  z-index: 40;
+}

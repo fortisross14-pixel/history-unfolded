@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { CityScene } from './CityScene.tsx';
 import { Icon } from './icons.tsx';
 import { DEPOSITS, GOODS, SPECIAL_MIN } from '../data/goods.ts';
@@ -69,6 +69,7 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
   const [dSel, setDSel] = useState<number | 'new' | 'locked'>(-1);
   const [cell, setCell] = useState<number | null>(null);
   const [tipT, setTipT] = useState<string | null>(null);
+  const touchTap = useRef(false);
   const [tab, setTab] = useState<'overview' | 'districts'>(startTab ?? 'overview');
   const [info, setInfo] = useState(false);
   const [newName, setNewName] = useState('');
@@ -507,10 +508,18 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                               <button
                                 key={t.id}
                                 className="plot-opt"
-                                onMouseEnter={() => setTipT(t.id)}
-                                onFocus={() => setTipT(t.id)}
-                                onMouseLeave={() => setTipT(x => (x === t.id ? null : x))}
-                                onClick={() => act(setSlot(game, mineD.id, cell, t.id))}
+                                aria-pressed={tipT === t.id}
+                                onPointerDown={e => (touchTap.current = e.pointerType !== 'mouse')}
+                                onMouseEnter={() => !touchTap.current && setTipT(t.id)}
+                                onFocus={() => !touchTap.current && setTipT(t.id)}
+                                onMouseLeave={() =>
+                                  !touchTap.current && setTipT(x => (x === t.id ? null : x))
+                                }
+                                onClick={() => {
+                                  // by touch the first tap shows what it would make; the second builds
+                                  if (touchTap.current && tipT !== t.id) return setTipT(t.id);
+                                  act(setSlot(game, mineD.id, cell, t.id));
+                                }}
                               >
                                 <Art
                                   k={`building/${t.id}`}
@@ -533,7 +542,8 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                               <BuildTip game={game} c={c} d={mineD} cell={cell} typeId={tipT} />
                             ) : (
                               <small className="muted">
-                                Point at a building to see what it would add here each turn.
+                                Point at a building (or tap it once) to see what it would add here
+                                each turn.
                               </small>
                             )}
                           </div>

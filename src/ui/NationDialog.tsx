@@ -1,3 +1,4 @@
+import { PRIORITIES, setPriority } from '../engine/game.ts';
 import { wondersOf } from '../engine/wonders.ts';
 import { faithById, foundProblem, tenetDue } from '../engine/faith.ts';
 import { AGE_SYSTEMS, PATHS, type NationalPath } from '../data/paths.ts';
@@ -142,6 +143,27 @@ export function NationDialog({
           </>
         )}
 
+        {!age && (
+          <>
+            <h3>Empire priority</h3>
+            <p className="muted small">
+              What the settlements you hand to governors, and your automated settlers, work toward.
+            </p>
+            <div className="setting-opts priority-opts">
+              {(Object.keys(PRIORITIES) as (keyof typeof PRIORITIES)[]).map(k => (
+                <button
+                  key={k}
+                  className={(civ.priority ?? 'balanced') === k ? 'on' : ''}
+                  title={PRIORITIES[k].note}
+                  onClick={() => report(setPriority(game, civ.id, k))}
+                >
+                  {PRIORITIES[k].name}
+                </button>
+              ))}
+            </div>
+            <p className="small">{PRIORITIES[civ.priority ?? 'balanced'].note}</p>
+          </>
+        )}
         {levers.length > 0 && (
           <>
             <h3>{age ? 'A new policy' : 'Policies'}</h3>

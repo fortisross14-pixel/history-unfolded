@@ -817,7 +817,8 @@ export function fortify(s: GameState, fid: number): Result {
 }
 
 /** Why this formation cannot be automated in this way, or null. */
-export function autoProblem(f: Formation, mode: 'crew' | 'explore'): string | null {
+export function autoProblem(f: Formation, mode: 'crew' | 'explore' | 'settle'): string | null {
+  if (mode === 'settle') return f.kind === 'settlers' ? null : 'Only settlers settle on their own.';
   if (mode === 'crew')
     return f.kind === 'workers' || f.kind === 'engineers' ? null : 'Only crews build on their own.';
   return f.kind === 'army' && f.cohorts.length <= 2
@@ -826,7 +827,11 @@ export function autoProblem(f: Formation, mode: 'crew' | 'explore'): string | nu
 }
 
 /** Let a formation work on its own (or take it back with mode null). */
-export function automate(s: GameState, fid: number, mode: 'crew' | 'explore' | null): Result {
+export function automate(
+  s: GameState,
+  fid: number,
+  mode: 'crew' | 'explore' | 'settle' | null,
+): Result {
   const f = formation(s, fid);
   if (!f) return fail('No such formation.');
   if (!mode) {
@@ -841,8 +846,30 @@ export function automate(s: GameState, fid: number, mode: 'crew' | 'explore' | n
   return ok(
     mode === 'crew'
       ? `${f.name} build roads and railways on their own.`
-      : `${f.name} explore on their own.`,
+      : mode === 'settle'
+        ? `${f.name} look for a good site that joins your lands, and settle there.`
+        : `${f.name} explore on their own.`,
   );
+}
+
+export const PRIORITIES = {
+  balanced: { name: 'Balanced', note: 'Governors plan as they see fit.' },
+  growth: { name: 'Growth', note: 'Farms, granaries and houses first: bigger settlements.' },
+  trade: { name: 'Trade', note: 'Markets and commerce first: gold and goods to sell.' },
+  expand: {
+    name: 'Expand',
+    note: 'Governed towns of 3,000+ send settlers, who find a site joining your lands on their own.',
+  },
+  war: {
+    name: 'War',
+    note: 'Mines and industry first; governed towns raise levies when they can.',
+  },
+} as const;
+
+/** Set what governed settlements and automated units work toward. */
+export function setPriority(s: GameState, civId: number, p: keyof typeof PRIORITIES): Result {
+  s.civs[civId].priority = p === 'balanced' ? undefined : p;
+  return ok(`Priority: ${PRIORITIES[p].name}. ${PRIORITIES[p].note}`);
 }
 
 /** The governor plans a settlement's districts and buildings each turn, or stops. */
@@ -2320,7 +2347,17 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
   log(
     s,
     f.civId,
-    `Battle: ${b.att.name} attacked ${b.def.name} — lost ${report.attacker.lost}, killed ${report.defender.lost}. ${result}`,
+    `Battle: ${b.att.name} attacked ${b.def.name} — lost ${report.attacker.lost}, killed ${report.defender.lost}. ${result}${
+      report.why?.length
+        ? ` Decided by: ${report.why
+            .slice(0, 3)
+            .map(
+              w =>
+                `${w.text.toLowerCase()} (for the ${w.side === 'attacker' ? b.att.name : b.def.name})`,
+            )
+            .join('; ')}.`
+        : ''
+    }`,
   );
   checkElimination(s);
   updateExplored(s, f.civId);

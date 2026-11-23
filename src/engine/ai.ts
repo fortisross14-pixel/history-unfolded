@@ -87,7 +87,7 @@ import {
   stepCost,
 } from './game.ts';
 import { findPath } from './path.ts';
-import { difficultyOf } from './difficulty.ts';
+import { DIFFICULTIES, difficultyOf } from './difficulty.ts';
 import { personalityOf } from '../data/leaders.ts';
 import { nearRuin } from './ruins.ts';
 import { foundKind, promoteColony, promoteInfo } from './colonies.ts';
@@ -496,6 +496,15 @@ const QUARTERS: Record<string, (string | null)[]> = {
   ],
 };
 const QUARTER_ORDER = ['research', 'industry', 'market', 'civic', 'research'];
+/** a city's quarters, in order, by the realm's priority (a governed settlement follows it) */
+const QUARTER_BY_PRIORITY: Record<string, string[]> = {
+  growth: ['market', 'civic', 'research', 'industry', 'research'],
+  trade: ['market', 'market', 'research', 'civic', 'industry'],
+  war: ['industry', 'industry', 'research', 'market', 'civic'],
+  expand: QUARTER_ORDER,
+  balanced: QUARTER_ORDER,
+};
+const quarterOrder = (civ: Civ) => QUARTER_BY_PRIORITY[civ.priority ?? 'balanced'] ?? QUARTER_ORDER;
 
 /**
  * A town's working district: a block of four for the most valuable special good on its land
@@ -533,6 +542,9 @@ function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[
     const b = BOOST[specials[0].t];
     if (b) want.push(b);
   }
+  // the realm's priority: growth wants more farms, war wants more mines
+  if (civ.priority === 'growth') want.push('farm', 'farm', 'granary');
+  if (civ.priority === 'war' && ok('mine')) want.push('mine', 'mine');
   if (workable(s, civ.id, hex, 'pasture', 1).open.length) want.push('pasture', 'pasture');
   if (workable(s, civ.id, hex, 'farm', 1).open.length) want.push('farm', 'farm');
   want.push('woodlot');
@@ -726,10 +738,11 @@ export function planDistricts(s: GameState, civ: Civ, c: City, force = false) {
     );
   const others = ds.filter(d => !isCentre(d));
   const planOf = (kind: string) => (kind === 'industry' ? industryPlan(s, civ, c) : QUARTERS[kind]);
-  others.forEach((d, k) => fillDistrict(s, civ, c, d, planOf(QUARTER_ORDER[k] ?? 'research')));
+  const order = quarterOrder(civ);
+  others.forEach((d, k) => fillDistrict(s, civ, c, d, planOf(order[k] ?? 'research')));
   for (const d of ds) addBoosters(s, civ, c, d);
   if (districtRoom(s, c) > 0) {
-    const kind = QUARTER_ORDER[others.length] ?? 'research';
+    const kind = order[others.length] ?? 'research';
     const r = placeDistrict(s, c.id, `${c.name} ${kind} quarter`, []);
     const d = s.districts.find(x => x.id === r.id);
     if (d) fillDistrict(s, civ, c, d, planOf(kind));
@@ -800,10 +813,48 @@ export function playerAutomation(s: GameState, civ: Civ) {
     if (!s.formations.includes(f)) continue;
     if (f.auto === 'crew') crewOrders(s, civ, f);
     else if (f.auto === 'explore') exploreOrders(s, civ, f, rng);
+    else if (f.auto === 'settle') settleOrders(s, civ, f, rng);
   }
   // a governor looks every few turns, or at once when nothing is being built
   for (const c of s.cities)
     if (c.civId === civ.id && c.auto) planDistricts(s, civ, c, !constructionQueue(s, c).length);
+  // the realm's priority, for the settlements handed to governors
+  const governed = s.cities.filter(c => c.civId === civ.id && c.auto);
+  if (civ.priority === 'expand') {
+    const going = s.formations.filter(f => f.civId === civ.id && f.kind === 'settlers').length;
+    const from = governed.filter(c => c.pop >= 3000).sort((a, b) => b.pop - a.pop)[0];
+    if (from && going < 2 && trainSettlers(s, from.id).ok) {
+      const f = s.formations.find(
+        x => x.civId === civ.id && x.kind === 'settlers' && x.hex === from.hex && !x.auto,
+      );
+      if (f) f.auto = 'settle';
+    }
+  }
+  if (civ.priority === 'war') {
+    const armies = s.formations.filter(f => f.civId === civ.id && f.kind === 'army').length;
+    const from = governed.filter(c => c.pop >= 3500).sort((a, b) => b.pop - a.pop)[0];
+    if (from && armies < governed.length + 2 && (s.turn + from.id) % 4 === 0) levy(s, from.id);
+  }
+}
+
+/** Settlers on their own: to the best site near them that joins the realm, and found there. */
+function settleOrders(s: GameState, civ: Civ, f: Formation, rng: Rng) {
+  if (!f.path.length) {
+    const cities = s.cities.filter(c => c.civId === civ.id);
+    if (canFoundCity(s, f) === null && (cities.length === 0 || bestSite(s, f, rng) === f.hex)) {
+      foundCity(s, f.id);
+      return;
+    }
+    const site = bestSite(s, f, rng);
+    if (site >= 0) f.path = planPath(s, f, site) ?? [];
+    // nowhere to go on this land: hand them back to the player
+    if (!f.path.length) {
+      f.auto = undefined;
+      return;
+    }
+  }
+  advance(s, f);
+  if (s.formations.includes(f) && !f.path.length && canFoundCity(s, f) === null) foundCity(s, f.id);
 }
 
 /** A scout heads for the nearest unexplored land; with none left in reach it rests. */
@@ -1408,7 +1459,7 @@ export function warCheck(s: GameState, civ: Civ, o: Civ): { ok: boolean; reasons
   } else if (op < -15) reasons.push(`They dislike ${you} (${op})`);
   const need =
     (op < -40 ? 1.1 : op < -15 ? 1.3 : 1.6) *
-    diff.warMargin *
+    (o.isPlayer ? diff.warMargin : DIFFICULTIES.normal.warMargin) *
     (pers?.margin ?? 1) *
     (o.id === coal ? 0.75 : 1);
   const ratio = mineP / Math.max(1, theirP);
@@ -1524,12 +1575,17 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
           `The ${civ.name} stand down their troops on the ${o.name} border: the moment has passed.`,
         );
     }
-  } else if (
-    !enemies.length &&
-    s.turn > diff.firstWarTurn &&
-    rng() < diff.warChance * (pers?.war ?? 1) * (coal >= 0 ? 2 : 1)
-  ) {
-    const targets = others.filter(o => warCheck(s, civ, o).ok);
+  } else if (!enemies.length) {
+    // the difficulty sets how readily rivals turn on the player; wars among AI peoples follow
+    // the standard rules on every level, so a harder game does not just make them fight each other
+    const std = DIFFICULTIES.normal;
+    const roll = rng() / ((pers?.war ?? 1) * (coal >= 0 ? 2 : 1));
+    const targets = others.filter(
+      o =>
+        (o.isPlayer
+          ? s.turn > diff.firstWarTurn && roll < diff.warChance
+          : s.turn > std.firstWarTurn && roll < std.warChance) && warCheck(s, civ, o).ok,
+    );
     if (targets.length) {
       const o = targets.sort((a, b) => opinion(s, civ.id, a.id) - opinion(s, civ.id, b.id))[0];
       if (o.isPlayer) {

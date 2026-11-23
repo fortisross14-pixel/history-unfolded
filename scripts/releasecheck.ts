@@ -1,7 +1,9 @@
 /** Headless checks of Release 1 conveniences: sentry, victory toggles. */
 import {
   declareWar,
+  endTurn,
   foundCity,
+  setPriority,
   newGame,
   player,
   sentry,
@@ -11,7 +13,7 @@ import {
 import { distance } from '../src/engine/hex.ts';
 import { victoryOn, victoryTurn } from '../src/engine/victory.ts';
 import type { GameState } from '../src/engine/types.ts';
-import { classify, groupNews, locate } from '../src/ui/news.ts';
+import { classify, collapseRoutine, groupNews, locate } from '../src/ui/news.ts';
 import { exportSave, importSave } from '../src/ui/save.ts';
 import { whyCulture, whyGold, whyScience } from '../src/engine/breakdown.ts';
 import { cityDistricts, slotPreview } from '../src/engine/economy.ts';
@@ -110,6 +112,20 @@ const make = (noVictory?: GameState['settings']['noVictory']): GameState =>
   check(t4?.kind === 'dialog' && t4.dialog === 'peoples', 'a rival’s threat opens Peoples');
   const g = groupNews(['a', `Raiders pillaged ${town.name}.`, 'Research complete: X.']);
   check(g.urgent.length === 1 && g.act.length === 1 && g.info.length === 1, 'news is grouped');
+  const folded = collapseRoutine([
+    `${town.name}: Farm in Centre finished.`,
+    `${town.name}: Houses in Centre finished.`,
+    `${town.name}: Mine in Hills finished.`,
+    'Something else.',
+  ]);
+  check(
+    folded.length === 2 && /3 buildings finished/.test(folded[1]),
+    `routine lines fold into one: ${folded[1]}`,
+  );
+  check(
+    locate(s, me.id, folded[1])?.kind === 'city',
+    'the folded line still goes to the settlement',
+  );
 }
 
 // ---------------------------------------------------------------- save files
@@ -197,6 +213,32 @@ const make = (noVictory?: GameState['settings']['noVictory']): GameState =>
   check(d.slots[2].type === null, 'the preview leaves the plot as it was');
   const bad = slotPreview(s, town, d, 0, 'woodlot');
   check(!!bad.why && /housing/.test(bad.why), `replacing a house says why: ${bad.why}`);
+}
+
+// ---------------------------------------------------------------- empire priority
+{
+  const s = make();
+  const me = player(s);
+  foundCity(s, s.formations.find(f => f.civId === me.id && f.kind === 'settlers')!.id);
+  const town = s.cities.find(c => c.civId === me.id)!;
+  check(setPriority(s, me.id, 'expand').ok && me.priority === 'expand', 'the priority is set');
+  town.auto = true;
+  town.pop = 5000;
+  me.gold = 500;
+  const before = s.cities.filter(c => c.civId === me.id).length;
+  for (let t = 0; t < 25; t++) endTurn(s);
+  const settlers = s.formations.filter(f => f.civId === me.id && f.kind === 'settlers');
+  const after = s.cities.filter(c => c.civId === me.id).length;
+  check(
+    after > before || settlers.some(f => f.auto === 'settle'),
+    `expand: governed towns send settlers who settle on their own (${before} → ${after} settlements)`,
+  );
+  check(
+    s.cities.filter(c => c.civId === me.id).every(c => !c.colony),
+    'automatic settlers found towns that join the realm',
+  );
+  setPriority(s, me.id, 'balanced');
+  check(me.priority === undefined, 'balanced clears it');
 }
 
 if (failures) {

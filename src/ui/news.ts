@@ -69,10 +69,52 @@ export function locate(s: GameState, civId: number, text: string): NewsTarget | 
   return null;
 }
 
-/** A turn's news, grouped: urgent first. */
+/**
+ * Routine lines of one kind become one: "4 buildings finished: …" instead of four lines. The
+ * combined line still names the places, so it still takes the player somewhere.
+ */
+export function collapseRoutine(lines: string[]): string[] {
+  const KINDS: {
+    re: RegExp;
+    one: (m: RegExpMatchArray) => string;
+    many: (n: number, parts: string[]) => string;
+  }[] = [
+    {
+      re: /^(.+): (.+) finished\.$/,
+      one: m => `${m[2]} (${m[1]})`,
+      many: (n, p) => `${n} buildings finished: ${p.join(', ')}.`,
+    },
+    {
+      re: /^(.+) now keeps (.+)\.$/,
+      one: m => m[1],
+      many: (n, p) => `${n} settlements changed faith: ${p.join(', ')}.`,
+    },
+    {
+      re: /^The (.+) learned (.+)\.$/,
+      one: m => `the ${m[1]} ${m[2]}`,
+      many: (n, p) => `Rivals learned ${n} techs: ${p.join(', ')}.`,
+    },
+  ];
+  const out: string[] = [];
+  const taken = new Set<number>();
+  for (const k of KINDS) {
+    const hits = lines.map((l, i) => [i, l.match(k.re)] as const).filter(([, m]) => m);
+    if (hits.length < 3) continue;
+    for (const [i] of hits) taken.add(i);
+    out.push(
+      k.many(
+        hits.length,
+        hits.map(([, m]) => k.one(m!)),
+      ),
+    );
+  }
+  return [...lines.filter((_, i) => !taken.has(i)), ...out];
+}
+
+/** A turn's news, grouped: urgent first; routine lines of one kind folded into one. */
 export function groupNews(lines: string[]): Record<NewsGroup, string[]> {
   const out: Record<NewsGroup, string[]> = { urgent: [], act: [], info: [] };
-  for (const l of lines) out[classify(l)].push(l);
+  for (const l of collapseRoutine(lines)) out[classify(l)].push(l);
   return out;
 }
 

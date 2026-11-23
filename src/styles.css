@@ -3420,3 +3420,14 @@ input.rename {
   gap: 4px;
   padding: 6px 0;
 }
+.battle-why {
+  margin: 6px 0;
+  padding: 6px 10px;
+  background: #fffaf0;
+  border: 1px solid rgba(120, 90, 50, 0.25);
+  border-radius: 8px;
+}
+.battle-why ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}

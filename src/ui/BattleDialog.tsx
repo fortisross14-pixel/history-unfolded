@@ -37,6 +37,19 @@ export function BattleDialog({ report, onClose }: { report: BattleReport; onClos
           <span className="vs">vs</span>
           {side(report.defender)}
         </div>
+        {report.why && report.why.length > 0 && (
+          <div className="battle-why">
+            <b>What decided it</b>
+            <ul>
+              {report.why.map((w, i) => (
+                <li key={i} className={w.side === 'attacker' ? 'good' : 'bad'}>
+                  {w.text}{' '}
+                  <small className="muted">for {w.side === 'attacker' ? 'you' : 'them'}</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <ol className="battle-lines">
           {report.lines.map((l, i) => (
             <li key={i}>{l}</li>

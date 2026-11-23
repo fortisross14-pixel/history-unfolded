@@ -75,6 +75,10 @@ function campSite(s: GameState, r: () => number): number | undefined {
   const g = { w: s.map.w, h: s.map.h };
   const own = territory(s);
   const cities = s.cities;
+  const me = s.civs.find(c => c.isPlayer);
+  const mine = cities.filter(c => c.civId === me?.id);
+  const level = difficultyOf(s).id;
+  const nearPlayer = (i: number) => mine.some(c => distance(g, c.hex, i) <= 8);
   const options: number[] = [];
   for (let i = 0; i < g.w * g.h; i++) {
     if (own[i] >= 0 || isWaterHex(s, i) || !isPassableLand(s.map, i)) continue;
@@ -82,13 +86,26 @@ function campSite(s: GameState, r: () => number): number | undefined {
     if (s.raiders?.camps.some(c => distance(g, c.hex, i) < 6)) continue;
     let near = Infinity;
     for (const c of cities) near = Math.min(near, distance(g, c.hex, i));
-    if (near >= 4 && near <= 8) options.push(i);
+    if (near < 4 || near > 8) continue;
+    // Discovery: raiders keep away from the player while the game is young
+    if (level === 'casual' && s.turn < 90 && nearPlayer(i)) continue;
+    options.push(i);
+  }
+  // Veteran: the first camp near the player's lands comes early
+  if (level === 'hard' && !s.raiders?.camps.some(c => nearPlayer(c.hex))) {
+    const close = options.filter(nearPlayer);
+    if (close.length) return close[Math.floor(r() * close.length)];
   }
   return options.length ? options[Math.floor(r() * options.length)] : undefined;
 }
 
-function bandSize(s: GameState) {
-  return RAIDERS[difficultyOf(s).id].band + (leadingAge(s) - 1);
+/** A band's cohorts: the difficulty's size near the player's lands, the standard size elsewhere. */
+function bandSize(s: GameState, camp: number) {
+  const g = { w: s.map.w, h: s.map.h };
+  const me = s.civs.find(c => c.isPlayer);
+  const nearPlayer = s.cities.some(c => c.civId === me?.id && distance(g, c.hex, camp) <= 9);
+  const base = nearPlayer ? RAIDERS[difficultyOf(s).id].band : RAIDERS.normal.band;
+  return base + (leadingAge(s) - 1);
 }
 
 /** How well a settlement is held: troops in it, and its townsfolk guard when ready. */
@@ -137,7 +154,9 @@ function pillage(s: GameState, f: Formation, cityHex: number, out: string[]) {
 /** Once a turn, when the raiders act. Returns messages for the player. */
 export function raidersTurn(s: GameState): string[] {
   const out: string[] = [];
-  const diff = RAIDERS[difficultyOf(s).id];
+  // how many camps and when: the same on every level (the level decides where, and how strong
+  // the bands near the player are)
+  const diff = { ...RAIDERS.normal, from: RAIDERS[difficultyOf(s).id].from };
   const age = leadingAge(s);
   const me = s.civs.find(c => c.isPlayer);
   const g = { w: s.map.w, h: s.map.h };
@@ -191,10 +210,10 @@ export function raidersTurn(s: GameState): string[] {
 
   // bands ride out
   for (const camp of st.camps) {
-    if (s.turn < camp.next || bandSize(s) <= 0) continue;
+    if (s.turn < camp.next || bandSize(s, camp.hex) <= 0) continue;
     if (bandsOf(camp.hex) >= BANDS_PER_CAMP) continue;
     if (s.formations.some(f => f.hex === camp.hex)) continue;
-    const f = spawnFormation(s, civ.id, camp.hex, bandSize(s), 'Raider band');
+    const f = spawnFormation(s, civ.id, camp.hex, bandSize(s, camp.hex), 'Raider band');
     for (const co of f.cohorts) co.loadout = { ...co.loadout, weapon: age >= 2 ? 'axe' : 'spear' };
     st.bands.push({ fid: f.id, camp: camp.hex });
     camp.next = s.turn + 9 + Math.floor(r() * 5);

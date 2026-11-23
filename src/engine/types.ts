@@ -83,8 +83,8 @@ export interface Formation {
   skip?: number;
   /** on sentry: stays put and out of the to-do list until enemies come near */
   sentry?: boolean;
-  /** works on its own each turn: a crew builds roads and rails, a scout explores */
-  auto?: 'crew' | 'explore';
+  /** works on its own each turn: a crew builds roads and rails, a scout explores, settlers settle */
+  auto?: 'crew' | 'explore' | 'settle';
   id: number;
   civId: number;
   name: string;
@@ -152,6 +152,8 @@ export interface Civ {
   isPlayer: boolean;
   /** an AI people's war on someone, announced: it strikes at turn `at` if it still wants to */
   warPlan?: { target: number; at: number; since: number };
+  /** what governed settlements and automated units work toward (ai.ts playerAutomation) */
+  priority?: 'balanced' | 'growth' | 'trade' | 'expand' | 'war';
   /** the hidden people of raider bands (raiders.ts) */
   raiders?: boolean;
   /** the faith most of its people keep, if any (faith.ts) */

@@ -50,7 +50,7 @@ interface Props {
   onRename: (name: string) => void;
   onClearOrders: () => void;
   onRoad: () => void;
-  onAuto?: (mode: 'crew' | 'explore' | null) => void;
+  onAuto?: (mode: 'crew' | 'explore' | 'settle' | null) => void;
   onSkip?: () => void;
   onSentry?: () => void;
 }
@@ -387,7 +387,15 @@ export function FormationPanel(p: Props) {
             )}
           {p.onAuto && f.auto && (
             <button onClick={() => p.onAuto!(null)} title="Take it back under your orders">
-              Stop {f.auto === 'crew' ? 'building' : 'exploring'}
+              Stop {f.auto === 'crew' ? 'building' : f.auto === 'settle' ? 'settling' : 'exploring'}
+            </button>
+          )}
+          {p.onAuto && !f.auto && f.kind === 'settlers' && (
+            <button
+              onClick={() => p.onAuto!('settle')}
+              title="They find the best site that joins your lands, walk there and found a town"
+            >
+              Settle automatically
             </button>
           )}
           {p.onAuto && !f.auto && !autoProblem(f, 'crew') && (

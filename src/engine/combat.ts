@@ -68,6 +68,8 @@ export interface BattleReport {
   defender: SideReport;
   lines: string[];
   outcome: 'defender-broke' | 'attacker-broke' | 'held' | 'skirmish';
+  /** what decided it, biggest first, each favouring the side named */
+  why?: { side: 'attacker' | 'defender'; text: string }[];
 }
 
 interface Unit {
@@ -293,10 +295,61 @@ export function resolveBattle(
       cohortLoss,
     };
   };
+  // what decided it: compare the two sides on what the rules weigh, biggest gap first
+  const why: { side: 'attacker' | 'defender'; text: string; weight: number }[] = [];
+  const add = (side: 'attacker' | 'defender', weight: number, text: string) =>
+    why.push({ side, text, weight });
+  const ratio = startA / Math.max(1, startD);
+  if (ratio >= 1.4) add('attacker', ratio, `Numbers: ${Math.round(ratio * 10) / 10} to 1`);
+  else if (ratio <= 1 / 1.4)
+    add('defender', 1 / ratio, `Numbers: ${Math.round((1 / ratio) * 10) / 10} to 1`);
+  const punch = (us: Unit[], b: Boost) =>
+    us.reduce((a, u) => a + (u.s.melee * b.melee + u.s.ranged * b.ranged) * u.xpMul, 0) /
+    Math.max(1, us.length);
+  const guard = (us: Unit[]) =>
+    us.reduce(
+      (a, u) => a + (u.s.protection.cut + u.s.protection.pierce + u.s.protection.crush) / 3,
+      0,
+    ) / Math.max(1, us.length);
+  const pa = punch(A, bA),
+    pd = punch(D, bD);
+  if (pa > pd * 1.3) add('attacker', pa / pd, 'Better weapons and training');
+  else if (pd > pa * 1.3) add('defender', pd / pa, 'Better weapons and training');
+  const ga = guard(A),
+    gd = guard(D);
+  if (ga > gd + 1) add('attacker', 1 + (ga - gd) / 4, 'Heavier armour');
+  else if (gd > ga + 1) add('defender', 1 + (gd - ga) / 4, 'Heavier armour');
+  if (defMul < 0.8)
+    add(
+      'defender',
+      1 / defMul,
+      [
+        ctx.city ? (ctx.walls ? 'behind walls' : 'in the town') : '',
+        RELIEF[m.relief[ctx.hex]].defense > 0 ? 'on high ground' : '',
+        cover ? 'in the woods' : '',
+        ctx.fortified ? 'dug in' : '',
+      ]
+        .filter(Boolean)
+        .join(' and ')
+        .replace(/^./, c => c.toUpperCase()) || 'Good ground',
+    );
+  const screen = (us: Unit[]) => us.some(front);
+  if (!screen(D) && D.some(u => !front(u)))
+    add('attacker', 1.5, 'Their archers had no front line to screen them');
+  if (!screen(A) && A.some(u => !front(u)))
+    add('defender', 1.5, 'Archers attacking without a front line');
+  const ridersA = A.filter(u => u.s.charge > 0).length,
+    ridersD = D.filter(u => u.s.charge > 0).length;
+  if (ridersA && !ridersD && !rough && !ctx.city) add('attacker', 1.3, 'Cavalry on open ground');
+  if (ridersA && (rough || ctx.city)) add('defender', 1.2, 'No room for the charge');
+  if ((att.morale ?? 0) > (def.morale ?? 0) + 10) add('attacker', 1.2, 'Higher morale');
+  else if ((def.morale ?? 0) > (att.morale ?? 0) + 10) add('defender', 1.2, 'Higher morale');
+  why.sort((x, y) => y.weight - x.weight);
   return {
     attacker: report(att.name, A, startA, aBroke),
     defender: report(def.name, D, startD, dBroke),
     lines,
     outcome,
+    why: why.slice(0, 4).map(({ side, text }) => ({ side, text })),
   };
 }

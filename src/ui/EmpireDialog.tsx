@@ -3,6 +3,8 @@ import { faithById } from '../engine/faith.ts';
 import { useState } from 'react';
 import { cityEconomy, DISTRICT_CAP, TIER_NAME } from '../engine/economy.ts';
 import type { GameState } from '../engine/types.ts';
+import { Chip, Delta, Ico } from './bits.tsx';
+import './declutter-city.css';
 
 type Tab = 'cities' | 'armies' | 'find';
 
@@ -86,8 +88,9 @@ export function EmpireDialog({
         <header>
           <h2>
             Empire{' '}
-            <small>
-              {mine.length} settlements · {troops.length} formations
+            <small className="chips">
+              <Chip icon="cities" n={mine.length} title="Settlements" />
+              <Chip icon="army" n={troops.length} title="Formations" />
             </small>
           </h2>
           <button className="x" onClick={onClose} aria-label="Close">
@@ -120,25 +123,31 @@ export function EmpireDialog({
               <thead>
                 <tr>
                   <th>Settlement</th>
-                  <th>Size</th>
-                  <th>People</th>
-                  <th>Districts</th>
-                  <th title="Food left over a turn">Food</th>
-                  <th title="Production a turn">Prod.</th>
-                  <th title="Science a turn">Sci.</th>
-                  <th title="Gold a turn">Gold</th>
-                  <th title="Culture a turn">Cult.</th>
-                  <th>Faith</th>
-                  <th>State</th>
+                  {(
+                    [
+                      ['people', 'People'],
+                      ['district', 'Districts'],
+                      ['food', 'Food left over a turn'],
+                      ['production', 'Production a turn'],
+                      ['science', 'Science a turn'],
+                      ['gold', 'Gold a turn'],
+                      ['culture', 'Culture a turn'],
+                      ['sun', 'Faith'],
+                    ] as const
+                  ).map(([k, t]) => (
+                    <th key={k} title={t} aria-label={t}>
+                      <Ico name={k} fallback={t[0]} size={18} />
+                    </th>
+                  ))}
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {mine.map(c => (
                   <tr key={c.id} className="go" onClick={() => onCity(c.id)}>
                     <td>
-                      <b>{c.name}</b>
+                      <b>{c.name}</b> <small className="muted">{TIER_NAME[c.tier]}</small>
                     </td>
-                    <td>{TIER_NAME[c.tier]}</td>
                     <td>{c.pop.toLocaleString()}</td>
                     <td>
                       {districts(c.id)}/{DISTRICT_CAP[c.tier]}
@@ -148,9 +157,8 @@ export function EmpireDialog({
                       const n = (v: number) => Math.round(v * 10) / 10;
                       return (
                         <>
-                          <td className={e.surplus < 0 ? 'bad' : ''}>
-                            {e.surplus >= 0 ? '+' : ''}
-                            {n(e.surplus)}
+                          <td>
+                            <Delta n={e.surplus} />
                           </td>
                           <td>{n(e.total.prod)}</td>
                           <td>{n(e.total.science)}</td>
@@ -162,11 +170,23 @@ export function EmpireDialog({
                     <td>
                       <small>{faithById(game, c.faith)?.name ?? '—'}</small>
                     </td>
-                    <td>
-                      {c.siege ? <b className="war-pill">besieged</b> : null}
-                      {c.auto ? <span className="muted"> governor</span> : null}
+                    <td className="dc-state">
+                      {c.siege ? (
+                        <span title="Besieged" className="bad">
+                          <Ico name="war" fallback="⚔" size={16} />
+                        </span>
+                      ) : null}
+                      {c.auto ? (
+                        <span title="Governor plans" className="muted">
+                          {' '}
+                          <Ico name="crown" fallback="♔" size={16} />
+                        </span>
+                      ) : null}
                       {c.wonder ? (
-                        <span className="muted"> building the {WONDERS[c.wonder.id].name}</span>
+                        <span title={`Building the ${WONDERS[c.wonder.id].name}`} className="muted">
+                          {' '}
+                          <Ico name="laurel" fallback="✦" size={16} />
+                        </span>
                       ) : null}
                     </td>
                   </tr>
@@ -183,7 +203,9 @@ export function EmpireDialog({
                 <tr>
                   <th>Formation</th>
                   <th>Kind</th>
-                  <th>Cohorts</th>
+                  <th title="Cohorts" aria-label="Cohorts">
+                    <Ico name="people" fallback="#" size={18} />
+                  </th>
                   <th>Orders</th>
                 </tr>
               </thead>
@@ -201,7 +223,7 @@ export function EmpireDialog({
                       ) : f.auto === 'explore' ? (
                         'Exploring'
                       ) : f.path.length ? (
-                        `Moving (${f.path.length} hexes)`
+                        <span title={`Moving: ${f.path.length} hexes`}>→ {f.path.length}</span>
                       ) : f.fortified ? (
                         'Fortified'
                       ) : f.moves > 0 ? (
@@ -229,7 +251,7 @@ export function EmpireDialog({
             <input
               className="empire-search"
               autoFocus
-              placeholder="A settlement or army, yours or a known one…"
+              placeholder="Name…"
               value={q}
               onChange={e => setQ(e.target.value)}
               onKeyDown={e => {
@@ -247,8 +269,7 @@ export function EmpireDialog({
                   </button>
                 </li>
               ))}
-              {needle && !found.length && <li className="muted">Nothing by that name.</li>}
-              {!needle && <li className="muted">Type a name. Enter goes to the first match.</li>}
+              {needle && !found.length && <li className="muted">None.</li>}
             </ul>
           </>
         )}

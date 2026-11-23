@@ -259,12 +259,16 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
             <ul className="small dc-list">
               <li>Land: the centre + 6 hexes, one district each. By water: docks, yards.</li>
               <li>Workers: half the people.</li>
-              <li>Farms, pastures, woodcutters, mines: ½ anywhere, more from what the land holds.</li>
+              <li>
+                Farms, pastures, woodcutters, mines: ½ anywhere, more from what the land holds.
+              </li>
               <li>
                 Special goods (coal, iron, gold, spices…): {SPECIAL_MIN}+ of the building in one
                 district, then 1 each.
               </li>
-              <li>Boosters: +½ (library, granary) or ×2 (research lab) to their kind, same district.</li>
+              <li>
+                Boosters: +½ (library, granary) or ×2 (research lab) to their kind, same district.
+              </li>
               <li>
                 {MIN_HOUSING} housing cells before a district works; more housing, faster growth.
               </li>
@@ -283,11 +287,14 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 <Chip icon="people" n={c.pop.toLocaleString()} title="People" />
                 <span
                   className="chip"
-                  title={`Food a turn: ${r1(e.total.food)} grown, ${e.eat} eaten`}
+                  title={`Food a turn: ${r1(e.total.food)} grown, ${e.eat} eaten; ${r1(c.food)}/${growthCost(game, c)} stored to grow by 250`}
                   aria-label="Food a turn"
                 >
                   <Icon name="food" size={22} />
                   <Delta n={e.surplus} />
+                  <small className="muted">
+                    {r1(c.food)}/{growthCost(game, c)}
+                  </small>
                 </span>
                 <Chip icon="production" n={r1(e.total.prod)} title="Production a turn" />
                 <Chip icon="science" n={r1(e.total.science)} title="Science a turn" />
@@ -299,11 +306,6 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 <GoodChips goods={e.total.goods} unit=" a turn" />
               </div>
               <div className="chips dc-row muted">
-                <Chip
-                  icon="food"
-                  n={`${r1(c.food)}/${growthCost(game, c)}`}
-                  title="Food stored / needed to grow by 250"
-                />
                 <Chip
                   icon="workers"
                   n={`${e.workersUsed.toLocaleString()}/${e.workers.toLocaleString()}`}
@@ -333,8 +335,8 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                       {up.to === 'metropolis' && <span>One per people.</span>}
                       {up.lost > 0 && (
                         <span className="bad">
-                          The centre's {up.lost} farms, woodlots and mines go: a city builds over its
-                          centre.
+                          The centre's {up.lost} farms, woodlots and mines go: a city builds over
+                          its centre.
                         </span>
                       )}
                     </InfoButton>
@@ -343,7 +345,11 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                     <Chip icon="people" n={up.pop.toLocaleString()} title="People needed" />
                     <Chip icon="gold" n={up.gold} title="Gold" />
                     <GoodChips goods={up.goods} />
-                    <Chip icon="district" n={`+${DISTRICT_CAP[up.to] - cap}`} title="More districts" />
+                    <Chip
+                      icon="district"
+                      n={`+${DISTRICT_CAP[up.to] - cap}`}
+                      title="More districts"
+                    />
                     {up.lost > 0 && (
                       <span className="chip bad" title="Centre fields pulled down">
                         <Icon name="warning" size={18} />
@@ -692,8 +698,7 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                     </InfoButton>
                   </h3>
                   <p className="muted small">
-                    <Icon name="district" size={16} />{' '}
-                    {freeHex ? hexLabel(hex) : 'Best free hex'}
+                    <Icon name="district" size={16} /> {freeHex ? hexLabel(hex) : 'Best free hex'}
                   </p>
                   <input
                     className="design-name"

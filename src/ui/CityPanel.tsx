@@ -103,17 +103,15 @@ export function CityPanel({
             <Chip icon="people" n={c.pop.toLocaleString()} title="People" />
             <span
               className="chip"
-              title={`Food a turn: ${y.food} grown, ${y.eat} eaten${y.surplus < 0 && marketCities(game, c).length > 1 ? '; towns in its market send food' : ''}`}
+              title={`Food a turn: ${y.food} grown, ${y.eat} eaten; ${Math.floor(c.food)}/${growthCost(game, c)} stored to grow by 250${y.surplus < 0 && marketCities(game, c).length > 1 ? '; towns in its market send food' : ''}`}
               aria-label="Food a turn"
             >
               <Ico name="food" fallback="•" size={18} />
               <Delta n={y.surplus} />
+              <small className="muted">
+                {Math.floor(c.food)}/{growthCost(game, c)}
+              </small>
             </span>
-            <Chip
-              icon="housing"
-              n={`${Math.floor(c.food)}/${growthCost(game, c)}`}
-              title="Food stored / needed to grow by 250"
-            />
             <Chip icon="science" n={y.science} title="Science a turn" />
             <Chip icon="gold" n={y.gold} title="Gold a turn" />
             <Chip
@@ -127,9 +125,7 @@ export function CityPanel({
                 <span
                   className="chip"
                   title={
-                    u.to
-                      ? `Districts · ${TIER_NAME[u.to]}: ${u.problem ?? 'ready'}`
-                      : 'Districts'
+                    u.to ? `Districts · ${TIER_NAME[u.to]}: ${u.problem ?? 'ready'}` : 'Districts'
                   }
                 >
                   <Ico name="district" fallback="▦" size={18} />
@@ -202,7 +198,11 @@ export function CityPanel({
           </h3>
           <div className="dc-line">
             {marketCities(game, c).length > 1 && (
-              <Chip icon="road" n={marketCities(game, c).length} title="Settlements in this market" />
+              <Chip
+                icon="road"
+                n={marketCities(game, c).length}
+                title="Settlements in this market"
+              />
             )}
             <GoodsChips goods={marketStock(game, c)} unit=" in store" />
           </div>
@@ -328,9 +328,7 @@ export function CityPanel({
               </b>
             </span>
           ) : (
-            <InfoButton label="About sieges">
-              Siege: {SIEGE_COHORTS}+ cohorts around it.
-            </InfoButton>
+            <InfoButton label="About sieges">Siege: {SIEGE_COHORTS}+ cohorts around it.</InfoButton>
           )}
         </div>
       )}

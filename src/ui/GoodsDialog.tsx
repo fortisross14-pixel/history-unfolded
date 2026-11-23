@@ -1,10 +1,11 @@
 import { setSupply, SUPPLY } from '../engine/game.ts';
 import { useState } from 'react';
-import { COMFORT_PEOPLE, GOODS, STORE_PER_CELL } from '../data/goods.ts';
+import { COMFORT_PEOPLE, GOODS, SPECIAL_MIN, STORE_PER_CELL } from '../data/goods.ts';
 import { bestPrice, DEAL_TURNS, evaluateOffer, ledgerOf } from '../engine/diplomacy.ts';
 import { atWar } from '../engine/game.ts';
 import type { GameState, Offer } from '../engine/types.ts';
-import { GoodIcon } from './bits.tsx';
+import { Chip, Delta, GoodIcon, Ico, InfoButton } from './bits.tsx';
+import './declutter-city.css';
 
 interface Props {
   game: GameState;
@@ -12,8 +13,6 @@ interface Props {
   onDeal: (to: number, o: Offer) => void;
   onClose: () => void;
 }
-
-const fmt = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
 /**
  * The people's goods by the turn: what its settlements make, what buildings, hearths and
@@ -55,14 +54,31 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
       >
         <header>
           <h2>
-            Goods <small>per turn, all your settlements</small>
+            Goods <small>a turn</small>
           </h2>
+          <InfoButton label="How goods work" align="right">
+            <span>
+              Special goods (minerals, crops, furs, whales, pearls): a town by the deposit and{' '}
+              {SPECIAL_MIN}+ of the working building in one district, then 1 each.
+            </span>
+            <span>
+              Comforts: 1 luxury a turn per {COMFORT_PEOPLE.toLocaleString()} people. Cities burn
+              coal or wood. Workshops and smithies work goods up.
+            </span>
+            <span>A good that runs out lowers what depends on it.</span>
+            <span>
+              Store: {STORE_PER_CELL} per cell that makes it + {STORE_PER_CELL} per settlement; the
+              rest is lost.
+            </span>
+          </InfoButton>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
           </button>
         </header>
         <div className="setting supply-row">
-          <span>When goods run short, first to</span>
+          <span title="When goods run short, first to">
+            <Ico name="warning" fallback="!" size={18} /> Shortage:
+          </span>
           <div className="setting-opts">
             {(Object.keys(SUPPLY) as (keyof typeof SUPPLY)[]).map(k => (
               <button
@@ -78,26 +94,31 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
               </button>
             ))}
           </div>
-          <small className="muted">{SUPPLY[me.supply ?? 'industry'].note}</small>
+          <InfoButton label="Who gets scarce goods first" align="right">
+            {(Object.keys(SUPPLY) as (keyof typeof SUPPLY)[]).map(k => (
+              <span key={k}>
+                <b>{SUPPLY[k].name}</b>: {SUPPLY[k].note}
+              </span>
+            ))}
+          </InfoButton>
         </div>
-        <p className="muted small">
-          Special goods (minerals, plantation crops, furs, whales, pearls) need a town next to the
-          deposit and at least 3 of the working building in one district; then every one of them
-          brings a unit. Settlements use luxuries as comforts (one a turn per{' '}
-          {COMFORT_PEOPLE.toLocaleString()} people), cities burn coal or wood, workshops and
-          smithies work goods up. A good that runs out lowers what depends on it. Stores hold{' '}
-          {STORE_PER_CELL} of a good for every cell that makes it, and {STORE_PER_CELL} of anything
-          per settlement: the rest is lost, so sell it.
-        </p>
         <table className="ledger">
           <thead>
             <tr>
               <th>Good</th>
-              <th>Made</th>
-              <th>Used</th>
-              <th>Trade</th>
-              <th>Net</th>
-              <th>Store / limit</th>
+              <th title="Made a turn" aria-label="Made a turn">
+                <Ico name="production" fallback="+" size={18} />
+              </th>
+              <th title="Used a turn" aria-label="Used a turn">
+                <Ico name="upkeep" fallback="−" size={18} />
+              </th>
+              <th title="Trade a turn" aria-label="Trade a turn">
+                <Ico name="trade" fallback="⇄" size={18} />
+              </th>
+              <th title="Net a turn">Net</th>
+              <th title="Store / limit" aria-label="Store / limit">
+                <Ico name="goods" fallback="▣" size={18} />
+              </th>
               <th />
             </tr>
           </thead>
@@ -110,18 +131,23 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
                     <GoodIcon id={g} /> {GOODS[g]?.name ?? g}
                   </td>
                   <td>{l.made || ''}</td>
-                  <td>{l.used || ''}</td>
-                  <td>{l.traded ? fmt(l.traded) : ''}</td>
-                  <td className={l.net < 0 ? 'bad' : l.net > 0 ? 'good' : ''}>
-                    <b>{fmt(l.net)}</b>
+                  <td>{l.used ? `\u2212${l.used}` : ''}</td>
+                  <td>{l.traded ? <Delta n={l.traded} /> : ''}</td>
+                  <td>
+                    <b>
+                      <Delta n={l.net} />
+                    </b>
                   </td>
                   <td>
                     {l.stock}
                     <small className={l.stock >= l.cap ? 'bad' : 'muted'}>/{l.cap}</small>
                     {runsOut !== null && (
-                      <small className={runsOut < 10 ? 'bad' : 'muted'}>
+                      <small
+                        className={runsOut < 10 ? 'bad' : 'muted'}
+                        title={runsOut ? `Runs out in ${runsOut} turns` : 'Out'}
+                      >
                         {' '}
-                        · {runsOut ? `${runsOut} turns left` : 'out'}
+                        · {runsOut ? `${runsOut}t` : 'out'}
                       </small>
                     )}
                   </td>
@@ -152,47 +178,48 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
             })}
           </tbody>
         </table>
-        {rows.length === 0 && (
-          <p className="muted">
-            No goods yet. Woodcutters, mines, pastures and farms bring them in.
-          </p>
-        )}
+        {rows.length === 0 && <p className="muted">No goods yet.</p>}
         {selling && (
           <div className="sell-box">
-            <h3>Sell {GOODS[selling]?.name ?? selling} by the turn</h3>
+            <h3 className="dc-h">
+              Sell <GoodIcon id={selling} /> {GOODS[selling]?.name ?? selling}
+              <InfoButton label="About selling">
+                {DEAL_TURNS} turns, delivered from the capital's market. Failing to deliver is
+                remembered.
+              </InfoButton>
+            </h3>
             <div className="row">
               <label>
-                To{' '}
-                <select value={to} onChange={e => setTo(Number(e.target.value))}>
+                <select value={to} aria-label="Buyer" onChange={e => setTo(Number(e.target.value))}>
                   {partners.map(p => (
                     <option key={p.id} value={p.id}>
-                      the {p.name}
+                      {p.name}
                     </option>
                   ))}
                 </select>
               </label>
-              <label>
+              <label title="Amount a turn">
+                <GoodIcon id={selling} />{' '}
                 <input
                   type="number"
                   min={1}
                   value={n}
+                  aria-label="Amount a turn"
                   onChange={e => setN(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-                />{' '}
-                a turn
+                />
               </label>
-              <label>
-                for{' '}
+              <label title="Gold a turn">
+                <Ico name="gold" fallback="¤" size={18} />{' '}
                 <input
                   type="number"
                   min={0}
                   value={price}
+                  aria-label="Gold a turn"
                   onChange={e => setPrice(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-                />{' '}
-                gold a turn
+                />
               </label>
             </div>
-            <p className="small">
-              What they would pay for {n} a turn:{' '}
+            <p className="small dc-bids" title={`What they would pay for ${n} a turn`}>
               {partners
                 .map(p => ({ p, gold: bestPrice(game, civId, p.id, selling, n) }))
                 .sort((a, b) => b.gold - a.gold)
@@ -205,16 +232,17 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
                       setPrice(gold);
                     }}
                   >
-                    the {p.name}: {gold ? `${gold} gold` : 'not interested'}
+                    {p.name} {gold ? <Chip icon="gold" n={gold} title="Gold a turn" /> : '—'}
                   </button>
                 ))}
             </p>
-            <p className="small muted">
-              Runs for {DEAL_TURNS} turns, delivered from your capital's market. If you cannot
-              deliver, they will remember. You keep{' '}
-              <b>{fmt(Math.round(((ledger[selling]?.net ?? 0) - n) * 10) / 10)}</b>{' '}
-              {GOODS[selling]?.name.toLowerCase()} a turn for yourself.
-            </p>
+            <div className="chips small">
+              <Chip icon="hourglass" n={DEAL_TURNS} title="Turns" />
+              <span className="chip" title="Left for you a turn">
+                <GoodIcon id={selling} />
+                <Delta n={Math.round(((ledger[selling]?.net ?? 0) - n) * 10) / 10} />
+              </span>
+            </div>
             {ev && <p className={ev.accept ? 'good' : 'bad'}>{ev.reason}</p>}
             <div className="row">
               <button
@@ -231,7 +259,9 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
             </div>
           </div>
         )}
-        <p className="muted small">Your gold: {Math.floor(me.gold)}</p>
+        <p className="muted small">
+          <Chip icon="gold" n={Math.floor(me.gold)} title="Your gold" />
+        </p>
       </div>
     </div>
   );

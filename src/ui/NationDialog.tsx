@@ -154,6 +154,20 @@ export function EffChips({ effs, max }: { effs: Eff[]; max?: number }) {
   );
 }
 
+/** Effects one per line, chip and words: the detail view's full list. */
+export function EffList({ effs }: { effs: Eff[] }) {
+  if (!effs.length) return null;
+  return (
+    <ul className="nd-list">
+      {effs.map((e, i) => (
+        <li key={i}>
+          <EffChip e={e} /> <span>{e.title}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 const WORD_ICON: Record<string, string> = {
   gold: 'gold',
   culture: 'culture',
@@ -553,12 +567,7 @@ export function NationDialog({
             onClose();
           }}
         >
-          <EffChips effs={pathEffs(pick.p)} />
-          <ul className="nd-list">
-            {pick.p.effects.map(e => (
-              <li key={e}>{e}</li>
-            ))}
-          </ul>
+          <EffList effs={pathEffs(pick.p)} />
           <h3>
             Edict: {pick.p.edict.name} <EffChips effs={edictEffs(pick.p)} />
           </h3>
@@ -585,8 +594,7 @@ export function NationDialog({
           {(side =>
             side ? (
               <>
-                <EffChips effs={sideEffs(side)} />
-                <p className="small">{side.effects}.</p>
+                <EffList effs={sideEffs(side)} />
               </>
             ) : (
               <p className="small">No effect.</p>

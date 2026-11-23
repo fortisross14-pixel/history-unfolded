@@ -237,7 +237,6 @@ export function CityPanel({
             {c.colony && onPromote && <ColonyRow game={game} c={c} onPromote={onPromote} />}
             {onWonder && rankOf(c.tier) >= rankOf('town') && (
               <button onClick={onWonder} title="World wonders: one of each in the world">
-                <Ico name="laurel" fallback="✦" size={16} />{' '}
                 {c.wonder ? WONDERS[c.wonder.id].name : 'Wonder…'}
               </button>
             )}

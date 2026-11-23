@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TECHS } from '../data/techs.ts';
-import { TENETS, TENET_SLOTS, tenetsFor, type TenetSlot } from '../data/faiths.ts';
+import { TENETS, TENET_SLOTS, tenetsFor, type Tenet, type TenetSlot } from '../data/faiths.ts';
 import {
   chooseTenet,
   faithById,
@@ -15,6 +15,20 @@ import {
   tenetDue,
 } from '../engine/faith.ts';
 import type { Civ, GameState } from '../engine/types.ts';
+import { Ico, InfoButton } from './bits.tsx';
+import { ChoiceDetail, EffChips, EffList, modEffs, type Eff } from './NationDialog.tsx';
+
+/** What a tenet does, as effect chips. */
+const tenetEffs = (t: Tenet): Eff[] => [
+  ...(t.tithe ? [{ icon: 'gold', n: t.tithe, title: 'gold a turn per follower settlement' }] : []),
+  ...(t.pilgrims
+    ? [{ icon: 'culture', n: t.pilgrims, title: 'culture a turn per foreign follower settlement' }]
+    : []),
+  ...(t.spread
+    ? [{ icon: 'road', n: (t.spread - 1) * 100, pct: true, title: 'faster spread' }]
+    : []),
+  ...modEffs(t.mods),
+];
 
 /**
  * Faith, kept light: found one (a race: the world has room for only a few), choose its three
@@ -38,6 +52,7 @@ export function FaithDialog({
   const due = tenetDue(game, civ.id);
   const [name, setName] = useState(() => suggestName(game, civ.id));
   const [pick, setPick] = useState<string | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
   const faiths = game.faiths ?? [];
   const room = maxFaiths(game);
   const { by, all } = realmFaiths(game, civ.id);
@@ -54,8 +69,8 @@ export function FaithDialog({
           onClick={() => onPick(t.id)}
           aria-pressed={chosen === t.id}
         >
-          <b>{t.name}</b>
-          <small>{t.note}</small>
+          <b title={t.note}>{t.name}</b>
+          <EffChips effs={tenetEffs(t)} />
         </button>
       ))}
     </div>
@@ -85,42 +100,49 @@ export function FaithDialog({
         {own ? (
           <section className="faith-own">
             <h3>{own.name}</h3>
-            <p className="small">
-              Founded turn {own.founded} in <b>{holyName(own.holy)}</b>, the holy city.{' '}
-              {(n => (n === 1 ? '1 settlement keeps it' : `${n} settlements keep it`))(
-                followers(game, own).all,
-              )}
-              , {followers(game, own).foreign} of them abroad.
-              {inc.gold || inc.culture ? (
-                <>
-                  {' '}
-                  It brings you{' '}
-                  {[
-                    inc.gold ? `+${Math.round(inc.gold * 10) / 10} gold` : '',
-                    inc.culture ? `+${inc.culture} culture` : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' and ')}{' '}
-                  a turn.
-                </>
+            <span className="chips">
+              <span className="chip" title={`Holy city, founded turn ${own.founded}`}>
+                <Ico name="sun" fallback="☀" size={18} /> <b>{holyName(own.holy)}</b>
+              </span>
+              <span className="chip" title="Settlements keeping it">
+                <Ico name="city" fallback="⌂" size={18} /> <b>{followers(game, own).all}</b>
+              </span>
+              <span className="chip" title="Of them abroad">
+                <Ico name="peoples" fallback="☺" size={18} /> <b>{followers(game, own).foreign}</b>
+              </span>
+              {inc.gold ? (
+                <span className="chip" title="Gold a turn from the faith">
+                  <Ico name="gold" fallback="¤" size={18} />{' '}
+                  <span className="delta good">+{Math.round(inc.gold * 10) / 10}</span>
+                </span>
               ) : null}
-            </p>
+              {inc.culture ? (
+                <span className="chip" title="Culture a turn from the faith">
+                  <Ico name="culture" fallback="♪" size={18} />{' '}
+                  <span className="delta good">+{inc.culture}</span>
+                </span>
+              ) : null}
+            </span>
             <ul className="tenet-list">
               {TENET_SLOTS.map(sl => {
                 const t = own.tenets.map(id => TENETS[id]).find(x => x?.slot === sl.slot);
                 return (
                   <li key={sl.slot}>
-                    <span className="muted">{sl.name}:</span>{' '}
+                    <span className="muted" title={sl.who}>
+                      {sl.name}:
+                    </span>{' '}
                     {t ? (
                       <>
-                        <b>{t.name}</b> <small className="muted">{t.note}</small>
+                        <b title={t.note}>{t.name}</b> <EffChips effs={tenetEffs(t)} />
                       </>
                     ) : (
                       <small className="muted">
-                        {due === sl.slot
-                          ? 'choose below'
-                          : `opens with ${TECHS[sl.tech!]?.name ?? sl.tech}`}{' '}
-                        ({sl.who})
+                        {due === sl.slot ? 'choose below' : (
+                          <>
+                            <Ico name="lock" fallback="🔒" size={14} />{' '}
+                            {TECHS[sl.tech!]?.name ?? sl.tech}
+                          </>
+                        )}
                       </small>
                     )}
                   </li>
@@ -129,31 +151,32 @@ export function FaithDialog({
             </ul>
             {due && (
               <>
-                <h3>Choose the {TENET_SLOTS.find(x => x.slot === due)!.name.toLowerCase()}</h3>
-                <p className="muted small">
-                  It helps {TENET_SLOTS.find(x => x.slot === due)!.who}, for good.
-                </p>
-                {tenetCards(due, id => report(chooseTenet(game, civ.id, id)))}
+                <h3 title={`Helps ${TENET_SLOTS.find(x => x.slot === due)!.who}, for good`}>
+                  Choose the {TENET_SLOTS.find(x => x.slot === due)!.name.toLowerCase()}
+                </h3>
+                {tenetCards(due, setDetail)}
               </>
             )}
           </section>
         ) : why ? (
           <p className="small">
-            <b>Founding a faith:</b> {why}{' '}
+            <b>Found a faith:</b> {why}{' '}
             {faiths.length < room && (
-              <span className="muted">
-                The world has room for {room - faiths.length} more; the first to found one take the
-                places.
-              </span>
+              <span className="muted">({room - faiths.length} places left)</span>
             )}
           </p>
         ) : (
           <section className="faith-found">
-            <h3>Found a faith</h3>
-            <p className="muted small">
-              {room - faiths.length} of {room} places left. Your holy city and nearby settlements
-              take it up at once; then it spreads by itself.
-            </p>
+            <h3>
+              Found a faith{' '}
+              <small className="muted">
+                {room - faiths.length}/{room} places left
+              </small>{' '}
+              <InfoButton label="About founding">
+                Your holy city and nearby settlements take it up at once; then it spreads by itself.
+                The founding belief rewards you as it spreads.
+              </InfoButton>
+            </h3>
             <label className="faith-name">
               Name{' '}
               <input
@@ -163,7 +186,7 @@ export function FaithDialog({
                 onKeyDown={e => e.stopPropagation()}
               />
             </label>
-            <p className="small">Its founding belief (rewards you as it spreads):</p>
+            <p className="small muted">Founding belief</p>
             {tenetCards('founding', setPick, pick)}
             <button
               className="primary"
@@ -175,18 +198,24 @@ export function FaithDialog({
           </section>
         )}
 
-        <h3>Your people</h3>
+        <h3>
+          Your people{' '}
+          <InfoButton label="About faith and peoples">
+            Your people's faith's teachings help you. A shared faith warms other peoples to you, a
+            different one cools them. Over a third of your people outside your own faith builds
+            religious tension, which can end in a schism.
+          </InfoButton>
+        </h3>
         <p className="small">
           {kept ? (
             <>
-              Keep <b>{kept.name}</b>
+              <Ico name="sun" fallback="☀" size={16} /> <b>{kept.name}</b>
               {kept.founder !== civ.id && known(kept.founder)
-                ? `, the faith of the ${game.civs[kept.founder].name}`
+                ? ` (${game.civs[kept.founder].name})`
                 : ''}
-              : its teachings help you.{' '}
             </>
           ) : (
-            <>Keep no one faith yet. </>
+            <span className="muted">No faith yet</span>
           )}
         </p>
         {all > 0 && (
@@ -206,11 +235,6 @@ export function FaithDialog({
               ))}
           </div>
         )}
-        <p className="muted small">
-          A shared faith warms other peoples to you, a different one cools them. A realm split
-          between faiths (over a third of its people outside its own) builds religious tension,
-          which can end in a schism.
-        </p>
 
         <h3>Faiths of the world</h3>
         {faiths.length ? (
@@ -244,9 +268,24 @@ export function FaithDialog({
             </tbody>
           </table>
         ) : (
-          <p className="muted small">No faith has been founded yet.</p>
+          <p className="muted small">None yet.</p>
         )}
       </div>
+      {detail && TENETS[detail] && (
+        <ChoiceDetail
+          title={TENETS[detail].name}
+          sub={TENET_SLOTS.find(x => x.slot === TENETS[detail].slot)?.who}
+          confirm="Choose"
+          onBack={() => setDetail(null)}
+          onConfirm={() => {
+            report(chooseTenet(game, civ.id, detail));
+            setDetail(null);
+          }}
+        >
+          <EffList effs={tenetEffs(TENETS[detail])} />
+          {!tenetEffs(TENETS[detail]).length && <p className="small">{TENETS[detail].note}</p>}
+        </ChoiceDetail>
+      )}
     </div>
   );
 }

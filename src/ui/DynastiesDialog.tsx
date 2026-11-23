@@ -29,6 +29,7 @@ import {
 } from '../engine/dynasty.ts';
 import { TIER_NAME } from '../engine/economy.ts';
 import type { City, GameState } from '../engine/types.ts';
+import { Ico, InfoButton } from './bits.tsx';
 
 interface Props {
   game: GameState;
@@ -83,41 +84,65 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
         <header>
           <h2>
             {demo ? 'Parties' : 'Houses'} of the {civ.name}{' '}
-            <small>
-              {demo ? 'governing' : 'on the throne'}: House {ruler.name}
-            </small>
+            <InfoButton label={demo ? 'About parties' : 'About houses'}>
+              {demo ? (
+                <>
+                  Houses are parties: give them settlements freely; the one governing the most
+                  people leads. Rivalry rarely turns to war. Trinkets count {Math.round(0.4 * 100)}%.
+                </>
+              ) : (
+                <>
+                  <span>
+                    Level per area 0–{MAX_LEVEL} (born + governing + trinkets): +{LEVEL_PCT}% a level
+                    to that line where the house governs. The ruler lends half its levels to the
+                    realm.
+                  </span>
+                  <span>
+                    Power = people governed + levels. Outweighing the throne breeds unrest; at{' '}
+                    {REVOLT_AT}, civil war.
+                  </span>
+                  <span>
+                    Taking a settlement from a house: +10 unrest. More{' '}
+                    {word === 'house' ? 'houses' : 'parties'} rise in later ages, up to five.
+                  </span>
+                </>
+              )}
+            </InfoButton>
           </h2>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
           </button>
         </header>
-        <p className="muted small">
-          {demo
-            ? `Under Democracy the houses are parties: give them settlements freely; the party that governs the most people leads. Rivalry rarely turns to war, but trinkets count for ${Math.round(0.4 * 100)}% of their worth.`
-            : `Each settlement is governed by a house. A house's level in an area (0–${MAX_LEVEL}: what it was born with, what governing has taught it, and its trinkets) gives +${LEVEL_PCT}% per level to that line where it governs; the ruling house lends half of its levels to the whole realm. Power is the people a house governs and its levels: a house that outweighs the throne grows restless, and at ${REVOLT_AT} the realm splits in civil war.`}
-        </p>
 
         {war?.pending && rebel && (
           <div className="civil-war">
-            <b>Civil war!</b> House {rebel.name} has risen against House {ruler.name}. The realm
-            will split: choose your side. Your side keeps the other houses and your alliances; the
-            other becomes a realm of its own, at war with you for {CIVIL_WAR_TURNS} turns.
+            <b>Civil war!</b> {rebel.name} rises against {ruler.name}. Choose a side.{' '}
+            <InfoButton label="About civil war">
+              Your side keeps the other houses and your alliances; the other becomes a realm of its
+              own, at war with you for {CIVIL_WAR_TURNS} turns.
+            </InfoButton>
             <button className="primary" onClick={() => act(chooseSide(game, civId, ruler.id))}>
-              Stand with House {ruler.name} (the throne)
+              {ruler.name} (throne)
             </button>
             <button onClick={() => act(chooseSide(game, civId, rebel.id))}>
-              Stand with House {rebel.name} (the rebels)
+              {rebel.name} (rebels)
             </button>
           </div>
         )}
         {war && !war.pending && war.rival !== undefined && (
           <div className="civil-war">
-            <b>Civil war</b> against the {game.civs[war.rival].name}: turn{' '}
-            {Math.min(CIVIL_WAR_TURNS, game.turn - war.since)} of {CIVIL_WAR_TURNS}. Take all their
-            settlements to win outright; otherwise the bigger army takes the throne, and armies
-            within 10% of each other end in a stalemate (two realms). Armies now: yours{' '}
-            {Math.round(armyStrength(game, civId))}, theirs{' '}
-            {Math.round(armyStrength(game, war.rival))}.
+            <b>Civil war</b> vs the {game.civs[war.rival].name}: turn{' '}
+            {Math.min(CIVIL_WAR_TURNS, game.turn - war.since)}/{CIVIL_WAR_TURNS}{' '}
+            <span className="chip" title="Army strength: yours vs theirs">
+              <Ico name="army" fallback="⚔" size={18} />{' '}
+              <b>
+                {Math.round(armyStrength(game, civId))} : {Math.round(armyStrength(game, war.rival))}
+              </b>
+            </span>{' '}
+            <InfoButton label="How the civil war ends">
+              Take all their settlements to win outright. Otherwise the bigger army takes the throne;
+              armies within 10% end in a stalemate (two realms).
+            </InfoButton>
             <button onClick={() => act(yieldThrone(game, civId))}>Yield the throne</button>
           </div>
         )}
@@ -140,10 +165,20 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
                   <span style={{ width: `${pw.share * 100}%`, background: d.color }} />
                   {!isRuler && <i style={{ left: `${rulerShare * 100}%` }} title="The throne" />}
                 </div>
-                <small className="muted">
-                  {Math.round(pw.share * 100)}% of the realm · {pw.people.toLocaleString()} people
-                  {!isRuler && pw.share > rulerShare ? ' · outweighs the throne' : ''}
-                </small>
+                <span className="chips small">
+                  <span className="chip" title="Share of the realm's power">
+                    <Ico name="dynasties" fallback="♛" size={16} />{' '}
+                    <b>{Math.round(pw.share * 100)}%</b>
+                  </span>
+                  <span className="chip" title="People governed">
+                    <Ico name="people" fallback="☺" size={16} /> <b>{pw.people.toLocaleString()}</b>
+                  </span>
+                  {!isRuler && pw.share > rulerShare ? (
+                    <span className="bad" title="Outweighs the throne">
+                      <Ico name="warning" fallback="!" size={16} /> &gt; throne
+                    </span>
+                  ) : null}
+                </span>
                 {!isRuler && (
                   <div className="unrest">
                     <small>Unrest</small>
@@ -160,9 +195,9 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
                       className="small"
                       disabled={civ.gold < honoursCost(game, civ) || d.unrest <= 0}
                       onClick={() => act(grantHonours(game, civId, d.id))}
-                      title="Honours at court calm a restless house"
+                      title={`Honours at court calm a restless house (${honoursCost(game, civ)} gold)`}
                     >
-                      Honours ({honoursCost(game, civ)} gold)
+                      Honours <Ico name="gold" fallback="¤" size={14} /> {honoursCost(game, civ)}
                     </button>
                   </div>
                 )}
@@ -188,14 +223,18 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
                       </div>
                     ))
                   ) : (
-                    <span className="muted small">No strengths yet.</span>
+                    <span className="muted small">—</span>
                   )}
                 </div>
                 {d.trinkets.length > 0 && (
-                  <p className="small muted">Trinkets: {d.trinkets.map(t => t.name).join(', ')}</p>
+                  <p className="small muted" title="Trinkets">
+                    <Ico name="gift" fallback="✦" size={14} />{' '}
+                    {d.trinkets.map(t => t.name).join(', ')}
+                  </p>
                 )}
-                <p className="small muted">
-                  Governs: {governs.length ? governs.map(c => c.name).join(', ') : 'nothing'}
+                <p className="small muted" title="Governs">
+                  <Ico name="city" fallback="⌂" size={14} />{' '}
+                  {governs.length ? governs.map(c => c.name).join(', ') : '—'}
                 </p>
               </div>
             );
@@ -204,7 +243,7 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
 
         {civ.trinkets.length > 0 && (
           <>
-            <h3>Treasury: trinkets to give</h3>
+            <h3>Trinkets to give</h3>
             <div className="trinket-pool">
               {civ.trinkets.map(t => (
                 <div key={t.id} className="row">
@@ -273,12 +312,6 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
             })}
           </tbody>
         </table>
-        {!demo && (
-          <p className="muted small">
-            Taking a settlement from a house offends it (+10 unrest). More{' '}
-            {word === 'house' ? 'houses' : 'parties'} rise in later ages, up to five.
-          </p>
-        )}
       </div>
     </div>
   );

@@ -54,23 +54,23 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
       >
         <header>
           <h2>
-            Goods <small>a turn</small>
+            Goods <small>a turn</small>{' '}
+            <InfoButton label="How goods work">
+              <span>
+                Special goods (minerals, crops, furs, whales, pearls): a town by the deposit and{' '}
+                {SPECIAL_MIN}+ of the working building in one district, then 1 each.
+              </span>
+              <span>
+                Comforts: 1 luxury a turn per {COMFORT_PEOPLE.toLocaleString()} people. Cities burn
+                coal or wood. Workshops and smithies work goods up.
+              </span>
+              <span>A good that runs out lowers what depends on it.</span>
+              <span>
+                Store: {STORE_PER_CELL} per cell that makes it + {STORE_PER_CELL} per settlement;
+                the rest is lost.
+              </span>
+            </InfoButton>
           </h2>
-          <InfoButton label="How goods work" align="right">
-            <span>
-              Special goods (minerals, crops, furs, whales, pearls): a town by the deposit and{' '}
-              {SPECIAL_MIN}+ of the working building in one district, then 1 each.
-            </span>
-            <span>
-              Comforts: 1 luxury a turn per {COMFORT_PEOPLE.toLocaleString()} people. Cities burn
-              coal or wood. Workshops and smithies work goods up.
-            </span>
-            <span>A good that runs out lowers what depends on it.</span>
-            <span>
-              Store: {STORE_PER_CELL} per cell that makes it + {STORE_PER_CELL} per settlement; the
-              rest is lost.
-            </span>
-          </InfoButton>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
           </button>
@@ -110,7 +110,7 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
                 <Ico name="production" fallback="+" size={18} />
               </th>
               <th title="Used a turn" aria-label="Used a turn">
-                <Ico name="upkeep" fallback="−" size={18} />
+                <Ico name="minus" fallback="−" size={18} />
               </th>
               <th title="Trade a turn" aria-label="Trade a turn">
                 <Ico name="trade" fallback="⇄" size={18} />

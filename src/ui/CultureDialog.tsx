@@ -21,7 +21,8 @@ import {
 } from '../engine/culture.ts';
 import { identity } from '../engine/mods.ts';
 import type { Civ, GameState } from '../engine/types.ts';
-import { Art } from './bits.tsx';
+import { Art, Ico, InfoButton } from './bits.tsx';
+import { EffChips, modEffs } from './NationDialog.tsx';
 
 interface Props {
   game: GameState;
@@ -65,12 +66,12 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
         ? 'Adopted'
         : st.kind === 'legacy'
           ? st.adoptable
-            ? `Legacy (half effect) · re-adopt for ${cost}`
-            : 'Legacy (half effect)'
+            ? `Legacy ½ · ${cost}`
+            : 'Legacy ½'
           : st.kind === 'locked'
             ? `Closed by ${CULTURE[st.by].name}`
             : st.kind === 'upheaval'
-              ? 'Domain in upheaval'
+              ? 'In upheaval'
               : st.kind === 'needs'
                 ? `Needs ${st.missing
                     .map(m =>
@@ -80,7 +81,7 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
                         .join(' or '),
                     )
                     .join(', ')}`
-                : `${cost} culture`;
+                : null;
     const crossReq = [...n.requires, ...n.requiresAny].filter(r => CULTURE[r]?.domain !== n.domain);
     return (
       <button
@@ -99,16 +100,24 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
             <TagChip key={t} tag={t} />
           ))}
         </span>
-        <small>{describeMods(n.mods)}</small>
+        <EffChips effs={modEffs(n.mods, st.kind === 'legacy' ? 0.5 : 1)} />
         {crossReq.length > 0 && (
-          <small className="muted">
-            ↔{' '}
-            {crossReq
+          <small
+            className="muted"
+            title={crossReq
               .map(r => `${CULTURE[r].name} (${DOMAINS[CULTURE[r].domain].name})`)
               .join(', ')}
+          >
+            ↔ {crossReq.map(r => CULTURE[r].name).join(', ')}
           </small>
         )}
-        <small className={`cstate ${st.kind}`}>{reason}</small>
+        {reason ? (
+          <small className={`cstate ${st.kind}`}>{reason}</small>
+        ) : (
+          <small className={`cstate ${st.kind}`} title={`${cost} culture`}>
+            <Ico name="culture" fallback="♪" size={14} /> {cost}
+          </small>
+        )}
       </button>
     );
   };
@@ -119,9 +128,19 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
         <header>
           <h2>
             Culture{' '}
-            <small>
-              {Math.floor(c.points)} culture (+{perTurn}/turn) · {c.taken.length} adopted
-              {c.legacy.length ? ` · ${c.legacy.length} legacy` : ''}
+            <small className="chips nd-head-chips">
+              <span className="chip" title="Culture (a turn)">
+                <Ico name="culture" fallback="♪" size={18} /> <b>{Math.floor(c.points)}</b>{' '}
+                <span className="delta good">+{perTurn}</span>
+              </span>
+              <span className="chip" title="Adopted">
+                <Ico name="check" fallback="✓" size={16} /> <b>{c.taken.length}</b>
+              </span>
+              {c.legacy.length ? (
+                <span className="chip" title="Legacy (half effect)">
+                  ½ <b>{c.legacy.length}</b>
+                </span>
+              ) : null}
             </small>
           </h2>
           <button className="x" onClick={onClose}>
@@ -130,10 +149,8 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
         </header>
 
         <div className="identity">
-          <span className="muted small">Identity:</span>
-          {ident.length === 0 && (
-            <span className="muted small">none yet: every people starts the same.</span>
-          )}
+          <span className="muted small">Identity</span>
+          {ident.length === 0 && <span className="muted small">—</span>}
           {ident.map(i => (
             <span
               key={i.tag}
@@ -148,35 +165,33 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
               </span>
             </span>
           ))}
+          {ident.some(i => i.tier > 0) && (
+            <InfoButton label="Identity bonuses">
+              {ident
+                .filter(i => i.tier > 0)
+                .map(i => (
+                  <span key={i.tag}>
+                    <b>{TAGS[i.tag].name}:</b>{' '}
+                    {TAGS[i.tag].tiers.slice(0, i.tier).map(describeMods).join(', ')}
+                  </span>
+                ))}
+            </InfoButton>
+          )}
         </div>
-        {ident.some(i => i.tier > 0) && (
-          <p className="small">
-            {ident
-              .filter(i => i.tier > 0)
-              .map(
-                i =>
-                  `${TAGS[i.tag].name}: ${TAGS[i.tag].tiers.slice(0, i.tier).map(describeMods).join(', ')}`,
-              )
-              .join(' · ')}
-          </p>
-        )}
         {c.upheaval && (
           <p className="upheaval-banner">
-            {DOMAINS[c.upheaval.domain].upheaval} in progress: {c.upheaval.turnsLeft} turns left.
-            Yields and morale suffer until it ends; then the old{' '}
-            {DOMAINS[c.upheaval.domain].name.toLowerCase()} gives way and closed paths reopen.
+            {DOMAINS[c.upheaval.domain].upheaval}: {c.upheaval.turnsLeft} turns left{' '}
+            <InfoButton label="About upheavals">
+              Yields and morale suffer until it ends; then the old{' '}
+              {DOMAINS[c.upheaval.domain].name.toLowerCase()} gives way and closed paths reopen.
+            </InfoButton>
           </p>
         )}
 
         <div className="row filter-row">
           <button className={showAll ? 'on' : ''} onClick={() => setShowAll(v => !v)}>
-            {showAll ? 'Show only what I can take' : `Show locked choices (${hidden})`}
+            {showAll ? 'Hide locked' : `Locked (${hidden})`}
           </button>
-          {!showAll && (
-            <small className="muted">
-              Only adopted choices and those open now are shown; locked ones say what they need.
-            </small>
-          )}
         </div>
         <div className="domain-tabs">
           <button className={focus === 'all' ? 'on' : ''} onClick={() => setFocus('all')}>
@@ -202,8 +217,9 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
               <div key={d} className="domain-row" style={{ borderLeftColor: DOMAINS[d].color }}>
                 <div className="domain-head">
                   <Art k={`domain/${d}`} size={40} />
-                  <h3 style={{ color: DOMAINS[d].color }}>{DOMAINS[d].name}</h3>
-                  <small className="muted">{DOMAINS[d].note}</small>
+                  <h3 style={{ color: DOMAINS[d].color }} title={DOMAINS[d].note}>
+                    {DOMAINS[d].name}
+                  </h3>
                   <div
                     className="tension"
                     title={`Tension builds as you go deep down a path and when neighbours with opposed ideas press on you. At ${UPHEAVAL_AT} you may call a ${DOMAINS[d].upheaval.toLowerCase()}; at ${FORCED_AT} it comes on its own.`}
@@ -216,7 +232,9 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
                     />
                     <i style={{ left: `${(UPHEAVAL_AT / FORCED_AT) * 100}%` }} />
                   </div>
-                  <small>Tension {Math.round(t)}</small>
+                  <small title="Tension">
+                    <Ico name="warning" fallback="!" size={14} /> {Math.round(t)}
+                  </small>
                   <button
                     className="small-btn"
                     disabled={!!why}
@@ -263,10 +281,8 @@ export function KeepDialog({ civ, onKeep }: { civ: Civ; onKeep: (ids: string[]) 
     <div className="modal-back">
       <div className="modal confirm keep" onClick={e => e.stopPropagation()}>
         <h2>The {DOMAINS[d].upheaval.toLowerCase()} is over</h2>
-        <p className="muted">
-          Keep up to {KEEP_AFTER_UPHEAVAL} of your {DOMAINS[d].name.toLowerCase()} choices. The
-          others become legacy: half their effect, no tags. Forks they closed open again, so you can
-          take a new path.
+        <p className="muted small">
+          Keep up to {KEEP_AFTER_UPHEAVAL}. The rest: ½ effect, no tags; their forks reopen.
         </p>
         <div className="keep-list">
           {opts.map(id => (
@@ -280,7 +296,7 @@ export function KeepDialog({ civ, onKeep }: { civ: Civ; onKeep: (ids: string[]) 
                 }
               />
               <b>{CULTURE[id].name}</b>{' '}
-              <small className="muted">{describeMods(CULTURE[id].mods)}</small>
+              <EffChips effs={modEffs(CULTURE[id].mods)} />
             </label>
           ))}
           {!opts.length && <p className="muted">Nothing to keep.</p>}

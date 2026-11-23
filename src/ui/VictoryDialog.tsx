@@ -1,6 +1,25 @@
 import { DEFAULT_TURN_LIMIT, score } from '../engine/game.ts';
 import type { GameState } from '../engine/types.ts';
+import { Ico, InfoButton } from './bits.tsx';
 import { holdLeft, isOpen, opensText, progress, VICTORIES, victoryOn } from '../engine/victory.ts';
+
+const V_ICON: Record<string, string> = {
+  conquest: 'war',
+  cultural: 'culture',
+  economic: 'gold',
+  diplomatic: 'peace',
+  scientific: 'science',
+};
+
+/** The engine's progress line, cut to its numbers: "12% / 40%", "3 rivals left". */
+const short = (t: string) =>
+  t
+    .replace(/^(\d+)% of .*\(goal (\d+)%\)/, '$1% / $2%')
+    .replace(/^(\d+) rival peoples? remains?/, '$1 rivals left')
+    .replace(/^League of (\d+) holds (\d+)% of the world's people/, 'League $1 · $2%')
+    .replace(', but you are not its largest member', ' · not largest')
+    .replace(/ Industrial techs, /, ' techs · ')
+    .replace(/ national projects/, ' projects');
 
 /** Every way to win: what it asks, when it opens, how close you and the leading rival are. */
 export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () => void }) {
@@ -19,30 +38,25 @@ export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () 
       >
         <header>
           <h2>
-            Victory <small>the ways to win</small>
+            Victory{' '}
+            <InfoButton label="About victories">
+              Conquest: open from the start. Cultural and Economic: from the Renaissance.
+              Diplomatic and Scientific: from the Industrial age. A dominance goal must be held for
+              some turns; everyone is warned when someone holds one.
+            </InfoButton>
           </h2>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
           </button>
         </header>
-        <p className="muted small">
-          Conquest is open from the start. Cultural domination and Economic dominance open for a
-          people when it enters the Renaissance; the Diplomatic federation and Scientific victory in
-          the Industrial age. A dominance goal must be held for a number of turns, and everyone is
-          warned when someone holds one.
-        </p>
         {game.coalition && (
           <p className={`small ${game.coalition.against === me.id ? 'warn' : ''}`}>
-            <b>Coalition:</b>{' '}
-            {game.coalition.members
-              .map(id => game.civs[id].name)
-              .map(n => `the ${n}`)
-              .join(', ')}{' '}
-            stand against{' '}
-            {game.coalition.against === me.id
-              ? `you, because you ${game.coalition.reason}`
-              : `the ${game.civs[game.coalition.against].name}, because they ${game.coalition.reason}`}
-            .
+            <Ico name="warning" fallback="!" /> <b>Coalition</b>{' '}
+            {game.coalition.members.map(id => game.civs[id].name).join(', ')} vs{' '}
+            {game.coalition.against === me.id ? 'you' : game.civs[game.coalition.against].name}{' '}
+            <InfoButton label="Why the coalition">
+              {game.coalition.against === me.id ? 'You' : 'They'} {game.coalition.reason}.
+            </InfoButton>
           </p>
         )}
         <div className="victory-list">
@@ -53,9 +67,9 @@ export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () 
               return (
                 <section key={v.id} className="victory-row locked">
                   <h3>
-                    {v.name} <small>off in this game</small>
+                    <Ico name={V_ICON[v.id] ?? 'laurel'} fallback="★" size={20} /> {v.name}{' '}
+                    <small>off</small>
                   </h3>
-                  <p className="small muted">Turned off when the game was set up.</p>
                 </section>
               );
             const lead = rivals
@@ -65,9 +79,14 @@ export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () 
             return (
               <section key={v.id} className={`victory-row ${open ? '' : 'locked'}`}>
                 <h3>
-                  {v.name} <small>{open ? 'open' : opensText(v)}</small>
+                  <Ico name={V_ICON[v.id] ?? 'laurel'} fallback="★" size={20} /> {v.name}{' '}
+                  {!open && (
+                    <small>
+                      <Ico name="lock" fallback="🔒" size={12} /> {opensText(v)}
+                    </small>
+                  )}{' '}
+                  <InfoButton label={`${v.name}: the goal`}>{v.goal}</InfoButton>
                 </h3>
-                <p className="small">{v.goal}</p>
                 <Bar label="You" value={mine.value} text={mine.text} />
                 {lead && (
                   <Bar
@@ -81,9 +100,10 @@ export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () 
                 )}
                 {hold && hold.left > 0 && (
                   <p className={`small ${hold.civId === me.id ? '' : 'warn'}`}>
+                    <Ico name="end-turn" fallback="⌛" size={14} />{' '}
                     {hold.civId === me.id
-                      ? `You hold this goal: ${hold.left} more turns to win.`
-                      : `The ${game.civs[hold.civId].name} hold this goal: they win in ${hold.left} turns.`}
+                      ? `You win in ${hold.left} turns`
+                      : `${game.civs[hold.civId].name} win in ${hold.left} turns`}
                   </p>
                 )}
               </section>
@@ -91,12 +111,12 @@ export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () 
           })}
           <section className="victory-row">
             <h3>
-              Score <small>at turn {limit}</small>
+              <Ico name="laurel" fallback="★" size={20} /> Score <small>turn {limit}</small>{' '}
+              <InfoButton label="About score">
+                If nobody wins first, the best score at turn {limit} wins (people, settlements,
+                techs, culture).
+              </InfoButton>
             </h3>
-            <p className="small">
-              If nobody wins before, the best score at turn {limit} wins (people, settlements,
-              techs, culture).
-            </p>
             <Bar label="You" value={1} text={`${score(game, me.id)} points`} plain />
             {best && (
               <Bar
@@ -141,7 +161,9 @@ function Bar({
           <span className="vbar-fill" style={{ width: `${Math.round(value * 100)}%` }} />
         </span>
       )}
-      <span className="vbar-text small">{text}</span>
+      <span className="vbar-text small" title={text}>
+        {short(text)}
+      </span>
     </div>
   );
 }

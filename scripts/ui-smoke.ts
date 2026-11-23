@@ -29,6 +29,9 @@ await page.waitForSelector('.map-canvas');
 await page.waitForTimeout(400);
 await page.screenshot({ path: `${out}/2-start.png` });
 await page.click('button:has-text("Found city")');
+// a new settlement is named first: keep the suggested name
+await page.waitForSelector('.modal.name-city');
+await page.keyboard.press('Enter');
 await page.waitForTimeout(200);
 if (!(await page.$('.modal.research'))) await page.click('.research-btn');
 await page.screenshot({ path: `${out}/2b-research.png` });
@@ -115,7 +118,7 @@ await page.screenshot({ path: `${out}/3b-district.png` });
 if (await page.$('.district-tabs button.add')) throw new Error('a town offered a third district');
 await page.click('.modal.city-screen .x');
 // the goods ledger
-await page.keyboard.press('g');
+await page.click('.topbar button:has-text("Goods")');
 await page.waitForSelector('.modal.goods-ledger');
 await page.screenshot({ path: `${out}/3c-goods.png` });
 await page.click('.modal.goods-ledger .x');

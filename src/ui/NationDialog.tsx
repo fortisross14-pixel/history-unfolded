@@ -102,17 +102,17 @@ export function NationDialog({
                 ? 'Found a faith'
                 : tenetDue(game, civ.id)
                   ? 'Choose a tenet'
-                  : 'See faiths (I)'}
+                  : 'See faiths'}
             </button>{' '}
             · {wondersOf(game, civ.id).length} world wonders held.{' '}
             <button className="link" onClick={onWonders}>
-              Wonders (W)
+              Wonders
             </button>
           </p>
         )}
         {opened.length > 0 && (
           <p className="small">
-            Victories now open: <b>{opened.map(v => v.name).join(' and ')}</b>. See Victory (V).
+            Victories now open: <b>{opened.map(v => v.name).join(' and ')}</b>. See Victory.
           </p>
         )}
 

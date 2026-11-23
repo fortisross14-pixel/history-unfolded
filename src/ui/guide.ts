@@ -24,7 +24,7 @@ export const GUIDE: GuideStep[] = [
   {
     id: 'found',
     title: 'Found your first settlement',
-    hint: 'Select your settlers and press Found city (B). Good spots have food, a river or coast, and room around them for districts.',
+    hint: 'Select your settlers and press Found city. Good spots have food, a river or coast, and room around them for districts.',
     show: 'settlers',
     done: (s, id) => mine(s, id).length >= 1,
   },
@@ -38,7 +38,7 @@ export const GUIDE: GuideStep[] = [
   {
     id: 'district',
     title: 'Plan a building',
-    hint: 'Open your settlement (C) and place a building: a farm for food, or houses for more people. Production builds it over a few turns.',
+    hint: 'Open your settlement and place a building: a farm for food, or houses for more people. Production builds it over a few turns.',
     show: 'city-dialog',
     done: (s, id) => {
       const cities = new Set(mine(s, id).map(c => c.id));
@@ -57,7 +57,7 @@ export const GUIDE: GuideStep[] = [
   {
     id: 'road',
     title: 'Raise workers and build a road',
-    hint: 'In your settlement panel choose Send workers. With them selected, press Build road (R) on the way to your next town: roads halve moves and join markets.',
+    hint: 'In your settlement panel choose Send workers. With them selected, press Build road on the way to your next town: roads halve moves and join markets.',
     show: 'city',
     done: (s, id) => {
       const own = territory(s);
@@ -74,7 +74,7 @@ export const GUIDE: GuideStep[] = [
   {
     id: 'meet',
     title: 'Meet your neighbours',
-    hint: 'When your scouts meet another people, open Peoples (P): what they think of you, why, and what they intend.',
+    hint: 'When your scouts meet another people, open Peoples: what they think of you, why, and what they intend.',
     show: 'peoples',
     done: (s, id) => s.civs[id].met.some(o => !s.civs[o].independent) && seen(s, 'peoples'),
   },
@@ -91,14 +91,14 @@ export const GUIDE: GuideStep[] = [
   {
     id: 'culture',
     title: 'Make a culture choice',
-    hint: 'Open Culture (K) and spend your culture points. Each choice gives a bonus and shapes who your people are.',
+    hint: 'Open Culture and spend your culture points. Each choice gives a bonus and shapes who your people are.',
     show: 'culture',
     done: (s, id) => s.civs[id].culture.taken.length > 0,
   },
   {
     id: 'victory',
     title: 'See how you can win',
-    hint: 'Open Victory (V): the ways to win, when each opens, and who is close. Then the game is yours. The Codex (H) explains everything else.',
+    hint: 'Open Victory: the ways to win, when each opens, and who is close. Then the game is yours. The Codex explains everything else.',
     show: 'victory',
     done: s => seen(s, 'victory'),
   },

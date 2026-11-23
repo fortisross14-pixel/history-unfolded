@@ -223,10 +223,7 @@ export function CityPanel({
               <Icon name="people" /> Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
             </button>
             {onWonder && rankOf(c.tier) >= rankOf('town') && (
-              <button
-                onClick={onWonder}
-                title="World wonders: a race, one of each in the world (W)"
-              >
+              <button onClick={onWonder} title="World wonders: a race, one of each in the world">
                 {c.wonder ? `Wonder: ${WONDERS[c.wonder.id].name}` : 'Build a wonder…'}
               </button>
             )}

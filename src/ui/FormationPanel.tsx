@@ -333,7 +333,7 @@ export function FormationPanel(p: Props) {
             <button
               className="primary"
               disabled={!!foundWhy}
-              title={foundWhy ?? 'Found a city here (B)'}
+              title={foundWhy ?? 'Found a city here'}
               onClick={p.onFound}
             >
               <Icon name="flag" /> Found city
@@ -344,8 +344,7 @@ export function FormationPanel(p: Props) {
               onClick={p.onRoad}
               disabled={!!railWhy}
               title={
-                railWhy ??
-                `Lay a railway over this road (R): ${RAIL_GOLD} gold, the remaining moves.`
+                railWhy ?? `Lay a railway over this road: ${RAIL_GOLD} gold, the remaining moves.`
               }
             >
               <Icon name="road" /> Lay railway
@@ -362,7 +361,7 @@ export function FormationPanel(p: Props) {
                   roadWhy ??
                   (game.roads[f.hex]
                     ? 'There is a road here'
-                    : 'Lay a road on this hex (R). Uses the remaining moves.')
+                    : 'Lay a road on this hex. Uses the remaining moves.')
                 }
               >
                 <Icon name="road" /> Build road
@@ -389,19 +388,19 @@ export function FormationPanel(p: Props) {
               Explore
             </button>
           )}
-          <button onClick={p.onFortify} title="F">
+          <button onClick={p.onFortify} title="">
             <Icon name="fortify" /> {f.fortified ? 'Wake' : 'Fortify'}
           </button>
           {p.onSentry && f.kind !== 'settlers' && (
             <button
               onClick={p.onSentry}
-              title="Z: wait here, out of the to-do list, until enemies come within 3 hexes"
+              title="wait here, out of the to-do list, until enemies come within 3 hexes"
             >
               {f.sentry ? 'Off sentry' : 'Sentry'}
             </button>
           )}
           {p.onSkip && f.moves > 0 && f.skip !== game.turn && (
-            <button onClick={p.onSkip} title="X: nothing for it this turn">
+            <button onClick={p.onSkip} title="nothing for it this turn">
               Skip turn
             </button>
           )}

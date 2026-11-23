@@ -115,6 +115,7 @@ type Dialog =
   | { kind: 'empire' }
   | { kind: 'faith' }
   | { kind: 'settings' }
+  | { kind: 'name-city'; cityId: number }
   | { kind: 'codex'; q?: string }
   | { kind: 'saves' }
   | { kind: 'wonders'; cityId?: number }
@@ -159,31 +160,11 @@ function nextLabel(
 const KEYS: [string, string][] = [
   ['Click', 'Select a unit, city or hex'],
   ['Right-click', 'Move the selected unit there, or attack'],
-  ['Enter', 'End the turn (asks once if units still wait)'],
-  ['Space N', 'Next thing to do: research, a city to plan, a unit to order'],
-  ['F', 'Fortify'],
-  ['B', 'Found a city (settlers)'],
-  ['R', 'Build a road'],
-  ['C', 'Open the selected city'],
-  ['T', 'Research'],
-  ['K', 'Culture'],
   ['W A S D', 'Move the map (arrow keys too)'],
-  ['U', 'Unit designs'],
-  ['P', 'Peoples and diplomacy'],
-  ['G', 'Goods: made, used and traded per turn'],
-  ['V', 'Victory: the ways to win and who is closest'],
-  ['O', 'Nation: national directions, edicts and crises'],
-  ['L', 'Chronicle and statistics: rankings, charts, history'],
-  ['Z', 'Sentry: wait until enemies come near'],
-  ['X', 'Skip the selected unit this turn'],
-  ['E', 'Empire: all settlements and armies, find by name'],
-  ['I', 'Faith: found one, choose its tenets, see the faiths of the world'],
-  ['W', 'World wonders: the race, and building one'],
-  ['M', 'Show or hide the minimap'],
-  ['Y', 'Dynasties: houses, governors, trinkets'],
+  ['Wheel', 'Zoom the map'],
+  ['Enter', 'End the turn (asks once if units still wait)'],
+  ['Space', 'Next thing to do: research, a city to plan, a unit to order'],
   ['Esc', 'Close a window, or clear the selection'],
-  ['?', 'This list'],
-  ['H', 'Codex: search the help'],
 ];
 
 export function Game({
@@ -672,40 +653,13 @@ export function Game({
         }
         endArmed.current = false;
         doEndTurn();
-      } else if (key === ' ' || key === 'n') {
+      } else if (key === ' ') {
         e.preventDefault();
         doNext();
       } else if (key === 'Escape') {
         setSel(null);
         setArmed(-1);
-      } else if (key === 'f' && mySelF) report(fortify(game, mySelF.id));
-      else if (key === 'z' && mySelF) {
-        report(sentry(game, mySelF.id));
-        selectNext();
-      } else if (key === 'x' && mySelF) {
-        mySelF.skip = game.turn;
-        if (!selectNext()) setSel(null);
-        bump();
-      } else if (key === 'b' && mySelF?.kind === 'settlers') report(foundCity(game, mySelF.id));
-      else if (key === 'u') setDialog({ kind: 'designs' });
-      else if (key === 'p') setDialog({ kind: 'peoples' });
-      else if (key === 'g') setDialog({ kind: 'goods' });
-      else if (key === 'v') setDialog({ kind: 'victory' });
-      else if (key === 'o') setDialog({ kind: 'nation' });
-      else if (key === 'l') setDialog({ kind: 'stats' });
-      else if (key === 'e') setDialog({ kind: 'empire' });
-      else if (key === 'i') setDialog({ kind: 'faith' });
-      else if (key === 'w')
-        setDialog({ kind: 'wonders', cityId: selCity?.civId === me.id ? selCity.id : undefined });
-      else if (key === 'm') toggleMini();
-      else if (key === 'y') setDialog({ kind: 'dynasties' });
-      else if (key === '?') setDialog({ kind: 'keys' });
-      else if (key === 'h') setDialog({ kind: 'codex' });
-      else if (key === 'k') setDialog({ kind: 'culture' });
-      else if (key === 't') setDialog({ kind: 'research' });
-      else if (key === 'r' && mySelF) report(buildRoad(game, mySelF.id));
-      else if (key === 'c' && selCity && selCity.civId === me.id)
-        setDialog({ kind: 'city', cityId: selCity.id });
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -890,7 +844,7 @@ export function Game({
         <button
           className="research-btn tracker"
           onClick={() => setDialog({ kind: 'research' })}
-          title="Research (T)"
+          title="Research"
         >
           <span className="trk-ico">
             <Icon name="research" />
@@ -919,7 +873,7 @@ export function Game({
         <button
           className="research-btn tracker culture-btn"
           onClick={() => setDialog({ kind: 'culture' })}
-          title="Culture (K)"
+          title="Culture"
         >
           <span className="trk-ico">
             <Icon name="culture" />
@@ -943,14 +897,14 @@ export function Game({
             <button
               className="link"
               onClick={() => setDialog({ kind: 'empire' })}
-              title="Empire: settlements, armies, find (E)"
+              title="Empire: settlements, armies, find"
             >
               <Icon name="sight" /> Find
             </button>
             <button
               className="link"
               onClick={toggleMini}
-              title="Show or hide the minimap (M)"
+              title="Show or hide the minimap"
               aria-pressed={mini}
             >
               {mini ? 'Hide map' : 'Minimap'}
@@ -998,13 +952,13 @@ export function Game({
               <TagChip key={i.tag} tag={i.tag} />
             ))}
         </span>
-        <button className="secondary" onClick={() => setDialog({ kind: 'designs' })} title="D">
+        <button className="secondary" onClick={() => setDialog({ kind: 'designs' })} title="">
           <Icon name="designs" /> Designs ({me.designs.length})
         </button>
         <button
           className="secondary"
           onClick={() => setDialog({ kind: 'dynasties' })}
-          title="Dynasties (Y)"
+          title="Dynasties"
         >
           <Icon name="dynasties" />
           <span className="wide-only"> House {rulerOf(me).name}</span>
@@ -1021,7 +975,7 @@ export function Game({
         <button
           className="secondary"
           onClick={() => setDialog({ kind: 'nation' })}
-          title="Nation: national directions and edicts (O)"
+          title="Nation: national directions and edicts"
         >
           <Icon name="flag" /> Nation
           {me.crisis ? (
@@ -1035,14 +989,14 @@ export function Game({
         <button
           className="secondary"
           onClick={() => setDialog({ kind: 'stats' })}
-          title="Chronicle and statistics: compare peoples (L)"
+          title="Chronicle and statistics: compare peoples"
         >
           <Icon name="book" /> Chronicle
         </button>
         <button
           className="secondary"
           onClick={() => setDialog({ kind: 'victory' })}
-          title="Victory: the ways to win (V)"
+          title="Victory: the ways to win"
         >
           <Icon name="target" /> Victory
           {rivalHold ? <b className="war-pill">{rivalHold} close</b> : ''}
@@ -1050,7 +1004,7 @@ export function Game({
         <button
           className="secondary"
           onClick={() => setDialog({ kind: 'goods' })}
-          title="Goods per turn (G)"
+          title="Goods per turn"
         >
           <Icon name="goods" /> Goods
           {goodsShort ? <b className="war-pill">{goodsShort} short</b> : ''}
@@ -1098,7 +1052,7 @@ export function Game({
         <button
           className="secondary round"
           onClick={() => setDialog({ kind: 'codex' })}
-          title="Codex: help for every part of the game (H)"
+          title="Codex: help for every part of the game"
           aria-label="Codex and help"
         >
           <Icon name="help" />
@@ -1176,10 +1130,11 @@ export function Game({
             onFound={() => {
               const hex = selF.hex;
               const r = report(foundCity(game, selF.id));
-              // research and the city's first district wait in the to-do list
-              if (r.ok && !selectNext()) {
-                const c = cityAt(game, hex);
-                setSel(c ? { kind: 'city', id: c.id } : null);
+              const c = r.ok ? cityAt(game, hex) : undefined;
+              if (c) {
+                // a new settlement is named first
+                setSel({ kind: 'city', id: c.id });
+                setDialog({ kind: 'name-city', cityId: c.id });
               }
             }}
             onFortify={() => report(fortify(game, selF.id))}
@@ -1340,7 +1295,7 @@ export function Game({
         >
           {todos.length ? nextLabel(todos, lastTodo.current, sel) : 'All done'}
         </button>
-        <button className="end-turn" onClick={doEndTurn} disabled={busy} title="End turn (Enter)">
+        <button className="end-turn" onClick={doEndTurn} disabled={busy} title="End turn">
           <Icon name="end-turn" className="end-ico" line />
           <b>End turn</b>
           {todos.length ? <small>{todos.length} to do</small> : <small>All done</small>}
@@ -1524,6 +1479,15 @@ export function Game({
         />
       )}
       {dialog?.kind === 'settings' && <SettingsDialog onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'name-city' && (
+        <NameCity
+          suggested={game.cities.find(c => c.id === dialog.cityId)?.name ?? ''}
+          onDone={name => {
+            if (name.trim()) report(renameCity(game, dialog.cityId, name));
+            setDialog(null);
+          }}
+        />
+      )}
       {dialog?.kind === 'codex' && (
         <CodexDialog
           q={dialog.q}
@@ -1682,6 +1646,44 @@ export function Game({
       {dialog?.kind === 'battle' && (
         <BattleDialog report={dialog.report} onClose={() => setDialog(null)} />
       )}
+    </div>
+  );
+}
+
+/** Name a settlement just founded (its suggested name is ready to keep). */
+function NameCity({ suggested, onDone }: { suggested: string; onDone: (n: string) => void }) {
+  const [name, setName] = useState(suggested);
+  return (
+    <div className="modal-back" onClick={() => onDone(name)}>
+      <div
+        className="modal name-city"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Name your settlement"
+        onClick={e => e.stopPropagation()}
+      >
+        <header>
+          <h2>A new settlement</h2>
+        </header>
+        <p className="muted small">What will it be called?</p>
+        <input
+          autoFocus
+          value={name}
+          maxLength={24}
+          onFocus={e => e.target.select()}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => {
+            e.stopPropagation();
+            if (e.key === 'Enter') onDone(name);
+          }}
+          aria-label="Settlement name"
+        />
+        <div className="row">
+          <button className="primary" onClick={() => onDone(name)}>
+            Found {name.trim() || suggested}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

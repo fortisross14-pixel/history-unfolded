@@ -26,6 +26,7 @@ import {
   rankOf,
   isUrban,
   marketStock,
+  slotPreview,
   slotProblem,
   type Totals,
   workable,
@@ -46,7 +47,7 @@ import {
   type Result,
 } from '../engine/game.ts';
 import { centerUnit, within } from '../engine/hex.ts';
-import type { City, GameState } from '../engine/types.ts';
+import type { City, District, GameState } from '../engine/types.ts';
 import { Art, Goods } from './bits.tsx';
 
 interface Props {
@@ -92,6 +93,7 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
   const [hex, setHex] = useState<number>(c.hex);
   const [dSel, setDSel] = useState<number | 'new' | 'locked'>(-1);
   const [cell, setCell] = useState<number | null>(null);
+  const [tipT, setTipT] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [newName, setNewName] = useState('');
   const [bpName, setBpName] = useState('');
@@ -188,43 +190,50 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
               {sel.t?.fixed ? (
                 <p className="muted small">The town hall stays.</p>
               ) : (
-                <div className="plot-options">
-                  {sel.t && (
-                    <button
-                      className="plot-opt clear"
-                      onClick={() => act(setSlot(game, mineD.id, cell, null))}
-                    >
-                      <span className="cell-glyph">✕</span>
-                      <span>{sel.st.built ? 'Demolish' : 'Clear'}</span>
-                    </button>
+                <>
+                  {tipT && SLOT_TYPES[tipT] && (
+                    <BuildTip game={game} c={c} d={mineD} cell={cell} typeId={tipT} />
                   )}
-                  {SLOT_LIST.filter(
-                    t =>
-                      t.id !== sel.st.type &&
-                      !slotProblem(game, c.civId, mineD.hex, centre, t.id, mineD.id),
-                  ).map(t => (
-                    <button
-                      key={t.id}
-                      className="plot-opt"
-                      title={t.note}
-                      onClick={() => act(setSlot(game, mineD.id, cell, t.id))}
-                    >
-                      <Art
-                        k={`building/${t.id}`}
-                        size={30}
-                        fallback={
-                          <span
-                            className="cell-glyph"
-                            style={{ background: GROUPS[t.group].color }}
-                          >
-                            {t.glyph}
-                          </span>
-                        }
-                      />
-                      <span>{t.name}</span>
-                    </button>
-                  ))}
-                </div>
+                  <div className="plot-options">
+                    {sel.t && (
+                      <button
+                        className="plot-opt clear"
+                        onClick={() => act(setSlot(game, mineD.id, cell, null))}
+                      >
+                        <span className="cell-glyph">✕</span>
+                        <span>{sel.st.built ? 'Demolish' : 'Clear'}</span>
+                      </button>
+                    )}
+                    {SLOT_LIST.filter(
+                      t =>
+                        t.id !== sel.st.type &&
+                        !slotProblem(game, c.civId, mineD.hex, centre, t.id, mineD.id),
+                    ).map(t => (
+                      <button
+                        key={t.id}
+                        className="plot-opt"
+                        onMouseEnter={() => setTipT(t.id)}
+                        onFocus={() => setTipT(t.id)}
+                        onMouseLeave={() => setTipT(x => (x === t.id ? null : x))}
+                        onClick={() => act(setSlot(game, mineD.id, cell, t.id))}
+                      >
+                        <Art
+                          k={`building/${t.id}`}
+                          size={30}
+                          fallback={
+                            <span
+                              className="cell-glyph"
+                              style={{ background: GROUPS[t.group].color }}
+                            >
+                              {t.glyph}
+                            </span>
+                          }
+                        />
+                        <span>{t.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -811,6 +820,88 @@ export function CityDialog({ game, c, startHex, report, onClose }: Props) {
             )}
           </section>
         </div>
+      </div>
+    </div>
+  );
+}
+
+const YIELD_ICON: Record<string, [string, string]> = {
+  food: ['food', 'Food'],
+  prod: ['production', 'Production'],
+  science: ['science', 'Science'],
+  gold: ['gold', 'Gold'],
+  culture: ['culture', 'Culture'],
+  housing: ['housing', 'Room for people'],
+};
+
+/** A building on this plot: its picture, name and what it would add here each turn. */
+function BuildTip({
+  game,
+  c,
+  d,
+  cell,
+  typeId,
+}: {
+  game: GameState;
+  c: City;
+  d: District;
+  cell: number;
+  typeId: string;
+}) {
+  const t = SLOT_TYPES[typeId];
+  const p = slotPreview(game, c, d, cell, typeId);
+  const rows = [
+    ...Object.entries(p.yields).map(([k, v]) => ({
+      key: k,
+      icon: <Icon name={YIELD_ICON[k][0]} />,
+      name: YIELD_ICON[k][1],
+      v,
+      unit: k === 'housing' ? 'people' : '/turn',
+    })),
+    ...Object.entries(p.goods).map(([k, v]) => ({
+      key: k,
+      icon: <Goods goods={{ [k]: 1 }} />,
+      name: GOODS[k]?.name ?? k,
+      v,
+      unit: '/turn',
+    })),
+  ];
+  return (
+    <div className="build-tip" role="tooltip">
+      <Art
+        k={`building/${t.id}`}
+        size={34}
+        fallback={<span className="cell-glyph">{t.glyph}</span>}
+      />
+      <div>
+        <b>{t.name}</b>
+        {rows.length ? (
+          <ul>
+            {rows.map(r => (
+              <li key={r.key} className={r.v < 0 ? 'bad' : ''}>
+                <span className="tip-ico">{r.icon}</span> {r.name}{' '}
+                <b>
+                  {r.v > 0 ? '+' : ''}
+                  {r.v}
+                  {r.unit === '/turn' ? '/turn' : ` ${r.unit}`}
+                </b>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <small className="muted">
+            {t.labour
+              ? `Nothing here yet: needs ${t.labour} free workers or what it works on.`
+              : 'Nothing here yet.'}
+          </small>
+        )}
+        <small className="muted">
+          Build: {t.build.prod} production
+          {Object.entries(t.build.goods ?? {}).map(
+            ([g, n]) => `, ${n} ${GOODS[g]?.name.toLowerCase() ?? g}`,
+          )}
+          {t.labour ? ` · ${t.labour} workers` : ''}
+        </small>
       </div>
     </div>
   );

@@ -1141,6 +1141,14 @@ export function endTurn(s: GameState): string[] {
   events.push(...settleRealmEvent(s, me));
   // what the player has handed over: crews, scouts and settlements that run themselves
   playerAutomation(s, me);
+  // the player's standing orders are carried out as the turn ends, with this turn's moves
+  for (const f of [...s.formations]) {
+    if (f.civId === me.id && f.path.length && f.moves > 0 && s.formations.includes(f)) {
+      const r = advance(s, f);
+      if (!r.ok) events.push(`${f.name}: ${r.msg}`);
+      else if (r.msg) events.push(r.msg);
+    }
+  }
   const logStart = s.log.length;
   // AI acts after the player, in the same turn
   for (const civ of s.civs)
@@ -1321,14 +1329,6 @@ export function endTurn(s: GameState): string[] {
   recordStats(s);
   s.turn++;
   for (const f of s.formations) f.moves = formationMoves(f);
-  // standing orders carry on at the start of the new turn
-  for (const f of [...s.formations]) {
-    if (f.civId === me.id && f.path.length && s.formations.includes(f)) {
-      const r = advance(s, f);
-      if (!r.ok) events.push(`${f.name}: ${r.msg}`);
-      else if (r.msg) events.push(r.msg);
-    }
-  }
   for (const c of s.civs) updateExplored(s, c.id);
   // now and then a story asks for a choice
   if (me.alive) {

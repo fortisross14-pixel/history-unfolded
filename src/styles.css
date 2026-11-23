@@ -3131,3 +3131,44 @@ input.rename {
   align-items: center;
   margin-top: 2px;
 }
+.modal.name-city {
+  width: min(400px, 92vw);
+}
+.modal.name-city input {
+  width: 100%;
+  font-size: 18px;
+  padding: 8px 10px;
+  margin: 4px 0 10px;
+}
+
+/* what a building would add on this plot */
+.build-tip {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  margin: 4px 0 6px;
+  background: #fffaf0;
+  border: 1px solid rgba(120, 90, 50, 0.3);
+  border-radius: 8px;
+}
+.build-tip > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.build-tip ul {
+  list-style: none;
+  margin: 2px 0;
+  padding: 0;
+}
+.build-tip li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+.build-tip .tip-ico {
+  display: inline-flex;
+  width: 18px;
+}

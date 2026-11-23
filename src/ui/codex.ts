@@ -107,7 +107,7 @@ const BASICS: [string, string][] = [
   ],
   [
     'Sentry, skip and automation',
-    'Fortify (F), sentry (Z: wakes when enemies come near) or skip (X) keep units out of the to-do list. Crews can build roads on their own, scouts explore on their own, and governors can plan settlements.',
+    'Fortify, sentry (wakes when enemies come near) or skip keep units out of the to-do list. Crews can build roads on their own, scouts explore on their own, and governors can plan settlements.',
   ],
   [
     'Turn news',

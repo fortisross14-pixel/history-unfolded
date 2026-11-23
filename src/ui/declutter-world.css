@@ -157,3 +157,14 @@
   text-transform: none;
   font-family: inherit;
 }
+/* the ruler's portrait at the head of each people */
+.people-head .leader-art {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 50%;
+  border: 2px solid rgba(120, 90, 50, 0.45);
+  background: #efe3c8;
+  flex: none;
+}

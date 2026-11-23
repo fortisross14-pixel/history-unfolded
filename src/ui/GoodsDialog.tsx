@@ -90,7 +90,7 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
                   setV(v => v + 1);
                 }}
               >
-                {SUPPLY[k].name}
+                <Ico name={`supply-${k}`} fallback="" size={18} /> {SUPPLY[k].name}
               </button>
             ))}
           </div>

@@ -4,11 +4,11 @@ import { Ico, InfoButton } from './bits.tsx';
 import { holdLeft, isOpen, opensText, progress, VICTORIES, victoryOn } from '../engine/victory.ts';
 
 const V_ICON: Record<string, string> = {
-  conquest: 'war',
-  cultural: 'culture',
-  economic: 'gold',
-  diplomatic: 'peace',
-  scientific: 'science',
+  conquest: 'victory-domination',
+  cultural: 'victory-culture',
+  economic: 'priority-trade',
+  diplomatic: 'victory-diplomacy',
+  scientific: 'victory-science',
 };
 
 /** The engine's progress line, cut to its numbers: "12% / 40%", "3 rivals left". */

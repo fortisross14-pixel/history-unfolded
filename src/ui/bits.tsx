@@ -29,7 +29,6 @@ export function Art({
   );
 }
 
-/** Interface icon: generated if available, else the given emoji/glyph. */
 /** Names the code uses for a symbol the interface sheet already drew under another name. */
 const ICON_ALIAS: Record<string, string> = {
   coin: 'gold',
@@ -52,6 +51,7 @@ const ICON_ALIAS: Record<string, string> = {
   flag: 'morale',
 };
 
+/** Interface icon: generated if available, else the given emoji/glyph. */
 export function Ico({
   name,
   fallback,
@@ -267,7 +267,7 @@ export function InfoButton({
           setOpen(o => !o);
         }}
       >
-        i
+        <Art k="icon/info" size={18} className="info-art" fallback={<>i</>} />
       </button>
       {open && (
         <span className={`info-card ${align}`} role="note">

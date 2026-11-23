@@ -453,7 +453,7 @@ export function NationDialog({
                   title={PRIORITIES[k].note}
                   onClick={() => report(setPriority(game, civ.id, k))}
                 >
-                  {PRIORITIES[k].name}
+                  <Ico name={`priority-${k}`} fallback="" size={18} /> {PRIORITIES[k].name}
                 </button>
               ))}
             </div>

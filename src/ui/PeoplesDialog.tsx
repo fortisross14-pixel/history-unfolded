@@ -23,7 +23,8 @@ import { absorbCost, absorbProblem, standing, tributeTo } from '../engine/indepe
 import { identity, tagCounts } from '../engine/mods.ts';
 import type { Bundle, GameState, Offer } from '../engine/types.ts';
 import { TagChip } from './CultureDialog.tsx';
-import { Chip, Delta, GoodIcon, Ico, InfoButton } from './bits.tsx';
+import { Art, Chip, Delta, GoodIcon, Ico, InfoButton } from './bits.tsx';
+import { leaderArt } from './leaderArt.ts';
 import './declutter-world.css';
 import { PeaceTerms } from './PeaceTerms.tsx';
 
@@ -109,6 +110,9 @@ export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, on
             return (
               <div key={c.id} className={`people ${c.alive ? '' : 'gone'}`}>
                 <div className="people-head">
+                  {!c.independent && (
+                    <Art k={leaderArt(game, c)} size={44} className="leader-art" />
+                  )}
                   <span className="swatch" style={{ background: c.color }} />
                   <b>{c.name}</b>
                   {c.independent && (

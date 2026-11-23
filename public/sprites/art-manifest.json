@@ -354,6 +354,306 @@
   "w": 355,
   "h": 256
  },
+ "culture/academies": {
+  "path": "art/culture/academies.webp",
+  "w": 96,
+  "h": 86
+ },
+ "culture/admiralty": {
+  "path": "art/culture/admiralty.webp",
+  "w": 72,
+  "h": 96
+ },
+ "culture/archery-tradition": {
+  "path": "art/culture/archery-tradition.webp",
+  "w": 96,
+  "h": 96
+ },
+ "culture/banking-families": {
+  "path": "art/culture/banking-families.webp",
+  "w": 96,
+  "h": 79
+ },
+ "culture/bards": {
+  "path": "art/culture/bards.webp",
+  "w": 80,
+  "h": 96
+ },
+ "culture/celestial-navigation": {
+  "path": "art/culture/celestial-navigation.webp",
+  "w": 83,
+  "h": 96
+ },
+ "culture/celestial-spheres": {
+  "path": "art/culture/celestial-spheres.webp",
+  "w": 85,
+  "h": 96
+ },
+ "culture/citizen-militia": {
+  "path": "art/culture/citizen-militia.webp",
+  "w": 96,
+  "h": 82
+ },
+ "culture/coast-huggers": {
+  "path": "art/culture/coast-huggers.webp",
+  "w": 96,
+  "h": 88
+ },
+ "culture/coastal-fishing": {
+  "path": "art/culture/coastal-fishing.webp",
+  "w": 96,
+  "h": 86
+ },
+ "culture/conquest-doctrine": {
+  "path": "art/culture/conquest-doctrine.webp",
+  "w": 78,
+  "h": 96
+ },
+ "culture/court-arts": {
+  "path": "art/culture/court-arts.webp",
+  "w": 90,
+  "h": 96
+ },
+ "culture/divine-kingship": {
+  "path": "art/culture/divine-kingship.webp",
+  "w": 96,
+  "h": 89
+ },
+ "culture/drilled-ranks": {
+  "path": "art/culture/drilled-ranks.webp",
+  "w": 85,
+  "h": 96
+ },
+ "culture/empiricism": {
+  "path": "art/culture/empiricism.webp",
+  "w": 95,
+  "h": 96
+ },
+ "culture/engineering-tradition": {
+  "path": "art/culture/engineering-tradition.webp",
+  "w": 96,
+  "h": 66
+ },
+ "culture/epic-poetry": {
+  "path": "art/culture/epic-poetry.webp",
+  "w": 96,
+  "h": 90
+ },
+ "culture/explorers": {
+  "path": "art/culture/explorers.webp",
+  "w": 96,
+  "h": 92
+ },
+ "culture/folk-arts": {
+  "path": "art/culture/folk-arts.webp",
+  "w": 85,
+  "h": 96
+ },
+ "culture/free-markets": {
+  "path": "art/culture/free-markets.webp",
+  "w": 96,
+  "h": 86
+ },
+ "culture/genealogies": {
+  "path": "art/culture/genealogies.webp",
+  "w": 96,
+  "h": 94
+ },
+ "culture/golden-age": {
+  "path": "art/culture/golden-age.webp",
+  "w": 96,
+  "h": 95
+ },
+ "culture/grand-monuments": {
+  "path": "art/culture/grand-monuments.webp",
+  "w": 68,
+  "h": 96
+ },
+ "culture/harbour-towns": {
+  "path": "art/culture/harbour-towns.webp",
+  "w": 96,
+  "h": 74
+ },
+ "culture/heliocentrism": {
+  "path": "art/culture/heliocentrism.webp",
+  "w": 96,
+  "h": 75
+ },
+ "culture/herbalism": {
+  "path": "art/culture/herbalism.webp",
+  "w": 83,
+  "h": 96
+ },
+ "culture/horse-culture": {
+  "path": "art/culture/horse-culture.webp",
+  "w": 96,
+  "h": 84
+ },
+ "culture/humanism": {
+  "path": "art/culture/humanism.webp",
+  "w": 96,
+  "h": 95
+ },
+ "culture/lunar-calendar": {
+  "path": "art/culture/lunar-calendar.webp",
+  "w": 96,
+  "h": 89
+ },
+ "culture/medicine": {
+  "path": "art/culture/medicine.webp",
+  "w": 96,
+  "h": 96
+ },
+ "culture/monumental-astronomy": {
+  "path": "art/culture/monumental-astronomy.webp",
+  "w": 96,
+  "h": 80
+ },
+ "culture/mountain-warfare": {
+  "path": "art/culture/mountain-warfare.webp",
+  "w": 96,
+  "h": 90
+ },
+ "culture/mystic-orders": {
+  "path": "art/culture/mystic-orders.webp",
+  "w": 96,
+  "h": 95
+ },
+ "culture/natural-philosophy": {
+  "path": "art/culture/natural-philosophy.webp",
+  "w": 96,
+  "h": 96
+ },
+ "culture/navigation-schools": {
+  "path": "art/culture/navigation-schools.webp",
+  "w": 96,
+  "h": 95
+ },
+ "culture/night-navigation": {
+  "path": "art/culture/night-navigation.webp",
+  "w": 92,
+  "h": 96
+ },
+ "culture/open-sea": {
+  "path": "art/culture/open-sea.webp",
+  "w": 96,
+  "h": 90
+ },
+ "culture/oral-tradition": {
+  "path": "art/culture/oral-tradition.webp",
+  "w": 96,
+  "h": 69
+ },
+ "culture/patronage": {
+  "path": "art/culture/patronage.webp",
+  "w": 96,
+  "h": 83
+ },
+ "culture/professional-army": {
+  "path": "art/culture/professional-army.webp",
+  "w": 96,
+  "h": 90
+ },
+ "culture/rational-astronomy": {
+  "path": "art/culture/rational-astronomy.webp",
+  "w": 88,
+  "h": 96
+ },
+ "culture/record-keeping": {
+  "path": "art/culture/record-keeping.webp",
+  "w": 96,
+  "h": 90
+ },
+ "culture/scholasticism": {
+  "path": "art/culture/scholasticism.webp",
+  "w": 95,
+  "h": 96
+ },
+ "culture/scribes": {
+  "path": "art/culture/scribes.webp",
+  "w": 92,
+  "h": 96
+ },
+ "culture/sculpture": {
+  "path": "art/culture/sculpture.webp",
+  "w": 70,
+  "h": 96
+ },
+ "culture/sea-raiders": {
+  "path": "art/culture/sea-raiders.webp",
+  "w": 96,
+  "h": 95
+ },
+ "culture/shield-wall": {
+  "path": "art/culture/shield-wall.webp",
+  "w": 96,
+  "h": 52
+ },
+ "culture/shipwrights": {
+  "path": "art/culture/shipwrights.webp",
+  "w": 96,
+  "h": 75
+ },
+ "culture/shock-warfare": {
+  "path": "art/culture/shock-warfare.webp",
+  "w": 96,
+  "h": 74
+ },
+ "culture/siege-engineers": {
+  "path": "art/culture/siege-engineers.webp",
+  "w": 96,
+  "h": 79
+ },
+ "culture/skirmish-warfare": {
+  "path": "art/culture/skirmish-warfare.webp",
+  "w": 96,
+  "h": 95
+ },
+ "culture/solar-calendar": {
+  "path": "art/culture/solar-calendar.webp",
+  "w": 82,
+  "h": 96
+ },
+ "culture/star-lore": {
+  "path": "art/culture/star-lore.webp",
+  "w": 96,
+  "h": 92
+ },
+ "culture/storytelling": {
+  "path": "art/culture/storytelling.webp",
+  "w": 88,
+  "h": 96
+ },
+ "culture/sun-cult": {
+  "path": "art/culture/sun-cult.webp",
+  "w": 96,
+  "h": 93
+ },
+ "culture/thalassocracy": {
+  "path": "art/culture/thalassocracy.webp",
+  "w": 91,
+  "h": 96
+ },
+ "culture/theatre": {
+  "path": "art/culture/theatre.webp",
+  "w": 96,
+  "h": 80
+ },
+ "culture/tide-lore": {
+  "path": "art/culture/tide-lore.webp",
+  "w": 96,
+  "h": 78
+ },
+ "culture/trade-leagues": {
+  "path": "art/culture/trade-leagues.webp",
+  "w": 96,
+  "h": 86
+ },
+ "culture/war-bands": {
+  "path": "art/culture/war-bands.webp",
+  "w": 96,
+  "h": 86
+ },
  "deposit/cattle": {
   "path": "art/deposit/cattle.webp",
   "w": 96,
@@ -774,6 +1074,26 @@
   "w": 86,
   "h": 85
  },
+ "icon/colony": {
+  "path": "art/icon/colony.webp",
+  "w": 91,
+  "h": 96
+ },
+ "icon/crate": {
+  "path": "art/icon/crate.webp",
+  "w": 96,
+  "h": 85
+ },
+ "icon/crisis": {
+  "path": "art/icon/crisis.webp",
+  "w": 91,
+  "h": 96
+ },
+ "icon/crown": {
+  "path": "art/icon/crown.webp",
+  "w": 96,
+  "h": 66
+ },
  "icon/culture": {
   "path": "art/icon/culture.webp",
   "w": 82,
@@ -794,10 +1114,20 @@
   "w": 96,
   "h": 89
  },
+ "icon/drop": {
+  "path": "art/icon/drop.webp",
+  "w": 66,
+  "h": 96
+ },
  "icon/dynasties": {
   "path": "art/icon/dynasties.webp",
   "w": 96,
   "h": 80
+ },
+ "icon/edict": {
+  "path": "art/icon/edict.webp",
+  "w": 96,
+  "h": 78
  },
  "icon/end-turn": {
   "path": "art/icon/end-turn.webp",
@@ -812,6 +1142,11 @@
  "icon/experience": {
   "path": "art/icon/experience.webp",
   "w": 93,
+  "h": 96
+ },
+ "icon/faith": {
+  "path": "art/icon/faith.webp",
+  "w": 89,
   "h": 96
  },
  "icon/food": {
@@ -849,6 +1184,26 @@
   "w": 96,
   "h": 89
  },
+ "icon/goods": {
+  "path": "art/icon/goods.webp",
+  "w": 96,
+  "h": 91
+ },
+ "icon/governor": {
+  "path": "art/icon/governor.webp",
+  "w": 87,
+  "h": 96
+ },
+ "icon/growth": {
+  "path": "art/icon/growth.webp",
+  "w": 96,
+  "h": 95
+ },
+ "icon/helm": {
+  "path": "art/icon/helm.webp",
+  "w": 81,
+  "h": 96
+ },
  "icon/help": {
   "path": "art/icon/help.webp",
   "w": 96,
@@ -858,6 +1213,16 @@
   "path": "art/icon/housing.webp",
   "w": 96,
   "h": 80
+ },
+ "icon/info": {
+  "path": "art/icon/info.webp",
+  "w": 96,
+  "h": 95
+ },
+ "icon/intent": {
+  "path": "art/icon/intent.webp",
+  "w": 96,
+  "h": 44
  },
  "icon/layers": {
   "path": "art/icon/layers.webp",
@@ -904,6 +1269,11 @@
   "w": 96,
   "h": 82
  },
+ "icon/minus": {
+  "path": "art/icon/minus.webp",
+  "w": 96,
+  "h": 30
+ },
  "icon/morale": {
   "path": "art/icon/morale.webp",
   "w": 96,
@@ -923,6 +1293,11 @@
   "path": "art/icon/notices.webp",
   "w": 85,
   "h": 96
+ },
+ "icon/opinion": {
+  "path": "art/icon/opinion.webp",
+  "w": 96,
+  "h": 88
  },
  "icon/opinion-down": {
   "path": "art/icon/opinion-down.webp",
@@ -954,6 +1329,41 @@
   "w": 96,
   "h": 59
  },
+ "icon/personality": {
+  "path": "art/icon/personality.webp",
+  "w": 92,
+  "h": 96
+ },
+ "icon/power": {
+  "path": "art/icon/power.webp",
+  "w": 82,
+  "h": 96
+ },
+ "icon/priority-balanced": {
+  "path": "art/icon/priority-balanced.webp",
+  "w": 96,
+  "h": 85
+ },
+ "icon/priority-expand": {
+  "path": "art/icon/priority-expand.webp",
+  "w": 96,
+  "h": 88
+ },
+ "icon/priority-growth": {
+  "path": "art/icon/priority-growth.webp",
+  "w": 96,
+  "h": 84
+ },
+ "icon/priority-trade": {
+  "path": "art/icon/priority-trade.webp",
+  "w": 96,
+  "h": 84
+ },
+ "icon/priority-war": {
+  "path": "art/icon/priority-war.webp",
+  "w": 77,
+  "h": 96
+ },
  "icon/production": {
   "path": "art/icon/production.webp",
   "w": 88,
@@ -964,10 +1374,25 @@
   "w": 80,
   "h": 96
  },
+ "icon/raiders": {
+  "path": "art/icon/raiders.webp",
+  "w": 69,
+  "h": 96
+ },
+ "icon/rail": {
+  "path": "art/icon/rail.webp",
+  "w": 96,
+  "h": 78
+ },
  "icon/ranged": {
   "path": "art/icon/ranged.webp",
   "w": 90,
   "h": 96
+ },
+ "icon/report": {
+  "path": "art/icon/report.webp",
+  "w": 96,
+  "h": 87
  },
  "icon/research": {
   "path": "art/icon/research.webp",
@@ -978,6 +1403,11 @@
   "path": "art/icon/road.webp",
   "w": 96,
   "h": 81
+ },
+ "icon/ruins": {
+  "path": "art/icon/ruins.webp",
+  "w": 96,
+  "h": 94
  },
  "icon/save": {
   "path": "art/icon/save.webp",
@@ -999,6 +1429,16 @@
   "w": 96,
   "h": 68
  },
+ "icon/ship-cargo": {
+  "path": "art/icon/ship-cargo.webp",
+  "w": 96,
+  "h": 78
+ },
+ "icon/siege": {
+  "path": "art/icon/siege.webp",
+  "w": 90,
+  "h": 96
+ },
  "icon/sight": {
   "path": "art/icon/sight.webp",
   "w": 96,
@@ -1009,15 +1449,75 @@
   "w": 96,
   "h": 88
  },
+ "icon/sun": {
+  "path": "art/icon/sun.webp",
+  "w": 96,
+  "h": 96
+ },
+ "icon/supply-army": {
+  "path": "art/icon/supply-army.webp",
+  "w": 96,
+  "h": 82
+ },
+ "icon/supply-homes": {
+  "path": "art/icon/supply-homes.webp",
+  "w": 96,
+  "h": 88
+ },
+ "icon/supply-industry": {
+  "path": "art/icon/supply-industry.webp",
+  "w": 96,
+  "h": 93
+ },
+ "icon/tenet": {
+  "path": "art/icon/tenet.webp",
+  "w": 79,
+  "h": 96
+ },
  "icon/trade": {
   "path": "art/icon/trade.webp",
   "w": 96,
   "h": 85
  },
+ "icon/unrest": {
+  "path": "art/icon/unrest.webp",
+  "w": 76,
+  "h": 96
+ },
+ "icon/upgrade": {
+  "path": "art/icon/upgrade.webp",
+  "w": 93,
+  "h": 96
+ },
  "icon/upkeep": {
   "path": "art/icon/upkeep.webp",
   "w": 89,
   "h": 96
+ },
+ "icon/victory-culture": {
+  "path": "art/icon/victory-culture.webp",
+  "w": 96,
+  "h": 88
+ },
+ "icon/victory-diplomacy": {
+  "path": "art/icon/victory-diplomacy.webp",
+  "w": 96,
+  "h": 85
+ },
+ "icon/victory-domination": {
+  "path": "art/icon/victory-domination.webp",
+  "w": 70,
+  "h": 96
+ },
+ "icon/victory-science": {
+  "path": "art/icon/victory-science.webp",
+  "w": 96,
+  "h": 93
+ },
+ "icon/victory-score": {
+  "path": "art/icon/victory-score.webp",
+  "w": 96,
+  "h": 85
  },
  "icon/war": {
   "path": "art/icon/war.webp",
@@ -1028,6 +1528,11 @@
   "path": "art/icon/warning.webp",
   "w": 96,
   "h": 83
+ },
+ "icon/wonder": {
+  "path": "art/icon/wonder.webp",
+  "w": 93,
+  "h": 96
  },
  "icon/workers": {
   "path": "art/icon/workers.webp",
@@ -1063,6 +1568,11 @@
   "path": "art/item/barded-horse.webp",
   "w": 96,
   "h": 87
+ },
+ "item/barefoot": {
+  "path": "art/item/barefoot.webp",
+  "w": 59,
+  "h": 96
  },
  "item/bayonet": {
   "path": "art/item/bayonet.webp",
@@ -1158,6 +1668,11 @@
   "path": "art/item/field-medics.webp",
   "w": 96,
   "h": 73
+ },
+ "item/foot": {
+  "path": "art/item/foot.webp",
+  "w": 64,
+  "h": 96
  },
  "item/full-rig": {
   "path": "art/item/full-rig.webp",
@@ -1279,6 +1794,26 @@
   "w": 96,
   "h": 54
  },
+ "item/no-armour": {
+  "path": "art/item/no-armour.webp",
+  "w": 96,
+  "h": 90
+ },
+ "item/no-helmet": {
+  "path": "art/item/no-helmet.webp",
+  "w": 86,
+  "h": 96
+ },
+ "item/no-kit": {
+  "path": "art/item/no-kit.webp",
+  "w": 96,
+  "h": 93
+ },
+ "item/no-shield": {
+  "path": "art/item/no-shield.webp",
+  "w": 82,
+  "h": 96
+ },
  "item/oars": {
   "path": "art/item/oars.webp",
   "w": 96,
@@ -1354,6 +1889,11 @@
   "w": 96,
   "h": 59
  },
+ "item/unarmed": {
+  "path": "art/item/unarmed.webp",
+  "w": 96,
+  "h": 70
+ },
  "item/war-banner": {
   "path": "art/item/war-banner.webp",
   "w": 82,
@@ -1363,6 +1903,106 @@
   "path": "art/item/wicker-shield.webp",
   "w": 92,
   "h": 96
+ },
+ "leader/ancient-1": {
+  "path": "art/leader/ancient-1.webp",
+  "w": 225,
+  "h": 192
+ },
+ "leader/ancient-2": {
+  "path": "art/leader/ancient-2.webp",
+  "w": 231,
+  "h": 192
+ },
+ "leader/ancient-3": {
+  "path": "art/leader/ancient-3.webp",
+  "w": 224,
+  "h": 192
+ },
+ "leader/ancient-4": {
+  "path": "art/leader/ancient-4.webp",
+  "w": 207,
+  "h": 192
+ },
+ "leader/classical-1": {
+  "path": "art/leader/classical-1.webp",
+  "w": 241,
+  "h": 192
+ },
+ "leader/classical-2": {
+  "path": "art/leader/classical-2.webp",
+  "w": 246,
+  "h": 192
+ },
+ "leader/classical-3": {
+  "path": "art/leader/classical-3.webp",
+  "w": 245,
+  "h": 192
+ },
+ "leader/classical-4": {
+  "path": "art/leader/classical-4.webp",
+  "w": 223,
+  "h": 192
+ },
+ "leader/industrial-1": {
+  "path": "art/leader/industrial-1.webp",
+  "w": 221,
+  "h": 192
+ },
+ "leader/industrial-2": {
+  "path": "art/leader/industrial-2.webp",
+  "w": 233,
+  "h": 192
+ },
+ "leader/industrial-3": {
+  "path": "art/leader/industrial-3.webp",
+  "w": 238,
+  "h": 192
+ },
+ "leader/medieval-1": {
+  "path": "art/leader/medieval-1.webp",
+  "w": 238,
+  "h": 192
+ },
+ "leader/medieval-2": {
+  "path": "art/leader/medieval-2.webp",
+  "w": 225,
+  "h": 192
+ },
+ "leader/medieval-3": {
+  "path": "art/leader/medieval-3.webp",
+  "w": 239,
+  "h": 192
+ },
+ "leader/medieval-4": {
+  "path": "art/leader/medieval-4.webp",
+  "w": 245,
+  "h": 192
+ },
+ "leader/raider": {
+  "path": "art/leader/raider.webp",
+  "w": 243,
+  "h": 192
+ },
+ "leader/renaissance-1": {
+  "path": "art/leader/renaissance-1.webp",
+  "w": 224,
+  "h": 192
+ },
+ "leader/renaissance-2": {
+  "path": "art/leader/renaissance-2.webp",
+  "w": 241,
+  "h": 192
+ },
+ "leader/renaissance-3": {
+  "path": "art/leader/renaissance-3.webp",
+  "w": 230,
+  "h": 192
+ },
+ "leader/renaissance-4": {
+  "path": "art/leader/renaissance-4.webp",
+  "w": 241,
+  "h": 192
  },
  "settlement/city": {
   "path": "art/settlement/city.webp",
@@ -1619,6 +2259,11 @@
   "w": 70,
   "h": 96
  },
+ "tech/great-observatory": {
+  "path": "art/tech/great-observatory.webp",
+  "w": 96,
+  "h": 85
+ },
  "tech/guilds": {
   "path": "art/tech/guilds.webp",
   "w": 96,
@@ -1749,6 +2394,11 @@
   "w": 95,
   "h": 96
  },
+ "tech/powered-flight": {
+  "path": "art/tech/powered-flight.webp",
+  "w": 96,
+  "h": 66
+ },
  "tech/preservation": {
   "path": "art/tech/preservation.webp",
   "w": 78,
@@ -1823,6 +2473,11 @@
   "path": "art/tech/theology.webp",
   "w": 68,
   "h": 96
+ },
+ "tech/transcontinental-telegraph": {
+  "path": "art/tech/transcontinental-telegraph.webp",
+  "w": 96,
+  "h": 79
  },
  "tech/urbanism": {
   "path": "art/tech/urbanism.webp",
@@ -2247,6 +2902,56 @@
  "unit/workers": {
   "path": "art/unit/workers.webp",
   "w": 191,
+  "h": 192
+ },
+ "wonder/admiralty": {
+  "path": "art/wonder/admiralty.webp",
+  "w": 216,
+  "h": 192
+ },
+ "wonder/crystal-palace": {
+  "path": "art/wonder/crystal-palace.webp",
+  "w": 251,
+  "h": 192
+ },
+ "wonder/dome-of-heaven": {
+  "path": "art/wonder/dome-of-heaven.webp",
+  "w": 212,
+  "h": 192
+ },
+ "wonder/grand-bazaar": {
+  "path": "art/wonder/grand-bazaar.webp",
+  "w": 235,
+  "h": 192
+ },
+ "wonder/grand-terminus": {
+  "path": "art/wonder/grand-terminus.webp",
+  "w": 218,
+  "h": 192
+ },
+ "wonder/great-library": {
+  "path": "art/wonder/great-library.webp",
+  "w": 239,
+  "h": 192
+ },
+ "wonder/great-pyramid": {
+  "path": "art/wonder/great-pyramid.webp",
+  "w": 254,
+  "h": 192
+ },
+ "wonder/great-wall": {
+  "path": "art/wonder/great-wall.webp",
+  "w": 214,
+  "h": 192
+ },
+ "wonder/hanging-gardens": {
+  "path": "art/wonder/hanging-gardens.webp",
+  "w": 212,
+  "h": 192
+ },
+ "wonder/house-of-printing": {
+  "path": "art/wonder/house-of-printing.webp",
+  "w": 217,
   "h": 192
  }
 }

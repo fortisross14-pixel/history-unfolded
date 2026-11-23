@@ -87,3 +87,13 @@ button.info-i:hover {
   left: auto;
   right: 0;
 }
+/* the (i) emblem is its own circle: no second ring around it */
+button.info-i:has(img) {
+  border: none;
+  background: none;
+}
+button.info-i .info-art {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

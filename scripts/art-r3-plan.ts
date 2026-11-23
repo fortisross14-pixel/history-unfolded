@@ -202,31 +202,36 @@ const WONDER: Record<string, string> = {
   'grand-terminus': 'a grand brick railway station with a clock tower and an arched train shed',
 };
 const AGES = ['ancient', 'classical', 'medieval', 'renaissance', 'industrial'];
+// as the delivered sheet drew them: four rulers an age (three in the Industrial age) and the raider
 const LEADER: Record<string, string[]> = {
   ancient: [
-    'an old chieftain with a grey beard, a fur cloak and a bronze torc',
-    'a young queen with braided hair, a linen robe and a gold diadem',
-    'a priest-king with a shaved head and a tall white crown',
+    'a queen with braided black hair, kohl-lined eyes and a gold serpent diadem',
+    'a king with a long curled black beard, a gold crown band and a red cloak',
+    'a ruler in a tall headdress of green feathers and gold',
+    'an emperor with a beaded crown and a gold silk robe',
   ],
   classical: [
-    'a bearded statesman in a draped toga-like robe with a laurel wreath',
-    'a stern general with a crested bronze helmet tucked under his arm',
-    'a philosopher-queen with curled hair and a simple circlet',
+    'a young ruler with a gold laurel wreath and a red cloak',
+    'a grey-haired general in a bronze cuirass and a red cloak',
+    'a prince in a jewelled white turban and pearls',
+    'an empress with ornate hairpins and a silk robe',
   ],
   medieval: [
-    'a crowned king with a short beard, a fur-lined mantle and a sceptre',
-    'an abbess-ruler in a dark wimple with a heavy pendant',
-    'a warlord in a mail coif with a scar across his cheek',
+    'a crowned king in mail with a white surcoat',
+    'a crowned queen with a white veil and jewels',
+    'a bearded ruler in a white head cloth and a green robe',
+    'a khan in a fur hat and a fur-trimmed robe',
   ],
   renaissance: [
-    'a merchant prince in a velvet cap and a high-collared doublet',
-    'a queen in a wide lace ruff with pearls',
-    'a scholar-duke with spectacles, a dark robe and a gold chain',
+    'a man in a red beret and a brocade doublet',
+    'a queen with red curls, a wide lace ruff and pearls',
+    'a sultan in a large white turban with a jewel and a black beard',
+    'a king with long dark curls and a blue sash',
   ],
   industrial: [
-    'a statesman with side whiskers, a frock coat and a cravat',
-    'a woman president in a high-necked dark dress with a brooch',
-    'a general in a buttoned uniform coat with epaulettes and a moustache',
+    'a bearded statesman in a dark frock coat and bow tie',
+    'a general in a spiked helmet with a white moustache and gold epaulettes',
+    'a statesman in a dark uniform coat with gold braid',
   ],
 };
 const RAIDER = 'a raider chief with a wild beard, a wolf-pelt hood and face paint';
@@ -234,6 +239,8 @@ const RAIDER = 'a raider chief with a wild beard, a wolf-pelt hood and face pain
 // ---------------------------------------------------------------- the sheets
 interface CreamSheet {
   file: string;
+  /** delivered and cut: kept in the cutter's list, left out of the brief */
+  done?: boolean;
   title: string;
   use: string;
   cells: (Cell | null)[];
@@ -250,15 +257,24 @@ const techCells: Cell[] = Object.keys(TECH_MORE).map(id => {
 const cream: CreamSheet[] = [
   {
     file: 'icons-7-culture-1.png',
+    done: true,
     title: 'Culture choices I',
     use: 'Culture screen: the first 64 choices (cosmology, politics, religion, society, economy, war).',
-    cells: cultureCells.slice(0, 64),
+    // as delivered, only the first 13 cells followed the list; the rest are redone in 7b
+    cells: cultureCells.slice(0, 13),
   },
   {
     file: 'icons-8-culture-2.png',
     title: 'Culture choices II and the last techs',
     use: 'Culture screen: the remaining choices; the three late techs.',
     cells: [...cultureCells.slice(64), ...techCells],
+    done: true,
+  },
+  {
+    file: 'icons-7b-culture-redo.png',
+    title: 'Culture choices I, redo',
+    use: 'The 51 culture choices that sheet 7 drew wrong (Chiefdom to Seat of Empire, then Barter to Mercantilism).',
+    cells: cultureCells.slice(13, 64),
   },
   {
     file: 'icons-9-interface-2.png',
@@ -271,6 +287,7 @@ for (const s of cream) if (s.cells.length > 64) throw new Error(`${s.file}: ${s.
 
 interface FigureSheet {
   file: string;
+  done?: boolean;
   title: string;
   use: string;
   cols: number;
@@ -292,6 +309,7 @@ const leaderCells: Cell[] = [
 const figures: FigureSheet[] = [
   {
     file: 'map-5-wonders.png',
+    done: true,
     title: 'Wonders',
     use: 'Wonder cards in the Cities & wonders screen and the wonder-complete notice.',
     cols: 4,
@@ -303,10 +321,11 @@ const figures: FigureSheet[] = [
   },
   {
     file: 'map-6-leaders.png',
+    done: true,
     title: 'Leaders',
     use: 'Diplomacy: each people shows a ruler of its age; the raider chief for raiders.',
     cols: 4,
-    rows: 4,
+    rows: 5,
     cell: 256,
     height: 192,
     lead: 'Each portrait is a head-and-shoulders bust in three-quarter view facing right, cut off at mid-chest with a soft vignette fading to the background, no frame. Fictional people, not any real historical figure. Where a sash, collar or cloak would carry a people’s colour, leave it plain off-white.',
@@ -331,13 +350,14 @@ Five sheets for what the game still draws with stand-ins: the culture choices, a
 sheet, wonders and leader portraits. They use **the same two looks as the sheets you already
 made**, with the same style lines word for word, so they sit with them:
 
-| Sheet | Image | Grid | Look | Background |
-|---|---|---|---|---|
-| 7. Culture choices I | 1024 × 1024 | 8 × 8 of 128 px | ink emblems | cream #F3E9D2 |
-| 8. Culture choices II, last techs | 1024 × 1024 | 8 × 8 of 128 px | ink emblems | cream #F3E9D2 |
-| 9. Interface II | 1024 × 1024 | 8 × 8 of 128 px | ink emblems | cream #F3E9D2 |
-| M5. Wonders | 1024 × 768 | 4 × 3 of 256 px | painted miniatures | magenta #FF00FF |
-| M6. Leaders | 1024 × 1024 | 4 × 4 of 256 px | painted miniatures | magenta #FF00FF |
+| Sheet | What | Status |
+|---|---|---|
+| 7. Culture choices I | the first 13 choices | ✓ done (the other 51 cells drew the wrong things) |
+| **7b. Culture choices I, redo** | **the 51 choices sheet 7 missed** | **to make: below** |
+| 8. Culture choices II, last techs | 47 choices and 3 techs | ✓ done |
+| 9. Interface II | 48 icons | ✓ done |
+| M5. Wonders | 10 wonders | ✓ done |
+| M6. Leaders | 19 rulers and a raider chief | ✓ done |
 
 ## Rules for every sheet
 
@@ -388,11 +408,18 @@ const rowsText = (cells: (Cell | null)[], cols: number, rows: number) => {
   }
   return t;
 };
-for (const [i, s] of cream.entries()) {
+for (const s of cream) {
+  if (s.done) continue;
   const used = s.cells.filter(Boolean).length;
-  md += `---\n\n## Sheet ${7 + i}: ${s.title}\n\nFile: \`${s.file}\` · ${used} of 64 cells · ${s.use}\n\n### Prompt to paste\n\n\`\`\`\nA sprite sheet of ${used} icons for a historical strategy game: ${s.title.toLowerCase()}.\n${EMBLEM}\n${EMBLEM_GRID}\nCells in reading order (row A left to right, then row B, and so on):\n${rowsText(s.cells, 8, 8)}\`\`\`\n\n### Cell map\n\n${cellMap(s.cells, 8, 8)}\n`;
+  md += `---\n\n## Sheet 7b: ${s.title}\n\nFile: \`${s.file}\` · ${used} of 64 cells · ${s.use}\n\n### Prompt to paste\n\n\`\`\`\nA sprite sheet of ${used} icons for a historical strategy game: ${s.title.toLowerCase()}.\n${EMBLEM}\n${EMBLEM_GRID}\nCells in reading order (row A left to right, then row B, and so on):\n${rowsText(s.cells, 8, 8)}\`\`\`\n\n### Cell map\n\n${cellMap(s.cells, 8, 8)}\n`;
+  md += `### Or one row at a time (recommended: the full sheet drifted last time)\n\nAttach the delivered \`icons-8-culture-2.png\` as the style reference to each. Paste the prompts in order and place the seven strips one under the other (the last strip has 3 icons and 5 empty cells).\n\n`;
+  for (let r = 0; r * 8 < s.cells.length; r++) {
+    const row = s.cells.slice(r * 8, r * 8 + 8);
+    md += `\`\`\`\nA strip of ${row.length} icons for a historical strategy game, matching the style of the attached sheet exactly.\n${EMBLEM}\nFormat: one image, 1024 x 128 pixels, an invisible row of 8 equal square cells (128 x 128 pixels each), about 16 pixels of empty space around each symbol. No grid lines, borders or numbers. Background: one flat, plain cream colour (#F3E9D2).\nCells left to right: ${Array.from({ length: 8 }, (_, c) => `${c + 1} ${row[c]?.[1] ?? '(empty)'}`).join('; ')}.\nDraw exactly these symbols in exactly this order; do not substitute other symbols.\n\`\`\`\n\n`;
+  }
 }
 for (const s of figures) {
+  if (s.done) continue;
   const w = s.cols * s.cell,
     h = s.rows * s.cell;
   md += `---\n\n## Sheet ${s.file.startsWith('map-5') ? 'M5' : 'M6'}: ${s.title}\n\nFile: \`${s.file}\` · ${w} × ${h} px · ${s.cols} × ${s.rows} cells of ${s.cell} × ${s.cell} px · ${s.use}\n\n### Prompt to paste\n\n\`\`\`\nA sprite sheet for a historical strategy game: ${s.title.toLowerCase()}.\n${FIGURE}\n${s.lead}\n${MAGENTA}\nFormat: one image, ${w} x ${h} pixels, an invisible ${s.cols} x ${s.rows} grid of equal cells (${s.cell} x ${s.cell} pixels each). One subject per cell, centred, filling about 80% of the cell, never touching or crossing a cell edge. No grid lines, borders or numbers.\nCells in reading order (row A left to right, then row B, and so on):\n${rowsText(s.cells, s.cols, s.rows)}\`\`\`\n\n### Cell map\n\n${cellMap(s.cells, s.cols, s.rows)}\n`;

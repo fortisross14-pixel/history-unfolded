@@ -89,6 +89,9 @@ npm run check:perf           # map frame times with the CPU slowed 4x
 - **Faith, kept light** (I): race to found one of the few faiths, choose three tenets over the
   ages, and watch it spread by itself along roads and trade; shared faith warms opinion, a divided
   realm risks a schism.
+- **Stories across the ages**: eight event stories in three chapters each (a founder's legend, a
+  lost expedition, a marriage of houses, a merchant guild, a preacher, a river town, an old
+  grudge, a teacher), branching on what you chose before.
 - **World wonders as a race** (W): 10 wonders, two per age, one in the world each; half a
   settlement's production builds it, losers get half their work back as gold; each stands on
   the map as a landmark.

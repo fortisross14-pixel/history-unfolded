@@ -24,6 +24,7 @@ const KIND_MARK: Record<ChronicleEntry['kind'], string> = {
   victory: '★',
   faith: '☀',
   wonder: '♜',
+  story: '❦',
   other: '•',
 };
 

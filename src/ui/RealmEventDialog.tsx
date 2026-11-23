@@ -42,6 +42,11 @@ export function RealmEventDialog({
             ×
           </button>
         </header>
+        {ev.story && (
+          <p className="event-story">
+            {ev.story.name} · chapter {ev.story.chapter} of {ev.story.of}
+          </p>
+        )}
         <p className="event-text">{ev.text}</p>
         <div className="event-choices">
           {ev.choices.map((ch, i) => (

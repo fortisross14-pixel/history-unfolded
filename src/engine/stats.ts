@@ -86,6 +86,7 @@ export interface ChronicleEntry {
     | 'victory'
     | 'faith'
     | 'wonder'
+    | 'story'
     | 'other';
   text: string;
 }
@@ -94,6 +95,7 @@ export interface ChronicleEntry {
 const KEEP: [RegExp, ChronicleEntry['kind']][] = [
   [/ enter the .* age\./, 'age'],
   [/ complete the .* in /, 'wonder'],
+  [/, chapter \d: /, 'story'],
   [/ found a new faith, | now keep | drift away from |takes up a new tenet/, 'faith'],
   [/ declared war on /, 'war'],
   [/ joined their allies against /, 'war'],

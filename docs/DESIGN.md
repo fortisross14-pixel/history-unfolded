@@ -1018,6 +1018,25 @@ the Nation screen.
 - **On the map** a wonder stands as a landmark by the settlement centre (pyramid, gardens, statue,
   tower, wall, hall, dome, glass hall), with scaffolding while one is being built.
 
+## 12l. Stories across the ages (as built)
+
+Events in chapters (engine/storyEvents.ts). An opening chapter is drawn like any event, once a
+game, when its condition holds; every choice is remembered and decides what the next chapter is
+about and what it offers. Later chapters wait some turns and often the next age; a story whose
+settlement, house or people is gone simply ends. The event card shows "story · chapter n of 3";
+each chapter goes into the chronicle.
+
+| Story | Opens | Thread |
+|---|---|---|
+| The Founder's Legend | Ancient, the capital | who the founder was → the tomb (shrine, study, or the legend's own gift) → a scholar doubts it all |
+| The Lost Expedition | Ancient–Classical, with Sailing, a coastal town | fund or not → a survivor (a far land revealed, or the crews honoured) → kin across the sea (Renaissance) |
+| A Marriage of Houses | two houses | bless, dowry or forbid → an heir, or lovers fled → the heir grown, or the quarrel ended |
+| The Merchant Guild | Classical–Medieval, Currency | charter or free trade → a rich guild or smugglers → guild to company |
+| The Wandering Preacher | Classical–Renaissance, a realm with a faith | pulpit or silence → followers or a martyr → a reformed faith or a split (religious tension) |
+| The River Town | a river settlement | levees, move or trust → the great flood → a canal (Renaissance) |
+| The Old Grudge | a people met | forgive or swear vengeance → friendship or the oath → a hundred years on (opinion) |
+| The Teacher | Classical–Medieval, Writing | a schoolhouse or the temple → her students → a university |
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

@@ -2806,3 +2806,12 @@ input.rename {
   height: 100%;
   background: #c79a3e;
 }
+
+/* a story chapter's line above an event's text */
+.event-story {
+  margin: 0 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a6a3a;
+}

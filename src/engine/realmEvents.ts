@@ -24,6 +24,7 @@ import { isPassableLand, validDeposits } from './mapgen.ts';
 import { hashSeed, mulberry32, type Rng } from './rng.ts';
 import type { City, Civ, Dynasty, GameState } from './types.ts';
 import { difficultyOf } from './difficulty.ts';
+import { STORY_EVENTS } from './storyEvents.ts';
 
 export type EventKind = 'land' | 'people' | 'court' | 'trade' | 'war' | 'faith' | 'knowledge';
 
@@ -42,12 +43,14 @@ export interface RealmEventState {
   next: number;
   history: { id: string; turn: number }[];
   pending?: { id: string; turn: number; subject: Subject; variant: number };
-  /** follow-ups waiting for their turn */
-  queued: { id: string; turn: number; subject: Subject }[];
+  /** follow-ups waiting for their turn (and, for story chapters, an age) */
+  queued: { id: string; turn: number; subject: Subject; age?: number }[];
+  /** what the player chose in each story so far (storyEvents.ts), by story id */
+  story?: Record<string, string>;
   lastKind?: EventKind;
 }
 
-interface Ctx {
+export interface Ctx {
   s: GameState;
   civ: Civ;
   city?: City;
@@ -67,7 +70,7 @@ export interface Choice {
   apply: (c: Ctx) => string;
 }
 
-interface EventDef {
+export interface EventDef {
   id: string;
   kind: EventKind;
   title: (c: Ctx) => string;
@@ -81,6 +84,8 @@ interface EventDef {
   choices: (c: Ctx) => Choice[];
   /** a follow-up only: never drawn at random */
   followUp?: boolean;
+  /** a chapter of a story that runs across the ages (storyEvents.ts) */
+  story?: { id: string; name: string; chapter: number; of: number };
 }
 
 // ---------------------------------------------------------------- helpers
@@ -856,7 +861,7 @@ const EVENTS: EventDef[] = [
 ];
 
 export const REALM_EVENTS: Record<string, EventDef> = Object.fromEntries(
-  EVENTS.map(e => [e.id, e]),
+  [...EVENTS, ...STORY_EVENTS].map(e => [e.id, e]),
 );
 
 // ---------------------------------------------------------------- pacing
@@ -905,7 +910,9 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
   if (other > own) st.next = Math.max(st.next, other + 5);
   const last = Math.max(own, other);
   if (s.turn - last < 3) return null;
-  const due = st.queued.findIndex(q => q.turn <= s.turn);
+  const due = st.queued.findIndex(
+    q => q.turn <= s.turn && (q.age === undefined || ageOf(civ.techs) >= q.age),
+  );
   let id: string | null = null,
     subject: Subject = {};
   if (due >= 0) {
@@ -920,7 +927,7 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
     if (s.turn < st.next) return null;
     const lastTurn = (eid: string) => st.history.filter(h => h.id === eid).pop()?.turn ?? -Infinity;
     const options: { e: EventDef; sub: Subject; w: number }[] = [];
-    for (const e of EVENTS) {
+    for (const e of [...EVENTS, ...STORY_EVENTS]) {
       if (e.followUp) continue;
       // sickness is now the Plague crisis (crises.ts): one plague, not three
       if (e.id === 'plague') continue;
@@ -965,6 +972,7 @@ export function pendingRealmEvent(s: GameState, civ: Civ) {
   return {
     id: e.id,
     kind: e.kind,
+    story: e.story,
     title: e.title(c),
     text: e.text[p.variant % e.text.length](c),
     choices: choices.map(ch => ({
@@ -996,7 +1004,13 @@ export function resolveRealmEvent(
   const out = ch.apply(c);
   s.realmEvents!.history.push({ id: e.id, turn: s.turn });
   s.realmEvents!.pending = undefined;
-  log(s, civ.id, `${e.title(c)}: ${ch.label}. ${out}`);
+  log(
+    s,
+    civ.id,
+    e.story
+      ? `${e.story.name}, chapter ${e.story.chapter}: ${e.title(c)}. ${ch.label}: ${out}`
+      : `${e.title(c)}: ${ch.label}. ${out}`,
+  );
   return { ok: true, msg: out };
 }
 

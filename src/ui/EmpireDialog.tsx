@@ -1,7 +1,7 @@
 import { WONDERS } from '../data/wonders.ts';
 import { faithById } from '../engine/faith.ts';
 import { useState } from 'react';
-import { DISTRICT_CAP, TIER_NAME } from '../engine/economy.ts';
+import { cityEconomy, DISTRICT_CAP, TIER_NAME } from '../engine/economy.ts';
 import type { GameState } from '../engine/types.ts';
 
 type Tab = 'cities' | 'armies' | 'find';
@@ -24,14 +24,16 @@ export function EmpireDialog({
   onCity,
   onFormation,
   onClose,
+  tab: startTab,
 }: {
   game: GameState;
   civId: number;
+  tab?: Tab;
   onCity: (id: number) => void;
   onFormation: (id: number) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<Tab>('cities');
+  const [tab, setTab] = useState<Tab>(startTab ?? 'cities');
   const [q, setQ] = useState('');
   const known = game.civs[civId].explored;
   const mine = game.cities.filter(c => c.civId === civId).sort((a, b) => b.pop - a.pop);
@@ -121,6 +123,11 @@ export function EmpireDialog({
                   <th>Size</th>
                   <th>People</th>
                   <th>Districts</th>
+                  <th title="Food left over a turn">Food</th>
+                  <th title="Production a turn">Prod.</th>
+                  <th title="Science a turn">Sci.</th>
+                  <th title="Gold a turn">Gold</th>
+                  <th title="Culture a turn">Cult.</th>
                   <th>Faith</th>
                   <th>State</th>
                 </tr>
@@ -136,6 +143,22 @@ export function EmpireDialog({
                     <td>
                       {districts(c.id)}/{DISTRICT_CAP[c.tier]}
                     </td>
+                    {(() => {
+                      const e = cityEconomy(game, c);
+                      const n = (v: number) => Math.round(v * 10) / 10;
+                      return (
+                        <>
+                          <td className={e.surplus < 0 ? 'bad' : ''}>
+                            {e.surplus >= 0 ? '+' : ''}
+                            {n(e.surplus)}
+                          </td>
+                          <td>{n(e.total.prod)}</td>
+                          <td>{n(e.total.science)}</td>
+                          <td>{n(e.total.gold)}</td>
+                          <td>{n(e.total.culture)}</td>
+                        </>
+                      );
+                    })()}
                     <td>
                       <small>{faithById(game, c.faith)?.name ?? '—'}</small>
                     </td>

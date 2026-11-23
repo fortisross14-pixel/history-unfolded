@@ -79,7 +79,7 @@ import { GoodsDialog } from './GoodsDialog.tsx';
 import { DynastiesDialog } from './DynastiesDialog.tsx';
 import { RealmEventDialog } from './RealmEventDialog.tsx';
 import { pendingRealmEvent } from '../engine/realmEvents.ts';
-import { assignGovernor, rulerOf } from '../engine/dynasty.ts';
+import { assignGovernor } from '../engine/dynasty.ts';
 import { ResearchDialog } from './ResearchDialog.tsx';
 import { ProposalDialog } from './ProposalDialog.tsx';
 import { answerProposal, ledgerOf, proposeDeal } from '../engine/diplomacy.ts';
@@ -111,8 +111,8 @@ type Dialog =
   | { kind: 'victory' }
   | { kind: 'nation'; age?: number }
   | { kind: 'crisis' }
-  | { kind: 'stats' }
-  | { kind: 'empire' }
+  | { kind: 'stats'; tab?: 'rank' | 'chart' | 'chronicle' }
+  | { kind: 'empire'; tab?: 'cities' | 'armies' | 'find' }
   | { kind: 'faith' }
   | { kind: 'settings' }
   | { kind: 'name-city'; cityId: number }
@@ -194,6 +194,12 @@ export function Game({
   >([]);
   // the start-of-turn summary, grouped; closed by the player or the next turn
   const [summary, setSummary] = useState<string[] | null>(null);
+  // which realm screen (left buttons) the open dialog belongs to, for its tabs
+  const [hub, setHub] = useState<HubId | null>(null);
+  const openHub = (h: HubId) => {
+    setHub(h);
+    setDialog(HUB_TABS[h][0].dialog);
+  };
   const [dialog, setDialog] = useState<Dialog>(null);
   const [map3d, setMap3d] = useState(mapMode() === '3d');
   const [center, setCenter] = useState<{ hex: number; n: number } | null>(null);
@@ -290,6 +296,9 @@ export function Game({
         !f.auto,
     );
   const focus = (hex: number) => setCenter({ hex, n: Date.now() });
+  useEffect(() => {
+    if (!dialog) setHub(null);
+  }, [dialog]);
   // the guided first game: started for a new game, ticked by the game itself
   useEffect(() => {
     if (game.turn === 1 && !game.guide) {
@@ -703,7 +712,6 @@ export function Game({
       ),
     [version],
   );
-  const myCities = game.cities.filter(c => c.civId === me.id);
   const todos = todo();
   // goods running out within ten turns
   const goodsShort = useMemo(
@@ -717,6 +725,28 @@ export function Game({
   const proposal = game.proposals.find(p => p.to === me.id);
   // a rival holding a victory goal: shown on the Victory button
   const rivalHold = Object.values(game.holding ?? {}).filter(h => h.civId !== me.id).length;
+  const goldPerTurn = useMemo(() => Math.round(whyGold(game, me.id).total), [version]);
+  const sciencePerTurn = useMemo(() => Math.round(whyScience(game, me.id).total), [version]);
+  /** the realm buttons on the left: a pill when something there needs the player */
+  const railPill = (h: HubId): string => {
+    if (h === 'diplomacy')
+      return massing ? 'threat' : wars ? `${wars} war${wars > 1 ? 's' : ''}` : '';
+    if (h === 'nation')
+      return me.civilWar
+        ? 'civil war'
+        : me.crisis && !me.crisis.response
+          ? 'crisis'
+          : me.pathDue
+            ? 'choose'
+            : me.trinkets.length
+              ? `${me.trinkets.length} to give`
+              : '';
+    if (h === 'military') {
+      const n = idle().length;
+      return n ? `${n} idle` : '';
+    }
+    return '';
+  };
   const pendingEvent = playerEvent(game);
   if (game.ended || !me.alive) {
     const e = game.ended;
@@ -838,60 +868,55 @@ export function Game({
           onCodex={() => setDialog({ kind: 'codex', q: 'gold' })}
         >
           <span tabIndex={0} aria-label={`Gold ${Math.floor(me.gold)}`}>
-            <Icon name="gold" /> {Math.floor(me.gold)}
+            <Icon name="gold" /> {Math.floor(me.gold)}{' '}
+            <small className={goldPerTurn < 0 ? 'bad' : 'muted'}>
+              ({goldPerTurn >= 0 ? '+' : ''}
+              {goldPerTurn})
+            </small>
           </span>
         </WhyPop>
-        <button
-          className="research-btn tracker"
-          onClick={() => setDialog({ kind: 'research' })}
-          title="Research"
+        <WhyPop
+          className="stat"
+          title="Science a turn"
+          unit="science"
+          why={() => whyScience(game, me.id)}
         >
-          <span className="trk-ico">
-            <Icon name="research" />
-          </span>
-          <span className="trk-body">
-            <small className="trk-label">Research</small>
-            <b className="trk-name">{research_ ? research_.name : 'Choose research'}</b>
+          <button
+            className="stat-btn"
+            data-k="research"
+            onClick={() => setDialog({ kind: 'research' })}
+            title="Research"
+          >
+            <Icon name="research" />{' '}
+            <span className="stat-name">{research_ ? research_.name : 'Choose research'}</span>
             {research_ && (
-              <>
-                <span className="trk-bar">
-                  <i
-                    style={{
-                      width: `${Math.min(100, (me.science / techCost(game, me, research_.id)) * 100)}%`,
-                    }}
-                  />
-                </span>
-                <WhyPop title="Science a turn" unit="science" why={() => whyScience(game, me.id)}>
-                  <small className="trk-num">
-                    {Math.floor(me.science)} / {techCost(game, me, research_.id)}
-                  </small>
-                </WhyPop>
-              </>
-            )}
-          </span>
-        </button>
-        <button
-          className="research-btn tracker culture-btn"
-          onClick={() => setDialog({ kind: 'culture' })}
-          title="Culture"
+              <small className="muted">
+                {' '}
+                {Math.floor(me.science)}/{techCost(game, me, research_.id)}
+              </small>
+            )}{' '}
+            <small className="muted">(+{sciencePerTurn})</small>
+          </button>
+        </WhyPop>
+        <WhyPop
+          className="stat"
+          title="Culture a turn"
+          unit="culture"
+          why={() => whyCulture(game, me.id)}
         >
-          <span className="trk-ico">
-            <Icon name="culture" />
-          </span>
-          <span className="trk-body">
-            <small className="trk-label">Culture</small>
-            <b className="trk-name">
-              <WhyPop title="Culture a turn" unit="culture" why={() => whyCulture(game, me.id)}>
-                {Math.floor(me.culture.points)} <small>(+{culturePerTurn})</small>
-              </WhyPop>
-            </b>
+          <button
+            className="stat-btn"
+            data-k="culture"
+            onClick={() => setDialog({ kind: 'culture' })}
+            title="Culture"
+          >
+            <Icon name="culture" /> {Math.floor(me.culture.points)}{' '}
+            <small className="muted">(+{culturePerTurn})</small>
             {me.culture.upheaval ? (
               <b className="war-pill">{DOMAINS[me.culture.upheaval.domain].upheaval}</b>
-            ) : (
-              ''
-            )}
-          </span>
-        </button>
+            ) : null}
+          </button>
+        </WhyPop>
         <div className={`minimap-box ${mini ? '' : 'closed'}`}>
           <div className="minimap-bar">
             <button
@@ -945,54 +970,7 @@ export function Game({
         >
           <Icon name="menu" />
         </button>
-        <span className="ident-bar secondary">
-          {identity(me)
-            .slice(0, 2)
-            .map(i => (
-              <TagChip key={i.tag} tag={i.tag} />
-            ))}
-        </span>
-        <button className="secondary" onClick={() => setDialog({ kind: 'designs' })} title="">
-          <Icon name="designs" /> Designs ({me.designs.length})
-        </button>
-        <button
-          className="secondary"
-          onClick={() => setDialog({ kind: 'dynasties' })}
-          title="Dynasties"
-        >
-          <Icon name="dynasties" />
-          <span className="wide-only"> House {rulerOf(me).name}</span>
-          {me.civilWar ? (
-            <b className="war-pill">civil war</b>
-          ) : me.dynasties.some(d => d.unrest >= 60) ? (
-            <b className="war-pill">unrest</b>
-          ) : me.trinkets.length ? (
-            <b className="war-pill">{me.trinkets.length} to give</b>
-          ) : (
-            ''
-          )}
-        </button>
-        <button
-          className="secondary"
-          onClick={() => setDialog({ kind: 'nation' })}
-          title="Nation: national directions and edicts"
-        >
-          <Icon name="flag" /> Nation
-          {me.crisis ? (
-            <b className="war-pill">crisis</b>
-          ) : me.pathDue ? (
-            <b className="war-pill">choose</b>
-          ) : (
-            ''
-          )}
-        </button>
-        <button
-          className="secondary"
-          onClick={() => setDialog({ kind: 'stats' })}
-          title="Chronicle and statistics: compare peoples"
-        >
-          <Icon name="book" /> Chronicle
-        </button>
+        <span className="spacer" />
         <button
           className="secondary"
           onClick={() => setDialog({ kind: 'victory' })}
@@ -1009,45 +987,26 @@ export function Game({
           <Icon name="goods" /> Goods
           {goodsShort ? <b className="war-pill">{goodsShort} short</b> : ''}
         </button>
-        <button className="secondary" onClick={() => setDialog({ kind: 'peoples' })}>
-          <Icon name="peoples" /> Peoples
-          {massing ? (
-            <b className="war-pill" title="A rival is massing troops on your border: see Peoples">
-              threat
-            </b>
-          ) : null}
-          {wars ? (
-            <b className="war-pill">
-              {wars} war{wars > 1 ? 's' : ''}
-            </b>
-          ) : (
-            ''
-          )}
-        </button>
         <button
-          className="secondary"
+          className="secondary round"
           onClick={() => setDialog({ kind: 'report' })}
           disabled={!lastReport.length}
           title="What happened last turn"
+          aria-label="Last turn"
         >
           <Icon name="report" />
-          <span className="wide-only"> Last turn</span>
         </button>
-        <span className="muted secondary wide-only stat">
-          <Icon name="cities" /> {myCities.length}{' '}
-          {myCities.length === 1 ? 'settlement' : 'settlements'}
-        </span>
-        <span className="spacer" />
         <button
-          className="secondary"
+          className="secondary round"
           onClick={() => {
             const next = map3d ? '2d' : '3d';
             setMapMode(next);
             setMap3d(next === '3d');
           }}
           title={map3d ? 'Switch to the flat 2D map' : 'Switch to the low-poly 3D map'}
+          aria-label={map3d ? '2D map' : '3D map'}
         >
-          <Icon name="layers" /> {map3d ? '2D map' : '3D map'}
+          <Icon name="layers" />
         </button>
         <button
           className="secondary round"
@@ -1070,19 +1029,19 @@ export function Game({
           <Icon name={muted ? 'mute' : 'sound'} />
         </button>
         <button
-          className="secondary"
-          onClick={() => setDialog({ kind: 'saves' })}
-          title="Save, save under a name, export to a file, load"
-        >
-          Save
-        </button>
-        <button
           className="secondary round"
           onClick={() => setDialog({ kind: 'settings' })}
           title="Settings: sizes, motion, sound, autosave"
           aria-label="Settings"
         >
           <Icon name="settings" />
+        </button>
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'saves' })}
+          title="Save, save under a name, export to a file, load"
+        >
+          Save
         </button>
         <button
           className="secondary"
@@ -1094,6 +1053,21 @@ export function Game({
           Menu
         </button>
       </header>
+      <nav className="left-rail" aria-label="Realm">
+        {HUBS.map(h => (
+          <button
+            key={h.id}
+            className={`rail-btn ${hub === h.id && dialog ? 'on' : ''}`}
+            onClick={() => openHub(h.id)}
+            title={h.title}
+            aria-label={h.name}
+          >
+            <Icon name={h.icon} />
+            <span className="rail-label">{h.name}</span>
+            {railPill(h.id) ? <b className="war-pill">{railPill(h.id)}</b> : null}
+          </button>
+        ))}
+      </nav>
 
       <aside className={`side ${sheetOpen ? '' : 'peek'} ${sel ? 'has-sel' : ''}`} ref={sideRef}>
         {sel && (
@@ -1467,6 +1441,22 @@ export function Game({
           onClose={() => setDialog(null)}
         />
       )}
+      {hub && dialog && HUB_TABS[hub].some(t => sameTab(t.dialog, dialog)) && (
+        <div className="hub-tabs" role="tablist" aria-label={HUBS.find(h => h.id === hub)!.name}>
+          <b>{HUBS.find(h => h.id === hub)!.name}</b>
+          {HUB_TABS[hub].map(t => (
+            <button
+              key={t.label}
+              role="tab"
+              aria-selected={sameTab(t.dialog, dialog)}
+              className={sameTab(t.dialog, dialog) ? 'on' : ''}
+              onClick={() => setDialog(t.dialog)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
       {dialog?.kind === 'wonders' && (
         <WonderDialog
           game={game}
@@ -1520,12 +1510,20 @@ export function Game({
       )}
       {dialog?.kind === 'empire' && (
         <EmpireDialog
+          key={dialog.tab ?? 'cities'}
           game={game}
           civId={me.id}
+          tab={dialog.tab}
           onCity={id => {
             const c = game.cities.find(x => x.id === id)!;
+            if (c.civId === me.id) {
+              // your own settlement: its screen
+              setSel({ kind: 'city', id });
+              focus(c.hex);
+              setDialog({ kind: 'city', cityId: id });
+              return;
+            }
             setDialog(null);
-            if (c.civId === me.id) setSel({ kind: 'city', id });
             focus(c.hex);
           }}
           onFormation={id => {
@@ -1538,7 +1536,13 @@ export function Game({
         />
       )}
       {dialog?.kind === 'stats' && (
-        <StatsDialog game={game} civId={me.id} onClose={() => setDialog(null)} />
+        <StatsDialog
+          key={dialog.tab ?? 'rank'}
+          game={game}
+          civId={me.id}
+          tab={dialog.tab}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === 'crisis' && (
         <CrisisDialog
@@ -1688,4 +1692,39 @@ function NameCity({ suggested, onDone }: { suggested: string; onDone: (n: string
       </div>
     </div>
   );
+}
+
+type HubId = 'military' | 'cities' | 'nation' | 'diplomacy';
+const HUBS: { id: HubId; name: string; icon: string; title: string }[] = [
+  { id: 'military', name: 'Military', icon: 'army', title: 'Military: your units and designs' },
+  { id: 'cities', name: 'Cities', icon: 'cities', title: 'Cities and wonders' },
+  { id: 'nation', name: 'Nation', icon: 'flag', title: 'Nation, faith, dynasties and chronicle' },
+  { id: 'diplomacy', name: 'Diplomacy', icon: 'peoples', title: 'Diplomacy and rankings' },
+];
+const HUB_TABS: Record<HubId, { label: string; dialog: Dialog }[]> = {
+  military: [
+    { label: 'Units', dialog: { kind: 'empire', tab: 'armies' } },
+    { label: 'Designs', dialog: { kind: 'designs' } },
+  ],
+  cities: [
+    { label: 'Cities', dialog: { kind: 'empire', tab: 'cities' } },
+    { label: 'Wonders', dialog: { kind: 'wonders' } },
+  ],
+  nation: [
+    { label: 'Nation', dialog: { kind: 'nation' } },
+    { label: 'Faith', dialog: { kind: 'faith' } },
+    { label: 'Dynasties', dialog: { kind: 'dynasties' } },
+    { label: 'Chronicle', dialog: { kind: 'stats', tab: 'chronicle' } },
+  ],
+  diplomacy: [
+    { label: 'Peoples', dialog: { kind: 'peoples' } },
+    { label: 'Rankings', dialog: { kind: 'stats', tab: 'rank' } },
+  ],
+};
+/** Is this open dialog the one a hub tab shows (same kind, and same inner tab when it has one)? */
+function sameTab(a: Dialog, b: Dialog): boolean {
+  if (!a || !b || a.kind !== b.kind) return false;
+  const ta = (a as { tab?: string }).tab,
+    tb = (b as { tab?: string }).tab;
+  return !ta || !tb || ta === tb;
 }

@@ -53,7 +53,7 @@ await page.waitForTimeout(150);
 await page.tap('.more-btn');
 await page.waitForTimeout(150);
 await page.screenshot({ path: `${out}/m5-menu-open.png` });
-await page.tap('.research-btn >> nth=0');
+await page.tap('[data-k="research"]');
 await page.waitForSelector('.modal.research');
 await page.screenshot({ path: `${out}/m6-research.png` });
 console.log(armed ? 'first tap armed the move' : 'NO ARMED BAR after first tap');

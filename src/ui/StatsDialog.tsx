@@ -43,23 +43,29 @@ export function StatsDialog({
   game,
   civId,
   onClose,
+  tab: startTab,
 }: {
   game: GameState;
   civId: number;
   onClose: () => void;
+  tab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>('rank');
+  const [tab, setTab] = useState<Tab>(startTab ?? 'rank');
   const [metric, setMetric] = useState<MetricId>('score');
   const [sortBy, setSortBy] = useState<MetricId>('score');
   const [mineOnly, setMineOnly] = useState(false);
   const known = knownPeoples(game, civId);
   const alive = known.filter(c => c.alive);
   const unmet = game.civs.filter(c => !c.independent && c.alive && !known.includes(c)).length;
-  const rows = alive
+  // peoples not met yet are ranked too, but nameless
+  const unknownAlive = game.civs.filter(
+    c => !c.independent && !c.raiders && c.alive && !known.includes(c),
+  );
+  const rows = [...alive, ...unknownAlive]
     .map(c => ({ c, v: currentStats(game, c.id) }))
     .sort((a, b) => metricOf(b.v, sortBy)! - metricOf(a.v, sortBy)!);
   const rankOf = (m: MetricId, id: number) =>
-    alive
+    [...alive, ...unknownAlive]
       .map(c => ({ id: c.id, v: metricOf(currentStats(game, c.id), m)! }))
       .sort((a, b) => b.v - a.v)
       .findIndex(x => x.id === id) + 1;
@@ -129,9 +135,16 @@ export function StatsDialog({
                 <tbody>
                   {rows.map(({ c, v }) => (
                     <tr key={c.id} className={c.id === civId ? 'me' : ''}>
-                      <td>
-                        <span className="swatch" style={{ background: c.color }} /> {c.name}
-                      </td>
+                      {known.includes(c) ? (
+                        <td>
+                          <span className="swatch" style={{ background: c.color }} /> {c.name}
+                        </td>
+                      ) : (
+                        <td className="muted">
+                          <span className="swatch" style={{ background: '#c9bfa8' }} /> Unknown
+                          people
+                        </td>
+                      )}
                       <td>{ERAS[ageOf(c.techs)]}</td>
                       {METRICS.map(m => (
                         <td key={m.id}>
@@ -145,9 +158,9 @@ export function StatsDialog({
               </table>
             </div>
             <p className="muted small">
-              Among the {alive.length} great peoples you know
-              {unmet ? `; ${unmet} more you have not met yet are not shown` : ''}. Click a column to
-              sort.
+              All {alive.length + unknownAlive.length} great peoples
+              {unmet ? `; the ${unmet} you have not met yet are shown as unknown` : ''}. Click a
+              column to sort.
             </p>
           </>
         )}

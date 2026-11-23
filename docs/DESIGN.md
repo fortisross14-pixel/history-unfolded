@@ -1109,6 +1109,23 @@ A threat of the early ages that belongs to no people (engine/raiders.ts).
   On for new games on Discovery and Standard, off on Veteran; Hide the guide turns it off.
   Shown under the minimap (not on phones yet).
 
+## 12p. Navigation (as built, after the first playtest)
+
+- **Top bar:** your people, the turn, gold with its gain a turn, the research in progress with
+  science a turn, culture with its gain (each answers "why?" on hover), then Victory, Goods, last
+  turn, map mode, Codex, sound, settings, Save and Menu.
+- **Realm buttons** down the left, each a screen with tabs: **Military** (units; designs),
+  **Cities** (every settlement with people and food, production, science, gold and culture a
+  turn, a row opening its screen; wonders), **Nation** (nation; faith; dynasties; chronicle),
+  **Diplomacy** (peoples; rankings, where peoples not met yet show as unknown). A pill shows what
+  needs you there (idle units, a war or threat, a crisis or choice).
+- **Keys:** W A S D or the arrows move the map; Enter ends the turn; Space goes to the next
+  thing to do; Esc closes. Everything else is in the menus.
+- **Settlement screen:** Overview and Districts tabs; buildings are placed in the 3D scene, and
+  each shows what it would make on that plot. Founding asks for the settlement's name.
+- **Standing orders** move when the turn ends. Troops are drawn three times life size; pointing
+  at a hill or mountain picks that hex.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

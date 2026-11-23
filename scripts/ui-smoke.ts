@@ -33,11 +33,11 @@ await page.click('button:has-text("Found city")');
 await page.waitForSelector('.modal.name-city');
 await page.keyboard.press('Enter');
 await page.waitForTimeout(200);
-if (!(await page.$('.modal.research'))) await page.click('.research-btn');
+if (!(await page.$('.modal.research'))) await page.click('[data-k="research"]');
 await page.screenshot({ path: `${out}/2b-research.png` });
 await page.click('.tech-card.can:has-text("Archery")');
 // set a far goal from the tree, then look at the culture web
-await page.click('.research-btn:has-text("Archery")');
+await page.click('[data-k="research"]:has-text("Archery")');
 await page.click('.age-gate button');
 await page.screenshot({ path: `${out}/2c-research-goal.png` });
 await page.click('.modal.research .x');
@@ -50,7 +50,7 @@ await page.evaluate(() => {
   hu.game.civs[0].culture.points = 200;
   hu.bump();
 });
-await page.click('.research-btn.culture-btn');
+await page.click('[data-k="culture"]');
 await page.waitForSelector('.modal.culture');
 await page.click('.cnode.can:has-text("Star Lore")');
 await page.click('.cnode.can:has-text("Solar Calendar")');
@@ -142,7 +142,8 @@ await page.click('button:has-text("Raise levy")');
 await page.waitForTimeout(200);
 await page.screenshot({ path: `${out}/3-city-levy.png` });
 // design two unit types and split the new levy between them: 200 + 300
-await page.click('button:has-text("Designs")');
+await page.click('.rail-btn[aria-label="Military"]');
+await page.click('.hub-tabs button:has-text("Designs")');
 await page.waitForSelector('.modal.designs');
 await page.fill('.design-name', 'Foot Falcons');
 await page.click('.slot:has(h3:text("Weapon")) .item:has-text("Spear")');
@@ -315,7 +316,8 @@ const coastal = await page.evaluate(() => {
   return true;
 });
 if (coastal) {
-  await page.click('button:has-text("Designs")');
+  await page.click('.rail-btn[aria-label="Military"]');
+  await page.click('.hub-tabs button:has-text("Designs")');
   await page.click('.land-sea button:has-text("Ships")');
   await page.fill('.design-name', 'Ferry');
   await page.click('.slot:has(h3:text("Hull")) .item:has-text("Galley")');
@@ -370,7 +372,7 @@ if (coastal) {
 if (await page.$('.modal-back')) await page.keyboard.press('Escape');
 const proposalBtn = await page.$('.modal.proposal button:not(.primary)');
 if (proposalBtn) await proposalBtn.click();
-await page.click('button:has-text("Peoples")');
+await page.click('.rail-btn[aria-label="Diplomacy"]');
 await page.waitForSelector('.modal.peoples');
 await page.screenshot({ path: `${out}/10b-peoples.png` });
 const dealBtn = await page.$('button:has-text("Propose a deal")');

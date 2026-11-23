@@ -2631,7 +2631,7 @@ input.rename {
 .minimap-box {
   position: absolute;
   left: calc(108px + env(safe-area-inset-left));
-  top: calc(100% + 142px);
+  top: calc(100% + 10px);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -3271,4 +3271,137 @@ input.rename {
 .build-tip-slot .build-tip {
   flex: 1;
   margin: 0;
+}
+
+/* the top bar's key numbers: gold, research and culture, each with its per-turn figure */
+.topbar .stat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 15px;
+  white-space: nowrap;
+  max-width: 300px;
+}
+.topbar .stat-btn .stat-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+.topbar .stat-btn svg.icon {
+  width: 19px;
+  height: 19px;
+  color: var(--iv-bronze, #8a6a3a);
+}
+.topbar .stat small {
+  font-size: 13px;
+}
+
+/* the realm buttons down the left: Military, Cities, Nation, Diplomacy */
+.left-rail {
+  position: absolute;
+  left: calc(14px + env(safe-area-inset-left));
+  top: 112px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 5;
+  zoom: var(--ui-scale, 1);
+}
+.rail-btn {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+  background: linear-gradient(#fbf7ee, #efe5cf);
+  border: 2px solid #c79a3e;
+  box-shadow: var(--shadow);
+  color: #2a2419;
+}
+.rail-btn svg.icon {
+  width: 26px;
+  height: 26px;
+  color: #6b4a2a;
+}
+.rail-btn .rail-label {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rail-btn.on {
+  background: #2b6a5f;
+  color: #fff;
+  border-color: #2b6a5f;
+}
+.rail-btn.on svg.icon {
+  color: #fff;
+}
+.rail-btn .war-pill {
+  position: absolute;
+  top: -6px;
+  right: -14px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* tabs of a realm screen, above its window */
+.hub-tabs {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(250, 245, 232, 0.98);
+  border: 1px solid rgba(120, 90, 50, 0.35);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+.hub-tabs b {
+  font-family: var(--iv-display, Georgia, serif);
+  margin: 0 6px 0 4px;
+  letter-spacing: 0.05em;
+}
+.hub-tabs button {
+  padding: 4px 14px;
+  border-radius: 999px;
+}
+.hub-tabs button.on {
+  background: #2b6a5f;
+  color: #fff;
+}
+@media (max-width: 700px) {
+  .left-rail {
+    top: auto;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    left: 8px;
+    gap: 8px;
+  }
+  .rail-btn {
+    width: 48px;
+    height: 48px;
+  }
+  .rail-btn .rail-label {
+    display: none;
+  }
+  .hub-tabs {
+    top: 8px;
+    max-width: calc(100vw - 16px);
+    overflow-x: auto;
+  }
+}
+.hub-tabs button.on,
+.hub-tabs button.on:hover,
+.hub-tabs button.on:focus {
+  background: #2b6a5f !important;
+  color: #fff !important;
 }

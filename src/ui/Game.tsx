@@ -63,6 +63,8 @@ import { MapView, mapMode, setMapMode } from './MapView.tsx';
 import { Minimap } from './Minimap.tsx';
 import { EmpireDialog } from './EmpireDialog.tsx';
 import { FaithDialog } from './FaithDialog.tsx';
+import { NewsList } from './TurnNews.tsx';
+import { locate, type NewsTarget } from './news.ts';
 import { WonderDialog } from './WonderDialog.tsx';
 import { foundProblem, tenetDue } from '../engine/faith.ts';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
@@ -192,7 +194,11 @@ export function Game({
   const bump = useCallback(() => setVersion(v => v + 1), []);
   const [sel, setSel] = useState<Sel>(null);
   const [hover, setHover] = useState(-1);
-  const [toasts, setToasts] = useState<{ id: number; text: string; bad?: boolean }[]>([]);
+  const [toasts, setToasts] = useState<
+    { id: number; text: string; bad?: boolean; target?: NewsTarget | null }[]
+  >([]);
+  // the start-of-turn summary, grouped; closed by the player or the next turn
+  const [summary, setSummary] = useState<string[] | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [map3d, setMap3d] = useState(mapMode() === '3d');
   const [center, setCenter] = useState<{ hex: number; n: number } | null>(null);
@@ -252,11 +258,13 @@ export function Game({
   }, [insets]);
   const endArmed = useRef(false);
 
-  const toast = useCallback((text: string, bad = false) => {
+  const toast = useCallback((text: string, bad = false, target?: NewsTarget | null) => {
     const id = ++toastId.current;
     if (bad) sound.deny();
     // the same words twice in a row are one message
-    setToasts(t => (t.some(x => x.text === text) ? t : [...t.slice(-5), { id, text, bad }]));
+    setToasts(t =>
+      t.some(x => x.text === text) ? t : [...t.slice(-5), { id, text, bad, target }],
+    );
     // bad news stays until tapped; the rest fades
     if (!bad) setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
   }, []);
@@ -287,6 +295,16 @@ export function Game({
         !f.auto,
     );
   const focus = (hex: number) => setCenter({ hex, n: Date.now() });
+  /** Take the player to what a piece of news is about. */
+  const go = (t: NewsTarget) => {
+    if (t.kind === 'city') {
+      setSel({ kind: 'city', id: t.id });
+      focus(t.hex);
+    } else if (t.kind === 'formation') {
+      setSel({ kind: 'formation', id: t.id });
+      focus(t.hex);
+    } else setDialog({ kind: t.dialog } as Dialog);
+  };
   /** The next unit waiting for orders, after the one selected. */
   const selectNext = () => {
     const list = idle();
@@ -420,6 +438,8 @@ export function Game({
       fx,
       /** click-to-act on a hex for the selected formation: move or attack */
       act: (hex: number) => moveTo(hex),
+      /** show the turn summary with these lines (checks) */
+      news: (lines: string[]) => setSummary(lines),
     };
   });
 
@@ -449,9 +469,12 @@ export function Game({
     const urgent = (e: string) =>
       /declared war on the|captured .* from|attacked/.test(e) && e.includes(me.name);
     const calm = events.filter(e => !urgent(e));
-    events.filter(urgent).forEach(e => toast(e, true));
-    if (calm.length <= 2) calm.forEach(e => toast(e));
-    else toast(`${calm.length} things happened. Last turn has the full story.`);
+    events.filter(urgent).forEach(e => toast(e, true, locate(game, me.id, e)));
+    // a few lines fade as notes; more make a summary, grouped, each line taking you there
+    if (events.length <= 2) {
+      calm.forEach(e => toast(e, false, locate(game, me.id, e)));
+      setSummary(null);
+    } else setSummary(events);
     bump();
     lastTodo.current = '';
     // a house has risen: the choice of side cannot wait in the to-do list
@@ -1232,6 +1255,26 @@ export function Game({
         </button>
       </div>
 
+      {summary && !dialog && (
+        <aside className="turn-summary" aria-label={`Turn ${game.turn - 1} in brief`}>
+          <header>
+            <b>Turn {game.turn - 1} in brief</b>
+            <button className="x" onClick={() => setSummary(null)} aria-label="Close">
+              ×
+            </button>
+          </header>
+          <NewsList
+            game={game}
+            civId={me.id}
+            lines={summary}
+            limit={4}
+            onGo={t => {
+              setSummary(null);
+              go(t);
+            }}
+          />
+        </aside>
+      )}
       <div className="toasts" role="status" aria-live="polite">
         {toasts.length > 3 && (
           <button className="toast more" onClick={() => setToasts(x => x.slice(-3))}>
@@ -1241,9 +1284,12 @@ export function Game({
         {toasts.slice(-3).map(t => (
           <button
             key={t.id}
-            className={`toast ${t.bad ? 'bad' : ''}`}
-            onClick={() => setToasts(x => x.filter(y => y.id !== t.id))}
-            title="Dismiss"
+            className={`toast ${t.bad ? 'bad' : ''} ${t.target ? 'goes' : ''}`}
+            onClick={() => {
+              setToasts(x => x.filter(y => y.id !== t.id));
+              if (t.target) go(t.target);
+            }}
+            title={t.target ? 'Go there' : 'Dismiss'}
           >
             {t.bad ? '⚠ ' : ''}
             {t.text}
@@ -1265,11 +1311,15 @@ export function Game({
                 ×
               </button>
             </header>
-            <ul className="report-list">
-              {lastReport.map((e, i) => (
-                <li key={i}>{e}</li>
-              ))}
-            </ul>
+            <NewsList
+              game={game}
+              civId={me.id}
+              lines={lastReport}
+              onGo={t => {
+                setDialog(null);
+                go(t);
+              }}
+            />
           </div>
         </div>
       )}

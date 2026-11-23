@@ -1073,6 +1073,22 @@ A threat of the early ages that belongs to no people (engine/raiders.ts).
   The Peoples button shows "threat" while a rival is massing. Wars between AI peoples, and allies
   joining a war, come without the warning.
 
+## 12o. Release 1 conveniences (as built)
+
+- **Sentry (Z) and skip (X):** a unit on sentry waits out of the to-do list until an enemy (at
+  war, or raiders) comes within 3 hexes, then wakes with a message; a skipped unit is left out
+  of the to-do list for the rest of the turn. Any direct order takes a unit off sentry.
+- **Victory toggles:** the New game screen turns cultural, economic, diplomatic and scientific
+  victories on or off; conquest and the score at the last turn are always on.
+- **Rematch:** the end screen starts a new game on the same map and settings.
+- **News that goes somewhere:** each turn's lines are sorted as needs you now, to act on, or for
+  your information (ui/news.ts) and linked to what they are about: one of your units or
+  settlements (selected and centred), or the screen that deals with it (research, faith,
+  wonders, crisis, goods, houses, nation, victory, culture, peoples). Urgent lines stay as
+  notes until clicked; a turn with three or more lines shows a "Turn N in brief" card, grouped,
+  every line clickable; the Last turn report is grouped the same way.
+- **Clean install:** Playwright is a dev dependency; the README lists the steps.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

@@ -972,8 +972,8 @@ export function powderNeed(s: GameState, civId: number): number {
 }
 
 /**
- * What a building would add to its settlement on one plot: the settlement's yields with it built
- * there, less without. Everything counts (land, deposits, boosters, workers to staff it).
+ * What a building would make on one plot, as it would run there now: its own output (land,
+ * deposits, boosters and workers all counted), or why it would stand idle.
  */
 export function slotPreview(
   s: GameState,
@@ -981,28 +981,25 @@ export function slotPreview(
   d: District,
   i: number,
   typeId: string,
-): { yields: Record<string, number>; goods: Record<string, number> } {
-  const before = cityEconomy(s, c).total;
+): { yields: Record<string, number>; goods: Record<string, number>; why?: string } {
   const keep = d.slots[i];
-  d.slots[i] = { type: typeId, built: true, progress: 0, paid: true };
-  invalidateMarkets();
-  let after: Totals;
+  let rep: SlotReport | undefined;
   try {
-    after = cityEconomy(s, c).total;
+    d.slots[i] = { type: typeId, built: true, progress: 0, paid: true };
+    invalidateMarkets();
+    rep = cityEconomy(s, c).slots.get(d.id)?.[i];
   } finally {
     d.slots[i] = keep;
     invalidateMarkets();
   }
   const r = (n: number) => Math.round(n * 10) / 10;
   const yields: Record<string, number> = {};
-  for (const k of ['food', 'prod', 'science', 'gold', 'culture', 'housing'] as const) {
-    const v = r(after[k] - before[k]);
-    if (v) yields[k] = v;
-  }
   const goods: Record<string, number> = {};
-  for (const k of new Set([...Object.keys(after.goods), ...Object.keys(before.goods)])) {
-    const v = r((after.goods[k] ?? 0) - (before.goods[k] ?? 0));
-    if (v) goods[k] = v;
-  }
-  return { yields, goods };
+  if (rep?.staffed)
+    for (const k of ['food', 'prod', 'science', 'gold', 'culture', 'housing'] as const) {
+      const v = r(rep.out[k]);
+      if (v) yields[k] = v;
+    }
+  if (rep?.staffed) for (const [k, n] of Object.entries(rep.out.goods)) if (r(n)) goods[k] = r(n);
+  return { yields, goods, why: rep?.problem ?? rep?.idle ?? undefined };
 }

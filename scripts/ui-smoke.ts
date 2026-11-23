@@ -95,25 +95,41 @@ await page.evaluate(() => {
 await page.waitForTimeout(300);
 await page.click('button:has-text("City & districts")');
 await page.waitForSelector('.modal.city-screen');
+// the overview first; districts and the 3D scene on their own tab
+await page.screenshot({ path: `${out}/3a-city-overview.png` });
+await page.click('.city-tabs button:has-text("Districts")');
 await page.click('.district-tabs button.add');
 await page.fill('.new-district .design-name', 'Farm');
 await page.click('.new-district button.primary');
-await page.waitForSelector('.grid3');
-const pick = async (i: number, name: string) => {
-  await page.locator('.grid3 .cell').nth(i).click();
-  const b = page.locator('.pal:not(.locked)', { hasText: name }).first();
-  if (await b.count()) await b.click();
-};
-await pick(4, 'Farm');
-await pick(1, 'Pasture');
-await pick(3, 'Pasture');
-await pick(5, 'Mine');
-await pick(7, 'Woodcutter');
-await pick(0, 'Mine');
-await pick(2, 'Mine');
+await page.waitForSelector('.city-scene');
+await page.waitForTimeout(1500);
+// pick plots in the scene and choose what to build there
+const stage = (await (await page.$('.city-scene'))!.boundingBox())!;
+let picked = 0;
+for (const [fx, fy] of [
+  [0.5, 0.5],
+  [0.42, 0.45],
+  [0.58, 0.45],
+  [0.42, 0.58],
+  [0.58, 0.58],
+  [0.5, 0.38],
+  [0.5, 0.66],
+]) {
+  await page.mouse.click(stage.x + stage.width * fx, stage.y + stage.height * fy);
+  await page.waitForTimeout(250);
+  const opt = page.locator('.plot-opt:not(.clear)').first();
+  if (await opt.count()) {
+    await opt.hover();
+    await page.waitForTimeout(150);
+    if (!(await page.$('.build-tip'))) throw new Error('pointing at a building shows no tip');
+    await opt.click();
+    picked++;
+    await page.waitForTimeout(200);
+  }
+}
+if (!picked) throw new Error('no plot could be filled from the scene');
 await page.fill('.bp-row input', 'Farm');
 await page.click('.bp-row button:has-text("Save")');
-await page.locator('.grid3 .cell').nth(1).click();
 await page.screenshot({ path: `${out}/3b-district.png` });
 if (await page.$('.district-tabs button.add')) throw new Error('a town offered a third district');
 await page.click('.modal.city-screen .x');

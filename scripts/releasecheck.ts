@@ -14,6 +14,7 @@ import type { GameState } from '../src/engine/types.ts';
 import { classify, groupNews, locate } from '../src/ui/news.ts';
 import { exportSave, importSave } from '../src/ui/save.ts';
 import { whyCulture, whyGold, whyScience } from '../src/engine/breakdown.ts';
+import { cityDistricts, slotPreview } from '../src/engine/economy.ts';
 import { codexEntries, searchCodex } from '../src/ui/codex.ts';
 import { GUIDE, guideSeen, guideStep, startGuide } from '../src/ui/guide.ts';
 
@@ -176,6 +177,26 @@ const make = (noVictory?: GameState['settings']['noVictory']): GameState =>
   const hard = newGame({ ...s.settings, difficulty: 'hard' });
   startGuide(hard, player(hard).id);
   check(guideStep(hard, player(hard).id) === null, 'off on Veteran');
+}
+
+// ---------------------------------------------------------------- building preview
+{
+  const s = make();
+  const me = player(s);
+  foundCity(s, s.formations.find(f => f.civId === me.id && f.kind === 'settlers')!.id);
+  const town = s.cities.find(c => c.civId === me.id)!;
+  town.pop = 3000;
+  const d = cityDistricts(s, town)[0];
+  d.slots[0] = { type: 'houses', built: true, progress: 0, paid: true };
+  d.slots[1] = { type: 'houses', built: true, progress: 0, paid: true };
+  const pv = slotPreview(s, town, d, 2, 'woodlot');
+  check(
+    (pv.goods.wood ?? 0) > 0,
+    `a woodlot on an empty plot shows its own wood: ${JSON.stringify(pv)}`,
+  );
+  check(d.slots[2].type === null, 'the preview leaves the plot as it was');
+  const bad = slotPreview(s, town, d, 0, 'woodlot');
+  check(!!bad.why && /housing/.test(bad.why), `replacing a house says why: ${bad.why}`);
 }
 
 if (failures) {

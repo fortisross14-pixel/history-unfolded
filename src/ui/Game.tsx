@@ -104,7 +104,7 @@ type Dialog =
   | { kind: 'report' }
   | { kind: 'keys' }
   | { kind: 'culture' }
-  | { kind: 'city'; cityId: number; hex?: number }
+  | { kind: 'city'; cityId: number; hex?: number; tab?: 'overview' | 'districts' }
   | { kind: 'designs'; open?: number | 'new' }
   | { kind: 'peoples' }
   | { kind: 'goods' }
@@ -320,7 +320,7 @@ export function Game({
       if (!c) return;
       setSel({ kind: 'city', id: c.id });
       focus(c.hex);
-      if (what === 'city-dialog') setDialog({ kind: 'city', cityId: c.id });
+      if (what === 'city-dialog') setDialog({ kind: 'city', cityId: c.id, tab: 'districts' });
     } else setDialog({ kind: what } as Dialog);
   };
   /** Take the player to what a piece of news is about. */
@@ -416,7 +416,7 @@ export function Game({
           go: () => {
             setSel({ kind: 'city', id: c.id });
             focus(c.hex);
-            setDialog({ kind: 'city', cityId: c.id });
+            setDialog({ kind: 'city', cityId: c.id, tab: 'districts' });
           },
         });
     for (const f of idle())
@@ -1201,7 +1201,9 @@ export function Game({
             game={game}
             hex={sel.hex}
             civId={me.id}
-            onOpenDistrict={cityId => setDialog({ kind: 'city', cityId, hex: sel.hex })}
+            onOpenDistrict={cityId =>
+              setDialog({ kind: 'city', cityId, hex: sel.hex, tab: 'districts' })
+            }
           />
         )}
         {!sel && (
@@ -1614,6 +1616,7 @@ export function Game({
           game={game}
           c={game.cities.find(x => x.id === dialog.cityId)!}
           startHex={dialog.hex}
+          startTab={dialog.tab}
           report={report}
           onClose={() => {
             setDialog(null);

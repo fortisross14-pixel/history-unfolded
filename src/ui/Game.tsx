@@ -6,6 +6,7 @@ import { VICTORY } from '../engine/victory.ts';
 import { VictoryDialog } from './VictoryDialog.tsx';
 import { NationDialog } from './NationDialog.tsx';
 import { CrisisDialog } from './CrisisDialog.tsx';
+import { StatsChart, StatsDialog } from './StatsDialog.tsx';
 import { CRISIS } from '../engine/crises.ts';
 import { TECHS } from '../data/techs.ts';
 import type { BattleReport } from '../engine/combat.ts';
@@ -95,6 +96,7 @@ type Dialog =
   | { kind: 'victory' }
   | { kind: 'nation'; age?: number }
   | { kind: 'crisis' }
+  | { kind: 'stats' }
   | { kind: 'dynasties' }
   | { kind: 'realm-event' }
   | { kind: 'battle'; report: BattleReport }
@@ -150,6 +152,7 @@ const KEYS: [string, string][] = [
   ['G', 'Goods: made, used and traded per turn'],
   ['V', 'Victory: the ways to win and who is closest'],
   ['O', 'Nation: national directions, edicts and crises'],
+  ['L', 'Chronicle and statistics: rankings, charts, history'],
   ['Y', 'Dynasties: houses, governors, trinkets'],
   ['Esc', 'Close a window, or clear the selection'],
   ['?', 'This list'],
@@ -555,6 +558,7 @@ export function Game({
       else if (key === 'g') setDialog({ kind: 'goods' });
       else if (key === 'v') setDialog({ kind: 'victory' });
       else if (key === 'o') setDialog({ kind: 'nation' });
+      else if (key === 'l') setDialog({ kind: 'stats' });
       else if (key === 'y') setDialog({ kind: 'dynasties' });
       else if (key === '?' || key === 'h') setDialog({ kind: 'keys' });
       else if (key === 'k') setDialog({ kind: 'culture' });
@@ -638,6 +642,23 @@ export function Game({
             {!me.alive ? ` The chronicles will remember the ${me.name}.` : ''}
           </p>
           <p className="muted small">Difficulty: {difficultyOf(game).name}</p>
+          <h3>Score over the game</h3>
+          <StatsChart game={game} civId={me.id} metric="score" height={200} />
+          {(game.chronicle ?? []).some(c => c.civId === me.id) && (
+            <>
+              <h3>Your chronicle</h3>
+              <ol className="chronicle short">
+                {(game.chronicle ?? [])
+                  .filter(c => c.civId === me.id && c.kind !== 'found')
+                  .slice(-12)
+                  .map((c, i) => (
+                    <li key={i}>
+                      <span className="chron-turn">Turn {c.turn}</span> <span>{c.text}</span>
+                    </li>
+                  ))}
+              </ol>
+            </>
+          )}
           <table className="stats">
             <tbody>
               {ranking.map(c => (
@@ -806,6 +827,13 @@ export function Game({
           ) : (
             ''
           )}
+        </button>
+        <button
+          className="secondary"
+          onClick={() => setDialog({ kind: 'stats' })}
+          title="Chronicle and statistics: compare peoples (L)"
+        >
+          <Icon name="book" /> Chronicle
         </button>
         <button
           className="secondary"
@@ -1230,6 +1258,9 @@ export function Game({
           report={r => report({ ok: r.ok, msg: r.msg } as Result)}
           onClose={() => setDialog(null)}
         />
+      )}
+      {dialog?.kind === 'stats' && (
+        <StatsDialog game={game} civId={me.id} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'crisis' && (
         <CrisisDialog

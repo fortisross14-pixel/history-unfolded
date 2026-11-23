@@ -943,6 +943,21 @@ breached) and says so in its panel. Supply lines and war weariness were left out
   build, one to-do item hands them all to their governors.
 - Automated units and settlements leave the to-do list; any direct order takes a unit back.
 
+## 12h. Chronicle and statistics (as built)
+
+Every turn each great people's numbers are recorded: population, settlements, techs, culture
+and wealth (GDP) per turn, military power and score (free peoples are left out). The
+**Chronicle & statistics** screen (top bar, or L) has three tabs:
+- **Rankings**: the peoples the player has met, side by side with their age and each number's
+  rank; sort by any column. Peoples not met yet are counted but not shown.
+- **Over time**: a line chart per number, a line per known people (the player's thicker).
+- **Chronicle**: the moments kept for good: ages entered, wars and peace, captures and cessions,
+  settlements founded and grown, crises, national directions, dynasty turns, victory goals; all
+  peoples known, or the player's own.
+The end screen shows the score over the game and the player's chronicle. Saves stay small: the
+last 40 turns are kept turn by turn, older ones every fourth turn, and the chronicle keeps its
+last 800 moments (a 220-turn save is about 340 KB in all).
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

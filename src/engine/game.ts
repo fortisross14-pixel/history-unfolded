@@ -77,6 +77,7 @@ import { victoryTurn } from './victory.ts';
 import { aiPathTurn, enterAge } from './paths.ts';
 import { crisisTurn } from './crises.ts';
 import { coalitionTurn } from './coalition.ts';
+import { chronicle, recordStats } from './stats.ts';
 import { aiPolicyTurn, policyTurn } from './policies.ts';
 import { settlerFactor } from '../data/policies.ts';
 import { realmEventTurn, settleRealmEvent } from './realmEvents.ts';
@@ -372,6 +373,7 @@ export const SHIP_CREW = 50;
 
 export function log(s: GameState, civId: number, text: string) {
   s.log.push({ turn: s.turn, civId, text });
+  chronicle(s, civId, text);
   if (s.log.length > 300) s.log.splice(0, s.log.length - 300);
 }
 
@@ -1217,6 +1219,7 @@ export function endTurn(s: GameState): string[] {
   events.push(...historyTurn(s));
   heal(s);
   events.push(...siegeTurn(s));
+  recordStats(s);
   s.turn++;
   for (const f of s.formations) f.moves = formationMoves(f);
   // standing orders carry on at the start of the new turn

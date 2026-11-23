@@ -84,6 +84,8 @@ npm run check:perf           # map frame times with the CPU slowed 4x
   Renaissance; Diplomatic and Scientific in the Industrial age. Progress on the Victory screen (V).
 - **National directions**: on entering the Classical age and the Renaissance, choose a lasting
   direction with an edict (Nation screen, O); some are alternate developments earned by history.
+- **Chronicle & statistics** (L): rank and chart every people you know by population, settlements,
+  techs, culture, wealth, military power and score, and read the chronicle of the game.
 - **Settlements grow over their land**: a settlement is its centre hex and up to six districts on
   the hexes around it, placed by the player (by the coast for yards, on an ore for mines); six
   sizes from settlement to metropolis, one district more at each.

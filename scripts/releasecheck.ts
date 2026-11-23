@@ -12,6 +12,7 @@ import { distance } from '../src/engine/hex.ts';
 import { victoryOn, victoryTurn } from '../src/engine/victory.ts';
 import type { GameState } from '../src/engine/types.ts';
 import { classify, groupNews, locate } from '../src/ui/news.ts';
+import { exportSave, importSave } from '../src/ui/save.ts';
 
 let failures = 0;
 const check = (cond: unknown, what: string) => {
@@ -105,6 +106,23 @@ const make = (noVictory?: GameState['settings']['noVictory']): GameState =>
   check(t4?.kind === 'dialog' && t4.dialog === 'peoples', 'a rival’s threat opens Peoples');
   const g = groupNews(['a', `Raiders pillaged ${town.name}.`, 'Research complete: X.']);
   check(g.urgent.length === 1 && g.act.length === 1 && g.info.length === 1, 'news is grouped');
+}
+
+// ---------------------------------------------------------------- save files
+{
+  const s = make();
+  const f = exportSave(s);
+  check(/^history-unfolded-test-turn-1\.json$/.test(f.filename), `export file name: ${f.filename}`);
+  const back = importSave(f.text);
+  check(back.turn === s.turn && back.uid === s.uid, 'an exported game imports back');
+  let msg = '';
+  try {
+    importSave('{"hello": 1}');
+  } catch (e) {
+    msg = (e as Error).message;
+  }
+  check(/not a History Unfolded save|save/i.test(msg), `a wrong file is refused: ${msg}`);
+  check(make().uid !== make().uid, 'two games on the same map are told apart');
 }
 
 if (failures) {

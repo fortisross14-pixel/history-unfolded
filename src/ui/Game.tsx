@@ -63,6 +63,9 @@ import { MapView, mapMode, setMapMode } from './MapView.tsx';
 import { Minimap } from './Minimap.tsx';
 import { EmpireDialog } from './EmpireDialog.tsx';
 import { FaithDialog } from './FaithDialog.tsx';
+import { SettingsDialog } from './SettingsDialog.tsx';
+import { SavesDialog } from './SavesDialog.tsx';
+import { settings } from './settings.ts';
 import { NewsList } from './TurnNews.tsx';
 import { locate, type NewsTarget } from './news.ts';
 import { WonderDialog } from './WonderDialog.tsx';
@@ -107,6 +110,8 @@ type Dialog =
   | { kind: 'stats' }
   | { kind: 'empire' }
   | { kind: 'faith' }
+  | { kind: 'settings' }
+  | { kind: 'saves' }
   | { kind: 'wonders'; cityId?: number }
   | { kind: 'dynasties' }
   | { kind: 'realm-event' }
@@ -180,12 +185,15 @@ export function Game({
   assets,
   onQuit,
   onRematch,
+  onLoad,
 }: {
   initial: GameState;
   assets: Assets;
   onQuit: () => void;
   /** a new game on the same map and settings */
   onRematch?: () => void;
+  /** switch to another save of this game */
+  onLoad?: (s: GameState) => void;
 }) {
   const gref = useRef(initial);
   const game = gref.current;
@@ -463,8 +471,11 @@ export function Game({
     setLastReport(events);
     setTurnBanner(game.turn);
     sound.turn();
-    const saved = saveGame(game);
-    if (!saved.ok) toast(`Autosave failed: ${saved.reason}`, true);
+    const every = settings().autosave;
+    if (every && game.turn % every === 0) {
+      const saved = saveGame(game);
+      if (!saved.ok) toast(`Autosave failed: ${saved.reason}`, true);
+    }
     // the news that needs the player stays up; the rest is summed up in the turn report
     const urgent = (e: string) =>
       /declared war on the|captured .* from|attacked/.test(e) && e.includes(me.name);
@@ -1031,12 +1042,13 @@ export function Game({
         </button>
         <button
           className="secondary"
-          onClick={() => {
-            const r = saveGame(game, true);
-            toast(r.ok ? 'Saved.' : `Could not save: ${r.reason}.`, !r.ok);
-          }}
+          onClick={() => setDialog({ kind: 'saves' })}
+          title="Save, save under a name, export to a file, load"
         >
           Save
+        </button>
+        <button className="secondary" onClick={() => setDialog({ kind: 'settings' })}>
+          Settings
         </button>
         <button
           className="secondary"
@@ -1429,6 +1441,18 @@ export function Game({
             bump();
           }}
           onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'settings' && <SettingsDialog onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'saves' && (
+        <SavesDialog
+          game={game}
+          onClose={() => setDialog(null)}
+          report={(ok, msg) => toast(msg, !ok)}
+          onLoad={st => {
+            setDialog(null);
+            onLoad?.(st);
+          }}
         />
       )}
       {dialog?.kind === 'faith' && (

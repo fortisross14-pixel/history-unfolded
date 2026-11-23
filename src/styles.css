@@ -2923,3 +2923,92 @@ input.rename {
     max-height: 40vh;
   }
 }
+
+/* settings and saves */
+.modal.settings {
+  width: min(560px, 96vw);
+}
+.setting {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(120, 90, 50, 0.15);
+}
+.setting > span:first-child {
+  min-width: 170px;
+  font-weight: 600;
+}
+.setting-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.setting-opts button {
+  padding: 4px 10px;
+}
+.setting-opts button.on {
+  background: var(--accent, #2b6a5f);
+  color: #fff;
+}
+.modal.saves-dialog {
+  width: min(560px, 96vw);
+}
+.saves-dialog .row {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+.saves-dialog input {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 8px;
+}
+.save-entries {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 40vh;
+  overflow: auto;
+}
+.save-entries li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(120, 90, 50, 0.12);
+}
+.menu-tools {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 6px 0 10px;
+}
+.button-like {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid rgba(120, 90, 50, 0.4);
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(255, 252, 244, 0.8);
+}
+/* the player's chosen sizes: bars, panels and notes; dialogs also take the text size */
+.topbar,
+.side,
+.turn-box,
+.toasts,
+.turn-summary,
+.minimap-box {
+  zoom: var(--ui-scale, 1);
+}
+.modal,
+.panel {
+  zoom: calc(var(--ui-scale, 1) * var(--text-scale, 1));
+}
+.side .panel {
+  zoom: var(--text-scale, 1);
+}

@@ -1088,6 +1088,13 @@ A threat of the early ages that belongs to no people (engine/raiders.ts).
   notes until clicked; a turn with three or more lines shows a "Turn N in brief" card, grouped,
   every line clickable; the Last turn report is grouped the same way.
 - **Clean install:** Playwright is a dev dependency; the README lists the steps.
+- **Saves:** Save (top bar) opens Saves: save now, save under a name (five named saves kept per
+  game), export the game to a file, and load any save of this game. The menu imports a save
+  file. Autosaves keep the last three turns; a damaged save falls back to an older one. Each
+  new game gets its own tag, so a rematch on the same map never overwrites the old game's saves.
+- **Settings** (top bar and menu): interface size 90–150%, text size for panels and dialogs,
+  animation speed, reduced motion, effects volume, autosave every 1, 2 or 5 turns or never.
+  Kept per browser and applied at once. (Music is not in the game yet.)
 
 ## 13. Core screens and flows
 

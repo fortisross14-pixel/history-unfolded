@@ -11,12 +11,16 @@ const INDEX = 'hu-saves-index-v2';
 const LEGACY = 'history-unfolded-forge-save-v1';
 const RING = 3;
 const MAX_GAMES = 4;
+/** named saves kept per game; the oldest goes */
+const MAX_NAMED = 5;
 
 export interface SaveEntry {
   key: string;
   turn: number;
   savedAt: number;
   manual: boolean;
+  /** a save the player named */
+  name?: string;
 }
 export interface GameEntry {
   id: string;
@@ -27,8 +31,9 @@ export interface GameEntry {
   saves: SaveEntry[];
 }
 
+/** One game's id: its map, and (for newer games) its own tag, so a rematch is a game of its own. */
 const gameId = (s: GameState) =>
-  `${s.settings.map.seed}-${s.settings.map.type}-${s.settings.map.size}`;
+  `${s.settings.map.seed}-${s.settings.map.type}-${s.settings.map.size}${s.uid ? `-${s.uid}` : ''}`;
 
 function readIndex(): GameEntry[] {
   try {
@@ -45,7 +50,7 @@ function writeIndex(games: GameEntry[]) {
 
 export type SaveResult = { ok: true } | { ok: false; reason: string };
 
-export function saveGame(s: GameState, manual = false): SaveResult {
+export function saveGame(s: GameState, manual = false, name?: string): SaveResult {
   try {
     const id = gameId(s);
     const games = readIndex();
@@ -61,12 +66,26 @@ export function saveGame(s: GameState, manual = false): SaveResult {
       };
       games.push(g);
     }
-    const key = manual ? `hu-save-${id}-manual` : `hu-save-${id}-auto-${s.turn % RING}`;
+    const label = name?.trim().slice(0, 40);
+    const key = label
+      ? `hu-save-${id}-named-${Date.now()}`
+      : manual
+        ? `hu-save-${id}-manual`
+        : `hu-save-${id}-auto-${s.turn % RING}`;
     localStorage.setItem(key, serialize(s));
     g.saves = [
-      ...g.saves.filter(x => x.key !== key),
-      { key, turn: s.turn, savedAt: Date.now(), manual },
+      ...g.saves.filter(x => x.key !== key && !(label && x.name === label)),
+      { key, turn: s.turn, savedAt: Date.now(), manual: manual || !!label, name: label },
     ];
+    // a name used again replaces that save; only the newest few named saves are kept
+    const named = g.saves.filter(x => x.name).sort((a, b) => b.savedAt - a.savedAt);
+    for (const old of named.slice(MAX_NAMED)) {
+      localStorage.removeItem(old.key);
+      g.saves = g.saves.filter(x => x !== old);
+    }
+    for (const k of Object.keys(localStorage))
+      if (k.startsWith(`hu-save-${id}-named-`) && !g.saves.some(x => x.key === k))
+        localStorage.removeItem(k);
     g.turn = s.turn;
     g.savedAt = Date.now();
     g.civ = s.civs.find(c => c.isPlayer)!.name;
@@ -106,6 +125,43 @@ export function loadGame(id?: string): LoadResult {
   }
   return { state: null, warning: warning ?? 'No loadable save was found.' };
 }
+
+/** Load one particular save. */
+export function loadSave(key: string): LoadResult {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return { state: null, warning: 'That save is gone.' };
+    return { state: deserialize(raw) };
+  } catch (err) {
+    return {
+      state: null,
+      warning: `That save could not be loaded (${err instanceof SaveError ? err.message : 'damaged'}).`,
+    };
+  }
+}
+
+/** A game as a file the player can keep, move to another browser and import. */
+export function exportSave(s: GameState): { filename: string; text: string } {
+  const civ = s.civs.find(c => c.isPlayer)?.name ?? 'game';
+  const safe = civ.replace(/[^A-Za-z0-9]+/g, '-').toLowerCase();
+  return { filename: `history-unfolded-${safe}-turn-${s.turn}.json`, text: serialize(s) };
+}
+
+/** Read a save file; throws a readable error when it is not a save or too new or old. */
+export function importSave(text: string): GameState {
+  try {
+    return deserialize(text);
+  } catch (err) {
+    if (err instanceof SaveError) throw err;
+    throw new SaveError('This file is not a History Unfolded save.');
+  }
+}
+
+/** The saves of this game, newest first. */
+export const savesOf = (s: GameState): SaveEntry[] =>
+  [...(readIndex().find(g => g.id === gameId(s))?.saves ?? [])].sort(
+    (a, b) => b.savedAt - a.savedAt,
+  );
 
 export function listGames(): GameEntry[] {
   migrateLegacy();

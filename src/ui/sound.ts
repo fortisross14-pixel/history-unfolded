@@ -14,6 +14,13 @@ let muted = (() => {
   }
 })();
 
+/** effects volume from the settings, 0..1 */
+let volume = 1;
+export function setVolume(v: number) {
+  volume = Math.max(0, Math.min(1, v));
+  if (master) master.gain.value = 0.2 * volume;
+}
+
 export const isMuted = () => muted;
 export function setMuted(m: boolean) {
   muted = m;
@@ -25,12 +32,12 @@ export function setMuted(m: boolean) {
 }
 
 function audio(): AudioContext | null {
-  if (muted || typeof AudioContext === 'undefined') return null;
+  if (muted || volume <= 0 || typeof AudioContext === 'undefined') return null;
   if (!ctx) {
     ctx = new AudioContext();
     master = ctx.createGain();
     // about -14 dB: these sit under whatever the player is listening to
-    master.gain.value = 0.2;
+    master.gain.value = 0.2 * volume;
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') void ctx.resume();

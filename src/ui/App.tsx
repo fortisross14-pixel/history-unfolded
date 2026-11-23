@@ -25,6 +25,11 @@ export function App() {
           saveGame(g);
           setGame(g);
         }}
+        onImport={g => {
+          saveGame(g);
+          setRun(n => n + 1);
+          setGame(g);
+        }}
         onContinue={id => {
           const r = loadGame(id);
           if (r.warning) alert(r.warning);
@@ -39,6 +44,10 @@ export function App() {
       initial={game}
       assets={assets}
       onQuit={() => setGame(null)}
+      onLoad={g => {
+        setRun(n => n + 1);
+        setGame(g);
+      }}
       onRematch={() => {
         const g = newGame(game.settings);
         saveGame(g);

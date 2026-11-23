@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { MAP_SIZES, MAP_TYPES } from '../engine/mapgen.ts';
 import { randomSeed } from '../engine/rng.ts';
-import type { GameSettings, Level3, MapSize, MapType } from '../engine/types.ts';
-import { deleteGame, listGames } from './save.ts';
+import type { GameSettings, GameState, Level3, MapSize, MapType } from '../engine/types.ts';
+import { deleteGame, importSave, listGames } from './save.ts';
+import { SettingsDialog } from './SettingsDialog.tsx';
 import { artUrl } from '../render/art.ts';
 import { DIFFICULTIES, DIFFICULTY_ORDER, type Difficulty } from '../engine/difficulty.ts';
 import { VICTORY } from '../engine/victory.ts';
@@ -13,10 +14,15 @@ const L3 = (labels: [string, string, string]) =>
 export function Menu({
   onStart,
   onContinue,
+  onImport,
 }: {
   onStart: (s: GameSettings) => void;
   onContinue: (id?: string) => void;
+  /** a game read from a save file */
+  onImport?: (s: GameState) => void;
 }) {
+  const [showSettings, setShowSettings] = useState(false);
+  const [importError, setImportError] = useState('');
   const [type, setType] = useState<MapType>('random');
   const [size, setSize] = useState<MapSize>('standard');
   const [civs, setCivs] = useState<number>(MAP_SIZES.standard.civs);
@@ -62,6 +68,33 @@ export function Menu({
       <div className="menu-card">
         <h1>History Unfolded</h1>
         <p className="subtitle">Every people starts the same. What they become is up to you.</p>
+        <div className="menu-tools">
+          <label className="button-like" title="Load a game saved to a file with Export">
+            Import a save file
+            <input
+              type="file"
+              accept=".json,application/json"
+              hidden
+              onChange={async e => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (!file) return;
+                try {
+                  const st = importSave(await file.text());
+                  setImportError('');
+                  onImport?.(st);
+                } catch (err) {
+                  setImportError(err instanceof Error ? err.message : 'Could not read that file.');
+                }
+              }}
+            />
+          </label>
+          <button className="secondary" onClick={() => setShowSettings(true)}>
+            Settings
+          </button>
+        </div>
+        {importError && <p className="bad small">{importError}</p>}
+        {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
         {games.length > 0 && (
           <div className="saves">
             <button className="primary wide" onClick={() => onContinue(games[0].id)}>

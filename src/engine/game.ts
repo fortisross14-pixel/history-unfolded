@@ -134,6 +134,7 @@ export function newGame(settings: GameSettings): GameState {
   const civCount = Math.min(settings.civCount, map.starts.length);
   const s: GameState = {
     version: SAVE_VERSION,
+    uid: Math.random().toString(36).slice(2, 10),
     settings,
     turn: 1,
     map,

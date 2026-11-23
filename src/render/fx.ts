@@ -24,8 +24,12 @@ const FLOAT_LIFE = 1.4;
 const FLASH_LIFE = 0.45;
 const SHAKE_DECAY = 1.6; // trauma lost per second
 
+/** set by the player's settings: animation speed and reduced motion */
+let motion = { speed: 1, reduced: false };
+export const setMotion = (m: { speed: number; reduced: boolean }) => (motion = m);
 export const reducedMotion = () =>
-  typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  motion.reduced ||
+  (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 const now = () => performance.now() / 1000;
 
@@ -105,7 +109,7 @@ export class Motion {
         fromX: cur[0],
         fromY: cur[1],
         t0: t,
-        dur: Math.min(0.75, 0.16 + 0.12 * hexDist),
+        dur: Math.min(0.75, 0.16 + 0.12 * hexDist) / Math.max(0.25, motion.speed),
       });
     }
     this.last.set(id, { hex, x, y });

@@ -383,6 +383,8 @@ export interface LogEntry {
 }
 
 export interface GameState {
+  /** tells two games on the same map apart (saves); absent in older saves */
+  uid?: string;
   version: number;
   settings: GameSettings;
   turn: number;

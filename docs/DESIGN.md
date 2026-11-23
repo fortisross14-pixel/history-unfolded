@@ -1195,7 +1195,7 @@ settlement is always a town. Founded further out, it is a **colony**:
 - Phones and tablets (a coarse pointer up to 1180 px wide) keep the realm's numbers on one row
   of the top bar and fold the rest into a More menu, which closes when a screen opens and sits
   above the side panel while open.
-- A tablet starts the map further out (zoom scaled to the screen, not below 65%).
+- The map canvas fills its place in CSS pixels; its drawing buffer is in device pixels (before, on high-density screens the map drew at twice its size from the top-left and unit badges sat away from their units).
 - In a settlement a tap on a building shows what it would make (outlined); a second tap builds.
 - A long press on a number in the top bar shows where it comes from; the tap that ends the
   press does not also open the screen, and a tap elsewhere closes it.
@@ -1257,7 +1257,7 @@ settlement is always a town. Founded further out, it is a **colony**:
   shield toward the viewer with its face in the people's colour, and the weapon (club, spear,
   pike, sword, axe, sling, javelins, bows, crossbow, gun with or without bayonet). Riders sit on
   horses (barded in the people's colour); field guns have wheels and a gunner; settlers an ox cart;
-  workers carry picks. One to four figures by size (three riders, two guns). Every formation, ships too, stands on a round base: a dark outline, a ring in its people's colour and a paler middle.
+  workers carry picks. One to four figures by size (three riders, two guns). Every formation, ships too, stands on a round base: a dark outline, a ring in its people's colour and a paler middle. The first formation on an open hex stands in its middle on a base that fills almost the whole hex; a second or third, or any in a settlement, stand to the side on a small one.
 - No hand-made models: every gear combination draws itself, nothing to download, one draw call a
   formation. `tools/preview/troops.html` (dev server) shows every look in a row.
 

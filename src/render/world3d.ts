@@ -117,6 +117,9 @@ function nationBase(g: THREE.Object3D, colour: string, r: number) {
   cyl(g, r * 0.72, r * 0.72, 0.016, pale, 0, -0.004, 0, 20);
 }
 
+/** a hex's main formation: base radius before scaling (× UNIT_SCALE on the map) */
+const BIG_BASE = 0.262;
+
 /** how much larger than the land troops and ships are drawn */
 const UNIT_SCALE = 3;
 
@@ -234,17 +237,9 @@ export class World3DRenderer {
 
   // ---------------------------------------------------------------- camera (2D contract)
 
-  private fitted = false;
   resize(w: number, h: number) {
     this.w = Math.max(1, w);
     this.h = Math.max(1, h);
-    // a tablet starts a little further out, to show as much of the land as a desktop does
-    if (!this.fitted && w > 1 && h > 1) {
-      this.fitted = true;
-      const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
-      if (touch && Math.min(w, h) >= 600)
-        this.cam.zoom = Math.round(46 * Math.max(0.65, Math.min(1, Math.max(w, h) / 1500)));
-    }
     this.dpr = Math.min(2, window.devicePixelRatio || 1);
     this.renderer.setPixelRatio(this.dpr);
     this.renderer.setSize(this.w, this.h, false);
@@ -624,11 +619,11 @@ export class World3DRenderer {
 
   // ---------------------------------------------------------------- troops
 
-  private unitKey(s: GameState, f: Formation) {
-    return `${f.kind}|${Math.min(4, Math.ceil(f.cohorts.length / 3))}|${s.civs[f.civId].color}|${troopLook(f)}`;
+  private unitKey(s: GameState, f: Formation, big: boolean) {
+    return `${f.kind}|${Math.min(4, Math.ceil(f.cohorts.length / 3))}|${s.civs[f.civId].color}|${troopLook(f)}|${big}`;
   }
 
-  private buildUnit(s: GameState, f: Formation): THREE.Object3D {
+  private buildUnit(s: GameState, f: Formation, big: boolean): THREE.Object3D {
     const grp = new THREE.Group();
     const col = s.civs[f.civId].color;
     if (f.kind === 'fleet') {
@@ -640,7 +635,9 @@ export class World3DRenderer {
       flag(grp, -0.16, 0, -0.12, col, 0.4);
     }
     // a round base in the people's colour: whose troops these are, at a glance
-    nationBase(grp, col, f.kind === 'fleet' ? 0.2 : 0.15);
+    // the hex's main formation stands on a base filling almost the whole hex (inner radius
+    // 0.87 on the map, about 0.84 with its outline); others on the hex get a smaller one
+    nationBase(grp, col, big ? BIG_BASE : 0.12);
     // troops stand much larger than life, as in most strategy maps, so they read at a glance
     const unit = bakedMesh(grp) ?? grp;
     unit.scale.setScalar(UNIT_SCALE);
@@ -918,20 +915,30 @@ export class World3DRenderer {
       stack.set(f.hex, k + 1);
       if (k >= SPOTS.length) continue;
       shown.add(f.id);
-      const key = this.unitKey(s, f);
+      // the first formation on an open hex stands in its middle on the big base; a second or
+      // third, or any in a settlement (whose buildings fill the middle), stand to the side
+      const city = cityHex.has(f.hex);
+      const big = k === 0 && !city;
+      const key = this.unitKey(s, f, big);
       let u = this.units.get(f.id);
       if (!u || u.key !== key) {
         if (u) this.unitGroup.remove(u.mesh);
-        u = { key, mesh: this.buildUnit(s, f) };
+        u = { key, mesh: this.buildUnit(s, f, big) };
         this.units.set(f.id, u);
         this.unitGroup.add(u.mesh);
       }
       const [hx, hz] = centerUnit(g, f.hex);
-      const off = cityHex.has(f.hex) ? [SPOTS[k][0] * 1.1, SPOTS[k][1] + 0.5] : SPOTS[k];
+      const off = city
+        ? [SPOTS[k][0] * 1.1, SPOTS[k][1] + 0.5]
+        : big
+          ? [0, 0]
+          : [SPOTS[k - 1][0] * 1.25, SPOTS[k - 1][1] * 1.25];
       const last = this.motion.lastHex(f.id);
       const dist = last === undefined ? 0 : distance(g, last, f.hex);
       const [x, z] = this.motion.place(f.id, f.hex, hx + off[0], hz + off[1], dist);
-      const y = Math.max(this.top(s, f.hex), isWater(s.map.terrain[f.hex]) ? -0.1 : 0) + 0.05;
+      const y =
+        Math.max(this.top(s, f.hex), isWater(s.map.terrain[f.hex]) ? -0.1 : 0) +
+        (big ? 0.05 : 0.11);
       u.mesh.position.set(x, y, z);
       u.mesh.visible = true;
     }

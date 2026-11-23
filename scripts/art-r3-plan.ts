@@ -236,6 +236,46 @@ const LEADER: Record<string, string[]> = {
 };
 const RAIDER = 'a raider chief with a wild beard, a wolf-pelt hood and face paint';
 
+// ---------------------------------------------------------------- faces for a player's own ruler
+const FACES: Cell[] = [
+  ['face/1', 'a young woman of about 20 with long dark braids and a plain linen tunic (ancient)'],
+  [
+    'face/2',
+    'a woman of about 35 with short curly black hair and a draped wool mantle (classical)',
+  ],
+  ['face/3', 'a woman of about 50 with grey hair in a bun and a dark hooded cloak (medieval)'],
+  [
+    'face/4',
+    'a woman of about 30 with red-brown hair under a simple veil and a plain velvet bodice (renaissance)',
+  ],
+  [
+    'face/5',
+    'a woman of about 60 with white hair, a high-necked dark jacket and a small brooch (industrial)',
+  ],
+  [
+    'face/6',
+    'a woman of about 25 with a shaved head, gold earrings and a wrap of patterned cloth (ancient)',
+  ],
+  ['face/7', 'a man of about 25 with a short black beard and a leather jerkin (ancient)'],
+  [
+    'face/8',
+    'a man of about 45 with a grey-flecked beard and a plain wool cloak with a bronze pin (classical)',
+  ],
+  ['face/9', 'a man of about 65 with a long white beard and a monk-like brown robe (medieval)'],
+  [
+    'face/10',
+    'a man of about 35, clean-shaven, with shoulder-length hair and a plain doublet (renaissance)',
+  ],
+  [
+    'face/11',
+    'a man of about 50 with a moustache, a dark frock coat and a plain cravat (industrial)',
+  ],
+  [
+    'face/12',
+    'a man of about 30 with a shaved head, a thin beard and a quilted padded coat (medieval)',
+  ],
+];
+
 // ---------------------------------------------------------------- the sheets
 interface CreamSheet {
   file: string;
@@ -331,6 +371,17 @@ const figures: FigureSheet[] = [
     lead: 'Each portrait is a head-and-shoulders bust in three-quarter view facing right, cut off at mid-chest with a soft vignette fading to the background, no frame. Fictional people, not any real historical figure. Where a sash, collar or cloak would carry a people’s colour, leave it plain off-white.',
     cells: leaderCells,
   },
+  {
+    file: 'map-7-faces.png',
+    title: 'Faces for your own ruler',
+    use: 'New game: the twelve faces a player picks from for a ruler of their own.',
+    cols: 4,
+    rows: 3,
+    cell: 256,
+    height: 192,
+    lead: 'Each portrait is a head-and-shoulders bust of an ordinary-looking, invented person (not anyone famous, not resembling any real ruler), three-quarter view facing right, cut off at mid-chest, with the same framing, size and eye height in every cell as the attached rulers sheet. Expressions calm and confident. Simple clothes of the stated time with no crowns, no insignia and no national symbols, so the face suits any people; where a sash, collar or cloak would carry a people’s colour, leave it plain off-white. Row A and the first two cells of row B are women; the rest are men. Mix of ages and of origins (Mediterranean, North African, West African, Near Eastern, South Asian, East Asian, Northern European, Central Asian, South American).',
+    cells: FACES,
+  },
 ];
 
 // ---------------------------------------------------------------- the style lines (as the earlier sheets)
@@ -358,6 +409,7 @@ made**, with the same style lines word for word, so they sit with them:
 | 9. Interface II | 48 icons | ✓ done |
 | M5. Wonders | 10 wonders | ✓ done |
 | M6. Leaders | 19 rulers and a raider chief | ✓ done |
+| **M7. Faces for your own ruler** | **12 invented faces: 6 women, 6 men, of different ages and times** | **to make: below** |
 
 ## Rules for every sheet
 
@@ -422,7 +474,7 @@ for (const s of figures) {
   if (s.done) continue;
   const w = s.cols * s.cell,
     h = s.rows * s.cell;
-  md += `---\n\n## Sheet ${s.file.startsWith('map-5') ? 'M5' : 'M6'}: ${s.title}\n\nFile: \`${s.file}\` · ${w} × ${h} px · ${s.cols} × ${s.rows} cells of ${s.cell} × ${s.cell} px · ${s.use}\n\n### Prompt to paste\n\n\`\`\`\nA sprite sheet for a historical strategy game: ${s.title.toLowerCase()}.\n${FIGURE}\n${s.lead}\n${MAGENTA}\nFormat: one image, ${w} x ${h} pixels, an invisible ${s.cols} x ${s.rows} grid of equal cells (${s.cell} x ${s.cell} pixels each). One subject per cell, centred, filling about 80% of the cell, never touching or crossing a cell edge. No grid lines, borders or numbers.\nCells in reading order (row A left to right, then row B, and so on):\n${rowsText(s.cells, s.cols, s.rows)}\`\`\`\n\n### Cell map\n\n${cellMap(s.cells, s.cols, s.rows)}\n`;
+  md += `---\n\n## Sheet ${s.file.startsWith('map-5') ? 'M5' : s.file.startsWith('map-6') ? 'M6' : 'M7'}: ${s.title}\n\nFile: \`${s.file}\` · ${w} × ${h} px · ${s.cols} × ${s.rows} cells of ${s.cell} × ${s.cell} px · ${s.use}\n\n### Prompt to paste\n\n\`\`\`\nA sprite sheet for a historical strategy game: ${s.title.toLowerCase()}.\n${FIGURE}\n${s.lead}\n${MAGENTA}\nFormat: one image, ${w} x ${h} pixels, an invisible ${s.cols} x ${s.rows} grid of equal cells (${s.cell} x ${s.cell} pixels each). One subject per cell, centred, filling about 80% of the cell, never touching or crossing a cell edge. No grid lines, borders or numbers.\nCells in reading order (row A left to right, then row B, and so on):\n${rowsText(s.cells, s.cols, s.rows)}\`\`\`\n\n### Cell map\n\n${cellMap(s.cells, s.cols, s.rows)}\n`;
 }
 writeFileSync('art/R3-SHEETS.md', md);
 

@@ -1076,23 +1076,23 @@
  },
  "icon/colony": {
   "path": "art/icon/colony.webp",
-  "w": 91,
+  "w": 92,
   "h": 96
  },
  "icon/crate": {
   "path": "art/icon/crate.webp",
   "w": 96,
-  "h": 85
+  "h": 89
  },
  "icon/crisis": {
   "path": "art/icon/crisis.webp",
-  "w": 91,
+  "w": 88,
   "h": 96
  },
  "icon/crown": {
   "path": "art/icon/crown.webp",
   "w": 96,
-  "h": 66
+  "h": 77
  },
  "icon/culture": {
   "path": "art/icon/culture.webp",
@@ -1116,7 +1116,7 @@
  },
  "icon/drop": {
   "path": "art/icon/drop.webp",
-  "w": 66,
+  "w": 65,
   "h": 96
  },
  "icon/dynasties": {
@@ -1126,8 +1126,8 @@
  },
  "icon/edict": {
   "path": "art/icon/edict.webp",
-  "w": 96,
-  "h": 78
+  "w": 95,
+  "h": 96
  },
  "icon/end-turn": {
   "path": "art/icon/end-turn.webp",
@@ -1187,7 +1187,7 @@
  "icon/goods": {
   "path": "art/icon/goods.webp",
   "w": 96,
-  "h": 91
+  "h": 87
  },
  "icon/governor": {
   "path": "art/icon/governor.webp",
@@ -1197,11 +1197,11 @@
  "icon/growth": {
   "path": "art/icon/growth.webp",
   "w": 96,
-  "h": 95
+  "h": 90
  },
  "icon/helm": {
   "path": "art/icon/helm.webp",
-  "w": 81,
+  "w": 84,
   "h": 96
  },
  "icon/help": {
@@ -1217,12 +1217,12 @@
  "icon/info": {
   "path": "art/icon/info.webp",
   "w": 96,
-  "h": 95
+  "h": 94
  },
  "icon/intent": {
   "path": "art/icon/intent.webp",
   "w": 96,
-  "h": 44
+  "h": 80
  },
  "icon/layers": {
   "path": "art/icon/layers.webp",
@@ -1297,7 +1297,7 @@
  "icon/opinion": {
   "path": "art/icon/opinion.webp",
   "w": 96,
-  "h": 88
+  "h": 92
  },
  "icon/opinion-down": {
   "path": "art/icon/opinion-down.webp",
@@ -1336,32 +1336,32 @@
  },
  "icon/power": {
   "path": "art/icon/power.webp",
-  "w": 82,
+  "w": 83,
   "h": 96
  },
  "icon/priority-balanced": {
   "path": "art/icon/priority-balanced.webp",
   "w": 96,
-  "h": 85
+  "h": 92
  },
  "icon/priority-expand": {
   "path": "art/icon/priority-expand.webp",
   "w": 96,
-  "h": 88
+  "h": 93
  },
  "icon/priority-growth": {
   "path": "art/icon/priority-growth.webp",
-  "w": 96,
-  "h": 84
+  "w": 94,
+  "h": 96
  },
  "icon/priority-trade": {
   "path": "art/icon/priority-trade.webp",
   "w": 96,
-  "h": 84
+  "h": 89
  },
  "icon/priority-war": {
   "path": "art/icon/priority-war.webp",
-  "w": 77,
+  "w": 84,
   "h": 96
  },
  "icon/production": {
@@ -1376,13 +1376,13 @@
  },
  "icon/raiders": {
   "path": "art/icon/raiders.webp",
-  "w": 69,
+  "w": 75,
   "h": 96
  },
  "icon/rail": {
   "path": "art/icon/rail.webp",
   "w": 96,
-  "h": 78
+  "h": 75
  },
  "icon/ranged": {
   "path": "art/icon/ranged.webp",
@@ -1407,7 +1407,7 @@
  "icon/ruins": {
   "path": "art/icon/ruins.webp",
   "w": 96,
-  "h": 94
+  "h": 93
  },
  "icon/save": {
   "path": "art/icon/save.webp",
@@ -1432,11 +1432,11 @@
  "icon/ship-cargo": {
   "path": "art/icon/ship-cargo.webp",
   "w": 96,
-  "h": 78
+  "h": 87
  },
  "icon/siege": {
   "path": "art/icon/siege.webp",
-  "w": 90,
+  "w": 87,
   "h": 96
  },
  "icon/sight": {
@@ -1451,27 +1451,27 @@
  },
  "icon/sun": {
   "path": "art/icon/sun.webp",
-  "w": 96,
+  "w": 93,
   "h": 96
  },
  "icon/supply-army": {
   "path": "art/icon/supply-army.webp",
   "w": 96,
-  "h": 82
+  "h": 89
  },
  "icon/supply-homes": {
   "path": "art/icon/supply-homes.webp",
   "w": 96,
-  "h": 88
+  "h": 91
  },
  "icon/supply-industry": {
   "path": "art/icon/supply-industry.webp",
   "w": 96,
-  "h": 93
+  "h": 92
  },
  "icon/tenet": {
   "path": "art/icon/tenet.webp",
-  "w": 79,
+  "w": 86,
   "h": 96
  },
  "icon/trade": {
@@ -1481,13 +1481,13 @@
  },
  "icon/unrest": {
   "path": "art/icon/unrest.webp",
-  "w": 76,
+  "w": 81,
   "h": 96
  },
  "icon/upgrade": {
   "path": "art/icon/upgrade.webp",
-  "w": 93,
-  "h": 96
+  "w": 96,
+  "h": 89
  },
  "icon/upkeep": {
   "path": "art/icon/upkeep.webp",
@@ -1502,22 +1502,22 @@
  "icon/victory-diplomacy": {
   "path": "art/icon/victory-diplomacy.webp",
   "w": 96,
-  "h": 85
+  "h": 80
  },
  "icon/victory-domination": {
   "path": "art/icon/victory-domination.webp",
-  "w": 70,
+  "w": 73,
   "h": 96
  },
  "icon/victory-science": {
   "path": "art/icon/victory-science.webp",
   "w": 96,
-  "h": 93
+  "h": 75
  },
  "icon/victory-score": {
   "path": "art/icon/victory-score.webp",
   "w": 96,
-  "h": 85
+  "h": 86
  },
  "icon/war": {
   "path": "art/icon/war.webp",
@@ -1531,7 +1531,7 @@
  },
  "icon/wonder": {
   "path": "art/icon/wonder.webp",
-  "w": 93,
+  "w": 95,
   "h": 96
  },
  "icon/workers": {
@@ -1571,7 +1571,7 @@
  },
  "item/barefoot": {
   "path": "art/item/barefoot.webp",
-  "w": 59,
+  "w": 57,
   "h": 96
  },
  "item/bayonet": {
@@ -1671,7 +1671,7 @@
  },
  "item/foot": {
   "path": "art/item/foot.webp",
-  "w": 64,
+  "w": 55,
   "h": 96
  },
  "item/full-rig": {
@@ -1797,21 +1797,21 @@
  "item/no-armour": {
   "path": "art/item/no-armour.webp",
   "w": 96,
-  "h": 90
+  "h": 91
  },
  "item/no-helmet": {
   "path": "art/item/no-helmet.webp",
-  "w": 86,
+  "w": 89,
   "h": 96
  },
  "item/no-kit": {
   "path": "art/item/no-kit.webp",
   "w": 96,
-  "h": 93
+  "h": 88
  },
  "item/no-shield": {
   "path": "art/item/no-shield.webp",
-  "w": 82,
+  "w": 79,
   "h": 96
  },
  "item/oars": {
@@ -1892,7 +1892,7 @@
  "item/unarmed": {
   "path": "art/item/unarmed.webp",
   "w": 96,
-  "h": 70
+  "h": 58
  },
  "item/war-banner": {
   "path": "art/item/war-banner.webp",

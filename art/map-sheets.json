@@ -150,5 +150,26 @@
    "leader/industrial-3",
    "leader/raider"
   ]
+ },
+ {
+  "file": "map-7-faces.png",
+  "cols": 4,
+  "rows": 3,
+  "style": "figure",
+  "height": 192,
+  "cells": [
+   "face/1",
+   "face/2",
+   "face/3",
+   "face/4",
+   "face/5",
+   "face/6",
+   "face/7",
+   "face/8",
+   "face/9",
+   "face/10",
+   "face/11",
+   "face/12"
+  ]
  }
 ]

@@ -12,6 +12,7 @@ made**, with the same style lines word for word, so they sit with them:
 | 9. Interface II | 48 icons | ✓ done |
 | M5. Wonders | 10 wonders | ✓ done |
 | M6. Leaders | 19 rulers and a raider chief | ✓ done |
+| **M7. Faces for your own ruler** | **12 invented faces: 6 women, 6 men, of different ages and times** | **to make: below** |
 
 ## Rules for every sheet
 
@@ -225,4 +226,32 @@ Format: one image, 1024 x 128 pixels, an invisible row of 8 equal square cells (
 Cells left to right: 1 a ship’s hold with crates; 2 an outline of a shield drawn with a dashed line (no shield); 3 an outline of a helmet drawn with a dashed line (no helmet); 4 an outline of a tunic drawn with a dashed line (no armour); 5 a bare footprint; 6 a boot print (on foot, no horse); 7 an empty open sack (no kit); 8 an open empty hand (unarmed).
 Draw exactly these symbols in exactly this order; do not substitute other symbols.
 ```
+
+---
+
+## Sheet M7: Faces for your own ruler
+
+File: `map-7-faces.png` · 1024 × 768 px · 4 × 3 cells of 256 × 256 px · New game: the twelve faces a player picks from for a ruler of their own.
+
+### Prompt to paste
+
+```
+A sprite sheet for a historical strategy game: faces for your own ruler.
+Style: small painted miniatures for a historical strategy game, in the manner of a hand-coloured engraving: fine dark sepia outlines, soft watercolour shading, a warm, slightly muted palette (ochre, umber, oxblood, olive, slate blue, linen, weathered bronze, iron grey). The same scale and the same light from the top left in every cell. Clear, simple shapes that still read at 64 pixels: no fine clutter, no scenery beyond what is described. Not tied to any real nation; no real insignia, flags or religious symbols. No text, letters, numbers or labels anywhere.
+Each portrait is a head-and-shoulders bust of an ordinary-looking, invented person (not anyone famous, not resembling any real ruler), three-quarter view facing right, cut off at mid-chest, with the same framing, size and eye height in every cell as the attached rulers sheet. Expressions calm and confident. Simple clothes of the stated time with no crowns, no insignia and no national symbols, so the face suits any people; where a sash, collar or cloak would carry a people’s colour, leave it plain off-white. Row A and the first two cells of row B are women; the rest are men. Mix of ages and of origins (Mediterranean, North African, West African, Near Eastern, South Asian, East Asian, Northern European, Central Asian, South American).
+Background: one flat, solid, pure magenta (#FF00FF) everywhere, with no gradient, texture, floor, horizon or shadow. Nothing in the pictures is magenta.
+Format: one image, 1024 x 768 pixels, an invisible 4 x 3 grid of equal cells (256 x 256 pixels each). One subject per cell, centred, filling about 80% of the cell, never touching or crossing a cell edge. No grid lines, borders or numbers.
+Cells in reading order (row A left to right, then row B, and so on):
+Row A: 1 a young woman of about 20 with long dark braids and a plain linen tunic (ancient); 2 a woman of about 35 with short curly black hair and a draped wool mantle (classical); 3 a woman of about 50 with grey hair in a bun and a dark hooded cloak (medieval); 4 a woman of about 30 with red-brown hair under a simple veil and a plain velvet bodice (renaissance).
+Row B: 1 a woman of about 60 with white hair, a high-necked dark jacket and a small brooch (industrial); 2 a woman of about 25 with a shaved head, gold earrings and a wrap of patterned cloth (ancient); 3 a man of about 25 with a short black beard and a leather jerkin (ancient); 4 a man of about 45 with a grey-flecked beard and a plain wool cloak with a bronze pin (classical).
+Row C: 1 a man of about 65 with a long white beard and a monk-like brown robe (medieval); 2 a man of about 35, clean-shaven, with shoulder-length hair and a plain doublet (renaissance); 3 a man of about 50 with a moustache, a dark frock coat and a plain cravat (industrial); 4 a man of about 30 with a shaved head, a thin beard and a quilted padded coat (medieval).
+```
+
+### Cell map
+
+| | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| **A** | a young woman of about 20 with long dark braids and a plain linen tunic<br>`face/1` | a woman of about 35 with short curly black hair and a draped wool mantle<br>`face/2` | a woman of about 50 with grey hair in a bun and a dark hooded cloak<br>`face/3` | a woman of about 30 with red-brown hair under a simple veil and a plain velvet bodice<br>`face/4` |
+| **B** | a woman of about 60 with white hair, a high-necked dark jacket and a small brooch<br>`face/5` | a woman of about 25 with a shaved head, gold earrings and a wrap of patterned cloth<br>`face/6` | a man of about 25 with a short black beard and a leather jerkin<br>`face/7` | a man of about 45 with a grey-flecked beard and a plain wool cloak with a bronze pin<br>`face/8` |
+| **C** | a man of about 65 with a long white beard and a monk-like brown robe<br>`face/9` | a man of about 35, clean-shaven, with shoulder-length hair and a plain doublet<br>`face/10` | a man of about 50 with a moustache, a dark frock coat and a plain cravat<br>`face/11` | a man of about 30 with a shaved head, a thin beard and a quilted padded coat<br>`face/12` |
 

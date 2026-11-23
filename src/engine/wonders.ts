@@ -25,9 +25,7 @@ export const wondersIn = (s: GameState, cityId: number) =>
 /** The wonders a people holds (through its settlements). */
 export function wondersOf(s: GameState, civId: number): WonderDef[] {
   const mine = new Set(s.cities.filter(c => c.civId === civId).map(c => c.id));
-  return (s.wonders ?? [])
-    .filter(w => mine.has(w.cityId) && WONDERS[w.id])
-    .map(w => WONDERS[w.id]);
+  return (s.wonders ?? []).filter(w => mine.has(w.cityId) && WONDERS[w.id]).map(w => WONDERS[w.id]);
 }
 /** Who is building a wonder now, and how far along (0..1). */
 export const builders = (s: GameState, id: string) =>

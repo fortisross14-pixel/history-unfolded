@@ -864,6 +864,66 @@
   "w": 96,
   "h": 96
  },
+ "face/1": {
+  "path": "art/face/1.webp",
+  "w": 185,
+  "h": 192
+ },
+ "face/10": {
+  "path": "art/face/10.webp",
+  "w": 187,
+  "h": 192
+ },
+ "face/11": {
+  "path": "art/face/11.webp",
+  "w": 186,
+  "h": 192
+ },
+ "face/12": {
+  "path": "art/face/12.webp",
+  "w": 188,
+  "h": 192
+ },
+ "face/2": {
+  "path": "art/face/2.webp",
+  "w": 182,
+  "h": 192
+ },
+ "face/3": {
+  "path": "art/face/3.webp",
+  "w": 185,
+  "h": 192
+ },
+ "face/4": {
+  "path": "art/face/4.webp",
+  "w": 182,
+  "h": 192
+ },
+ "face/5": {
+  "path": "art/face/5.webp",
+  "w": 183,
+  "h": 192
+ },
+ "face/6": {
+  "path": "art/face/6.webp",
+  "w": 186,
+  "h": 192
+ },
+ "face/7": {
+  "path": "art/face/7.webp",
+  "w": 182,
+  "h": 192
+ },
+ "face/8": {
+  "path": "art/face/8.webp",
+  "w": 184,
+  "h": 192
+ },
+ "face/9": {
+  "path": "art/face/9.webp",
+  "w": 189,
+  "h": 192
+ },
  "good/cloth": {
   "path": "art/good/cloth.webp",
   "w": 96,

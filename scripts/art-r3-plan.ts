@@ -318,6 +318,7 @@ const cream: CreamSheet[] = [
   },
   {
     file: 'icons-9-interface-2.png',
+    done: true,
     title: 'Interface II',
     use: 'Chips and buttons added since the first interface sheet; empty equipment slots.',
     cells: [...MORE_UI, ...EMPTY_SLOTS],
@@ -373,6 +374,7 @@ const figures: FigureSheet[] = [
   },
   {
     file: 'map-7-faces.png',
+    done: true,
     title: 'Faces for your own ruler',
     use: 'New game: the twelve faces a player picks from for a ruler of their own.',
     cols: 4,
@@ -409,7 +411,7 @@ made**, with the same style lines word for word, so they sit with them:
 | 9. Interface II | 48 icons | ✓ done |
 | M5. Wonders | 10 wonders | ✓ done |
 | M6. Leaders | 19 rulers and a raider chief | ✓ done |
-| **M7. Faces for your own ruler** | **12 invented faces: 6 women, 6 men, of different ages and times** | **to make: below** |
+| M7. Faces for your own ruler | 12 invented faces | ✓ done |
 
 ## Rules for every sheet
 

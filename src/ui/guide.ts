@@ -23,22 +23,22 @@ const seen = (s: GameState, what: string) => !!s.guide?.seen.includes(what);
 export const GUIDE: GuideStep[] = [
   {
     id: 'found',
-    title: 'Found your first settlement',
-    hint: 'Select your settlers and press Found city. Good spots have food, a river or coast, and room around them for districts.',
+    title: 'Found a settlement',
+    hint: 'Settlers → Found city. Food, river, coast.',
     show: 'settlers',
     done: (s, id) => mine(s, id).length >= 1,
   },
   {
     id: 'research',
-    title: 'Choose what to research',
-    hint: 'Science pays for techs that open buildings, gear and the next age. Pick one now; you can change it later.',
+    title: 'Pick research',
+    hint: 'Choose a tech. Change it any time.',
     show: 'research',
     done: (s, id) => !!s.civs[id].researching || s.civs[id].techs.length > 0,
   },
   {
     id: 'district',
     title: 'Plan a building',
-    hint: 'Open your settlement and place a building: a farm for food, or houses for more people. Production builds it over a few turns.',
+    hint: 'Farm for food, houses for people.',
     show: 'city-dialog',
     done: (s, id) => {
       const cities = new Set(mine(s, id).map(c => c.id));
@@ -50,14 +50,14 @@ export const GUIDE: GuideStep[] = [
   {
     id: 'explore',
     title: 'Explore',
-    hint: 'Select your scouts and press Explore, or click a far hex to send them there. You will find land, free peoples and neighbours.',
+    hint: 'Scouts → Explore, or send them far.',
     show: 'scouts',
     done: (s, id) => explored(s, id) >= (s.guide?.explored0 ?? 60) * 2.5,
   },
   {
     id: 'road',
-    title: 'Raise workers and build a road',
-    hint: 'In your settlement panel choose Send workers. With them selected, press Build road on the way to your next town: roads halve moves and join markets.',
+    title: 'Build a road',
+    hint: 'Send workers → Build road toward towns.',
     show: 'city',
     done: (s, id) => {
       const own = territory(s);
@@ -66,22 +66,22 @@ export const GUIDE: GuideStep[] = [
   },
   {
     id: 'second',
-    title: 'Found a second settlement',
-    hint: 'A settlement of 2,000+ people can send settlers. Found the new one at least two hexes away, near food and goods you lack.',
+    title: 'Second settlement',
+    hint: '2,000+ people: settlers. Two hexes away.',
     show: 'city',
     done: (s, id) => mine(s, id).length >= 2,
   },
   {
     id: 'meet',
-    title: 'Meet your neighbours',
-    hint: 'When your scouts meet another people, open Peoples: what they think of you, why, and what they intend.',
+    title: 'Meet neighbours',
+    hint: 'Met a people? Open Peoples.',
     show: 'peoples',
     done: (s, id) => s.civs[id].met.some(o => !s.civs[o].independent) && seen(s, 'peoples'),
   },
   {
     id: 'army',
     title: 'Raise a levy',
-    hint: 'Raiders and rivals will come. Raise a levy in a settlement, and keep troops in your towns: a garrison keeps raiders away.',
+    hint: 'Levy in a settlement; garrison your towns.',
     show: 'city',
     done: (s, id) =>
       s.formations
@@ -90,15 +90,15 @@ export const GUIDE: GuideStep[] = [
   },
   {
     id: 'culture',
-    title: 'Make a culture choice',
-    hint: 'Open Culture and spend your culture points. Each choice gives a bonus and shapes who your people are.',
+    title: 'Culture choice',
+    hint: 'Open Culture, spend the points.',
     show: 'culture',
     done: (s, id) => s.civs[id].culture.taken.length > 0,
   },
   {
     id: 'victory',
-    title: 'See how you can win',
-    hint: 'Open Victory: the ways to win, when each opens, and who is close. Then the game is yours. The Codex explains everything else.',
+    title: 'Ways to win',
+    hint: 'Open Victory. Codex explains the rest.',
     show: 'victory',
     done: s => seen(s, 'victory'),
   },

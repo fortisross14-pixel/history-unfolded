@@ -39,7 +39,8 @@ import {
 } from '../engine/game.ts';
 import { centerUnit, within } from '../engine/hex.ts';
 import type { City, District, GameState } from '../engine/types.ts';
-import { Art, GoodIcon, Goods } from './bits.tsx';
+import { Art, Chip, Delta, GoodIcon, Goods, InfoButton } from './bits.tsx';
+import './declutter-city.css';
 
 interface Props {
   game: GameState;
@@ -52,6 +53,33 @@ interface Props {
 }
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Each good as its icon and a number, the name on hover. */
+function GoodChips({
+  goods,
+  unit = '',
+  signed,
+}: {
+  goods: Record<string, number>;
+  unit?: string;
+  signed?: boolean;
+}) {
+  const list = Object.entries(goods).filter(([, n]) => n);
+  if (!list.length) return <span className="muted">—</span>;
+  return (
+    <>
+      {list.map(([k, n]) => (
+        <Chip
+          key={k}
+          good={k}
+          n={signed ? n : r1(n)}
+          signed={signed}
+          title={`${GOODS[k]?.name ?? k}${unit}`}
+        />
+      ))}
+    </>
+  );
+}
 
 /**
  * The settlement screen: its land, its districts as tabs (2 for a town, 4 for a city, 6 for the
@@ -71,7 +99,6 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
   const [tipT, setTipT] = useState<string | null>(null);
   const touchTap = useRef(false);
   const [tab, setTab] = useState<'overview' | 'districts'>(startTab ?? 'overview');
-  const [info, setInfo] = useState(false);
   const [newName, setNewName] = useState('');
   const [bpName, setBpName] = useState('');
   const [bpPick, setBpPick] = useState<number | ''>('');
@@ -118,6 +145,86 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
     return { st, rep, t: st.type ? SLOT_TYPES[st.type] : undefined };
   };
   const sel = cell !== null ? cellState(cell) : null;
+  const freeHex = hex !== c.hex && !districtHexProblem(game, c, hex);
+
+  const landMap = (
+    <section className="city-land">
+      <h3>{c.name}'s land</h3>
+      <svg viewBox={`${-S * 4.6} ${-S * 3.8} ${S * 9.2} ${S * 7.6}`} className="hexmap">
+        {ring.map(h => {
+          const [x, y] = centerUnit(g, h);
+          const px = (x - ox) * S,
+            py = (y - oy) * S;
+          const ok = land.has(h);
+          const known = civ.explored[h];
+          const dep = known && depositVisible(game, c.civId, h) ? m.deposit[h] : null;
+          return (
+            <g
+              key={h}
+              className={`hx ${ok ? '' : 'off'} ${h === hex ? 'on' : ''}`}
+              onClick={() => setHex(h)}
+            >
+              <polygon
+                points={hexPts(px, py, S * 0.97)}
+                fill={known ? TERRAIN[m.terrain[h]].wash : '#e8dcc0'}
+              />
+              {m.relief[h] === 'mountains' && (
+                <text x={px} y={py + 4} className="hx-glyph">
+                  ▲
+                </text>
+              )}
+              {m.relief[h] === 'hills' && (
+                <text x={px - 10} y={py + 12} className="hx-glyph small">
+                  ⌒
+                </text>
+              )}
+              {(m.vegetation[h] === 'forest' || m.vegetation[h] === 'jungle') && (
+                <text x={px + 10} y={py + 12} className="hx-glyph small">
+                  ♣
+                </text>
+              )}
+              {dep && (
+                <g>
+                  <title>{DEPOSITS[dep.kind].name}</title>
+                  <circle
+                    cx={px + S * 0.42}
+                    cy={py - S * 0.4}
+                    r={S * 0.24}
+                    fill={GOODS[Object.keys(DEPOSITS[dep.kind].yields)[0]]?.color ?? '#888'}
+                  />
+                  <text x={px + S * 0.42} y={py - S * 0.4 + 4} className="hx-dep">
+                    {DEPOSITS[dep.kind].name.slice(0, 2)}
+                  </text>
+                </g>
+              )}
+              {h === c.hex && (
+                <text x={px} y={py + 5} className="hx-name">
+                  {['⌂', '⌂', '⌂', '♜', '♜', '♛'][rankOf(c.tier)]}
+                </text>
+              )}
+              {h !== c.hex && districts.some(d => d.hex === h) && (
+                <text x={px} y={py + 5} className="hx-name">
+                  ▦
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      <p className="muted small">
+        {hexLabel(hex)}
+        {!land.has(hex)
+          ? ' · outside'
+          : hex === c.hex
+            ? ' · centre'
+            : districts.find(d => d.hex === hex)
+              ? ` · ${districts.find(d => d.hex === hex)!.name}`
+              : districtHexProblem(game, c, hex)
+                ? ` · ${districtHexProblem(game, c, hex)}`
+                : ' · free'}
+      </p>
+    </section>
+  );
 
   return (
     <div className="modal-back" onClick={onClose}>
@@ -126,7 +233,7 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
           <h2>
             {c.name}{' '}
             <small>
-              {TIER_NAME[c.tier]} · {c.pop.toLocaleString()} people
+              {c.colony ? `Colony (${TIER_NAME[c.tier].toLowerCase()})` : TIER_NAME[c.tier]}
             </small>
           </h2>
           <div className="city-tabs" role="tablist">
@@ -147,118 +254,103 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
               </button>
             ))}
           </div>
-          <button
-            className={`round info-btn ${info ? 'on' : ''}`}
-            onClick={() => setInfo(v => !v)}
-            aria-label="How settlements and districts work"
-            title="How settlements and districts work"
-          >
-            i
-          </button>
+          <InfoButton label="How settlements and districts work" align="right">
+            <b>Districts</b>
+            <ul className="small dc-list">
+              <li>Land: the centre + 6 hexes, one district each. By water: docks, yards.</li>
+              <li>Workers: half the people.</li>
+              <li>Farms, pastures, woodcutters, mines: ½ anywhere, more from what the land holds.</li>
+              <li>
+                Special goods (coal, iron, gold, spices…): {SPECIAL_MIN}+ of the building in one
+                district, then 1 each.
+              </li>
+              <li>Boosters: +½ (library, granary) or ×2 (research lab) to their kind, same district.</li>
+              <li>
+                {MIN_HOUSING} housing cells before a district works; more housing, faster growth.
+              </li>
+              <li>City: 6 housing cells + City Charter.</li>
+            </ul>
+          </InfoButton>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
           </button>
         </header>
-        {info && (
-          <div className="city-info small" role="note">
-            <b>How districts work</b>
-            <p className="small">
-              Pick a hex, lay out a district and click a slot to choose what goes there. The city
-              builds the slots one by one with its production.
-            </p>
-            <ul className="small">
-              <li>Each building needs workers: half of the city's people can work.</li>
-              <li>
-                Farms, pastures, woodcutters and mines give a little anywhere (½ a unit). What lies
-                on the settlement's land adds more: pigs, wheat and fish more food, cattle leather,
-                sheep wool, a forest more wood.
-              </li>
-              <li>
-                Special goods (coal, iron, gold, sugar, spices, furs, whales…) need {SPECIAL_MIN} or
-                more of the working building in one district; then each brings a unit, so eight
-                mines by coal dig eight coal.
-              </li>
-              <li>
-                Boosters raise the producers of their kind in the same district: an adder puts ½ on
-                each (library on universities, infirmary on mines, granary on farms), a late
-                multiplier doubles them (research lab, pumping station, food packaging).
-              </li>
-              <li>
-                Every district needs {MIN_HOUSING} housing cells before anything else in it works;
-                housing beyond that makes the settlement grow faster.
-              </li>
-              <li>
-                Houses make room for people. Without room the settlement stops growing. A city needs
-                6 housing cells and the City Charter.
-              </li>
-            </ul>
-            <p className="muted">
-              The centre and the six hexes around it are the settlement's land; every district
-              stands on one of them. A district gathers the special resource on its own hex (ores,
-              crops, furs, whales…) and the plain ones next to it; one by the water can build docks
-              and yards.
-            </p>
-          </div>
-        )}
 
         {tab === 'overview' ? (
           <div className="city-body overview">
             <section className="city-main">
-              <div className="city-yields">
-                {(
-                  [
-                    ['food', 'Food', e.surplus, `${r1(e.total.food)} grown, ${e.eat} eaten`],
-                    ['production', 'Production', e.total.prod, 'builds the queue'],
-                    ['science', 'Science', e.total.science, 'to research'],
-                    ['gold', 'Gold', e.total.gold, 'to the treasury'],
-                    ['culture', 'Culture', e.total.culture, 'to the culture web'],
-                    ['housing', 'Room', e.total.housing, `${c.pop.toLocaleString()} live here`],
-                  ] as [string, string, number, string][]
-                ).map(([icon, name, v, sub]) => (
-                  <div key={name} className="yield-card">
-                    <Icon name={icon} />
-                    <b>
-                      {icon === 'housing' ? v.toLocaleString() : `${v >= 0 ? '+' : ''}${r1(v)}`}
-                    </b>
-                    <span>{name}</span>
-                    <small className="muted">{sub}</small>
-                  </div>
-                ))}
+              <div className="chips dc-yields">
+                <Chip icon="people" n={c.pop.toLocaleString()} title="People" />
+                <span
+                  className="chip"
+                  title={`Food a turn: ${r1(e.total.food)} grown, ${e.eat} eaten`}
+                  aria-label="Food a turn"
+                >
+                  <Icon name="food" size={22} />
+                  <Delta n={e.surplus} />
+                </span>
+                <Chip icon="production" n={r1(e.total.prod)} title="Production a turn" />
+                <Chip icon="science" n={r1(e.total.science)} title="Science a turn" />
+                <Chip icon="gold" n={r1(e.total.gold)} title="Gold a turn" />
+                <Chip icon="culture" n={r1(e.total.culture)} title="Culture a turn" />
+                <Chip icon="housing" n={e.total.housing.toLocaleString()} title="Room for people" />
               </div>
-              <p className="small">
-                <b>Goods made here a turn:</b> <Goods goods={e.total.goods} empty="none" />
-              </p>
-              <p className="small muted">
-                Growth: {r1(c.food)}/{growthCost(game, c)} food stored to grow by 250 · workers{' '}
-                {e.workersUsed.toLocaleString()}/{e.workers.toLocaleString()} busy
-              </p>
-              <h3>Rank</h3>
-              <p className="small">
-                <b>
-                  {c.colony ? `Colony (${TIER_NAME[c.tier].toLowerCase()})` : TIER_NAME[c.tier]}
-                </b>{' '}
-                · {districts.length}/{cap} districts
-                {bonus.all
-                  ? ` · +${bonus.all}% to every building, +${bonus.focus}% research and industry`
-                  : ' · farms, woodlots and mines allowed'}
-              </p>
+              <div className="chips dc-row">
+                <GoodChips goods={e.total.goods} unit=" a turn" />
+              </div>
+              <div className="chips dc-row muted">
+                <Chip
+                  icon="food"
+                  n={`${r1(c.food)}/${growthCost(game, c)}`}
+                  title="Food stored / needed to grow by 250"
+                />
+                <Chip
+                  icon="workers"
+                  n={`${e.workersUsed.toLocaleString()}/${e.workers.toLocaleString()}`}
+                  title="Workers busy"
+                />
+                <Chip icon="district" n={`${districts.length}/${cap}`} title="Districts" />
+                {bonus.all ? (
+                  <Chip
+                    icon="production"
+                    n={`+${bonus.all}%`}
+                    title={`${TIER_NAME[c.tier]}: +${bonus.all}% every building, +${bonus.focus}% research and industry`}
+                  />
+                ) : null}
+              </div>
               {up.to && (
-                <div className="upgrade">
-                  <p className="small">
-                    <b>Become a {TIER_NAME[up.to].toLowerCase()}</b>: {DISTRICT_CAP[up.to]}{' '}
-                    districts
-                    {TIER_BONUS[up.to].all
-                      ? `, +${TIER_BONUS[up.to].all}% to every building and +${TIER_BONUS[up.to].focus}% to research and industry`
-                      : ''}
-                    {up.to === 'metropolis' ? '. Only one per people.' : '.'} Needs{' '}
-                    {up.pop.toLocaleString()} people, {up.gold} gold and <Goods goods={up.goods} />.
-                  </p>
-                  {up.lost > 0 && (
-                    <p className="small bad">
-                      The {up.lost} farm, woodlot and mine buildings of its centre will be pulled
-                      down: a city builds over its centre (its outer districts keep their fields).
-                    </p>
-                  )}
+                <div className="upgrade dc-upgrade">
+                  <div className="dc-up-head">
+                    <b>→ {TIER_NAME[up.to]}</b>
+                    <InfoButton label={`About becoming a ${TIER_NAME[up.to].toLowerCase()}`}>
+                      <span>
+                        {DISTRICT_CAP[up.to]} districts
+                        {TIER_BONUS[up.to].all
+                          ? `, +${TIER_BONUS[up.to].all}% every building, +${TIER_BONUS[up.to].focus}% research and industry`
+                          : ''}
+                        .
+                      </span>
+                      {up.to === 'metropolis' && <span>One per people.</span>}
+                      {up.lost > 0 && (
+                        <span className="bad">
+                          The centre's {up.lost} farms, woodlots and mines go: a city builds over its
+                          centre.
+                        </span>
+                      )}
+                    </InfoButton>
+                  </div>
+                  <div className="chips">
+                    <Chip icon="people" n={up.pop.toLocaleString()} title="People needed" />
+                    <Chip icon="gold" n={up.gold} title="Gold" />
+                    <GoodChips goods={up.goods} />
+                    <Chip icon="district" n={`+${DISTRICT_CAP[up.to] - cap}`} title="More districts" />
+                    {up.lost > 0 && (
+                      <span className="chip bad" title="Centre fields pulled down">
+                        <Icon name="warning" size={18} />
+                        <Delta n={-up.lost} />
+                      </span>
+                    )}
+                  </div>
                   <button
                     className="primary"
                     disabled={!!up.problem}
@@ -270,58 +362,66 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 </div>
               )}
               {(e.fuel.need > 0 || e.comfort.want > 0) && (
-                <>
-                  <h3>Needs</h3>
+                <div className="chips dc-row">
                   {e.fuel.need > 0 && (
-                    <p className="small">
-                      Hearths burn {e.fuel.need} fuel a turn:{' '}
-                      {e.fuel.good === 'coal' ? (
-                        'coal (+5% production)'
-                      ) : e.fuel.good === 'wood' ? (
-                        'wood (coal would add 5% production)'
-                      ) : (
-                        <b className="bad">none to burn: everything −15%</b>
-                      )}
-                    </p>
-                  )}
-                  {e.comfort.want > 0 && (
-                    <p className="small">
-                      Comforts: {e.comfort.want} luxur{e.comfort.want > 1 ? 'ies' : 'y'} a turn,{' '}
-                      {Object.keys(e.comfort.got).length ? (
+                    <span
+                      className={`chip ${e.fuel.good ? '' : 'bad'}`}
+                      title={`Fuel a turn: ${e.fuel.need}. Coal +5% production; nothing to burn −15% everything`}
+                      aria-label="Fuel"
+                    >
+                      {e.fuel.good ? (
                         <>
-                          gets <Goods goods={e.comfort.got} />
+                          <GoodIcon id={e.fuel.good} />
+                          <Delta n={-e.fuel.need} />
                         </>
                       ) : (
-                        'gets none'
-                      )}{' '}
-                      ·{' '}
-                      <b className={e.comfort.pct < 0 ? 'bad' : 'good'}>
-                        {e.comfort.pct >= 0 ? '+' : ''}
-                        {e.comfort.pct}% gold and culture
-                      </b>
-                    </p>
+                        <>
+                          <Icon name="warning" size={18} /> <Delta n={-15} unit="%" />
+                        </>
+                      )}
+                      {e.fuel.good === 'coal' && <Delta n={5} unit="%" />}
+                    </span>
                   )}
-                </>
+                  {e.comfort.want > 0 && (
+                    <span
+                      className="chip"
+                      title={`Comforts: ${e.comfort.want} luxuries wanted a turn; gold and culture ${e.comfort.pct >= 0 ? '+' : ''}${e.comfort.pct}%`}
+                      aria-label="Comforts"
+                    >
+                      <Icon name="gift" size={18} />
+                      {Object.keys(e.comfort.got).length ? (
+                        <Goods goods={e.comfort.got} />
+                      ) : (
+                        <b>0</b>
+                      )}
+                      <b>/{e.comfort.want}</b>
+                      <Delta n={e.comfort.pct} unit="%" />
+                    </span>
+                  )}
+                </div>
               )}
-              <h3>Market</h3>
-              <p className="small">
-                {market.length > 1
-                  ? `${market.map(x => x.name).join(', ')} share one store.`
-                  : 'Not linked to other settlements. Roads and rivers join them into one market, and towns in a market feed its cities.'}
-              </p>
-              <p className="small">
-                <Goods goods={stock} empty="empty" />
-              </p>
+              <h3 className="dc-h">
+                Store
+                <InfoButton label="About the market">
+                  {market.length > 1
+                    ? `${market.map(x => x.name).join(', ')} share one store.`
+                    : 'Unlinked. Roads and rivers join settlements into one market; towns feed its cities.'}
+                </InfoButton>
+              </h3>
+              <div className="chips dc-row">
+                {market.length > 1 && (
+                  <Chip icon="road" n={market.length} title="Settlements in this market" />
+                )}
+                <GoodChips goods={stock} unit=" in store" />
+              </div>
               <h3>Being built</h3>
-              {queue.length === 0 && (
-                <p className="muted small">Nothing planned. Fill a district's slots.</p>
-              )}
+              {queue.length === 0 && <p className="muted small">—</p>}
               <ol className="queue">
                 {queue.slice(0, 8).map(({ d: qd, i }, k) => {
                   const t = SLOT_TYPES[qd.slots[i].type!];
                   return (
-                    <li key={`${qd.id}-${i}`}>
-                      {t.name} <span className="muted small">({qd.name})</span>
+                    <li key={`${qd.id}-${i}`} title={qd.name}>
+                      {t.name}
                       <div className="bar">
                         <span
                           className="good"
@@ -330,7 +430,7 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                       </div>
                       {k === 0 && (
                         <span className="muted small">
-                          {r1(qd.slots[i].progress)}/{t.build.prod} · {r1(e.total.prod)} per turn
+                          {r1(qd.slots[i].progress)}/{t.build.prod} · +{r1(e.total.prod)}
                         </span>
                       )}
                     </li>
@@ -338,81 +438,7 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 })}
               </ol>
             </section>
-            <section className="city-land">
-              <h3>{c.name}'s land</h3>
-              <svg viewBox={`${-S * 4.6} ${-S * 3.8} ${S * 9.2} ${S * 7.6}`} className="hexmap">
-                {ring.map(h => {
-                  const [x, y] = centerUnit(g, h);
-                  const px = (x - ox) * S,
-                    py = (y - oy) * S;
-                  const ok = land.has(h);
-                  const known = civ.explored[h];
-                  const dep = known && depositVisible(game, c.civId, h) ? m.deposit[h] : null;
-                  return (
-                    <g
-                      key={h}
-                      className={`hx ${ok ? '' : 'off'} ${h === hex ? 'on' : ''}`}
-                      onClick={() => setHex(h)}
-                    >
-                      <polygon
-                        points={hexPts(px, py, S * 0.97)}
-                        fill={known ? TERRAIN[m.terrain[h]].wash : '#e8dcc0'}
-                      />
-                      {m.relief[h] === 'mountains' && (
-                        <text x={px} y={py + 4} className="hx-glyph">
-                          ▲
-                        </text>
-                      )}
-                      {m.relief[h] === 'hills' && (
-                        <text x={px - 10} y={py + 12} className="hx-glyph small">
-                          ⌒
-                        </text>
-                      )}
-                      {(m.vegetation[h] === 'forest' || m.vegetation[h] === 'jungle') && (
-                        <text x={px + 10} y={py + 12} className="hx-glyph small">
-                          ♣
-                        </text>
-                      )}
-                      {dep && (
-                        <g>
-                          <circle
-                            cx={px + S * 0.42}
-                            cy={py - S * 0.4}
-                            r={S * 0.24}
-                            fill={GOODS[Object.keys(DEPOSITS[dep.kind].yields)[0]]?.color ?? '#888'}
-                          />
-                          <text x={px + S * 0.42} y={py - S * 0.4 + 4} className="hx-dep">
-                            {DEPOSITS[dep.kind].name.slice(0, 2)}
-                          </text>
-                        </g>
-                      )}
-                      {h === c.hex && (
-                        <text x={px} y={py + 5} className="hx-name">
-                          {['⌂', '⌂', '⌂', '♜', '♜', '♛'][rankOf(c.tier)]}
-                        </text>
-                      )}
-                      {h !== c.hex && districts.some(d => d.hex === h) && (
-                        <text x={px} y={py + 5} className="hx-name">
-                          ▦
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
-              </svg>
-              <p className="muted small">
-                {hexLabel(hex)}
-                {!land.has(hex)
-                  ? " · not this settlement's land"
-                  : hex === c.hex
-                    ? ' · the centre'
-                    : districts.find(d => d.hex === hex)
-                      ? ` · ${districts.find(d => d.hex === hex)!.name}`
-                      : districtHexProblem(game, c, hex)
-                        ? ` · ${districtHexProblem(game, c, hex)}`
-                        : ' · free: a district can stand here'}
-              </p>
-            </section>
+            {landMap}
           </div>
         ) : (
           <div className="city-body districts">
@@ -436,12 +462,13 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 {districts.length < cap && (
                   <button
                     className={`add ${dSel === 'new' ? 'on' : ''}`}
+                    title="New district"
                     onClick={() => {
                       setDSel('new');
                       setCell(null);
                     }}
                   >
-                    <b>+ New district</b>
+                    <b>+ New</b>
                     <small>{cap - districts.length} free</small>
                   </button>
                 )}
@@ -475,20 +502,18 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                     <div className="plot-picker" onClick={ev => ev.stopPropagation()}>
                       <div className="plot-head">
                         <b>
-                          {mineD.name} · plot {cell + 1}
+                          {mineD.name} · {cell + 1}
                         </b>
                         <span className="muted small">
                           {sel.t
-                            ? `${sel.t.name}${sel.st.built ? '' : ` · being built (${Math.round(Math.min(1, sel.st.progress / Math.max(1, sel.t.build.prod)) * 100)}%)`}`
-                            : 'Empty: choose what to build'}
+                            ? `${sel.t.name}${sel.st.built ? '' : ` · ${Math.round(Math.min(1, sel.st.progress / Math.max(1, sel.t.build.prod)) * 100)}%`}`
+                            : 'Empty'}
                         </span>
                         <button className="x" onClick={() => setCell(null)} aria-label="Close">
                           ×
                         </button>
                       </div>
-                      {sel.t?.fixed ? (
-                        <p className="muted small">The town hall stays.</p>
-                      ) : (
+                      {sel.t?.fixed ? null : (
                         <>
                           <div className="plot-options">
                             {sel.t && (
@@ -540,12 +565,7 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                           <div className="build-tip-slot">
                             {tipT && SLOT_TYPES[tipT] ? (
                               <BuildTip game={game} c={c} d={mineD} cell={cell} typeId={tipT} />
-                            ) : (
-                              <small className="muted">
-                                Point at a building (or tap it once) to see what it would add here
-                                each turn.
-                              </small>
-                            )}
+                            ) : null}
                           </div>
                         </>
                       )}
@@ -554,9 +574,18 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 </CityScene>
               )}
               {dSel === 'locked' ? (
-                <p className="muted">
-                  {`A ${TIER_NAME[c.tier].toLowerCase()} holds ${cap} district${cap > 1 ? 's' : ''}. Each size up opens one more: settlement 1, town 2, large town 3, city 4, large city 5, and the people's one metropolis all 7 (the centre and its six neighbours). See Rank on the left.`}
-                </p>
+                <div className="chips dc-row muted">
+                  {TIERS.map(t => (
+                    <span
+                      key={t}
+                      className={`chip ${t === c.tier ? 'dc-on' : ''}`}
+                      title={`${TIER_NAME[t]}: ${DISTRICT_CAP[t]} districts`}
+                    >
+                      {TIER_NAME[t]} <Icon name="district" size={16} />
+                      <b>{DISTRICT_CAP[t]}</b>
+                    </span>
+                  ))}
+                </div>
               ) : mineD ? (
                 <>
                   <div className="row">
@@ -564,6 +593,7 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                       className="design-name"
                       value={mineD.name}
                       maxLength={28}
+                      aria-label="District name"
                       onChange={ev => {
                         renameDistrict(game, mineD.id, ev.target.value || ' ');
                         bump();
@@ -584,9 +614,10 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                   <div className="row bp-row">
                     <select
                       value={bpPick}
+                      aria-label="Blueprint"
                       onChange={ev => setBpPick(ev.target.value ? Number(ev.target.value) : '')}
                     >
-                      <option value="">Apply a blueprint…</option>
+                      <option value="">Blueprint…</option>
                       {civ.blueprints.map(b => (
                         <option key={b.id} value={b.id}>
                           {b.name}
@@ -603,7 +634,8 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                       Apply
                     </button>
                     <input
-                      placeholder="Save layout as…"
+                      placeholder="Blueprint name"
+                      aria-label="Save layout as blueprint"
                       value={bpName}
                       maxLength={28}
                       onChange={ev => setBpName(ev.target.value)}
@@ -627,13 +659,14 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                   </div>
                   {civ.blueprints.length > 0 && (
                     <p className="muted small">
-                      Blueprints:{' '}
+                      <Icon name="blueprint" size={16} />{' '}
                       {civ.blueprints.map(b => (
                         <span key={b.id} className="template">
                           {b.name}
                           <button
                             className="x small"
                             title="Delete blueprint"
+                            aria-label={`Delete blueprint ${b.name}`}
                             onClick={() => {
                               deleteBlueprint(game, civ.id, b.id);
                               bump();
@@ -648,21 +681,24 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 </>
               ) : (
                 <div className="new-district">
-                  <h3>Lay out a district</h3>
+                  <h3 className="dc-h">
+                    New district
+                    <InfoButton label="About districts">
+                      <span>
+                        3×3 buildings. {MIN_HOUSING} housing cells before the rest works. Boosters
+                        raise every producer of their kind in the district.
+                      </span>
+                      {isUrban(c) && <span>A city farms and mines in outer districts only.</span>}
+                    </InfoButton>
+                  </h3>
                   <p className="muted small">
-                    A district is a 3×3 grid of buildings you choose. It needs {MIN_HOUSING} housing
-                    cells before anything else in it works. Producers make things; boosters raise
-                    every producer of their kind in the same district: a library adds ½ to each
-                    university, a research lab doubles them. It stands on the hex picked on the land
-                    map
-                    {hex !== c.hex && !districtHexProblem(game, c, hex)
-                      ? ` (${hexLabel(hex)})`
-                      : ': pick a free hex there first, or it goes on the best free one'}
-                    .{isUrban(c) ? ' A city farms and mines in its outer districts only.' : ''}
+                    <Icon name="district" size={16} />{' '}
+                    {freeHex ? hexLabel(hex) : 'Best free hex'}
                   </p>
                   <input
                     className="design-name"
-                    placeholder="Name it: Farm, Northern Mine, Scholars' Quarter…"
+                    placeholder="Name"
+                    aria-label="District name"
                     value={newName}
                     maxLength={28}
                     onChange={ev => setNewName(ev.target.value)}
@@ -670,9 +706,10 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                   <div className="row">
                     <select
                       value={bpPick}
+                      aria-label="Blueprint"
                       onChange={ev => setBpPick(ev.target.value ? Number(ev.target.value) : '')}
                     >
-                      <option value="">Empty layout</option>
+                      <option value="">Empty</option>
                       {civ.blueprints.map(b => (
                         <option key={b.id} value={b.id}>
                           {b.name}
@@ -688,98 +725,20 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                           c.id,
                           newName || b?.name || 'District',
                           b?.slots ?? [],
-                          hex !== c.hex && !districtHexProblem(game, c, hex) ? hex : undefined,
+                          freeHex ? hex : undefined,
                         );
                         act(res);
                         if (res.ok && res.id) setDSel(res.id);
                         setNewName('');
                       }}
                     >
-                      Lay out district
+                      Lay out
                     </button>
                   </div>
                 </div>
               )}
             </section>
-            {(dSel === 'new' || dSel === 'locked') && (
-              <section className="city-land">
-                <h3>{c.name}'s land</h3>
-                <svg viewBox={`${-S * 4.6} ${-S * 3.8} ${S * 9.2} ${S * 7.6}`} className="hexmap">
-                  {ring.map(h => {
-                    const [x, y] = centerUnit(g, h);
-                    const px = (x - ox) * S,
-                      py = (y - oy) * S;
-                    const ok = land.has(h);
-                    const known = civ.explored[h];
-                    const dep = known && depositVisible(game, c.civId, h) ? m.deposit[h] : null;
-                    return (
-                      <g
-                        key={h}
-                        className={`hx ${ok ? '' : 'off'} ${h === hex ? 'on' : ''}`}
-                        onClick={() => setHex(h)}
-                      >
-                        <polygon
-                          points={hexPts(px, py, S * 0.97)}
-                          fill={known ? TERRAIN[m.terrain[h]].wash : '#e8dcc0'}
-                        />
-                        {m.relief[h] === 'mountains' && (
-                          <text x={px} y={py + 4} className="hx-glyph">
-                            ▲
-                          </text>
-                        )}
-                        {m.relief[h] === 'hills' && (
-                          <text x={px - 10} y={py + 12} className="hx-glyph small">
-                            ⌒
-                          </text>
-                        )}
-                        {(m.vegetation[h] === 'forest' || m.vegetation[h] === 'jungle') && (
-                          <text x={px + 10} y={py + 12} className="hx-glyph small">
-                            ♣
-                          </text>
-                        )}
-                        {dep && (
-                          <g>
-                            <circle
-                              cx={px + S * 0.42}
-                              cy={py - S * 0.4}
-                              r={S * 0.24}
-                              fill={
-                                GOODS[Object.keys(DEPOSITS[dep.kind].yields)[0]]?.color ?? '#888'
-                              }
-                            />
-                            <text x={px + S * 0.42} y={py - S * 0.4 + 4} className="hx-dep">
-                              {DEPOSITS[dep.kind].name.slice(0, 2)}
-                            </text>
-                          </g>
-                        )}
-                        {h === c.hex && (
-                          <text x={px} y={py + 5} className="hx-name">
-                            {['⌂', '⌂', '⌂', '♜', '♜', '♛'][rankOf(c.tier)]}
-                          </text>
-                        )}
-                        {h !== c.hex && districts.some(d => d.hex === h) && (
-                          <text x={px} y={py + 5} className="hx-name">
-                            ▦
-                          </text>
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
-                <p className="muted small">
-                  {hexLabel(hex)}
-                  {!land.has(hex)
-                    ? " · not this settlement's land"
-                    : hex === c.hex
-                      ? ' · the centre'
-                      : districts.find(d => d.hex === hex)
-                        ? ` · ${districts.find(d => d.hex === hex)!.name}`
-                        : districtHexProblem(game, c, hex)
-                          ? ` · ${districtHexProblem(game, c, hex)}`
-                          : ' · free: a district can stand here'}
-                </p>
-              </section>
-            )}
+            {(dSel === 'new' || dSel === 'locked') && landMap}
           </div>
         )}
       </div>
@@ -796,7 +755,7 @@ const YIELD_ICON: Record<string, [string, string]> = {
   housing: ['housing', 'Room for people'],
 };
 
-/** A building on this plot: its picture, name and what it would add here each turn. */
+/** A building on this plot: its picture, name, what it would add here a turn, and its cost. */
 function BuildTip({
   game,
   c,
@@ -812,22 +771,7 @@ function BuildTip({
 }) {
   const t = SLOT_TYPES[typeId];
   const p = slotPreview(game, c, d, cell, typeId);
-  const rows = [
-    ...Object.entries(p.yields).map(([k, v]) => ({
-      key: k,
-      icon: <Icon name={YIELD_ICON[k][0]} />,
-      name: YIELD_ICON[k][1],
-      v,
-      unit: k === 'housing' ? 'people' : '/turn',
-    })),
-    ...Object.entries(p.goods).map(([k, v]) => ({
-      key: k,
-      icon: <GoodIcon id={k} />,
-      name: GOODS[k]?.name ?? k,
-      v,
-      unit: '/turn',
-    })),
-  ];
+  const gains = Object.keys(p.yields).length + Object.keys(p.goods).length;
   return (
     <div className="build-tip" role="tooltip">
       <Art
@@ -837,31 +781,31 @@ function BuildTip({
       />
       <div>
         <b>{t.name}</b>
-        {rows.length ? (
-          <ul>
-            {rows.map(r => (
-              <li key={r.key} className={r.v < 0 ? 'bad' : ''}>
-                <span className="tip-ico">{r.icon}</span> {r.name}{' '}
-                <b>
-                  {r.v > 0 ? '+' : ''}
-                  {r.v}
-                  {r.unit === '/turn' ? '/turn' : ` ${r.unit}`}
-                </b>
-              </li>
+        {gains ? (
+          <span className="chips">
+            {Object.entries(p.yields).map(([k, v]) => (
+              <Chip
+                key={k}
+                icon={YIELD_ICON[k][0]}
+                n={v}
+                signed
+                title={`${YIELD_ICON[k][1]}${k === 'housing' ? '' : ' a turn'}`}
+              />
             ))}
-          </ul>
+            {Object.entries(p.goods).map(([k, v]) => (
+              <Chip key={k} good={k} n={v} signed title={`${GOODS[k]?.name ?? k} a turn`} />
+            ))}
+          </span>
         ) : (
-          <small className="muted">
-            {t.labour ? `${p.why ?? 'Nothing here yet.'}` : 'Nothing here yet.'}
-          </small>
+          <small className="muted">{(t.labour && p.why) || 'Nothing here'}</small>
         )}
-        <small className="muted">
-          Build: {t.build.prod} production
-          {Object.entries(t.build.goods ?? {}).map(
-            ([g, n]) => `, ${n} ${GOODS[g]?.name.toLowerCase() ?? g}`,
-          )}
-          {t.labour ? ` · ${t.labour} workers` : ''}
-        </small>
+        <span className="chips muted dc-cost">
+          <Chip icon="production" n={t.build.prod} title="Cost: production" />
+          {Object.entries(t.build.goods ?? {}).map(([g, n]) => (
+            <Chip key={g} good={g} n={n} title={`Cost: ${GOODS[g]?.name ?? g}`} />
+          ))}
+          {t.labour ? <Chip icon="workers" n={t.labour} title="Workers" /> : null}
+        </span>
       </div>
     </div>
   );

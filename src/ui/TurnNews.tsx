@@ -41,7 +41,7 @@ export function NewsList({
                 );
               })}
               {limit && groups[g].length > limit && (
-                <li className="muted small">and {groups[g].length - limit} more</li>
+                <li className="muted small">+{groups[g].length - limit}</li>
               )}
             </ul>
           </section>

@@ -8,7 +8,8 @@ import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
 import { depositVisible, territory } from '../engine/game.ts';
 import { hexFood } from '../engine/mapgen.ts';
 import type { GameState } from '../engine/types.ts';
-import { Goods } from './bits.tsx';
+import { Chip, Goods, InfoButton } from './bits.tsx';
+import './declutter-map.css';
 
 export function HexPanel({
   game,
@@ -26,7 +27,6 @@ export function HexPanel({
     return (
       <div className="panel">
         <h2>Unexplored</h2>
-        <p className="muted">Send scouts to see what lies here.</p>
       </div>
     );
   }
@@ -44,76 +44,66 @@ export function HexPanel({
   ].filter(Boolean);
   const moveCost =
     m.relief[hex] === 'mountains'
-      ? 'impassable'
+      ? '✕'
       : TERRAIN[m.terrain[hex]].water
-        ? 'water'
+        ? '—'
         : String(1 + RELIEF[m.relief[hex]].moveCost + VEGETATION[m.vegetation[hex]].moveCost);
+  const dep = d ? DEPOSITS[d.kind] : null;
+  const depTech =
+    dep?.tech && !game.civs[civId].techs.includes(dep.tech) ? dep.tech.replace('-', ' ') : null;
   return (
-    <div className="panel">
+    <div className="panel hex-panel">
       <h2>{parts.join(' · ')}</h2>
-      {ruinAt(game, hex) && (
-        <p className="good small">
-          <b>Ruins.</b> Send any unit here to search them: gold, scrolls, rare goods, old gear or
-          maps may be inside. The first to arrive takes the find.
-        </p>
+      <span className="chips hp-chips">
+        <Chip
+          icon="moves"
+          n={moveCost}
+          title={
+            moveCost === '✕' ? 'Impassable' : moveCost === '—' ? 'Water' : `Move cost ${moveCost}`
+          }
+        />
+        <Chip icon="food" n={hexFood(m, hex)} title="Food" />
+        {game.roads[hex] === 1 && (
+          <span className="fp-tag" title="Half a move along roads">
+            Road
+          </span>
+        )}
+        {ruinAt(game, hex) && (
+          <span className="fp-tag good" title="First unit here takes the find">
+            Ruins
+          </span>
+        )}
+        {campAt(game, hex) && (
+          <span className="fp-tag bad" title="Raids weakly held settlements; an army burns it">
+            Raider camp
+          </span>
+        )}
+      </span>
+      {dep && (
+        <div className="hp-deposit">
+          <b>{dep.name}</b> <Goods goods={dep.yields} />
+          {depTech && <span className="fp-tag bad">Needs {depTech}</span>}
+          <InfoButton label={`About ${dep.name}`}>
+            {(() => {
+              const by = SLOT_TYPES[dep.by]?.name.toLowerCase() ?? dep.by;
+              return dep.special
+                ? `Town beside it, ${SPECIAL_MIN}+ ${by}s in one district: +1 unit each.`
+                : `Better for a ${by} of a town beside it.`;
+            })()}
+          </InfoButton>
+        </div>
       )}
-      {campAt(game, hex) && (
-        <p className="bad small">
-          <b>Raider camp.</b> Its bands pillage nearby settlements that are weakly held. March an
-          army into it to burn it and take its hoard.
-        </p>
-      )}
-      <table className="stats">
-        <tbody>
-          <tr>
-            <td>Move cost</td>
-            <td>{moveCost}</td>
-          </tr>
-          <tr>
-            <td>Food</td>
-            <td>{hexFood(m, hex)}</td>
-          </tr>
-          {d && (
-            <tr>
-              <td>Deposit</td>
-              <td>
-                {DEPOSITS[d.kind].name} <Goods goods={DEPOSITS[d.kind].yields} />
-                <div className="muted small">
-                  {(() => {
-                    const info = DEPOSITS[d.kind];
-                    const by = SLOT_TYPES[info.by]?.name.toLowerCase() ?? info.by;
-                    return info.special
-                      ? `A town beside it with ${SPECIAL_MIN}+ ${by}s in one district: each brings a unit.`
-                      : `Any ${by} of a town beside it does better.`;
-                  })()}
-                  {DEPOSITS[d.kind].tech && !game.civs[civId].techs.includes(DEPOSITS[d.kind].tech!)
-                    ? ` Needs ${DEPOSITS[d.kind].tech!.replace('-', ' ')}.`
-                    : ''}
-                </div>
-              </td>
-            </tr>
-          )}
-          <tr>
-            <td>Owner</td>
-            <td>{owner >= 0 ? game.civs[owner].name : 'Nobody'}</td>
-          </tr>
-          {game.roads[hex] === 1 && (
-            <tr>
-              <td>Road</td>
-              <td>Half a move along roads</td>
-            </tr>
-          )}
+      {(owner >= 0 || worker) && (
+        <div className="muted small hp-owner">
+          <span title="Owner">{owner >= 0 ? game.civs[owner].name : ''}</span>
           {worker && (
-            <tr>
-              <td>Worked by</td>
-              <td>
-                {worker.name}
-                {worker.civId !== civId ? ` (${game.civs[worker.civId].name})` : ''}
-              </td>
-            </tr>
+            <span title="Worked by">
+              {owner >= 0 ? ' · ' : ''}
+              {worker.name}
+            </span>
           )}
-        </tbody>
-      </table>
+        </div>
+      )}
       {onOpenDistrict && openFor && (
         <button className="primary" onClick={() => onOpenDistrict(openFor.id)}>
           Open {openFor.name}

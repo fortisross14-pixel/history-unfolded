@@ -34,7 +34,8 @@ import {
   spriteForLoadout,
   isCivilian,
 } from '../engine/units.ts';
-import { Goods, Ico, UnitPortrait } from './bits.tsx';
+import { Chip, Goods, InfoButton, UnitPortrait } from './bits.tsx';
+import './declutter-map.css';
 
 interface Props {
   game: GameState;
@@ -124,82 +125,79 @@ export function FormationPanel(p: Props) {
               {f.name}
             </h2>
           )}
-          <div className="muted">
-            {civ.name} · {people(f).toLocaleString()} people · {f.cohorts.length}/{capOf(f, game)}{' '}
-            cohorts
-          </div>
+          <span className="chips fp-sub">
+            <Chip icon="people" n={people(f).toLocaleString()} title={`${civ.name}: people`} />
+            <Chip icon="army" n={`${f.cohorts.length}/${capOf(f, game)}`} title="Cohorts" />
+            <Chip icon="moves" n={`${f.moves}/${formationMoves(f)}`} title="Moves" />
+            {f.fortified && <span className="fp-tag">Fortified</span>}
+            {f.path.length > 0 && (
+              <Chip icon="go-to" n={f.path.length} title="En route: hexes left" />
+            )}
+          </span>
           <div className="muted small">
-            Moves {f.moves}/{formationMoves(f)} · {TERRAIN[m.terrain[f.hex]].name}
+            {TERRAIN[m.terrain[f.hex]].name}
             {m.relief[f.hex] !== 'flat' ? `, ${RELIEF[m.relief[f.hex]].name}` : ''}
             {m.vegetation[f.hex] !== 'none' ? `, ${VEGETATION[m.vegetation[f.hex]].name}` : ''}
-            {f.fortified ? ' · Fortified' : ''}
-            {f.path.length ? ` · En route (${f.path.length} hexes)` : ''}
           </div>
         </div>
       </div>
 
       {f.kind === 'fleet' && (
-        <div className="fleet-info small">
-          Carries {cargoOf(game, f).reduce((a, o) => a + o.cohorts.length, 0)}/{fleetCapacity(f)}{' '}
-          cohorts · {oceanGoing(f) ? 'ocean-going' : 'coast only'}
+        <div className="fleet-info small chips">
+          <Chip
+            icon="crate"
+            n={`${cargoOf(game, f).reduce((a, o) => a + o.cohorts.length, 0)}/${fleetCapacity(f)}`}
+            title="Cohorts aboard"
+          />
+          <span className="fp-tag">{oceanGoing(f) ? 'Ocean' : 'Coast only'}</span>
           {cargoOf(game, f).map(o => (
             <button key={o.id} className="link" onClick={() => p.onSelect(o.id)}>
               {o.name} ({o.cohorts.length})
             </button>
           ))}
-          {mine && (
-            <div className="muted">
-              Click a land hex next to the fleet with the troops selected to land them.
-            </div>
-          )}
         </div>
       )}
       {f.aboard !== undefined && (
         <p className="fleet-info small">
-          Aboard {game.formations.find(x => x.id === f.aboard)?.name}. Click land next to the ship
-          to go ashore (uses the turn's moves), or attack the shore straight from the ship (at a
-          penalty).
+          Aboard {game.formations.find(x => x.id === f.aboard)?.name}{' '}
+          <InfoButton label="About landing">
+            Landing uses the turn's moves. Attacking from the ship: penalty.
+          </InfoButton>
         </p>
       )}
       {!isCivilian(f) && (
-        <div className="stat-row">
-          <span title="Total melee strength">
-            <Ico name="melee" fallback="⚔" /> {stats.melee}
-          </span>
-          <span title="Total ranged strength">
-            <Ico name="ranged" fallback="🏹" /> {stats.ranged}
-          </span>
-          <span title="Total charge">
-            <Ico name="charge" fallback="🐎" /> {stats.charge}
-          </span>
-          <span title="Average protection">
-            <Ico name="protection" fallback="🛡" /> {stats.protection}
-          </span>
-          <span title="Losses (%) it can take before breaking">
-            <Ico name="morale" fallback="✊" /> {stats.morale}%
-          </span>
-          <span title="Gold per turn">
-            <Ico name="upkeep" fallback="⛁" /> {stats.upkeep}
-          </span>
+        <div className="stat-row chips">
+          <Chip icon="melee" n={stats.melee} title="Melee (total)" />
+          <Chip icon="ranged" n={stats.ranged} title="Ranged (total)" />
+          <Chip icon="charge" n={stats.charge} title="Charge (total)" />
+          <Chip icon="protection" n={stats.protection} title="Protection (average)" />
+          <Chip
+            icon="morale"
+            n={`${stats.morale}%`}
+            title="Morale: losses it takes before breaking"
+          />
+          <Chip icon="upkeep" n={stats.upkeep} title="Upkeep: gold a turn" />
         </div>
       )}
       {f.kind === 'army' && f.cohorts.length > 1 && (
         <div className="combo muted small">
           {[...roles].map(r => ROLE_NAMES[r]).join(' + ')}
-          {roles.has('ranged') &&
-            !roles.has('infantry') &&
-            !roles.has('cavalry') &&
-            ' · no front line: archers will be caught in melee'}
-          {roles.has('ranged') &&
-            (roles.has('infantry') || roles.has('cavalry')) &&
-            ' · front line screens the archers'}
-          {roles.has('cavalry') && ' · cavalry charges and flanks'}
+          {roles.has('ranged') && !roles.has('infantry') && !roles.has('cavalry') && (
+            <span className="fp-tag bad" title="Archers will be caught in melee">
+              No front line
+            </span>
+          )}
+          {roles.has('ranged') && (roles.has('infantry') || roles.has('cavalry')) && (
+            <span className="fp-tag good" title="The front line screens the archers">
+              Screened
+            </span>
+          )}
         </div>
       )}
 
       <div className="groups">
         <div className="groups-head">
-          <span>{f.kind === 'settlers' ? 'Families' : 'Cohorts by design'}</span>
+          <span>{f.kind === 'settlers' ? 'Families' : 'Cohorts'}</span>
           {mine && f.cohorts.length > 1 && (
             <span className="links">
               <button className="link" onClick={() => setAll('all')}>
@@ -243,12 +241,16 @@ export function FormationPanel(p: Props) {
                       : 'No gear'
                     : ''}
                 </div>
-                <div className="muted small">
-                  {str} people
-                  {f.kind === 'army'
-                    ? ` · ${ROLE_NAMES[st.role].toLowerCase()} · melee ${st.melee}${st.ranged ? ` · ranged ${st.ranged}` : ''} · moves ${st.moves}`
-                    : ''}
-                </div>
+                <span className="chips fp-group-stats small">
+                  <Chip icon="people" n={str} title="People" />
+                  {f.kind === 'army' && (
+                    <>
+                      <Chip icon="melee" n={st.melee} title={`${ROLE_NAMES[st.role]}: melee`} />
+                      {st.ranged > 0 && <Chip icon="ranged" n={st.ranged} title="Ranged" />}
+                      <Chip icon="moves" n={st.moves} title="Moves" />
+                    </>
+                  )}
+                </span>
               </div>
               {mine && f.cohorts.length > 1 && (
                 <div className="stepper" title="How many of these cohorts to select">
@@ -272,14 +274,14 @@ export function FormationPanel(p: Props) {
       {mine && !isCivilian(f) && f.aboard === undefined && (
         <div className="assign">
           <div className="row">
-            <span className="assign-label">
-              Make {selected.length ? `${selected.length * 100}` : 'the selected'} into
+            <span className="assign-label" title="Refit the selected cohorts">
+              <Chip icon="equip" n={selected.length * 100} title="People to refit" />
             </span>
             <select
               value={designId ?? ''}
               onChange={e => setDesignId(e.target.value ? Number(e.target.value) : null)}
             >
-              <option value="">— pick a design —</option>
+              <option value="">— design —</option>
               {civ.designs
                 .filter(d => !!d.naval === (f.kind === 'fleet'))
                 .map(d => (
@@ -294,15 +296,18 @@ export function FormationPanel(p: Props) {
           </div>
           {preview && preview.problem !== null && <p className="bad small">{preview.problem}</p>}
           {preview && preview.problem === null && (
-            <p className="small">
-              Pay <Goods goods={preview.cost} empty="nothing" missing={missing} /> from{' '}
-              {preview.city.name}
-              {preview.far ? ' (+50% away from the city)' : ''}
+            <p className="small fp-cost">
+              <Goods goods={preview.cost} empty="Free" missing={missing} />
+              <span className="muted">· {preview.city.name}</span>
+              {preview.far && (
+                <span className="fp-tag bad" title="Away from the city: +50% cost">
+                  +50%
+                </span>
+              )}
               {Object.values(preview.refund).some(n => n > 0) && (
-                <>
-                  {' '}
-                  · get back <Goods goods={preview.refund} />
-                </>
+                <span title="Refund">
+                  ↩ <Goods goods={preview.refund} />
+                </span>
               )}
             </p>
           )}
@@ -319,11 +324,7 @@ export function FormationPanel(p: Props) {
           >
             <Icon name="equip" /> Equip as {design?.name ?? '…'}
           </button>
-          {!supply && (
-            <p className="muted small">
-              Outside your territory: troops can only be equipped near your cities.
-            </p>
-          )}
+          {!supply && <p className="muted small">Equip only near your cities.</p>}
         </div>
       )}
 
@@ -340,10 +341,7 @@ export function FormationPanel(p: Props) {
               className="primary"
               disabled={!!foundWhy}
               title={
-                foundWhy ??
-                (kind === 'colony'
-                  ? 'Too far from your towns to join your lands: it becomes a colony (one district, gathering only; its goods reach you by road or by sea)'
-                  : 'Found a town here: its land joins yours')
+                foundWhy ?? (kind === 'colony' ? 'Colony: too far to join your lands' : 'Town')
               }
               onClick={p.onFound}
             >
@@ -351,20 +349,18 @@ export function FormationPanel(p: Props) {
             </button>
           )}
           {f.kind === 'settlers' && !foundWhy && kind === 'colony' && (
-            <p className="small muted">
-              Here it would be a <b>colony</b>: too far to join your lands. Colonies keep one
-              district and only gather (farms, woodlots, mines); their goods reach you by road, or
-              by sea with a harbour. Settle within 4 hexes of a town for a town.
-            </p>
+            <InfoButton label="About colonies">
+              <b>Colony</b>
+              <span>1 district, gathering only (farms, woodlots, mines).</span>
+              <span>Goods reach you by road, or by sea with a harbour.</span>
+              <span>Town: within 4 hexes of a town.</span>
+            </InfoButton>
           )}
           {f.kind === 'engineers' && game.roads[f.hex] === 1 && (
             <button
               onClick={p.onRoad}
               disabled={!!railWhy}
-              title={
-                railWhy ??
-                `Lay a railway over this road: ${railGold(game, f.civId)} gold, the remaining moves.`
-              }
+              title={railWhy ?? `Railway: ${railGold(game, f.civId)} gold, remaining moves`}
             >
               <Icon name="road" /> Lay railway
             </button>
@@ -377,41 +373,29 @@ export function FormationPanel(p: Props) {
                 onClick={p.onRoad}
                 disabled={!!game.roads[f.hex] || f.moves <= 0 || !!roadWhy}
                 title={
-                  roadWhy ??
-                  (game.roads[f.hex]
-                    ? 'There is a road here'
-                    : 'Lay a road on this hex. Uses the remaining moves.')
+                  roadWhy ?? (game.roads[f.hex] ? 'Road already here' : 'Road: remaining moves')
                 }
               >
                 <Icon name="road" /> Build road
               </button>
             )}
           {p.onAuto && f.auto && (
-            <button onClick={() => p.onAuto!(null)} title="Take it back under your orders">
+            <button onClick={() => p.onAuto!(null)} title="Back to your orders">
               Stop {f.auto === 'crew' ? 'building' : f.auto === 'settle' ? 'settling' : 'exploring'}
             </button>
           )}
           {p.onAuto && !f.auto && f.kind === 'settlers' && (
-            <button
-              onClick={() => p.onAuto!('settle')}
-              title="They find the best site that joins your lands, walk there and found a town"
-            >
+            <button onClick={() => p.onAuto!('settle')} title="Best site that joins your lands">
               Settle automatically
             </button>
           )}
           {p.onAuto && !f.auto && !autoProblem(f, 'crew') && (
-            <button
-              onClick={() => p.onAuto!('crew')}
-              title="Builds roads between your settlements, and railways once engineers can, on its own"
-            >
+            <button onClick={() => p.onAuto!('crew')} title="Roads, then railways, on its own">
               Automate
             </button>
           )}
           {p.onAuto && !f.auto && !autoProblem(f, 'explore') && (
-            <button
-              onClick={() => p.onAuto!('explore')}
-              title="Explores the nearest unknown land on its own"
-            >
+            <button onClick={() => p.onAuto!('explore')} title="Nearest unknown land">
               Explore
             </button>
           )}
@@ -419,15 +403,12 @@ export function FormationPanel(p: Props) {
             <Icon name="fortify" /> {f.fortified ? 'Wake' : 'Fortify'}
           </button>
           {p.onSentry && f.kind !== 'settlers' && (
-            <button
-              onClick={p.onSentry}
-              title="wait here, out of the to-do list, until enemies come within 3 hexes"
-            >
+            <button onClick={p.onSentry} title="Wait until enemies within 3 hexes">
               {f.sentry ? 'Off sentry' : 'Sentry'}
             </button>
           )}
           {p.onSkip && f.moves > 0 && f.skip !== game.turn && (
-            <button onClick={p.onSkip} title="nothing for it this turn">
+            <button onClick={p.onSkip} title="Nothing this turn">
               Skip turn
             </button>
           )}
@@ -436,12 +417,7 @@ export function FormationPanel(p: Props) {
             // touch screens show no tooltips: say why a button is greyed out
             const why = [
               f.kind === 'settlers' ? foundWhy : null,
-              selected.length && selected.length === f.cohorts.length && f.cohorts.length > 1
-                ? 'To split, leave at least one cohort behind.'
-                : null,
-              f.kind !== 'fleet' && !game.roads[f.hex] && f.moves <= 0
-                ? 'No moves left this turn for a road.'
-                : null,
+              f.kind !== 'fleet' && !game.roads[f.hex] && f.moves <= 0 ? 'No moves left.' : null,
               f.kind !== 'fleet' && f.kind !== 'settlers' && !game.roads[f.hex] ? roadWhy : null,
               f.kind === 'engineers' && game.roads[f.hex] === 1 ? railWhy : null,
             ].filter(Boolean);
@@ -452,7 +428,7 @@ export function FormationPanel(p: Props) {
 
       {others.length > 0 && (
         <div className="others">
-          <div className="muted small">Also on this hex:</div>
+          <div className="muted small">Here too</div>
           {others.map(o => (
             <div key={o.id} className="other">
               <button className="link" onClick={() => p.onSelect(o.id)}>
@@ -469,11 +445,6 @@ export function FormationPanel(p: Props) {
             </div>
           ))}
         </div>
-      )}
-      {mine && (
-        <p className="hint">
-          Click a hex to move, an adjacent enemy to attack. Moving onto your own troops merges them.
-        </p>
       )}
     </div>
   );

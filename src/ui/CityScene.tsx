@@ -100,7 +100,7 @@ export function CityScene({
 
   if (failed) return null;
   return (
-    <div className="city-scene" ref={host} aria-label={`${c.name} in 3D: click a plot to pick it`}>
+    <div className="city-scene" ref={host} aria-label={`${c.name} in 3D`}>
       <button
         className="secondary city-scene-whole"
         onClick={() => scene.current?.focus(null)}
@@ -109,8 +109,8 @@ export function CityScene({
         Whole settlement
       </button>
       {children && <div className="city-scene-over">{children}</div>}
-      <span className="city-scene-hint small">
-        {ordered.length} of {DISTRICT_CAP[c.tier]} districts · click a plot · drag to turn
+      <span className="city-scene-hint small" title="Districts">
+        {ordered.length}/{DISTRICT_CAP[c.tier]}
       </span>
     </div>
   );

@@ -24,7 +24,9 @@ import {
   territoryRadius,
 } from '../engine/game.ts';
 import type { City, GameState } from '../engine/types.ts';
-import { Goods } from './bits.tsx';
+import { Chip, Delta, Ico, InfoButton } from './bits.tsx';
+import { GOODS } from '../data/goods.ts';
+import './declutter-city.css';
 
 export function CityPanel({
   game,
@@ -90,124 +92,120 @@ export function CityPanel({
               )}
             </h2>
           )}
-          <div className="muted">
-            {c.colony ? 'Colony' : TIER_NAME[c.tier]} · {civ.name} · founded turn {c.founded}
+          <div className="muted" title={`Founded turn ${c.founded}`}>
+            {c.colony ? 'Colony' : TIER_NAME[c.tier]} · {civ.name}
           </div>
         </div>
       </div>
       {mine ? (
         <>
-          <table className="stats">
-            <tbody>
-              <tr>
-                <td>Population</td>
-                <td>{c.pop.toLocaleString()} people</td>
-              </tr>
-              <tr>
-                <td>Governor</td>
-                <td>
-                  {(() => {
-                    const civ2 = game.civs[c.civId];
-                    const gov = governorOf(game, c);
-                    if (!gov) return '—';
-                    return civ2.dynasties.length > 1 ? (
-                      <select value={gov.id} onChange={e => onGovernor?.(Number(e.target.value))}>
-                        {civ2.dynasties.map(d => (
-                          <option key={d.id} value={d.id}>
-                            House {d.name}
-                            {d.id === civ2.ruling ? ' (throne)' : ''}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      `House ${gov.name} (throne)`
-                    );
-                  })()}
-                </td>
-              </tr>
-              <tr>
-                <td>Districts</td>
-                <td>
-                  {game.districts.filter(d => d.cityId === c.id).length}/{DISTRICT_CAP[c.tier]}
-                  {(() => {
-                    const u = upgradeInfo(game, c);
-                    if (!u.to) return null;
-                    return (
-                      <span className="muted">
-                        {' '}
-                        ·{' '}
-                        {u.problem
-                          ? `a ${u.to} at ${u.pop.toLocaleString()} people`
-                          : `ready to become a ${u.to}`}
-                      </span>
-                    );
-                  })()}
-                </td>
-              </tr>
-              <tr>
-                <td>Food</td>
-                <td>
-                  {y.food} grown, {y.eat} eaten →{' '}
-                  <b className={y.surplus < 0 ? 'bad' : ''}>
-                    {y.surplus >= 0 ? '+' : ''}
-                    {Math.round(y.surplus * 10) / 10}
-                  </b>{' '}
-                  ({Math.floor(c.food)}/{growthCost(game, c)} to grow by 250)
-                  {y.surplus < 0 && marketCities(game, c).length > 1 && (
-                    <span className="muted"> · towns in its market send food</span>
-                  )}
-                </td>
-              </tr>
-              <tr>
-                <td>Science</td>
-                <td>+{y.science}/turn</td>
-              </tr>
-              <tr>
-                <td>Gold</td>
-                <td>+{y.gold}/turn</td>
-              </tr>
-              <tr>
-                <td>Guard</td>
-                <td>
-                  {cityGuard(game, c).length} cohorts of townsfolk, {Math.round(c.guard * 100)}%
-                  ready
-                </td>
-              </tr>
-              <FaithRow game={game} c={c} />
-              <WonderRow game={game} c={c} />
-              {c.siege && (
-                <tr className="bad">
-                  <td>Siege</td>
-                  <td>
-                    Besieged by the {game.civs[c.siege.by].name} for {game.turn - c.siege.since}{' '}
-                    turns: no growth, the guard starves
-                    {siegeBreached(game, c)
-                      ? '; the walls are breached'
-                      : `; the walls fall in ${SIEGE_BREACH - (game.turn - c.siege.since)} turns`}
-                    . Drive off the troops around it to lift it.
-                  </td>
-                </tr>
-              )}
-              <tr>
-                <td>Goods</td>
-                <td>
-                  <Goods goods={y.goods} empty="none" /> per turn
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <h3>Store</h3>
-          <p>
-            <Goods goods={marketStock(game, c)} empty="empty" />
-          </p>
-          <p className="muted small">
-            {marketCities(game, c).length > 1
-              ? `Shared with ${marketCities(game, c)
-                  .slice(1)
-                  .map(x => x.name)
-                  .join(', ')} by road or river.`
-              : 'Not linked to other settlements: build roads to share goods and food.'}
-          </p>
+          <div className="chips dc-stats">
+            <Chip icon="people" n={c.pop.toLocaleString()} title="People" />
+            <span
+              className="chip"
+              title={`Food a turn: ${y.food} grown, ${y.eat} eaten${y.surplus < 0 && marketCities(game, c).length > 1 ? '; towns in its market send food' : ''}`}
+              aria-label="Food a turn"
+            >
+              <Ico name="food" fallback="•" size={18} />
+              <Delta n={y.surplus} />
+            </span>
+            <Chip
+              icon="housing"
+              n={`${Math.floor(c.food)}/${growthCost(game, c)}`}
+              title="Food stored / needed to grow by 250"
+            />
+            <Chip icon="science" n={y.science} title="Science a turn" />
+            <Chip icon="gold" n={y.gold} title="Gold a turn" />
+            <Chip
+              icon="protection"
+              n={`${cityGuard(game, c).length} · ${Math.round(c.guard * 100)}%`}
+              title="Guard: cohorts of townsfolk, readiness"
+            />
+            {(() => {
+              const u = upgradeInfo(game, c);
+              return (
+                <span
+                  className="chip"
+                  title={
+                    u.to
+                      ? `Districts · ${TIER_NAME[u.to]}: ${u.problem ?? 'ready'}`
+                      : 'Districts'
+                  }
+                >
+                  <Ico name="district" fallback="▦" size={18} />
+                  <b>
+                    {game.districts.filter(d => d.cityId === c.id).length}/{DISTRICT_CAP[c.tier]}
+                  </b>
+                  {u.to && !u.problem && <span className="good">↑</span>}
+                </span>
+              );
+            })()}
+            <Chip
+              icon="workers"
+              n={`${y.workersUsed.toLocaleString()}/${y.workers.toLocaleString()}`}
+              title="Workers busy"
+            />
+          </div>
+          <div className="dc-line">
+            <GoodsChips goods={y.goods} unit=" a turn" />
+          </div>
+          {(() => {
+            const civ2 = game.civs[c.civId];
+            const gov = governorOf(game, c);
+            if (!gov) return null;
+            return (
+              <div className="dc-line" title="Governor">
+                <Ico name="crown" fallback="♔" size={18} />
+                {civ2.dynasties.length > 1 ? (
+                  <select
+                    value={gov.id}
+                    aria-label="Governor"
+                    onChange={e => onGovernor?.(Number(e.target.value))}
+                  >
+                    {civ2.dynasties.map(d => (
+                      <option key={d.id} value={d.id}>
+                        House {d.name}
+                        {d.id === civ2.ruling ? ' (throne)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  `House ${gov.name} (throne)`
+                )}
+              </div>
+            );
+          })()}
+          <FaithRow game={game} c={c} />
+          <WonderRow game={game} c={c} />
+          {c.siege && (
+            <div className="dc-line bad">
+              <Ico name="war" fallback="⚔" size={18} /> Besieged by the {game.civs[c.siege.by].name}{' '}
+              · {game.turn - c.siege.since} turns ·{' '}
+              {siegeBreached(game, c)
+                ? 'walls breached'
+                : `walls fall in ${SIEGE_BREACH - (game.turn - c.siege.since)}`}
+              <InfoButton label="About the siege">
+                No growth; the guard starves. Drive off the troops around it to lift it.
+              </InfoButton>
+            </div>
+          )}
+          <h3 className="dc-h">
+            Store
+            <InfoButton label="About the store">
+              {marketCities(game, c).length > 1
+                ? `Shared with ${marketCities(game, c)
+                    .slice(1)
+                    .map(x => x.name)
+                    .join(', ')} by road or river.`
+                : 'Unlinked: roads share goods and food.'}
+            </InfoButton>
+          </h3>
+          <div className="dc-line">
+            {marketCities(game, c).length > 1 && (
+              <Chip icon="road" n={marketCities(game, c).length} title="Settlements in this market" />
+            )}
+            <GoodsChips goods={marketStock(game, c)} unit=" in store" />
+          </div>
           <div className="actions">
             <button className="primary" onClick={onOpen}>
               <Icon name="city" /> City &amp; districts…
@@ -215,42 +213,42 @@ export function CityPanel({
             <button
               disabled={!canLevy}
               onClick={onLevy}
-              title={canLevy ? '' : `Needs ${MIN_CITY_POP + LEVY_PEOPLE} people`}
+              title={
+                canLevy
+                  ? `5 cohorts, ${LEVY_PEOPLE} people`
+                  : `Needs ${(MIN_CITY_POP + LEVY_PEOPLE).toLocaleString()} people`
+              }
             >
-              <Icon name="flag" /> Raise levy (5 cohorts, 500 people)
+              <Icon name="flag" /> Raise levy
+              <Chip icon="people" n={`−${LEVY_PEOPLE}`} title="People" />
             </button>
             <button
               disabled={c.pop - SETTLERS_PEOPLE < MIN_CITY_POP}
               onClick={onSettlers}
-              title={`Settlers take ${SETTLERS_PEOPLE} people (with families) to found a new city`}
+              title={
+                c.pop - SETTLERS_PEOPLE < MIN_CITY_POP
+                  ? `Needs ${(MIN_CITY_POP + SETTLERS_PEOPLE).toLocaleString()} people`
+                  : 'Settlers found a new settlement'
+              }
             >
-              <Icon name="people" /> Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
+              <Icon name="people" /> Settlers
+              <Chip icon="people" n={`−${SETTLERS_PEOPLE.toLocaleString()}`} title="People" />
             </button>
             {c.colony && onPromote && <ColonyRow game={game} c={c} onPromote={onPromote} />}
             {onWonder && rankOf(c.tier) >= rankOf('town') && (
-              <button onClick={onWonder} title="World wonders: a race, one of each in the world">
-                {c.wonder ? `Wonder: ${WONDERS[c.wonder.id].name}` : 'Build a wonder…'}
+              <button onClick={onWonder} title="World wonders: one of each in the world">
+                <Ico name="laurel" fallback="✦" size={16} />{' '}
+                {c.wonder ? WONDERS[c.wonder.id].name : 'Wonder…'}
               </button>
-            )}
-            {onAuto && (
-              <label
-                className="auto-toggle"
-                title="The governor lays out districts and chooses buildings each turn, as the AI would"
-              >
-                <input
-                  type="checkbox"
-                  checked={!!c.auto}
-                  onChange={e => onAuto(e.target.checked)}
-                />{' '}
-                Governor plans this settlement
-              </label>
             )}
             <button
               disabled={c.pop - CREW.workers.people < MIN_CITY_POP || civ.gold < CREW.workers.gold}
               onClick={() => onCrew?.('workers')}
-              title="Workers build roads in every age (from the Medieval age only they and engineers can)"
+              title="Workers build roads"
             >
-              Send workers ({CREW.workers.people} people, {CREW.workers.gold} gold)
+              <Ico name="workers" fallback="⚒" size={16} /> Workers
+              <Chip icon="people" n={`−${CREW.workers.people}`} title="People" />
+              <Chip icon="gold" n={`−${CREW.workers.gold}`} title="Gold" />
             </button>
             {ageOf(civ.techs) >= 5 && (
               <button
@@ -258,23 +256,42 @@ export function CityPanel({
                   c.pop - CREW.engineers.people < MIN_CITY_POP || civ.gold < CREW.engineers.gold
                 }
                 onClick={() => onCrew?.('engineers')}
-                title="Engineers build roads, and will lay railways"
+                title="Engineers build roads and railways"
               >
-                Send engineers ({CREW.engineers.people} people, {CREW.engineers.gold} gold)
+                <Ico name="equip" fallback="⚙" size={16} /> Engineers
+                <Chip icon="people" n={`−${CREW.engineers.people}`} title="People" />
+                <Chip icon="gold" n={`−${CREW.engineers.gold}`} title="Gold" />
               </button>
+            )}
+            {onAuto && (
+              <label
+                className="auto-toggle"
+                title="The governor lays out districts and chooses buildings each turn"
+              >
+                <input
+                  type="checkbox"
+                  checked={!!c.auto}
+                  onChange={e => onAuto(e.target.checked)}
+                />{' '}
+                Governor plans
+              </label>
             )}
           </div>
           {(!canLevy || c.pop - SETTLERS_PEOPLE < MIN_CITY_POP) && (
             <p className="muted small why">
-              {!canLevy && `A levy needs ${(MIN_CITY_POP + LEVY_PEOPLE).toLocaleString()} people. `}
+              {!canLevy && `Levy: ${(MIN_CITY_POP + LEVY_PEOPLE).toLocaleString()} people. `}
               {c.pop - SETTLERS_PEOPLE < MIN_CITY_POP &&
-                `Settlers need ${(MIN_CITY_POP + SETTLERS_PEOPLE).toLocaleString()} people.`}
+                `Settlers: ${(MIN_CITY_POP + SETTLERS_PEOPLE).toLocaleString()} people.`}
             </p>
           )}
-          {hasSlot(game, c, 'shipyard') ? (
+          {hasSlot(game, c, 'shipyard') && (
             <div className="row ship-row">
-              <select value={ship} onChange={e => setShip(Number(e.target.value))}>
-                <option value={0}>Build a ship…</option>
+              <select
+                value={ship}
+                aria-label="Ship"
+                onChange={e => setShip(Number(e.target.value))}
+              >
+                <option value={0}>Ship…</option>
                 {civ.designs
                   .filter(d => d.naval)
                   .map(d => (
@@ -283,33 +300,59 @@ export function CityPanel({
                     </option>
                   ))}
               </select>
-              <button disabled={!ship} onClick={() => onShip(ship)}>
-                Launch ({SHIP_CREW} crew)
+              <button disabled={!ship} onClick={() => onShip(ship)} title={`${SHIP_CREW} crew`}>
+                Launch <Chip icon="people" n={`−${SHIP_CREW}`} title="Crew" />
               </button>
             </div>
-          ) : (
-            <p className="muted small">
-              A shipyard (after Sailing, in a district by the water) lets the city build ships.
-            </p>
           )}
           {hasSlot(game, c, 'shipyard') && !civ.designs.some(d => d.naval) && (
-            <p className="muted small">Design a ship first (Unit designs → Ships).</p>
+            <p className="muted small">No ship designs.</p>
           )}
-          <p className="muted small">
-            {y.workersUsed.toLocaleString()} of {y.workers.toLocaleString()} workers busy · room for{' '}
-            {y.housing.toLocaleString()} people.
-          </p>
         </>
       ) : (
-        <p className="muted">
-          Guard {Math.round(c.guard * 100)}% ready. A foreign city of about{' '}
-          {(Math.round(c.pop / 500) * 500).toLocaleString()} people.
-          {c.siege
-            ? ` Besieged ${game.turn - c.siege.since} turns${siegeBreached(game, c) ? ': its walls are breached.' : `: its walls fall in ${SIEGE_BREACH - (game.turn - c.siege.since)} turns.`}`
-            : ` Ring it with ${SIEGE_COHORTS} or more cohorts to besiege it.`}
-        </p>
+        <div className="chips dc-stats">
+          <Chip
+            icon="people"
+            n={`~${(Math.round(c.pop / 500) * 500).toLocaleString()}`}
+            title="People, about"
+          />
+          <Chip icon="protection" n={`${Math.round(c.guard * 100)}%`} title="Guard ready" />
+          {c.siege ? (
+            <span className="chip bad" title="Besieged">
+              <Ico name="war" fallback="⚔" size={18} />
+              <b>
+                {game.turn - c.siege.since}
+                {siegeBreached(game, c)
+                  ? ' · breached'
+                  : ` · falls in ${SIEGE_BREACH - (game.turn - c.siege.since)}`}
+              </b>
+            </span>
+          ) : (
+            <InfoButton label="About sieges">
+              Siege: {SIEGE_COHORTS}+ cohorts around it.
+            </InfoButton>
+          )}
+        </div>
       )}
     </div>
+  );
+}
+
+/** Each good as its icon and a number. */
+function GoodsChips({ goods, unit }: { goods: Record<string, number>; unit: string }) {
+  const list = Object.entries(goods).filter(([, n]) => n > 0);
+  if (!list.length) return <span className="muted">—</span>;
+  return (
+    <>
+      {list.map(([k, n]) => (
+        <Chip
+          key={k}
+          good={k}
+          n={Math.round(n * 10) / 10}
+          title={`${GOODS[k]?.name ?? k}${unit}`}
+        />
+      ))}
+    </>
   );
 }
 
@@ -319,25 +362,23 @@ function FaithRow({ game, c }: { game: GameState; c: City }) {
   const g = c.conv ? faithById(game, c.conv.f) : undefined;
   if (!f && !g) return null;
   return (
-    <tr>
-      <td>Faith</td>
-      <td>
-        {f ? (
-          <>
-            {f.name}
-            {f.holy === c.id ? <b> · holy city</b> : null}
-          </>
-        ) : (
-          <span className="muted">none yet</span>
-        )}
-        {g && (
-          <small className="muted">
-            {' '}
-            · {g.name} gaining ({c.conv!.n}/{CONVERT_TURNS})
-          </small>
-        )}
-      </td>
-    </tr>
+    <div className="dc-line" title="Faith">
+      <Ico name="sun" fallback="☼" size={18} />
+      {f ? (
+        <>
+          {f.name}
+          {f.holy === c.id ? <b> · holy city</b> : null}
+        </>
+      ) : (
+        <span className="muted">—</span>
+      )}
+      {g && (
+        <small className="muted" title={`${g.name} gaining ground`}>
+          {' '}
+          · {g.name} ↑ {c.conv!.n}/{CONVERT_TURNS}
+        </small>
+      )}
+    </div>
   );
 }
 
@@ -347,18 +388,16 @@ function WonderRow({ game, c }: { game: GameState; c: City }) {
   if (!held.length && !c.wonder) return null;
   const w = c.wonder && WONDERS[c.wonder.id];
   return (
-    <tr>
-      <td>Wonders</td>
-      <td>
-        {held.map(x => x.name).join(', ')}
-        {held.length && w ? ' · ' : ''}
-        {w && (
-          <span>
-            building the {w.name}, {Math.floor((c.wonder!.progress / w.prod) * 100)}%
-          </span>
-        )}
-      </td>
-    </tr>
+    <div className="dc-line" title="Wonders">
+      <Ico name="laurel" fallback="✦" size={18} />
+      {held.map(x => x.name).join(', ')}
+      {held.length && w ? ' · ' : ''}
+      {w && (
+        <span title={`Building the ${w.name}`}>
+          {w.name} {Math.floor((c.wonder!.progress / w.prod) * 100)}%
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -367,19 +406,17 @@ function ColonyRow({ game, c, onPromote }: { game: GameState; c: City; onPromote
   const info = promoteInfo(game, c, territoryRadius(game, c.civId));
   const lim = colonyLimits(game, c);
   return (
-    <div className="colony-row small">
-      <p className="muted">
-        A colony:{' '}
-        {lim?.gatherOnly
-          ? 'one district, gathering only'
-          : lim
-            ? 'up to four districts'
-            : 'no limits in this age'}
-        . Its goods reach your realm by road, or by sea with a harbour.
-      </p>
+    <div className="colony-row small dc-line">
+      <span className="muted">
+        Colony:{' '}
+        {lim?.gatherOnly ? '1 district, gathering' : lim ? 'up to 4 districts' : 'no limits'}
+      </span>
+      <InfoButton label="About colonies">
+        Its goods reach the realm by road, or by sea with a harbour.
+      </InfoButton>
       {info && (
         <button disabled={!!info.problem} title={info.problem ?? undefined} onClick={onPromote}>
-          Make it a town ({info.gold} gold)
+          Make town <Chip icon="gold" n={`−${info.gold}`} title="Gold" />
         </button>
       )}
       {info?.problem && <small className="muted">{info.problem}</small>}

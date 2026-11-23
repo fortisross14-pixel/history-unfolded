@@ -160,13 +160,19 @@ function nextLabel(
 }
 
 const KEYS: [string, string][] = [
-  ['Click', 'Select a unit, city or hex'],
-  ['Right-click', 'Move the selected unit there, or attack'],
-  ['W A S D', 'Move the map (arrow keys too)'],
-  ['Wheel', 'Zoom the map'],
-  ['Enter', 'End the turn (asks once if units still wait)'],
-  ['Space', 'Next thing to do: research, a city to plan, a unit to order'],
-  ['Esc', 'Close a window, or clear the selection'],
+  ['Click', 'Select'],
+  ['Right-click', 'Move / attack'],
+  ['W A S D', 'Pan (arrows too)'],
+  ['Wheel', 'Zoom'],
+  ['Enter', 'End turn'],
+  ['Space', 'Next to do'],
+  ['Esc', 'Close / deselect'],
+];
+const TOUCH: [string, string][] = [
+  ['Tap', 'Select'],
+  ['Tap Tap', 'Move / attack'],
+  ['Drag', 'Pan'],
+  ['Pinch', 'Zoom'],
 ];
 
 export function Game({
@@ -419,9 +425,7 @@ export function Game({
         label: `Let governors plan ${unplanned.length} settlements`,
         go: () => {
           for (const c of unplanned) automateCity(game, c.id, true);
-          toast(
-            `Governors now plan ${unplanned.length} settlements. Untick it in a settlement's panel to plan it yourself.`,
-          );
+          toast(`Governors plan ${unplanned.length} settlements`);
           bump();
         },
       });
@@ -665,7 +669,7 @@ export function Game({
         if (left.length && !endArmed.current) {
           endArmed.current = true;
           setTimeout(() => (endArmed.current = false), 2500);
-          toast(`Still to do: ${todoSummary(left)}. Press Enter again to end the turn.`);
+          toast(`To do: ${todoSummary(left)} · Enter again: end turn`);
           return;
         }
         endArmed.current = false;
@@ -957,13 +961,13 @@ export function Game({
           {guide && (
             <div className="guide-card" role="note" aria-label="Guide">
               <small className="muted">
-                Guide {guide.n}/{GUIDE.length}
+                {guide.n}/{GUIDE.length}
               </small>
               <b>{guide.step.title}</b>
               <span>{guide.step.hint}</span>
               <span className="guide-actions">
                 <button className="small" onClick={() => showGuide(guide.step.show)}>
-                  Show me
+                  Show
                 </button>
                 <button
                   className="link small"
@@ -972,7 +976,7 @@ export function Game({
                     bump();
                   }}
                 >
-                  Hide the guide
+                  Hide
                 </button>
               </span>
             </div>
@@ -1205,24 +1209,24 @@ export function Game({
         {!sel && (
           <div className="panel">
             <h2>Orders</h2>
-            <p className="muted">
-              Click a unit or city. With a unit selected, click a hex to move or an adjacent enemy
-              to attack. Drag to pan, scroll to zoom.
-            </p>
-            <p className="muted small">
-              Keys: W A S D move the map · Space next unit · Enter end turn · Esc deselect
-            </p>
+            <dl className="keys-list gm-keys small">
+              {KEYS.filter(([k]) => ['Space', 'Enter', 'Esc'].includes(k)).map(([k, what]) => (
+                <div key={k}>
+                  <dt>
+                    <kbd>{k}</kbd>
+                  </dt>
+                  <dd>{what}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         )}
       </aside>
 
       {armed >= 0 && mySelF && (
         <div className="armed-bar" role="status">
-          <span>
-            {enemyAt(armed) ? 'Tap the enemy again to attack' : 'Tap the hex again to go there'}
-          </span>
           <button className="primary" onClick={() => onClick(armed, false)}>
-            {enemyAt(armed) ? 'Attack' : 'Go'}
+            <Icon name={enemyAt(armed) ? 'war' : 'go-to'} line /> {enemyAt(armed) ? 'Attack' : 'Go'}
           </button>
           <button onClick={() => setArmed(-1)}>Cancel</button>
         </div>
@@ -1234,25 +1238,41 @@ export function Game({
               <p className="bad">{battlePreview.problem}</p>
             ) : (
               <>
-                <h2>{battlePreview.needsWar !== undefined ? 'Attack (declares war)' : 'Attack'}</h2>
+                <h2>
+                  Attack{' '}
+                  {battlePreview.needsWar !== undefined && <span className="fp-tag bad">War</span>}
+                </h2>
                 {battlePreview.report ? (
-                  <>
-                    <p>
-                      Expected: you lose <b className="bad">{battlePreview.report.attacker.lost}</b>
-                      , they lose <b>{battlePreview.report.defender.lost}</b> of{' '}
-                      {battlePreview.report.defender.start}
-                    </p>
-                    <p className="muted small">
+                  <div className="gm-preview">
+                    <span className="chip" title="Your expected losses">
+                      You <b className="delta bad">−{battlePreview.report.attacker.lost}</b>
+                    </span>
+                    <span
+                      className="chip"
+                      title={`Their expected losses, of ${battlePreview.report.defender.start}`}
+                    >
+                      Them <b className="delta good">−{battlePreview.report.defender.lost}</b>
+                      <small className="muted">/{battlePreview.report.defender.start}</small>
+                    </span>
+                    <span
+                      className={`fp-tag ${
+                        battlePreview.report.outcome === 'defender-broke'
+                          ? 'good'
+                          : battlePreview.report.outcome === 'attacker-broke'
+                            ? 'bad'
+                            : ''
+                      }`}
+                      title="Expected; luck can swing it"
+                    >
                       {battlePreview.report.outcome === 'defender-broke'
-                        ? 'They should break.'
+                        ? 'They break'
                         : battlePreview.report.outcome === 'attacker-broke'
-                          ? 'Your troops would likely break first.'
-                          : 'Likely indecisive.'}{' '}
-                      Luck can swing it.
-                    </p>
-                  </>
+                          ? 'You break'
+                          : 'Indecisive'}
+                    </span>
+                  </div>
                 ) : (
-                  <p>Undefended: they will scatter.</p>
+                  <p>Undefended</p>
                 )}
               </>
             )}
@@ -1378,7 +1398,7 @@ export function Game({
             onClick={e => e.stopPropagation()}
           >
             <header>
-              <h2>Keys and mouse</h2>
+              <h2>Keys</h2>
               <button className="x" onClick={() => setDialog(null)} aria-label="Close">
                 ×
               </button>
@@ -1395,10 +1415,19 @@ export function Game({
                 </div>
               ))}
             </dl>
-            <p className="muted">
-              On a phone or tablet: tap to select, tap a hex once to see the route or battle, tap it
-              again to go. Pinch to zoom, drag to pan.
-            </p>
+            <h3 className="gm-touch-head">Touch</h3>
+            <dl className="keys-list">
+              {TOUCH.map(([k, what]) => (
+                <div key={k}>
+                  <dt>
+                    {k.split(' ').map((x, i) => (
+                      <kbd key={i}>{x}</kbd>
+                    ))}
+                  </dt>
+                  <dd>{what}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </div>
       )}
@@ -1617,9 +1646,7 @@ export function Game({
         <div className="modal-back" onClick={() => setDialog(null)}>
           <div className="modal confirm" onClick={e => e.stopPropagation()}>
             <h2>Declare war on the {game.civs[dialog.civId].name}?</h2>
-            <p className="muted">
-              They will remember. Peace can only be made after a few turns of fighting.
-            </p>
+            <p className="muted">No peace for a few turns. They will remember.</p>
             <div className="row">
               <button
                 className="primary"
@@ -1693,7 +1720,6 @@ function NameCity({ suggested, onDone }: { suggested: string; onDone: (n: string
         <header>
           <h2>A new settlement</h2>
         </header>
-        <p className="muted small">What will it be called?</p>
         <input
           autoFocus
           value={name}

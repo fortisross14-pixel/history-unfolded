@@ -1,3 +1,4 @@
+import { foundKind } from '../engine/colonies.ts';
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from './icons.tsx';
 import { ITEMS, SLOTS } from '../data/items.ts';
@@ -12,6 +13,7 @@ import {
   formationsAt,
   refitPreview,
   supplyingCity,
+  territoryRadius,
 } from '../engine/game.ts';
 import type { Formation, GameState } from '../engine/types.ts';
 import {
@@ -75,6 +77,10 @@ export function FormationPanel(p: Props) {
   const supply = supplyingCity(game, f.civId, f.hex);
   const m = game.map;
   const foundWhy = f.kind === 'settlers' ? canFoundCity(game, f) : null;
+  const kind =
+    f.kind === 'settlers'
+      ? foundKind(game, f.civId, f.hex, territoryRadius(game, f.civId))
+      : 'town';
   const roadWhy = roadBuilderProblem(game, f);
   const railWhy = f.kind === 'engineers' ? railProblem(game, f) : null;
   const setAll = (n: 'all' | 'none') =>
@@ -333,11 +339,23 @@ export function FormationPanel(p: Props) {
             <button
               className="primary"
               disabled={!!foundWhy}
-              title={foundWhy ?? 'Found a city here'}
+              title={
+                foundWhy ??
+                (kind === 'colony'
+                  ? 'Too far from your towns to join your lands: it becomes a colony (one district, gathering only; its goods reach you by road or by sea)'
+                  : 'Found a town here: its land joins yours')
+              }
               onClick={p.onFound}
             >
-              <Icon name="flag" /> Found city
+              <Icon name="flag" /> {kind === 'colony' ? 'Found colony' : 'Found city'}
             </button>
+          )}
+          {f.kind === 'settlers' && !foundWhy && kind === 'colony' && (
+            <p className="small muted">
+              Here it would be a <b>colony</b>: too far to join your lands. Colonies keep one
+              district and only gather (farms, woodlots, mines); their goods reach you by road, or
+              by sea with a harbour. Settle within 4 hexes of a town for a town.
+            </p>
           )}
           {f.kind === 'engineers' && game.roads[f.hex] === 1 && (
             <button

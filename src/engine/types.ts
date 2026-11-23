@@ -117,6 +117,8 @@ export interface Faith {
 }
 
 export interface City {
+  /** founded away from the realm's lands (colonies.ts): gathers only, until made a town */
+  colony?: boolean;
   /** a world wonder being built here (wonders.ts): half its production goes to it */
   wonder?: { id: string; progress: number };
   /** the faith most of its people keep (faith.ts) */

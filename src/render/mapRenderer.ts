@@ -809,7 +809,7 @@ export class MapRenderer {
           this.banner(
             x,
             y + R * 0.62,
-            `${c.name}  ${(c.pop / 1000).toFixed(1)}k${c.siege ? '  (besieged)' : ''}`,
+            `${c.name}${c.colony ? ' (colony)' : ''}  ${(c.pop / 1000).toFixed(1)}k${c.siege ? '  (besieged)' : ''}`,
             s.civs[c.civId].color,
             zoom,
           ),

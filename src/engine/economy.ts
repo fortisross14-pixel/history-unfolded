@@ -31,6 +31,7 @@ import {
 import { isWater, RELIEF, VEGETATION } from '../data/terrain.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
 import { hexFood } from './mapgen.ts';
+import { colonyBuildProblem } from './colonies.ts';
 import type { City, District, GameState, SlotState, Tier } from './types.ts';
 import { civMods, pct } from './mods.ts';
 import { ITEMS } from '../data/items.ts';
@@ -201,6 +202,8 @@ export function slotProblem(
     return `Needs research: ${TECHS[t.tech]?.name ?? t.tech}`;
   const d = s.districts.find(x => x.id === districtId);
   const here = d ? s.cities.find(x => x.id === d.cityId) : ownerOfHex(s, hex);
+  const colonyWhy = here ? colonyBuildProblem(s, here, typeId) : null;
+  if (colonyWhy) return colonyWhy;
   if (here && centre && isUrban(here) && isRural(typeId))
     return 'A city has built over its centre: farms, woodlots and mines go in its outer districts.';
   if (t.role === 'multiplier' && d) {
@@ -732,7 +735,12 @@ function marketCitiesUncached(s: GameState, c: City): City[] {
   const g = gridOf(s);
   const ok = connectorSet(s, c.civId);
   const N = g.w * g.h;
-  const ports = new Set(s.cities.filter(x => x.civId === c.civId && hasPort(s, x)).map(x => x.hex));
+  // a colony on the coast ships from its own shore to the realm's harbours
+  const ports = new Set(
+    s.cities
+      .filter(x => x.civId === c.civId && (hasPort(s, x) || (x.colony && isCoastal(s, x))))
+      .map(x => x.hex),
+  );
   const ocean = s.civs[c.civId].techs.includes('compass');
   const sea = new Uint8Array(N);
   for (let i = 0; i < N; i++) {

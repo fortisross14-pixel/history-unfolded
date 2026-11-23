@@ -1136,6 +1136,23 @@ and tin, furs, wild horses); an ancient armoury that gives the finder's first tw
 swords and bronze scale; an old map revealing far land; survivors who join as a cohort; a relic
 for the houses. In AI-played games every ruin is found within about 80 turns.
 
+## 12r. Towns and colonies (as built)
+
+The realm grows as one piece (engine/colonies.ts). A new settlement is a **town** when it stands
+within twice the territory radius of one of the people's towns (3–4 hexes with the usual radius
+of 2: just outside the border or one hex further, so the two lands touch or overlap). The first
+settlement is always a town. Founded further out, it is a **colony**:
+- one district; only farms, pastures, fishing, woodlots, mines, houses, and the harbour or
+  shipyard to ship from; it cannot grow past a settlement;
+- its goods reach the realm only by road (the market), or by sea when it lies on the coast and
+  the realm has a harbour (a coastal colony counts as its own port);
+- once a town of the realm stands within reach of it, it can be **made a town** for 40 gold per
+  age.
+From the Renaissance a colony may build anything and grow to four districts; from the Industrial
+age every new settlement is a town. The settlers' panel says before founding whether the spot
+makes a town or a colony; banners mark colonies. AI peoples avoid colonies unless a rich deposit
+pays for one, and make their colonies towns as soon as they can.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

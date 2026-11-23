@@ -1041,7 +1041,7 @@ export class World3DRenderer {
         const [x, z] = centerUnit(g, c.hex);
         const [sx, sy] = this.project(x, this.top(s, c.hex), z + 0.95);
         if (sx < -100 || sy < -40 || sx > this.w + 100 || sy > this.h + 40) continue;
-        const text = `${c.name}  ${(c.pop / 1000).toFixed(1)}k${c.siege ? ' ⚔' : ''}`;
+        const text = `${c.name}${c.colony ? ' (colony)' : ''}  ${(c.pop / 1000).toFixed(1)}k${c.siege ? ' ⚔' : ''}`;
         const w = ctx.measureText(text).width + 16;
         ctx.fillStyle = 'rgba(247,241,227,0.94)';
         ctx.strokeStyle = s.civs[c.civId].color;

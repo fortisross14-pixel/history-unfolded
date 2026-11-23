@@ -3414,3 +3414,9 @@ input.rename {
 .install-help {
   max-width: 280px;
 }
+.colony-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+}

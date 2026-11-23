@@ -233,7 +233,10 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
               </p>
               <h3>Rank</h3>
               <p className="small">
-                <b>{TIER_NAME[c.tier]}</b> · {districts.length}/{cap} districts
+                <b>
+                  {c.colony ? `Colony (${TIER_NAME[c.tier].toLowerCase()})` : TIER_NAME[c.tier]}
+                </b>{' '}
+                · {districts.length}/{cap} districts
                 {bonus.all
                   ? ` · +${bonus.all}% to every building, +${bonus.focus}% research and industry`
                   : ' · farms, woodlots and mines allowed'}

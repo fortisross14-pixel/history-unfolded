@@ -30,6 +30,7 @@ import {
   refitPreview,
   saveDesign,
   supplyingCity,
+  territoryRadius,
   trainSettlers,
   advance,
 } from './game.ts';
@@ -89,6 +90,7 @@ import { findPath } from './path.ts';
 import { difficultyOf } from './difficulty.ts';
 import { personalityOf } from '../data/leaders.ts';
 import { nearRuin } from './ruins.ts';
+import { foundKind, promoteColony, promoteInfo } from './colonies.ts';
 import {
   cityDistricts,
   marketStock,
@@ -410,6 +412,9 @@ function bestSite(s: GameState, f: Formation, rng: Rng): number {
     const home = s.cities.filter(c => c.civId === f.civId);
     const nearest = home.length ? Math.min(...home.map(c => distance(g, c.hex, k))) : 3;
     if (nearest > 4) v -= (nearest - 4) * 1.5;
+    // a colony only gathers: worth it for a rich deposit, otherwise a town next door is better
+    if (foundKind(s, f.civId, k, territoryRadius(s, f.civId)) === 'colony')
+      v -= s.map.deposit[k] ? 2 : 6;
     v -= distance(g, f.hex, k) * 0.6 + rng() * 0.5;
     if (v > bv) {
       bv = v;
@@ -1047,6 +1052,10 @@ export function aiTurn(s: GameState, civ: Civ) {
     }
   }
   armyOrders(s, civ, enemies, rng);
+  // colonies the realm now reaches become towns when the treasury allows
+  for (const c of s.cities)
+    if (c.civId === civ.id && c.colony && !promoteInfo(s, c, territoryRadius(s, civ.id))?.problem)
+      promoteColony(s, c.id, territoryRadius(s, civ.id));
 }
 
 /** Attack if the expected exchange favours us (`ratio` < 1 accepts worse trades, for sieges). */

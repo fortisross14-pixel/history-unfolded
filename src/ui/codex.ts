@@ -86,6 +86,10 @@ const BASICS: [string, string][] = [
     'In the early ages raider camps appear in empty land. Their bands pillage weakly held towns; a garrison at least as strong as a band keeps it away. March an army into a camp to burn it and take its hoard. Raiders fade by the Renaissance.',
   ],
   [
+    'Towns and colonies',
+    'A new settlement is a town when it stands within 4 hexes of one of your towns, so your lands touch. Further out it is a colony: one district, gathering only (farms, woodlots, mines, houses, docks), and its goods reach you only by road or by sea with a harbour. Once one of your towns reaches it, make it a town for gold. From the Renaissance colonies can build anything and grow to four districts; from the Industrial age every settlement is a town.',
+  ],
+  [
     'Ruins',
     'Ruins lie scattered over the wild land at the start. The first unit to step onto them searches them: buried gold, lost scrolls (science), caches of rare goods (ivory and hides for ivory lamellar, copper and tin for bronze, furs, horses), an ancient armoury that re-arms your first cohorts with bronze swords and scale armour, an old map of far land, survivors who join, or a relic for your houses. Rivals explore too: be quick.',
   ],

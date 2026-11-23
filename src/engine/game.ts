@@ -80,6 +80,7 @@ import { crisisTurn } from './crises.ts';
 import { faithTurn } from './faith.ts';
 import { aiHuntRaiders, raiderHostile, raidersTurn } from './raiders.ts';
 import { placeRuins, searchRuins } from './ruins.ts';
+import { colonyLimits, foundKind } from './colonies.ts';
 import { aiWonderTurn, wonderCulture, wondersOf, workOnWonder } from './wonders.ts';
 import { WONDER_SCORE, WONDERS } from '../data/wonders.ts';
 import { coalitionTurn } from './coalition.ts';
@@ -877,6 +878,7 @@ export function foundCity(s: GameState, fid: number): Result {
     name = CITY_NAMES[(CITY_NAMES.indexOf(name) + 1) % CITY_NAMES.length];
   if (used.has(name)) name = `${name} ${civ.cityNames + 2}`;
   civ.cityNames++;
+  const colony = foundKind(s, civ.id, f.hex, territoryRadius(s, civ.id)) === 'colony';
   const c: City = {
     id: s.nextId++,
     civId: civ.id,
@@ -889,6 +891,7 @@ export function foundCity(s: GameState, fid: number): Result {
     guard: 1,
     stockpile: { wood: 10, hides: 4, stone: 4 },
   };
+  if (colony) c.colony = true;
   s.cities.push(c);
   // the city centre is a district of its own, with the town hall in the middle
   const centre: District = {
@@ -2531,8 +2534,14 @@ export function upgradeInfo(s: GameState, c: City): UpgradeInfo {
   const lost = to === 'city' && centre ? centre.slots.filter(x => isRural(x.type)).length : 0;
   let problem: string | null = null;
   const stock = marketStock(s, c);
+  const lim = colonyLimits(s, c);
   const shortGoods = Object.entries(need.goods).filter(([k, n]) => (stock[k] ?? 0) < n);
-  if (
+  if (lim && rankOf(to) > rankOf(lim.maxTier))
+    problem =
+      lim.maxTier === 'settlement'
+        ? 'A colony keeps one district: make it a town once your lands reach it.'
+        : 'A colony grows to four districts at most: make it a town for more.';
+  else if (
     to === 'metropolis' &&
     s.cities.some(x => x.civId === c.civId && x.tier === 'metropolis' && x !== c)
   )

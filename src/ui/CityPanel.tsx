@@ -1,3 +1,4 @@
+import { colonyLimits, promoteInfo } from '../engine/colonies.ts';
 import { WONDERS } from '../data/wonders.ts';
 import { wondersIn } from '../engine/wonders.ts';
 import { CONVERT_TURNS, faithById } from '../engine/faith.ts';
@@ -20,6 +21,7 @@ import {
   LEVY_PEOPLE,
   MIN_CITY_POP,
   SETTLERS_PEOPLE,
+  territoryRadius,
 } from '../engine/game.ts';
 import type { City, GameState } from '../engine/types.ts';
 import { Goods } from './bits.tsx';
@@ -37,6 +39,7 @@ export function CityPanel({
   onCrew,
   onAuto,
   onWonder,
+  onPromote,
 }: {
   game: GameState;
   c: City;
@@ -50,6 +53,7 @@ export function CityPanel({
   onCrew?: (kind: 'workers' | 'engineers') => void;
   onAuto?: (on: boolean) => void;
   onWonder?: () => void;
+  onPromote?: () => void;
 }) {
   const y = cityYield(game, c);
   const civ = game.civs[c.civId];
@@ -87,7 +91,7 @@ export function CityPanel({
             </h2>
           )}
           <div className="muted">
-            {TIER_NAME[c.tier]} · {civ.name} · founded turn {c.founded}
+            {c.colony ? 'Colony' : TIER_NAME[c.tier]} · {civ.name} · founded turn {c.founded}
           </div>
         </div>
       </div>
@@ -222,6 +226,7 @@ export function CityPanel({
             >
               <Icon name="people" /> Send settlers ({SETTLERS_PEOPLE.toLocaleString()} people)
             </button>
+            {c.colony && onPromote && <ColonyRow game={game} c={c} onPromote={onPromote} />}
             {onWonder && rankOf(c.tier) >= rankOf('town') && (
               <button onClick={onWonder} title="World wonders: a race, one of each in the world">
                 {c.wonder ? `Wonder: ${WONDERS[c.wonder.id].name}` : 'Build a wonder…'}
@@ -354,5 +359,30 @@ function WonderRow({ game, c }: { game: GameState; c: City }) {
         )}
       </td>
     </tr>
+  );
+}
+
+/** A colony: what it may do, and making it a town once the realm reaches it. */
+function ColonyRow({ game, c, onPromote }: { game: GameState; c: City; onPromote: () => void }) {
+  const info = promoteInfo(game, c, territoryRadius(game, c.civId));
+  const lim = colonyLimits(game, c);
+  return (
+    <div className="colony-row small">
+      <p className="muted">
+        A colony:{' '}
+        {lim?.gatherOnly
+          ? 'one district, gathering only'
+          : lim
+            ? 'up to four districts'
+            : 'no limits in this age'}
+        . Its goods reach your realm by road, or by sea with a harbour.
+      </p>
+      {info && (
+        <button disabled={!!info.problem} title={info.problem ?? undefined} onClick={onPromote}>
+          Make it a town ({info.gold} gold)
+        </button>
+      )}
+      {info?.problem && <small className="muted">{info.problem}</small>}
+    </div>
   );
 }

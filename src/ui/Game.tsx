@@ -49,6 +49,7 @@ import {
   trainSettlers,
   visibleHexes,
   type Result,
+  territoryRadius,
 } from '../engine/game.ts';
 import type { GameState } from '../engine/types.ts';
 import type { Assets } from '../render/assets.ts';
@@ -74,6 +75,7 @@ import { NewsList } from './TurnNews.tsx';
 import { locate, type NewsTarget } from './news.ts';
 import { WonderDialog } from './WonderDialog.tsx';
 import { foundProblem, tenetDue } from '../engine/faith.ts';
+import { promoteColony } from '../engine/colonies.ts';
 import { PeoplesDialog } from './PeoplesDialog.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
 import { DynastiesDialog } from './DynastiesDialog.tsx';
@@ -1150,6 +1152,9 @@ export function Game({
             onRename={n => report(renameCity(game, selCity.id, n))}
             onAuto={on => report(automateCity(game, selCity.id, on))}
             onWonder={() => setDialog({ kind: 'wonders', cityId: selCity.id })}
+            onPromote={() =>
+              report(promoteColony(game, selCity.id, territoryRadius(game, me.id)) as Result)
+            }
             onCrew={kind => {
               const r = report(trainCrew(game, selCity.id, kind));
               const f = r.ok

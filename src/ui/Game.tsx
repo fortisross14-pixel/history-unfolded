@@ -664,6 +664,7 @@ export function Game({
     [version],
   );
   const wars = game.wars.filter(w => w.a === me.id || w.b === me.id).length;
+  const massing = game.civs.filter(c => c.alive && c.warPlan?.target === me.id).length;
 
   const proposal = game.proposals.find(p => p.to === me.id);
   // a rival holding a victory goal: shown on the Victory button
@@ -922,6 +923,11 @@ export function Game({
         </button>
         <button className="secondary" onClick={() => setDialog({ kind: 'peoples' })}>
           <Icon name="peoples" /> Peoples
+          {massing ? (
+            <b className="war-pill" title="A rival is massing troops on your border: see Peoples">
+              threat
+            </b>
+          ) : null}
           {wars ? (
             <b className="war-pill">
               {wars} war{wars > 1 ? 's' : ''}

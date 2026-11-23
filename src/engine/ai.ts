@@ -22,6 +22,7 @@ import {
   foundCity,
   gridOf,
   levy,
+  log,
   merge,
   militaryPower,
   planPath,
@@ -86,6 +87,7 @@ import {
 } from './game.ts';
 import { findPath } from './path.ts';
 import { difficultyOf } from './difficulty.ts';
+import { personalityOf } from '../data/leaders.ts';
 import {
   cityDistricts,
   marketStock,
@@ -1342,6 +1344,114 @@ function armyOrders(s: GameState, civ: Civ, enemies: Civ[], rng: Rng) {
   void rng;
 }
 
+/** turns of warning before an AI people attacks the player, by difficulty */
+export const WAR_WARNING = { casual: 6, normal: 4, hard: 3 };
+
+/**
+ * Would `civ` go to war on `o` now (chance aside), and why or why not. The same test drives the
+ * AI and the player's view of each rival's intent.
+ */
+export function warCheck(s: GameState, civ: Civ, o: Civ): { ok: boolean; reasons: string[] } {
+  const g = gridOf(s);
+  const diff = difficultyOf(s);
+  const pers = personalityOf(s.settings.map.seed, civ);
+  const cities = s.cities.filter(c => c.civId === civ.id);
+  const coal = s.coalition?.members.includes(civ.id) ? s.coalition.against : -1;
+  const reasons: string[] = [];
+  let ok = true;
+  const you = o.isPlayer ? 'you' : `the ${o.name}`;
+  const your = o.isPlayer ? 'yours' : `the ${o.name}'s`;
+  if (civ.independent || civ.isPlayer)
+    return { ok: false, reasons: ['A free people does not start wars.'] };
+  if (o.isPlayer && s.turn <= diff.peaceWithPlayerUntil) {
+    ok = false;
+    reasons.push(`No attack on you before turn ${diff.peaceWithPlayerUntil + 1} (difficulty)`);
+  }
+  if (allied(s, civ.id, o.id)) {
+    ok = false;
+    reasons.push('Allies');
+  }
+  const near = s.cities.some(
+    c => c.civId === o.id && cities.some(m => distance(g, c.hex, m.hex) <= 14),
+  );
+  if (!near && o.id !== coal) {
+    ok = false;
+    reasons.push('Too far away to fight');
+  } else if (near) reasons.push(`${o.isPlayer ? 'Your' : 'Their'} borders are close`);
+  if (o.id === coal) reasons.push(`In a coalition against ${you}`);
+  const op = opinion(s, civ.id, o.id);
+  const pact = hasPact(s, civ.id, o.id);
+  const mineP = militaryPower(s, civ.id),
+    theirP = militaryPower(s, o.id);
+  if (pact && !(op < -60 && mineP > theirP * 3)) {
+    ok = false;
+    reasons.push('A non-aggression pact holds them');
+  }
+  if (op > 10 && o.id !== coal) {
+    ok = false;
+    reasons.push(`They like ${you} (${op > 0 ? '+' : ''}${op})`);
+  } else if (op < -15) reasons.push(`They dislike ${you} (${op})`);
+  const need =
+    (op < -40 ? 1.1 : op < -15 ? 1.3 : 1.6) *
+    diff.warMargin *
+    (pers?.margin ?? 1) *
+    (o.id === coal ? 0.75 : 1);
+  const ratio = mineP / Math.max(1, theirP);
+  if (mineP > theirP * need + 5) reasons.push(`Their army is ${ratio.toFixed(1)}× ${your}`);
+  else {
+    ok = false;
+    reasons.push(
+      ratio >= 1
+        ? `Their army (${ratio.toFixed(1)}× ${your}) is not strong enough to risk it`
+        : `${o.isPlayer ? 'Your' : 'Their'} army is stronger`,
+    );
+  }
+  if (ok && !canReach(s, civ, o)) {
+    ok = false;
+    reasons.push('No way to reach you');
+  }
+  if (pers && pers.war > 1) reasons.push(`${pers.name}: quick to war`);
+  if (pers && pers.war < 1) reasons.push(`${pers.name}: slow to war`);
+  return { ok, reasons };
+}
+
+export type IntentLevel = 'war' | 'massing' | 'high' | 'watch' | 'low';
+
+/** What a rival intends toward a people, in a word and with reasons, for the Peoples screen. */
+export function intentToward(
+  s: GameState,
+  rivalId: number,
+  targetId: number,
+): { level: IntentLevel; label: string; reasons: string[] } {
+  const civ = s.civs[rivalId],
+    o = s.civs[targetId];
+  if (atWar(s, rivalId, targetId)) return { level: 'war', label: 'At war', reasons: [] };
+  if (civ.independent)
+    return {
+      level: 'low',
+      label: 'No threat',
+      reasons: ['A free people defends, it does not attack'],
+    };
+  const chk = warCheck(s, civ, o);
+  if (civ.warPlan?.target === targetId)
+    return {
+      level: 'massing',
+      label: `Massing troops: war in about ${Math.max(0, civ.warPlan.at - s.turn)} turns`,
+      reasons: chk.reasons,
+    };
+  // how close they are to wanting war: count what holds them back
+  const blockers = chk.reasons.filter(r =>
+    /before turn|Allies|Too far|pact holds|They like|not strong enough|army is stronger|No way/.test(
+      r,
+    ),
+  ).length;
+  if (chk.ok)
+    return { level: 'high', label: 'Hostile: could attack any turn', reasons: chk.reasons };
+  if (blockers === 1 && !chk.reasons.some(r => /before turn|Allies|pact holds/.test(r)))
+    return { level: 'watch', label: 'Watch them: one thing holds them back', reasons: chk.reasons };
+  return { level: 'low', label: 'No threat for now', reasons: chk.reasons };
+}
+
 /** Can our armies get at one of their cities: by land, or by sea from one of our ports? */
 function canReach(s: GameState, civ: Civ, o: Civ): boolean {
   const g = gridOf(s);
@@ -1383,33 +1493,42 @@ function aiDiplomacy(s: GameState, civ: Civ, rng: Rng) {
   const diff = difficultyOf(s);
   // a coalition member looks for war on the runaway leader twice as often
   const coal = s.coalition?.members.includes(civ.id) ? s.coalition.against : -1;
-  if (
+  const pers = personalityOf(s.settings.map.seed, civ);
+  // a war already planned against the player: the warning ran out, strike if it still holds
+  if (civ.warPlan) {
+    const plan = civ.warPlan;
+    const o = s.civs[plan.target];
+    if (!o?.alive || atWar(s, civ.id, o.id)) civ.warPlan = undefined;
+    else if (s.turn >= plan.at) {
+      civ.warPlan = undefined;
+      if (warCheck(s, civ, o).ok) declareWar(s, civ.id, o.id);
+      else
+        log(
+          s,
+          civ.id,
+          `The ${civ.name} stand down their troops on the ${o.name} border: the moment has passed.`,
+        );
+    }
+  } else if (
     !enemies.length &&
     s.turn > diff.firstWarTurn &&
-    rng() < diff.warChance * (coal >= 0 ? 2 : 1)
+    rng() < diff.warChance * (pers?.war ?? 1) * (coal >= 0 ? 2 : 1)
   ) {
-    const targets = others.filter(o => {
-      if (o.isPlayer && s.turn <= diff.peaceWithPlayerUntil) return false;
-      if (allied(s, civ.id, o.id)) return false;
-      const near = s.cities.some(
-        c => c.civId === o.id && cities.some(m => distance(g, c.hex, m.hex) <= 14),
-      );
-      // a coalition goes after the runaway leader wherever it can reach it
-      if (!near && o.id !== coal) return false;
-      const op = opinion(s, civ.id, o.id);
-      const pact = hasPact(s, civ.id, o.id);
-      if (pact && !(op < -60 && mineP > militaryPower(s, o.id) * 3)) return false;
-      if (op > 10 && o.id !== coal) return false;
-      const need =
-        (op < -40 ? 1.1 : op < -15 ? 1.3 : 1.6) * diff.warMargin * (o.id === coal ? 0.75 : 1);
-      return mineP > militaryPower(s, o.id) * need + 5 && canReach(s, civ, o);
-    });
-    if (targets.length)
-      declareWar(
-        s,
-        civ.id,
-        targets.sort((a, b) => opinion(s, civ.id, a.id) - opinion(s, civ.id, b.id))[0].id,
-      );
+    const targets = others.filter(o => warCheck(s, civ, o).ok);
+    if (targets.length) {
+      const o = targets.sort((a, b) => opinion(s, civ.id, a.id) - opinion(s, civ.id, b.id))[0];
+      if (o.isPlayer) {
+        // the player is warned: troops gather on the border for a few turns first
+        const lead = WAR_WARNING[diff.id];
+        civ.warPlan = { target: o.id, at: s.turn + lead, since: s.turn };
+        const why = warCheck(s, civ, o).reasons.slice(0, 2).join('; ');
+        log(
+          s,
+          civ.id,
+          `The ${civ.name} are massing troops on the ${o.name} border (war in about ${lead} turns unless something changes: ${why}).`,
+        );
+      } else declareWar(s, civ.id, o.id);
+    }
   }
 
   // seek peace when the war goes badly, or has gone quiet for a long time

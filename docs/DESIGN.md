@@ -1056,6 +1056,23 @@ A threat of the early ages that belongs to no people (engine/raiders.ts).
 - The player is told when a camp is seen near their lands, when a band rides for one of their
   towns, and when a town is pillaged. Camps show as tents on both maps; the hex panel explains.
 
+## 12n. Readable AI (as built)
+
+- **Leader personalities** (data/leaders.ts), fixed per game by the seed, shown in the Peoples
+  screen with the ruling house: Conqueror (looks for war 1.8× as often, needs 15% less edge;
+  thinks less of the weak), Builder (0.5×, needs 25% more; +5 to everyone), Merchant (0.7×;
+  +10 to trading partners), Zealot (faith opinion doubled), Diplomat (0.7×; +10 to those it has a
+  pact or alliance with), Opportunist (1.2×; −10 toward peoples already at war elsewhere).
+- **Intent toward you**, for every people met, with its reasons, from the same test the AI uses
+  to choose a war (ai.ts `warCheck`): distance, opinion, pacts, alliances, relative army, the
+  difficulty's peace period, coalitions, personality. Levels: no threat for now; watch them (one
+  thing holds them back); hostile (could attack any turn); massing troops; at war.
+- **Warning before an attack:** an AI people that picks the player as its target first masses
+  troops on the border and says so (war in 6 / 4 / 3 turns by difficulty, with its reasons). When
+  the time is up it attacks only if the test still holds; otherwise it stands its troops down.
+  The Peoples button shows "threat" while a rival is massing. Wars between AI peoples, and allies
+  joining a war, come without the warning.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

@@ -2815,3 +2815,24 @@ input.rename {
   text-transform: uppercase;
   color: #8a6a3a;
 }
+
+/* leaders and intent in the Peoples screen */
+.leader-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 2px;
+}
+.intent b {
+  font-weight: 600;
+}
+.intent-massing b,
+.intent-high b {
+  color: #a02a1e;
+}
+.intent-watch b {
+  color: #a0661e;
+}
+.intent-low b {
+  color: #2b6a5f;
+}

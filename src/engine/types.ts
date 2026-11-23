@@ -142,6 +142,8 @@ export interface Civ {
   name: string;
   color: string;
   isPlayer: boolean;
+  /** an AI people's war on someone, announced: it strikes at turn `at` if it still wants to */
+  warPlan?: { target: number; at: number; since: number };
   /** the hidden people of raider bands (raiders.ts) */
   raiders?: boolean;
   /** the faith most of its people keep, if any (faith.ts) */

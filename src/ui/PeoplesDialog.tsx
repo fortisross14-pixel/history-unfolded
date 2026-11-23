@@ -1,3 +1,6 @@
+import { personalityOf } from '../data/leaders.ts';
+import { intentToward } from '../engine/ai.ts';
+import { rulerOf } from '../engine/dynasty.ts';
 import { useState } from 'react';
 import { OPPOSED, TAGS } from '../data/culture.ts';
 import { GOODS } from '../data/goods.ts';
@@ -136,6 +139,7 @@ export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, on
                     <span className="muted">Gone</span>
                   )}
                 </div>
+                {c.alive && !c.independent && <LeaderLine game={game} civId={civId} them={c.id} />}
                 {c.alive && (
                   <>
                     <div className="people-body small">
@@ -369,6 +373,35 @@ function DealDialog({
           <button onClick={onBack}>Back</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Who leads them, what kind of leader, and what they intend toward you, with the reasons. */
+function LeaderLine({ game, civId, them }: { game: GameState; civId: number; them: number }) {
+  const c = game.civs[them];
+  const pers = personalityOf(game.settings.map.seed, c);
+  const house = rulerOf(c);
+  const intent = intentToward(game, them, civId);
+  return (
+    <div className="leader-line small">
+      <span>
+        {house ? `House ${house.name} rules` : 'Ruled'}
+        {pers ? (
+          <>
+            {' · '}
+            <b title={pers.note}>{pers.name}</b>: <span className="muted">{pers.note}</span>
+          </>
+        ) : null}
+      </span>
+      {intent.level !== 'war' && (
+        <span className={`intent intent-${intent.level}`} title={intent.reasons.join('\n')}>
+          <b>{intent.label}</b>
+          {intent.reasons.length > 0 && (
+            <span className="muted"> · {intent.reasons.slice(0, 4).join(' · ')}</span>
+          )}
+        </span>
+      )}
     </div>
   );
 }

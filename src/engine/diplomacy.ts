@@ -1,3 +1,4 @@
+import { personalityOf } from '../data/leaders.ts';
 /**
  * Diplomacy: what peoples think of each other (opinion), what they remember, and the deals
  * they make: trade, non-aggression pacts and alliances. War and peace live in game.ts but call
@@ -90,6 +91,29 @@ export function opinionParts(s: GameState, of: number, about: number): OpinionPa
         label: `Another faith (${name(B.faith)})`,
         value: strong(ta, 'zealous') ? -15 : -5,
       });
+  }
+  // the leader's personality colours what they think
+  const pers = personalityOf(s.settings.map.seed, A);
+  if (pers) {
+    const treaties = treatiesOf(s, of, about);
+    if (pers.id === 'conqueror' && powerOfCiv(s, about) < powerOfCiv(s, of) * 0.7)
+      parts.push({ label: 'Conqueror: sees you as weak', value: -10 });
+    if (pers.id === 'builder') parts.push({ label: 'Builder: peaceful by nature', value: 5 });
+    if (pers.id === 'merchant' && treaties.some(t => t.kind === 'trade'))
+      parts.push({ label: 'Merchant: values your trade', value: 10 });
+    if (pers.id === 'diplomat' && treaties.some(t => t.kind !== 'trade'))
+      parts.push({ label: 'Diplomat: honours its treaties', value: 10 });
+    if (pers.id === 'zealot' && A.faith !== undefined && B.faith !== undefined)
+      parts.push(
+        A.faith === B.faith
+          ? { label: 'Zealot: you share the true faith', value: 10 }
+          : { label: 'Zealot: you keep a false faith', value: -10 },
+      );
+    if (
+      pers.id === 'opportunist' &&
+      s.wars.some(w => (w.a === about || w.b === about) && w.a !== of && w.b !== of)
+    )
+      parts.push({ label: 'Opportunist: sees you busy at war', value: -10 });
   }
   if (atWarPair(s, of, about)) parts.push({ label: 'At war', value: -40 });
   for (const t of treatiesOf(s, of, about)) {

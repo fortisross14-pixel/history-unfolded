@@ -92,6 +92,8 @@ npm run check:perf           # map frame times with the CPU slowed 4x
 - **Stories across the ages**: eight event stories in three chapters each (a founder's legend, a
   lost expedition, a marriage of houses, a merchant guild, a preacher, a river town, an old
   grudge, a teacher), branching on what you chose before.
+- **Readable rivals**: every AI people has a leader personality, an intent toward you with its
+  reasons, and warns before it attacks you (troops massing on the border).
 - **Raiders** in the early ages: camps in the wild send bands to pillage weakly held towns; garrison
   your towns, and march an army into a camp to burn it and take its hoard.
 - **World wonders as a race** (W): 10 wonders, two per age, one in the world each; half a

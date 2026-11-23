@@ -40,13 +40,13 @@ export const POLICY_LIST: Policy[] = [
     question: 'Wander and claim new land, or settle and grow?',
     left: {
       name: 'Migratory',
-      mods: { sight: 1, growthPct: -10 },
+      mods: { sight: 1, growthPct: 10 },
       settlerCost: -0.25,
       effects: 'Settlers cost 25% fewer people; +1 sight; growth −10%',
     },
     right: {
       name: 'Settled',
-      mods: { growthPct: 10, foodPct: 5 },
+      mods: { growthPct: -10, foodPct: 5 },
       settlerCost: 0.25,
       effects: 'Growth +10%; food +5%; settlers cost 25% more people',
     },
@@ -58,7 +58,7 @@ export const POLICY_LIST: Policy[] = [
     question: 'Let trade and people flourish, or tax them hard?',
     left: {
       name: 'Light Taxes',
-      mods: { growthPct: 10, culturePct: 5, goldPct: -10 },
+      mods: { growthPct: -10, culturePct: 5, goldPct: -10 },
       effects: 'Growth +10%; culture +5%; gold −10%',
     },
     right: {
@@ -118,7 +118,7 @@ export const POLICY_LIST: Policy[] = [
     },
     right: {
       name: 'Welfare',
-      mods: { goldPct: -10, growthPct: 10 },
+      mods: { goldPct: -10, growthPct: -10 },
       pressure: { strikes: 0.5 },
       effects: 'Growth +10%; gold −10%; strikes half as likely',
     },

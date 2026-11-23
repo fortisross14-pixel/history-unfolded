@@ -77,7 +77,10 @@ const shrine = (s: GameState, c: City) => {
   check(!chooseTenet(s, me.id, 'reformed').ok, 'a doctrine is not a teaching');
   const before = civMods(s, me.id).growthPct;
   check(chooseTenet(s, me.id, 'feasts').ok, 'teaching chosen');
-  check(civMods(s, me.id).growthPct === before + 10, 'the teaching helps the people keeping it');
+  check(
+    civMods(s, me.id).growthPct === before - 10,
+    'the teaching helps the people keeping it (less food to grow)',
+  );
   me.techs.push('theology');
   check(tenetDue(s, me.id) === 'doctrine', 'Theology opens the doctrine');
   check(chooseTenet(s, me.id, 'reformed').ok && tenetDue(s, me.id) === null, 'three tenets');

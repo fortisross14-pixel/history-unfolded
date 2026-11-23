@@ -93,7 +93,7 @@ export const PATH_LIST: NationalPath[] = [
     name: 'Colonial Administration',
     age: 4,
     pitch: 'Governors, land grants and new towns on far shores.',
-    mods: { growthPct: 15, housingPct: 10 },
+    mods: { growthPct: -15, housingPct: 10 },
     synergy: 'expansionist',
     edict: {
       name: 'Colonial Charter',

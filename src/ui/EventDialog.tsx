@@ -1,5 +1,7 @@
 import { EVENTS, eventCtx } from '../engine/events.ts';
 import type { GameState, PendingEvent } from '../engine/types.ts';
+import { InfoButton } from './bits.tsx';
+import { TextChips } from './NationDialog.tsx';
 
 /** A history event waiting for the player's choice. */
 export function EventDialog({
@@ -22,8 +24,12 @@ export function EventDialog({
           {ctx.city ? ` · ${ctx.city.name}` : ''}
           {ctx.other ? ` · the ${ctx.other.name}` : ''}
         </p>
-        <h2>{e.title}</h2>
-        <p>{e.text(game, civ, ctx)}</p>
+        <h2>
+          {e.title}{' '}
+          <InfoButton label="What happened" align="right">
+            {e.text(game, civ, ctx)}
+          </InfoButton>
+        </h2>
         <div className="col" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {e.choices.map((c, i) => {
             const why = c.blocked?.(game, civ, ctx);
@@ -38,7 +44,11 @@ export function EventDialog({
               >
                 <b>{c.label}</b>
                 <br />
-                <span className="small">{why ?? c.effect(game, civ, ctx)}</span>
+                {why ? (
+                  <span className="small">{why}</span>
+                ) : (
+                  <TextChips text={c.effect(game, civ, ctx)} />
+                )}
               </button>
             );
           })}

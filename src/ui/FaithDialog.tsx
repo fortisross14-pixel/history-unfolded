@@ -137,7 +137,9 @@ export function FaithDialog({
                       </>
                     ) : (
                       <small className="muted">
-                        {due === sl.slot ? 'choose below' : (
+                        {due === sl.slot ? (
+                          'choose below'
+                        ) : (
                           <>
                             <Ico name="lock" fallback="🔒" size={14} />{' '}
                             {TECHS[sl.tech!]?.name ?? sl.tech}

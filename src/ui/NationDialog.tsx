@@ -18,12 +18,7 @@ import {
 import type { Civ, GameState } from '../engine/types.ts';
 import { VICTORIES, victoryOn } from '../engine/victory.ts';
 import { activeCrisis, crisisRisks } from '../engine/crises.ts';
-import {
-  POLICY_COOLDOWN,
-  POLICY_LIST,
-  type Policy,
-  type PolicySide,
-} from '../data/policies.ts';
+import { POLICY_COOLDOWN, POLICY_LIST, type Policy, type PolicySide } from '../data/policies.ts';
 import { openPolicies, policyProblem, positionOf, setPolicy } from '../engine/policies.ts';
 import { GoodIcon, Ico, InfoButton } from './bits.tsx';
 import './declutter-nation.css';
@@ -50,7 +45,7 @@ const MOD_ICON: Record<Exclude<keyof Mods, 'groupPct'>, [string, string, boolean
   foodPct: ['food', 'food'],
   prodPct: ['production', 'production'],
   housingPct: ['housing', 'housing'],
-  growthPct: ['people', 'growth'],
+  growthPct: ['people', 'food to grow', true],
   workers: ['workers', 'workers'],
   coastalPct: ['drop', 'coastal city yields'],
   upkeepPct: ['upkeep', 'troop upkeep', true],
@@ -99,9 +94,16 @@ export function modEffs(m: Partial<Mods> | undefined, k = 1): Eff[] {
 /** What a policy side does, beyond its mods: noble unrest, settler cost, crisis odds. */
 export function sideEffs(s: PolicySide): Eff[] {
   const out = modEffs(s.mods);
-  if (s.unrest) out.push({ icon: 'dynasties', n: s.unrest, down: true, title: 'noble unrest a turn' });
+  if (s.unrest)
+    out.push({ icon: 'dynasties', n: s.unrest, down: true, title: 'noble unrest a turn' });
   if (s.settlerCost)
-    out.push({ icon: 'settle', n: s.settlerCost * 100, pct: true, down: true, title: 'settler cost' });
+    out.push({
+      icon: 'settle',
+      n: s.settlerCost * 100,
+      pct: true,
+      down: true,
+      title: 'settler cost',
+    });
   for (const [c, x] of Object.entries(s.pressure ?? {}))
     out.push({ icon: 'warning', n: (x - 1) * 100, pct: true, down: true, title: `${c} risk` });
   return out;
@@ -386,11 +388,7 @@ export function NationDialog({
             </button>
             <button className="link" onClick={onFaith} title="Faith">
               <Ico name="sun" fallback="☀" />{' '}
-              {faith
-                ? faith.name
-                : !foundProblem(game, civ.id)
-                  ? 'Found a faith'
-                  : 'No faith'}
+              {faith ? faith.name : !foundProblem(game, civ.id) ? 'Found a faith' : 'No faith'}
               {faith && tenetDue(game, civ.id) ? ' · choose a tenet' : ''}
             </button>
             <button className="link" onClick={onWonders} title="World wonders held">
@@ -400,7 +398,8 @@ export function NationDialog({
         )}
         {opened.length > 0 && (
           <p className="small">
-            <Ico name="laurel" fallback="★" /> Victories open: <b>{opened.map(v => v.name).join(', ')}</b>
+            <Ico name="laurel" fallback="★" /> Victories open:{' '}
+            <b>{opened.map(v => v.name).join(', ')}</b>
           </p>
         )}
 

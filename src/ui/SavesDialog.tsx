@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { GameState } from '../engine/types.ts';
 import { downloadText } from './download.ts';
+import { InfoButton } from './bits.tsx';
 import { exportSave, loadSave, saveGame, savesOf } from './save.ts';
 
 /** Save now, under a name, or to a file; load an earlier save of this game. */
@@ -53,14 +54,14 @@ export function SavesDialog({
               downloadText(f.filename, f.text);
               report(true, `Saved to the file ${f.filename}.`);
             }}
-            title="A file you can keep, or load in another browser from the menu"
+            title="A file to keep, or to load in another browser from the menu"
           >
-            Export to a file
+            Export file
           </button>
         </div>
         <div className="row">
           <input
-            placeholder="A name for this save"
+            placeholder="Name"
             value={name}
             maxLength={40}
             onChange={e => setName(e.target.value)}
@@ -79,7 +80,13 @@ export function SavesDialog({
             Save as
           </button>
         </div>
-        <h3>This game’s saves</h3>
+        <h3>
+          This game’s saves{' '}
+          <InfoButton label="About saves">
+            <span>Autosaves: last three turns.</span>
+            <span>Named saves: up to five a game.</span>
+          </InfoButton>
+        </h3>
         <ul className="save-entries">
           {saves.map(e => (
             <li key={e.key}>
@@ -99,11 +106,8 @@ export function SavesDialog({
               </button>
             </li>
           ))}
-          {!saves.length && <li className="muted">Nothing saved yet.</li>}
+          {!saves.length && <li className="muted">None yet.</li>}
         </ul>
-        <p className="muted small">
-          Autosaves keep the last three turns; up to five named saves are kept per game.
-        </p>
       </div>
     </div>
   );

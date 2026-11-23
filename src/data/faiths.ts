@@ -73,7 +73,7 @@ export const TENETS: Record<string, Tenet> = Object.fromEntries(
         slot: 'teaching',
         name: 'Holy Feasts',
         note: '+10% growth.',
-        mods: { growthPct: 10 },
+        mods: { growthPct: -10 },
       },
       {
         id: 'temple-schools',

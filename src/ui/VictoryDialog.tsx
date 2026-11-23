@@ -40,9 +40,9 @@ export function VictoryDialog({ game, onClose }: { game: GameState; onClose: () 
           <h2>
             Victory{' '}
             <InfoButton label="About victories">
-              Conquest: open from the start. Cultural and Economic: from the Renaissance.
-              Diplomatic and Scientific: from the Industrial age. A dominance goal must be held for
-              some turns; everyone is warned when someone holds one.
+              Conquest: open from the start. Cultural and Economic: from the Renaissance. Diplomatic
+              and Scientific: from the Industrial age. A dominance goal must be held for some turns;
+              everyone is warned when someone holds one.
             </InfoButton>
           </h2>
           <button className="x" onClick={onClose} aria-label="Close">

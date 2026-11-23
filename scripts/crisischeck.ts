@@ -109,7 +109,7 @@ const until = (s: GameState, civ: Civ, max: number) => {
     news.some(n => n.startsWith('Crisis: Plague')) && s.crisisCard,
     'the player is told and its card opens',
   );
-  check(civMods(s, me.id).growthPct <= -60, 'while it lasts, growth falls by 60%');
+  check(civMods(s, me.id).growthPct >= 60, 'while it lasts, growing takes 60% more food');
   const big = s.cities.find(c => c.civId === me.id)!;
   const before = big.pop;
   s.turn++;

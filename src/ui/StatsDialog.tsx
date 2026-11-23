@@ -142,7 +142,6 @@ export function StatsDialog({
                       ) : (
                         <td className="muted">
                           <span className="swatch" style={{ background: '#c9bfa8' }} /> Unknown
-                          people
                         </td>
                       )}
                       <td>{ERAS[ageOf(c.techs)]}</td>
@@ -158,9 +157,7 @@ export function StatsDialog({
               </table>
             </div>
             <p className="muted small">
-              All {alive.length + unknownAlive.length} great peoples
-              {unmet ? `; the ${unmet} you have not met yet are shown as unknown` : ''}. Click a
-              column to sort.
+              {alive.length + unknownAlive.length} peoples{unmet ? ` · ${unmet} unmet` : ''}
             </p>
           </>
         )}
@@ -186,10 +183,10 @@ export function StatsDialog({
           <>
             <div className="stats-metrics">
               <button className={!mineOnly ? 'on' : ''} onClick={() => setMineOnly(false)}>
-                All peoples you know
+                All
               </button>
               <button className={mineOnly ? 'on' : ''} onClick={() => setMineOnly(true)}>
-                Your people
+                Yours
               </button>
             </div>
             <ol className="chronicle">
@@ -204,7 +201,7 @@ export function StatsDialog({
                   </li>
                 ))
               ) : (
-                <li className="muted">Nothing yet: history is still to be written.</li>
+                <li className="muted">Nothing yet.</li>
               )}
             </ol>
           </>
@@ -234,7 +231,7 @@ export function StatsChart({
     R = 12,
     T = 12,
     B = 28;
-  if (rows.length < 2) return <p className="muted small">The charts fill in as the turns go by.</p>;
+  if (rows.length < 2) return <p className="muted small">No data yet.</p>;
   const t0 = rows[0].t,
     t1 = rows[rows.length - 1].t;
   let max = 1;

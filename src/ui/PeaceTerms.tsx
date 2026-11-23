@@ -41,22 +41,22 @@ export function PeaceTerms({
   return (
     <div className="peace-terms">
       <label className="field">
-        <span>Peace terms</span>
+        <span>Peace</span>
         <select value={mode} onChange={e => setMode(e.target.value as Mode)}>
-          <option value="white">Peace, nothing changes hands</option>
+          <option value="white">White peace</option>
           <option value="they-pay">They pay tribute</option>
           <option value="we-pay">You pay tribute</option>
           <option value="they-cede" disabled={theirs.length < 2}>
-            They cede a settlement
+            They cede a city
           </option>
           <option value="we-cede" disabled={ours.length < 2}>
-            You cede a settlement
+            You cede a city
           </option>
         </select>
       </label>
       {(mode === 'they-pay' || mode === 'we-pay') && (
         <label className="field">
-          <span>Gold a turn, for {TRIBUTE_TURNS} turns</span>
+          <span title={`Gold a turn, for ${TRIBUTE_TURNS} turns`}>Gold/turn ×{TRIBUTE_TURNS}</span>
           <select value={gold} onChange={e => setGold(Number(e.target.value))}>
             {[3, 5, 10, 20].map(n => (
               <option key={n} value={n}>
@@ -68,11 +68,11 @@ export function PeaceTerms({
       )}
       {pool.length > 0 && (
         <label className="field">
-          <span>Settlement</span>
+          <span>City</span>
           <select value={picked?.id} onChange={e => setCityId(Number(e.target.value))}>
             {pool.map(c => (
               <option key={c.id} value={c.id}>
-                {c.name} ({c.tier}, {c.pop.toLocaleString()} people, worth {cityValue(game, c.id)})
+                {c.name} · {c.pop.toLocaleString()} · value {cityValue(game, c.id)}
               </option>
             ))}
           </select>

@@ -25,9 +25,7 @@ export function CodexDialog({
         onClick={e => e.stopPropagation()}
       >
         <header>
-          <h2>
-            Codex <small>help for every part of the game</small>
-          </h2>
+          <h2>Codex</h2>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
           </button>
@@ -35,14 +33,14 @@ export function CodexDialog({
         <div className="codex-search">
           <input
             autoFocus
-            placeholder="Search: roads, siege, faith, Bronze Working…"
+            placeholder="Search"
             value={q}
             onChange={e => setQ(e.target.value)}
             onKeyDown={e => e.stopPropagation()}
             aria-label="Search the Codex"
           />
-          <button className="secondary" onClick={onKeys}>
-            Keys and mouse
+          <button className="secondary" onClick={onKeys} title="Keys and mouse">
+            Keys
           </button>
         </div>
         <div className="codex-body">

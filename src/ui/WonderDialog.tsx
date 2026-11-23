@@ -3,6 +3,8 @@ import { ERAS, TECHS } from '../data/techs.ts';
 import { WONDER_CULTURE, WONDER_LIST, WONDER_SCORE, WONDERS } from '../data/wonders.ts';
 import { rankOf } from '../engine/economy.ts';
 import type { Civ, GameState } from '../engine/types.ts';
+import { Art, GoodIcon, Ico, InfoButton } from './bits.tsx';
+import { EffChips, modEffs } from './NationDialog.tsx';
 import {
   builders,
   startWonder,
@@ -58,20 +60,20 @@ export function WonderDialog({
           <h2>
             World wonders{' '}
             <small>
-              {built.length} of {WONDER_LIST.length} built
-            </small>
+              {built.length}/{WONDER_LIST.length} built
+            </small>{' '}
+            <InfoButton label="About wonders">
+              Each stands once in the world: the first to finish takes it; the others get{' '}
+              {pctText(WONDER_REFUND)} of their work back as gold. While building,{' '}
+              {pctText(WONDER_SHARE)} of the settlement's production goes to it (all of it when
+              nothing else is queued). Each brings +{WONDER_CULTURE} culture a turn and{' '}
+              {WONDER_SCORE} score, and goes with its city. Needs a town or bigger.
+            </InfoButton>
           </h2>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
           </button>
         </header>
-        <p className="muted small">
-          Each wonder stands once in the world: the first to finish takes it, the others get{' '}
-          {pctText(WONDER_REFUND)} of their work back as gold. While one is built,{' '}
-          {pctText(WONDER_SHARE)} of that settlement's production goes to it (all of it when nothing
-          else is queued). Each brings +{WONDER_CULTURE} culture a turn and {WONDER_SCORE} score,
-          and goes with its city if it changes hands.
-        </p>
         {mine.length > 0 ? (
           <label className="wonder-where">
             Build in{' '}
@@ -85,7 +87,7 @@ export function WonderDialog({
             </select>
           </label>
         ) : (
-          <p className="small">Wonders are built in a town or bigger: grow a settlement first.</p>
+          <p className="small muted">Needs a town or bigger.</p>
         )}
 
         {ages.map(age => {
@@ -107,19 +109,39 @@ export function WonderDialog({
                       key={w.id}
                       className={`wonder ${done ? 'done' : ''} ${ours ? 'ours' : ''} ${holder && holder.civId === civ.id ? 'held' : ''}`}
                     >
-                      <b>{w.name}</b>
-                      <small>{w.note}</small>
-                      <small className="muted">
-                        {TECHS[w.tech]?.name} · {w.prod} production ·{' '}
-                        {Object.entries(w.goods)
-                          .map(([k, n]) => `${n} ${k}`)
-                          .join(', ')}
-                        {w.coast ? ' · by the sea' : ''}
-                      </small>
+                      <span className="wd-head" title={w.note}>
+                        <Art
+                          k={`wonder/${w.id}`}
+                          size={32}
+                          fallback={<Art k={`tech/${w.tech}`} size={32} />}
+                        />
+                        <b>{w.name}</b>
+                      </span>
+                      <span className="chips wd-cost" title="Cost">
+                        <span className="chip" title={`${w.prod} production`}>
+                          <Ico name="production" fallback="⚒" size={16} /> <b>{w.prod}</b>
+                        </span>
+                        {Object.entries(w.goods).map(([k, n]) => (
+                          <span key={k} className="chip" title={`${n} ${k}`}>
+                            <GoodIcon id={k} size={16} /> <b>{n}</b>
+                          </span>
+                        ))}
+                        {w.coast && (
+                          <span className="chip" title="Needs the coast">
+                            <Ico name="drop" fallback="≈" size={16} />
+                          </span>
+                        )}
+                        <span className="chip muted" title={`Opened by ${TECHS[w.tech]?.name}`}>
+                          <Ico name="research" fallback="⚗" size={14} />
+                          <small>{TECHS[w.tech]?.name}</small>
+                        </span>
+                      </span>
+                      <EffChips effs={modEffs(w.mods)} />
                       {done ? (
                         <small>
                           <b>
-                            Built turn {done.turn} in {cityName(done.cityId)}
+                            <Ico name="check" fallback="✓" size={14} /> {cityName(done.cityId)},
+                            turn {done.turn}
                           </b>
                           {holder && holder.civId !== civ.id
                             ? ` · ${known(holder.civId) ? `the ${game.civs[holder.civId].name}` : 'a distant people'}`
@@ -147,7 +169,7 @@ export function WonderDialog({
                           )}
                           {rivals.length > 0 && (
                             <small className="bad">
-                              Racing:{' '}
+                              <Ico name="warning" fallback="!" size={14} />{' '}
                               {rivals
                                 .map(
                                   b =>
@@ -160,14 +182,15 @@ export function WonderDialog({
                             <button
                               className="small"
                               disabled={!!why}
-                              title={why ?? undefined}
+                              title={
+                                why ??
+                                (here?.wonder
+                                  ? `Switch ${here.name} to it: its ${WONDERS[here.wonder.id].name} work is lost`
+                                  : `Build in ${here?.name}`)
+                              }
                               onClick={() => report(startWonder(game, where!, w.id))}
                             >
-                              {why
-                                ? why
-                                : here?.wonder
-                                  ? `Switch ${here.name} to it (its ${WONDERS[here.wonder.id].name} work is lost)`
-                                  : `Build in ${here?.name}`}
+                              {why ? why : here?.wonder ? 'Switch' : 'Build'}
                             </button>
                           )}
                         </>

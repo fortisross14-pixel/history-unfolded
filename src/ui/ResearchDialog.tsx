@@ -3,11 +3,12 @@ import { DEPOSITS } from '../data/goods.ts';
 import { ITEM_LIST } from '../data/items.ts';
 import { describeMods } from '../data/mods.ts';
 import { SLOT_LIST } from '../data/slots.ts';
-import { AGE_GATE, ageOf, ageTechs, ERAS, TECH_LIST, TECHS, type TechInfo } from '../data/techs.ts';
+import { ageOf, ageTechs, ERAS, TECH_LIST, TECHS, type TechInfo } from '../data/techs.ts';
 import { TAGS } from '../data/culture.ts';
 import { availableTechs, goalStep, knownInAge, techCost } from '../engine/game.ts';
 import { tagCounts } from '../engine/mods.ts';
-import { Art } from './bits.tsx';
+import { Art, GoodIcon, Ico, InfoButton } from './bits.tsx';
+import './declutter-world.css';
 import type { Civ, GameState } from '../engine/types.ts';
 
 interface Props {
@@ -35,6 +36,46 @@ export function techUnlocks(t: TechInfo): string[] {
   if (works.length) out.push(`⛏ works ${works.join(', ')}`);
   if (t.mods) out.push(`★ ${describeMods(t.mods)}`);
   return out;
+}
+
+/** What a tech gives, as pictures: gear, buildings, deposits; its other effects in one line. */
+function UnlockIcons({ t }: { t: TechInfo }) {
+  const items = ITEM_LIST.filter(i => i.tech === t.id);
+  const slots = SLOT_LIST.filter(x => x.tech === t.id);
+  const deps = Object.entries(DEPOSITS).filter(([, d]) => d.revealedBy === t.id || d.tech === t.id);
+  return (
+    <>
+      {items.length + slots.length + deps.length > 0 && (
+        <span className="w-unlocks">
+          {items.map(i => (
+            <span key={i.id} title={`Gear: ${i.name}`}>
+              <Art k={`item/${i.id}`} size={20} fallback={<small>⚔ {i.name}</small>} />
+            </span>
+          ))}
+          {slots.map(x => (
+            <span key={x.id} title={`Building: ${x.name}`}>
+              <Art k={`building/${x.id}`} size={20} fallback={<small>▦ {x.name}</small>} />
+            </span>
+          ))}
+          {deps.map(([id, d]) => (
+            <span
+              key={id}
+              className="w-dep"
+              title={`${d.revealedBy === t.id ? 'Reveals' : 'Works'} ${d.name}`}
+            >
+              {d.revealedBy === t.id ? (
+                <Ico name="eye" fallback="👁" size={12} />
+              ) : (
+                <Ico name="hammer" fallback="⛏" size={12} />
+              )}
+              <GoodIcon id={Object.keys(d.yields)[0]} size={18} />
+            </span>
+          ))}
+        </span>
+      )}
+      {t.mods && <small>★ {describeMods(t.mods)}</small>}
+    </>
+  );
 }
 
 /**
@@ -70,20 +111,25 @@ export function ResearchDialog({ game, civ, onPick, onGoal, onClose }: Props) {
         className={`tech-card ${isKnown ? 'known' : ''} ${on ? 'on' : ''} ${can ? 'can' : ''} ${next === t.id ? 'next' : ''} ${civ.researchGoal === t.id ? 'path' : ''}`}
         disabled={isKnown}
         onClick={() => (can ? onPick(t.id) : onGoal(t.id))}
-        title={t.note}
+        title={[t.note, ...techUnlocks(t)].filter(Boolean).join('\n')}
       >
         <span className="tech-head">
           <Art k={`tech/${t.id}`} size={30} className="tech-art" />
           <b>{t.name}</b>
           <small>
             {isKnown ? '✓' : on ? `${Math.floor(civ.science)}/${cost}` : cost}
-            {fav && !isKnown ? ` · ${TAGS[t.favoured!].name} −20%` : ''}
+            {fav && !isKnown ? (
+              <span className="good" title={`${TAGS[t.favoured!].name} culture: −20% cost`}>
+                {' '}
+                −20%
+              </span>
+            ) : (
+              ''
+            )}
           </small>
         </span>
         <span className="tech-unlocks">
-          {techUnlocks(t).map((u, i) => (
-            <small key={i}>{u}</small>
-          ))}
+          <UnlockIcons t={t} />
           {!isKnown && missing.length > 0 && (
             <small className="needs">after {missing.map(r => TECHS[r].name).join(', ')}</small>
           )}
@@ -104,26 +150,37 @@ export function ResearchDialog({ game, civ, onPick, onGoal, onClose }: Props) {
         <header>
           <h2>
             Research{' '}
-            <small>
-              {ERAS[age]} age · {Math.floor(civ.science)} science stored
-              {civ.researching ? ` · researching ${TECHS[civ.researching].name}` : ''}
-              {civ.researchGoal ? ` · goal ${TECHS[civ.researchGoal].name}` : ''}
+            <small className="chips w-inline">
+              <span>{ERAS[age]}</span>
+              <span className="chip" title="Science stored">
+                <Ico name="flask" fallback="⚗" size={16} /> <b>{Math.floor(civ.science)}</b>
+              </span>
+              {civ.researching && <span title="Researching">→ {TECHS[civ.researching].name}</span>}
+              {civ.researchGoal && (
+                <span className="chip" title="Goal">
+                  <Ico name="target" fallback="◎" size={16} /> {TECHS[civ.researchGoal].name}
+                  <button
+                    className="link"
+                    onClick={() => onGoal(null)}
+                    aria-label="Clear goal"
+                    title="Clear goal"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              <InfoButton label="About research">
+                <span>Research unlocks parts, not finished units.</span>
+                <span>Any order within an age; the age&apos;s last step opens the next.</span>
+                <span>A tech not yet open: set as goal.</span>
+                <span>Techs your culture leans toward: −20% cost.</span>
+              </InfoButton>
             </small>
           </h2>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
           </button>
         </header>
-        <p className="muted small">
-          Research unlocks parts, not finished units. Take this age's techs in any order; when you
-          know enough of them, its last step opens the next age. Click a tech you cannot take yet to
-          aim for it. Techs your culture leans towards cost 20% less.
-          {civ.researchGoal && (
-            <button className="link" onClick={() => onGoal(null)}>
-              clear goal
-            </button>
-          )}
-        </p>
         {ages.length > 1 && (
           <div className="age-tabs" role="tablist">
             {ages.map(e => {
@@ -138,7 +195,7 @@ export function ResearchDialog({ game, civ, onPick, onGoal, onClose }: Props) {
                 >
                   <Art k={`era/${ERAS[e].toLowerCase()}`} size={22} className="era-art" />
                   {ERAS[e]}
-                  {left ? <small> · {left} left</small> : <small> ✓</small>}
+                  {left ? <small title={`${left} left`}> · {left}</small> : <small> ✓</small>}
                 </button>
               );
             })}
@@ -150,12 +207,17 @@ export function ResearchDialog({ game, civ, onPick, onGoal, onClose }: Props) {
             <div className="age-gate-text">
               <b>{gate.name}</b>
               {civ.techs.includes(gate.id) ? (
-                <small>Reached.</small>
+                <small>✓</small>
               ) : (
-                <small>
-                  Needs {gate.gate} {ERAS[shown]} techs ({Math.min(known, gate.gate!)} known) ·
-                  opens {ageTechs(shown + 1).length} new techs · {techCost(game, civ, gate.id)}{' '}
-                  science
+                <small className="chips">
+                  <span title={`${ERAS[shown]} techs known, of ${gate.gate} needed`}>
+                    {Math.min(known, gate.gate!)}/{gate.gate}
+                  </span>
+                  <span title="New techs it opens">+{ageTechs(shown + 1).length} techs</span>
+                  <span className="chip" title="Science">
+                    <Ico name="flask" fallback="⚗" size={14} />{' '}
+                    <b>{techCost(game, civ, gate.id)}</b>
+                  </span>
                 </small>
               )}
               <span className="age-meter" aria-hidden>
@@ -177,9 +239,6 @@ export function ResearchDialog({ game, civ, onPick, onGoal, onClose }: Props) {
               </button>
             )}
           </div>
-        )}
-        {!AGE_GATE[shown + 1] && shown === age && (
-          <p className="muted small">The last age: what lies beyond is up to you.</p>
         )}
       </div>
     </div>

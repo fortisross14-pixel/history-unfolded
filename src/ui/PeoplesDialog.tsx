@@ -1,7 +1,7 @@
 import { personalityOf } from '../data/leaders.ts';
 import { intentToward } from '../engine/ai.ts';
 import { rulerOf } from '../engine/dynasty.ts';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { OPPOSED, TAGS } from '../data/culture.ts';
 import { GOODS } from '../data/goods.ts';
 import type { GoodLine } from '../engine/economy.ts';
@@ -9,7 +9,6 @@ import {
   attitude,
   capitalOf,
   DEAL_TURNS,
-  describeBundle,
   evaluateOffer,
   hasPact,
   ledgerOf,
@@ -20,17 +19,12 @@ import {
 } from '../engine/diplomacy.ts';
 import { marketStock } from '../engine/economy.ts';
 import { atWar, militaryPower, score } from '../engine/game.ts';
-import {
-  absorbCost,
-  absorbProblem,
-  describeTribute,
-  standing,
-  tributeTo,
-} from '../engine/independents.ts';
+import { absorbCost, absorbProblem, standing, tributeTo } from '../engine/independents.ts';
 import { identity, tagCounts } from '../engine/mods.ts';
 import type { Bundle, GameState, Offer } from '../engine/types.ts';
 import { TagChip } from './CultureDialog.tsx';
-import { GoodIcon } from './bits.tsx';
+import { Chip, Delta, GoodIcon, Ico, InfoButton } from './bits.tsx';
+import './declutter-world.css';
 import { PeaceTerms } from './PeaceTerms.tsx';
 
 interface Props {
@@ -87,15 +81,16 @@ export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, on
         <header>
           <h2>
             Peoples{' '}
-            <small>
-              Your army strength {mine} · score {score(game, civId)}
+            <small className="chips w-inline">
+              <Chip icon="sword" n={mine} title="Your army strength" />
+              <Chip icon="laurel" n={score(game, civId)} title="Your score" />
             </small>
           </h2>
           <button className="x" onClick={onClose}>
             ×
           </button>
         </header>
-        {!known.length && <p className="muted">You have met no one yet. Send scouts out.</p>}
+        {!known.length && <p className="muted">No one met yet.</p>}
         <div className="peoples-list">
           {known.map(c => {
             const war = atWar(game, civId, c.id);
@@ -106,15 +101,19 @@ export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, on
             const w = game.wars.find(
               x => (x.a === civId && x.b === c.id) || (x.b === civId && x.a === c.id),
             );
+            const rel = relation(c.id);
+            const pct = mine ? Math.round((p / Math.max(1, mine)) * 100) : null;
+            const absorbWhy = c.independent ? absorbProblem(game, civId, c.id) : null;
+            const tribute = c.independent ? tributeTo(game, c.id, civId) : null;
+            const pact = hasPact(game, civId, c.id);
             return (
               <div key={c.id} className={`people ${c.alive ? '' : 'gone'}`}>
                 <div className="people-head">
                   <span className="swatch" style={{ background: c.color }} />
                   <b>{c.name}</b>
                   {c.independent && (
-                    <span className="muted small">
-                      {' '}
-                      free people · {standing(game, c.id, civId)}
+                    <span className="w-tag" title="A free people">
+                      Free · {standing(game, c.id, civId)}
                     </span>
                   )}
                   <span className="ident-bar">
@@ -126,91 +125,133 @@ export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, on
                   </span>
                   <span className="spacer" />
                   {c.alive ? (
-                    <span
-                      className={`opinion ${op >= 15 ? 'good' : op <= -15 ? 'bad' : ''}`}
-                      title={parts
-                        .map(x => `${x.value > 0 ? '+' : ''}${x.value} ${x.label}`)
-                        .join('\n')}
-                    >
-                      {attitude(op)} ({op > 0 ? '+' : ''}
-                      {op})
-                    </span>
+                    <>
+                      <span
+                        className="opinion"
+                        title={`${attitude(op)}\n${parts
+                          .map(x => `${x.value > 0 ? '+' : ''}${x.value} ${x.label}`)
+                          .join('\n')}`}
+                      >
+                        <Ico name="eye" fallback="👁" size={16} /> <Delta n={op} />
+                      </span>
+                      <InfoButton label={`Opinion of the ${c.name}`} align="right">
+                        <b>
+                          {attitude(op)} <Delta n={op} />
+                        </b>
+                        {parts.map((x, i) => (
+                          <span key={i}>
+                            <Delta n={x.value} /> {x.label}
+                          </span>
+                        ))}
+                        {rel && <span className="muted">{rel}</span>}
+                      </InfoButton>
+                    </>
                   ) : (
                     <span className="muted">Gone</span>
                   )}
                 </div>
-                {c.alive && !c.independent && <LeaderLine game={game} civId={civId} them={c.id} />}
                 {c.alive && (
-                  <>
-                    <div className="people-body small">
-                      <span>{game.cities.filter(x => x.civId === c.id).length} cities</span>
-                      <span>
-                        army {p} ({mine ? Math.round((p / Math.max(1, mine)) * 100) : '∞'}% of
-                        yours)
-                      </span>
-                      <span>score {score(game, c.id)}</span>
-                      {war ? <b className="bad">War since turn {w?.since}</b> : <span>Peace</span>}
-                      {treaties.map((t, i) => (
-                        <span key={i} className="treaty">
-                          {t.kind === 'pact'
-                            ? `Pact until turn ${t.until}`
+                  <div className="people-body chips">
+                    {!c.independent && <LeaderTags game={game} civId={civId} them={c.id} />}
+                    <Chip
+                      icon="house"
+                      n={game.cities.filter(x => x.civId === c.id).length}
+                      title="Cities"
+                    />
+                    <Chip
+                      icon="sword"
+                      n={p}
+                      title={`Army strength${pct !== null ? `: ${pct}% of yours` : ''}`}
+                    />
+                    <Chip icon="laurel" n={score(game, c.id)} title="Score" />
+                    {war && (
+                      <b className="bad" title={`At war since turn ${w?.since}`}>
+                        War · t{w?.since}
+                      </b>
+                    )}
+                    {treaties.map((t, i) => (
+                      <span
+                        key={i}
+                        className="treaty"
+                        title={
+                          t.kind === 'pact'
+                            ? `Non-aggression pact until turn ${t.until}`
                             : t.kind === 'alliance'
-                              ? 'Allies'
-                              : `Trade until turn ${t.until}`}
-                        </span>
-                      ))}
-                      <span className="muted">{relation(c.id)}</span>
-                    </div>
-                    <div className="opinion-parts small">
-                      {parts.map((x, i) => (
-                        <span key={i} className={x.value >= 0 ? 'good' : 'bad'}>
-                          {x.value > 0 ? '+' : ''}
-                          {x.value} {x.label}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="row">
-                      {war ? (
-                        <PeaceTerms
-                          game={game}
-                          me={civId}
-                          them={c.id}
-                          onOffer={o => onDeal(c.id, o)}
-                        />
-                      ) : (
-                        <>
-                          <button onClick={() => setDealWith(c.id)}>Propose a deal…</button>
-                          {c.independent && (
-                            <>
-                              <button onClick={() => onGift(c.id, 25)}>Gift 25 gold</button>
-                              <button onClick={() => onGift(c.id, 100)}>Gift 100 gold</button>
-                              <button
-                                disabled={absorbProblem(game, civId, c.id) !== null}
-                                title={absorbProblem(game, civId, c.id) ?? ''}
-                                onClick={() => onAbsorb(c.id)}
-                              >
-                                Absorb ({absorbCost(game, c.id)} gold)
-                              </button>
-                              <span className="muted small">
-                                They send you {describeTribute(tributeTo(game, c.id, civId))}.
-                                {absorbProblem(game, civId, c.id)
-                                  ? ` Absorb: ${absorbProblem(game, civId, c.id)}`
-                                  : ''}
-                              </span>
-                            </>
-                          )}
-                          <button
-                            onClick={() => onWar(c.id)}
-                            title={
-                              hasPact(game, civId, c.id) ? 'Breaking a pact angers everyone' : ''
-                            }
-                          >
-                            Declare war{hasPact(game, civId, c.id) ? ' (breaks pact)' : ''}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </>
+                              ? 'Alliance'
+                              : `Trade deal until turn ${t.until}`
+                        }
+                      >
+                        {t.kind === 'pact'
+                          ? `Pact → t${t.until}`
+                          : t.kind === 'alliance'
+                            ? 'Allies'
+                            : `Trade → t${t.until}`}
+                      </span>
+                    ))}
+                    {rel && (
+                      <span
+                        className={`w-tag ${rel.startsWith('Kindred') ? 'good' : 'bad'}`}
+                        title={rel}
+                      >
+                        {rel.startsWith('Kindred') ? 'Kindred' : 'Clash'}
+                      </span>
+                    )}
+                    {tribute && (tribute.gold > 0 || Object.keys(tribute.goods).length > 0) && (
+                      <span className="chips" title="Tribute to you a turn">
+                        <small className="muted">Tribute</small>
+                        {tribute.gold > 0 && (
+                          <Chip icon="coin" n={`${tribute.gold}/t`} title="Gold a turn" />
+                        )}
+                        {Object.entries(tribute.goods).map(([g, n]) => (
+                          <Chip
+                            key={g}
+                            good={g}
+                            n={`${n}/t`}
+                            title={`${GOODS[g]?.name ?? g} a turn`}
+                          />
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {c.alive && (
+                  <div className="row">
+                    {war ? (
+                      <PeaceTerms
+                        game={game}
+                        me={civId}
+                        them={c.id}
+                        onOffer={o => onDeal(c.id, o)}
+                      />
+                    ) : (
+                      <>
+                        <button onClick={() => setDealWith(c.id)}>Propose a deal…</button>
+                        {c.independent && (
+                          <>
+                            <button onClick={() => onGift(c.id, 25)} title="Gift 25 gold">
+                              Gift <Chip icon="coin" n={25} title="25 gold" />
+                            </button>
+                            <button onClick={() => onGift(c.id, 100)} title="Gift 100 gold">
+                              Gift <Chip icon="coin" n={100} title="100 gold" />
+                            </button>
+                            <button
+                              disabled={absorbWhy !== null}
+                              title={absorbWhy ?? 'Absorb them into your realm'}
+                              onClick={() => onAbsorb(c.id)}
+                            >
+                              Absorb <Chip icon="coin" n={absorbCost(game, c.id)} title="Gold" />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => onWar(c.id)}
+                          title={pact ? 'Breaks your pact: everyone thinks less of you' : ''}
+                        >
+                          Declare war{pact ? ' ⚠' : ''}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             );
@@ -267,8 +308,8 @@ function DealDialog({
       <div className="deal-side">
         <h3>{label}</h3>
         <label className="deal-row">
-          <span>
-            Gold now <small className="muted">(has {Math.floor(gold)})</small>
+          <span className="chips">
+            Gold now <Chip icon="coin" n={Math.floor(gold)} title="Gold in the treasury" />
           </span>
           <input
             type="number"
@@ -289,23 +330,22 @@ function DealDialog({
         <table className="deal-goods">
           <tbody>
             <tr className="muted small">
-              <td>Good</td>
-              <td>In store</td>
-              <td>Net a turn</td>
-              <td>Now</td>
-              <td>A turn</td>
+              <td />
+              <td title="In store">Store</td>
+              <td title="Net a turn">Net</td>
+              <td title="Hand over now">Now</td>
+              <td title={`A turn, for ${DEAL_TURNS} turns`}>/turn</td>
             </tr>
             {goods
               .filter(g => (stock[g] ?? 0) >= 1 || (ledger[g]?.net ?? 0) !== 0)
               .map(g => (
                 <tr key={g}>
-                  <td>
-                    <GoodIcon id={g} /> {GOODS[g].name}
+                  <td title={GOODS[g].name}>
+                    <GoodIcon id={g} /> <span className="w-hide-phone">{GOODS[g].name}</span>
                   </td>
                   <td>{Math.floor(stock[g] ?? 0)}</td>
-                  <td className={(ledger[g]?.net ?? 0) < 0 ? 'bad' : ''}>
-                    {(ledger[g]?.net ?? 0) > 0 ? '+' : ''}
-                    {ledger[g]?.net ?? 0}
+                  <td>
+                    <Delta n={ledger[g]?.net ?? 0} />
                   </td>
                   <td>
                     <input
@@ -346,8 +386,8 @@ function DealDialog({
         </div>
         <div className="row">
           <label>
-            <input type="checkbox" checked={pact} onChange={e => setPact(e.target.checked)} />{' '}
-            Non-aggression pact ({PACT_TURNS} turns)
+            <input type="checkbox" checked={pact} onChange={e => setPact(e.target.checked)} /> Pact
+            ({PACT_TURNS} turns)
           </label>
           <label>
             <input
@@ -357,15 +397,15 @@ function DealDialog({
             />{' '}
             Alliance
           </label>
+          <InfoButton label="About deals">
+            <span>Non-aggression pact: no war for {PACT_TURNS} turns.</span>
+            <span>
+              Per-turn items run {DEAL_TURNS} turns, paid from each capital&apos;s market.
+            </span>
+            <span>Goods they lack are worth more to them.</span>
+          </InfoButton>
         </div>
-        <p className="small muted">
-          Per-turn items run for {DEAL_TURNS} turns, paid from each capital's market. Goods they
-          lack are worth more to them.
-        </p>
-        <p className={ev.accept ? 'good' : 'bad'}>
-          {ev.reason} {describeBundle(give) && `You give ${describeBundle(give)}.`}{' '}
-          {describeBundle(get) && `You get ${describeBundle(get)}.`}
-        </p>
+        <p className={ev.accept ? 'good' : 'bad'}>{ev.reason}</p>
         <div className="row">
           <button className="primary" disabled={!ev.accept} onClick={() => onSend(offer)}>
             Propose
@@ -377,31 +417,54 @@ function DealDialog({
   );
 }
 
-/** Who leads them, what kind of leader, and what they intend toward you, with the reasons. */
-function LeaderLine({ game, civId, them }: { game: GameState; civId: number; them: number }) {
+/** Who leads them (house, kind of leader) and what they intend toward you: short tags, reasons on hover. */
+function LeaderTags({ game, civId, them }: { game: GameState; civId: number; them: number }) {
   const c = game.civs[them];
   const pers = personalityOf(game.settings.map.seed, c);
   const house = rulerOf(c);
   const intent = intentToward(game, them, civId);
   return (
-    <div className="leader-line small">
-      <span>
-        {house ? `House ${house.name} rules` : 'Ruled'}
-        {pers ? (
-          <>
-            {' · '}
-            <b title={pers.note}>{pers.name}</b>: <span className="muted">{pers.note}</span>
-          </>
-        ) : null}
-      </span>
-      {intent.level !== 'war' && (
-        <span className={`intent intent-${intent.level}`} title={intent.reasons.join('\n')}>
-          <b>{intent.label}</b>
-          {intent.reasons.length > 0 && (
-            <span className="muted"> · {intent.reasons.slice(0, 4).join(' · ')}</span>
-          )}
+    <>
+      {house && (
+        <span className="chip" title={`House ${house.name} rules`}>
+          <Ico name="crown" fallback="👑" size={16} /> {house.name}
         </span>
       )}
-    </div>
+      {pers && (
+        <span className="w-tag" title={pers.note}>
+          {pers.name}
+        </span>
+      )}
+      {intent.level !== 'war' && (
+        <span className={`w-tag intent intent-${intent.level}`} title={intent.reasons.join('\n')}>
+          {intent.label}
+        </span>
+      )}
+    </>
   );
+}
+
+/** What an offer moves, as icon chips: gold, goods, per-turn amounts, settlements. */
+export function BundleChips({ game, b }: { game: GameState; b: Bundle }) {
+  const out: ReactNode[] = [];
+  if (b.gold) out.push(<Chip key="g" icon="coin" n={b.gold} title="Gold" />);
+  if (b.goldPerTurn)
+    out.push(<Chip key="gt" icon="coin" n={`${b.goldPerTurn}/t`} title="Gold a turn" />);
+  for (const [g, n] of Object.entries(b.goods ?? {}))
+    if (n) out.push(<Chip key={`o${g}`} good={g} n={n} title={GOODS[g]?.name ?? g} />);
+  for (const [g, n] of Object.entries(b.goodsPerTurn ?? {}))
+    if (n)
+      out.push(
+        <Chip key={`t${g}`} good={g} n={`${n}/t`} title={`${GOODS[g]?.name ?? g} a turn`} />,
+      );
+  for (const id of b.cities ?? [])
+    out.push(
+      <Chip
+        key={`c${id}`}
+        icon="house"
+        n={game.cities.find(c => c.id === id)?.name ?? 'a settlement'}
+        title="Settlement"
+      />,
+    );
+  return out.length ? <span className="chips">{out}</span> : <span className="muted">—</span>;
 }

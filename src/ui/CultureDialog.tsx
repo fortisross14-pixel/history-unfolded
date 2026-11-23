@@ -295,8 +295,7 @@ export function KeepDialog({ civ, onKeep }: { civ: Civ; onKeep: (ids: string[]) 
                   setPick(e.target.checked ? [...pick, id] : pick.filter(x => x !== id))
                 }
               />
-              <b>{CULTURE[id].name}</b>{' '}
-              <EffChips effs={modEffs(CULTURE[id].mods)} />
+              <b>{CULTURE[id].name}</b> <EffChips effs={modEffs(CULTURE[id].mods)} />
             </label>
           ))}
           {!opts.length && <p className="muted">Nothing to keep.</p>}

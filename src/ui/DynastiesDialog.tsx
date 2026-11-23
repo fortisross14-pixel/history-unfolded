@@ -88,14 +88,15 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
               {demo ? (
                 <>
                   Houses are parties: give them settlements freely; the one governing the most
-                  people leads. Rivalry rarely turns to war. Trinkets count {Math.round(0.4 * 100)}%.
+                  people leads. Rivalry rarely turns to war. Trinkets count {Math.round(0.4 * 100)}
+                  %.
                 </>
               ) : (
                 <>
                   <span>
-                    Level per area 0–{MAX_LEVEL} (born + governing + trinkets): +{LEVEL_PCT}% a level
-                    to that line where the house governs. The ruler lends half its levels to the
-                    realm.
+                    Level per area 0–{MAX_LEVEL} (born + governing + trinkets): +{LEVEL_PCT}% a
+                    level to that line where the house governs. The ruler lends half its levels to
+                    the realm.
                   </span>
                   <span>
                     Power = people governed + levels. Outweighing the throne breeds unrest; at{' '}
@@ -136,12 +137,13 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
             <span className="chip" title="Army strength: yours vs theirs">
               <Ico name="army" fallback="⚔" size={18} />{' '}
               <b>
-                {Math.round(armyStrength(game, civId))} : {Math.round(armyStrength(game, war.rival))}
+                {Math.round(armyStrength(game, civId))} :{' '}
+                {Math.round(armyStrength(game, war.rival))}
               </b>
             </span>{' '}
             <InfoButton label="How the civil war ends">
-              Take all their settlements to win outright. Otherwise the bigger army takes the throne;
-              armies within 10% end in a stalemate (two realms).
+              Take all their settlements to win outright. Otherwise the bigger army takes the
+              throne; armies within 10% end in a stalemate (two realms).
             </InfoButton>
             <button onClick={() => act(yieldThrone(game, civId))}>Yield the throne</button>
           </div>

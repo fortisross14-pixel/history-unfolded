@@ -93,3 +93,18 @@
   gap: 8px;
   margin-top: 6px;
 }
+button.primary .delta,
+button.on .delta {
+  color: inherit;
+}
+/* the detail window is a small card, centred, also on a phone and under the realm tabs */
+.game .modal-back.nd-pop.nd-pop {
+  padding: 16px;
+  place-items: center;
+  align-items: center;
+}
+.game .modal-back.nd-pop.nd-pop .modal.nd-detail {
+  height: auto;
+  max-height: calc(100% - 32px);
+  border-radius: 12px;
+}

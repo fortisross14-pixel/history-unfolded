@@ -8,6 +8,8 @@ import { InstallButton } from './InstallButton.tsx';
 import { artUrl } from '../render/art.ts';
 import { DIFFICULTIES, DIFFICULTY_ORDER, type Difficulty } from '../engine/difficulty.ts';
 import { VICTORY } from '../engine/victory.ts';
+import { InfoButton } from './bits.tsx';
+import './declutter-world.css';
 
 const L3 = (labels: [string, string, string]) =>
   (['low', 'normal', 'high'] as Level3[]).map((v, i) => ({ v, label: labels[i] }));
@@ -68,10 +70,9 @@ export function Menu({
     >
       <div className="menu-card">
         <h1>History Unfolded</h1>
-        <p className="subtitle">Every people starts the same. What they become is up to you.</p>
         <div className="menu-tools">
           <label className="button-like" title="Load a game saved to a file with Export">
-            Import a save file
+            Import save
             <input
               type="file"
               accept=".json,application/json"
@@ -125,7 +126,15 @@ export function Menu({
             )}
           </div>
         )}
-        <h2>New game</h2>
+        <h2>
+          New game{' '}
+          <InfoButton label={`About ${DIFFICULTIES[difficulty].name}`}>
+            <b>{DIFFICULTIES[difficulty].promise}</b>
+            {DIFFICULTIES[difficulty].notes.map(n => (
+              <span key={n}>· {n}</span>
+            ))}
+          </InfoButton>
+        </h2>
         <div className="map-types difficulty" role="radiogroup" aria-label="Difficulty">
           {DIFFICULTY_ORDER.map(d => (
             <button
@@ -134,17 +143,12 @@ export function Menu({
               aria-checked={difficulty === d}
               className={`map-type ${difficulty === d ? 'on' : ''}`}
               onClick={() => setDifficulty(d)}
+              title={DIFFICULTIES[d].promise}
             >
               <b>{DIFFICULTIES[d].name}</b>
-              <small>{DIFFICULTIES[d].promise}</small>
             </button>
           ))}
         </div>
-        <ul className="difficulty-notes muted small">
-          {DIFFICULTIES[difficulty].notes.map(n => (
-            <li key={n}>{n}</li>
-          ))}
-        </ul>
         <fieldset className="victory-toggles">
           <legend>Victories</legend>
           <label title="Always on">
@@ -162,7 +166,14 @@ export function Menu({
               {VICTORY[k].name}
             </label>
           ))}
-          <span className="muted small">The best score wins at the last turn either way.</span>
+          <InfoButton label="About victories">
+            {(['cultural', 'economic', 'diplomatic', 'scientific'] as const).map(k => (
+              <span key={k}>
+                <b>{VICTORY[k].name}:</b> {VICTORY[k].goal}
+              </span>
+            ))}
+            <span>Last turn: best score wins.</span>
+          </InfoButton>
         </fieldset>
         <div className="map-types">
           {MAP_TYPES.map(t => (
@@ -170,9 +181,9 @@ export function Menu({
               key={t.id}
               className={`map-type ${type === t.id ? 'on' : ''}`}
               onClick={() => setType(t.id)}
+              title={t.note}
             >
               <b>{t.name}</b>
-              <small>{t.note}</small>
             </button>
           ))}
         </div>
@@ -199,12 +210,7 @@ export function Menu({
               ))}
             </select>
           </label>
-          {select(
-            'Sea level',
-            seaLevel,
-            setSea,
-            L3(['Low (more land)', 'Normal', 'High (more sea)']),
-          )}
+          {select('Sea level', seaLevel, setSea, L3(['Low', 'Normal', 'High']))}
           {select('Climate', climate, setClimate, L3(['Cold', 'Temperate', 'Hot']))}
           {select('Rainfall', rainfall, setRain, L3(['Dry', 'Normal', 'Wet']))}
           {select('Resources', resources, setRes, L3(['Sparse', 'Normal', 'Abundant']))}

@@ -44,6 +44,7 @@ node --no-warnings scripts/archdiag.ts  # AI on an archipelago: fleets, crossing
 npm run check:ai             # AI wars: fighting, captures, campaigns that commit, sea landings
 npm run test:ui -- <outDir>  # drives the built game in headless Chromium and saves screenshots
 npm run test:mobile -- <outDir>  # the same on an emulated phone (touch, bottom sheet, menu)
+node --no-warnings scripts/save-smoke.ts  # saves in IndexedDB, old localStorage saves moved
 npm run check:perf           # map frame times with the CPU slowed 4x
                              # (the browser checks need `npx vite preview --port 4173` running)
 ```

@@ -1201,6 +1201,28 @@ settlement is always a town. Founded further out, it is a **colony**:
   press does not also open the screen, and a tap elsewhere closes it.
 - No hover card by touch; larger targets on the minimap bar.
 
+## 12u. Fewer words (as built)
+
+- Screens show icons and numbers, not sentences: yields and stocks as icon chips (`Chip`), changes
+  as coloured signed numbers (`Delta`: +3 green, −7 red), names one hover away.
+- Details that matter but are not needed to play sit behind a round (i) button (`InfoButton`).
+- Choices (national direction, policies, tenets) show 3–4 effect chips each; picking one opens a
+  detail card with everything and a Confirm button.
+- No instructions on how to play ("click a hex to move", "found a city here"): the guide steps
+  are a title and a few words, and the Codex keeps the long explanations.
+- Kept: why a button is greyed out, in a few words.
+- Growth modifiers now read one way everywhere: the engine's `growthPct` is food needed to grow,
+  so less is better. Directions, policies, the Holy Feasts tenet and the famine and plague crises
+  had it the wrong way round (a famine made growth cheaper); their signs are fixed.
+
+## 12v. Saves in IndexedDB (as built)
+
+- Saves are in IndexedDB (`src/ui/store.ts`), which holds far more than localStorage's few
+  megabytes; the save code reads a copy in memory loaded once at start and each write goes on to
+  IndexedDB in order. Saves an earlier version left in localStorage move across on the first start
+  and are removed from it. The game asks the browser to keep its storage (persist). Without
+  IndexedDB it falls back to localStorage. `scripts/save-smoke.ts` checks all of this.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

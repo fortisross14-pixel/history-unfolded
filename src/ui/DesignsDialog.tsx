@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   DEFAULT_SHIP,
   ITEM_LIST,
@@ -22,7 +22,28 @@ import {
   spriteForLoadout,
   artKeyForLoadout,
 } from '../engine/units.ts';
-import { Art, Goods, UnitPortrait } from './bits.tsx';
+import { Art, Goods, Ico, InfoButton, UnitPortrait } from './bits.tsx';
+import './declutter-world.css';
+
+/** A small stat: icon and value, the stat's name on hover. */
+function S({
+  icon,
+  fb,
+  t,
+  children,
+}: {
+  icon: string;
+  fb: string;
+  t: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="chip w-s" title={t} aria-label={t}>
+      <Ico name={icon} fallback={fb} size={14} />
+      <b>{children}</b>
+    </span>
+  );
+}
 
 interface Props {
   game: GameState;
@@ -90,10 +111,7 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
     <div className="modal-back" onClick={() => onClose(lastSaved)}>
       <div className="modal designs" onClick={e => e.stopPropagation()}>
         <header>
-          <h2>
-            Unit designs{' '}
-            <small>Name a unit type, give it its gear, then assign cohorts to it.</small>
-          </h2>
+          <h2>Unit designs</h2>
           <button className="x" onClick={() => onClose(lastSaved)}>
             ×
           </button>
@@ -148,7 +166,7 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
               />
               <input
                 className="design-name"
-                placeholder="Name it: Hoplites, Foot Falcons, Iron Wall…"
+                placeholder="Name"
                 value={name}
                 maxLength={28}
                 onChange={e => setName(e.target.value)}
@@ -180,28 +198,58 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
                       >
                         <Art k={`item/${it.id}`} size={44} className="item-art" />
                         <b>{it.name}</b>
-                        <small>
-                          {locked ? (
-                            `🔒 ${TECHS[it.tech!].name}`
-                          ) : (
-                            <>
-                              {it.attack
-                                ? `${it.ranged ? 'Ranged' : 'Melee'} ${it.attack} ${it.damage}`
-                                : ''}
-                              {it.protection && Object.keys(it.protection).length
-                                ? ` Prot ${Object.entries(it.protection)
-                                    .map(([k, v]) => `${k} ${v}`)
-                                    .join(', ')}`
-                                : ''}
-                              {it.move ? ` Move ${slot === 'mount' ? it.move : '+' + it.move}` : ''}
-                              {it.morale ? ` Morale +${it.morale}` : ''}
-                              {it.charge ? ` Charge ${it.charge}` : ''}
-                              {it.antiCharge ? ` Anti-charge ${it.antiCharge}` : ''}
-                              {it.weight ? ` · wt ${it.weight}` : ''}
-                              {clash ? ' · not with a two-handed weapon' : ''}
-                            </>
-                          )}
-                        </small>
+                        {locked ? (
+                          <small>
+                            <Ico name="lock" fallback="🔒" size={12} /> {TECHS[it.tech!].name}
+                          </small>
+                        ) : (
+                          <span className="w-stats-sm">
+                            {it.attack ? (
+                              <S
+                                icon={it.ranged ? 'bow' : 'sword'}
+                                fb={it.ranged ? '➶' : '⚔'}
+                                t={`${it.ranged ? 'Ranged' : 'Melee'} attack, ${it.damage}`}
+                              >
+                                {it.attack} <small>{it.damage}</small>
+                              </S>
+                            ) : null}
+                            {Object.entries(it.protection ?? {}).map(([k, v]) => (
+                              <S key={k} icon="shield" fb="⛨" t={`Protection against ${k}`}>
+                                {v} <small>{k}</small>
+                              </S>
+                            ))}
+                            {it.move ? (
+                              <S icon="boot" fb="👣" t="Moves">
+                                {slot === 'mount' ? it.move : '+' + it.move}
+                              </S>
+                            ) : null}
+                            {it.morale ? (
+                              <S icon="flag" fb="⚑" t="Morale">
+                                +{it.morale}
+                              </S>
+                            ) : null}
+                            {it.charge ? (
+                              <S icon="charge" fb="»" t="Charge">
+                                {it.charge}
+                              </S>
+                            ) : null}
+                            {it.antiCharge ? (
+                              <S icon="target" fb="⊥" t="Anti-charge">
+                                {it.antiCharge}
+                              </S>
+                            ) : null}
+                            {it.weight ? (
+                              <S icon="anvil" fb="⚖" t="Weight">
+                                {it.weight}
+                              </S>
+                            ) : null}
+                            {clash && (
+                              <small className="bad" title="Not with a two-handed weapon">
+                                ✕ 2-handed
+                              </small>
+                            )}
+                          </span>
+                        )}
                         <span className="cost">
                           <Goods goods={it.cost} empty="free" />
                         </span>
@@ -212,77 +260,78 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
               </div>
             ))}
             {lockedCount > 0 && (
-              <p className="muted small more-gear">
-                {lockedCount} more pieces of gear come with research
-                {hiddenSlots.length
-                  ? `, among them the first ${hiddenSlots.map(sl => slotName(sl).toLowerCase() + 's').join(' and ')}`
-                  : ''}
-                .
+              <p
+                className="muted small more-gear"
+                title={
+                  hiddenSlots.length
+                    ? `Among them the first ${hiddenSlots.map(sl => slotName(sl).toLowerCase() + 's').join(' and ')}`
+                    : undefined
+                }
+              >
+                <Ico name="lock" fallback="🔒" size={12} /> +{lockedCount} from research
               </p>
             )}
           </div>
 
           <aside className="loadout-side">
-            <h3>{sea ? 'Each ship (50 crew)' : 'Each cohort (100 people)'}</h3>
-            {sea && (
-              <p className="small">
-                Carries {(ITEMS[l.armour].capacity ?? 0) + (ITEMS[l.kit].capacity ?? 0)} cohorts ·{' '}
-                {ITEMS[l.armour].ocean ? 'crosses open ocean' : 'coast only'}
-              </p>
-            )}
-            <table className="stats">
-              <tbody>
-                <tr>
-                  <td>Role</td>
-                  <td>{ROLE_NAMES[st.role]}</td>
-                </tr>
-                <tr>
-                  <td>Melee</td>
-                  <td>
-                    {st.melee} {st.damage}
-                  </td>
-                </tr>
-                <tr>
-                  <td>Ranged</td>
-                  <td>{st.ranged ? `${st.ranged} ${st.rangedDamage}` : '—'}</td>
-                </tr>
-                <tr>
-                  <td>Charge</td>
-                  <td>{st.charge || '—'}</td>
-                </tr>
-                <tr>
-                  <td>Anti-charge</td>
-                  <td>{st.antiCharge || '—'}</td>
-                </tr>
-                <tr>
-                  <td>Protection</td>
-                  <td>
-                    cut {st.protection.cut} · pierce {st.protection.pierce} · crush{' '}
-                    {st.protection.crush} · missile {st.protection.missile}
-                  </td>
-                </tr>
-                <tr>
-                  <td>Morale</td>
-                  <td>{st.morale ? `+${st.morale}` : '—'}</td>
-                </tr>
-                <tr>
-                  <td>Moves</td>
-                  <td>
-                    {st.moves} <small>(weight {st.weight})</small>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Upkeep</td>
-                  <td>{st.upkeep} gold/turn</td>
-                </tr>
-                <tr>
-                  <td>Gear</td>
-                  <td>
-                    <Goods goods={cost} empty="free" />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <h3 title={sea ? 'Each ship: 50 crew' : 'Each cohort: 100 people'}>
+              {sea ? 'Ship · 50 crew' : 'Cohort · 100'}
+            </h3>
+            <div className="w-stats">
+              <span className="w-tag">{ROLE_NAMES[st.role]}</span>
+              {sea && (
+                <>
+                  <S icon="crate" fb="▣" t="Cohorts it carries">
+                    {(ITEMS[l.armour].capacity ?? 0) + (ITEMS[l.kit].capacity ?? 0)}
+                  </S>
+                  <span
+                    className="w-tag"
+                    title={ITEMS[l.armour].ocean ? 'Crosses open ocean' : 'Coast only'}
+                  >
+                    {ITEMS[l.armour].ocean ? 'Ocean' : 'Coast'}
+                  </span>
+                </>
+              )}
+              <S icon="sword" fb="⚔" t={`Melee, ${st.damage}`}>
+                {st.melee} <small>{st.damage}</small>
+              </S>
+              {st.ranged ? (
+                <S icon="bow" fb="➶" t={`Ranged, ${st.rangedDamage}`}>
+                  {st.ranged} <small>{st.rangedDamage}</small>
+                </S>
+              ) : null}
+              {st.charge ? (
+                <S icon="charge" fb="»" t="Charge">
+                  {st.charge}
+                </S>
+              ) : null}
+              {st.antiCharge ? (
+                <S icon="target" fb="⊥" t="Anti-charge">
+                  {st.antiCharge}
+                </S>
+              ) : null}
+              {st.morale ? (
+                <S icon="flag" fb="⚑" t="Morale">
+                  +{st.morale}
+                </S>
+              ) : null}
+              <S icon="boot" fb="👣" t={`Moves (weight ${st.weight})`}>
+                {st.moves}
+              </S>
+              <S icon="coin" fb="🪙" t="Upkeep, gold a turn">
+                {st.upkeep}/t
+              </S>
+            </div>
+            <div className="w-stats" title="Protection">
+              {(['cut', 'pierce', 'crush', 'missile'] as const).map(k => (
+                <S key={k} icon="shield" fb="⛨" t={`Protection against ${k}`}>
+                  {st.protection[k]} <small>{k}</small>
+                </S>
+              ))}
+            </div>
+            <div className="w-stats" title="Gear per cohort">
+              <Goods goods={cost} empty="free" />
+            </div>
             {problem && <p className="bad">{problem}</p>}
             <button
               className="primary wide"
@@ -309,10 +358,14 @@ export function DesignsDialog({ game, civId, open, onClose, report }: Props) {
                 </button>
               </div>
             )}
-            <p className="muted small">
-              Changing a design does not re-arm troops already in the field: their cohorts show as
-              outdated until you re-equip them. Mixing designs in one formation is what wins
-              battles: a front line screens archers, cavalry flanks, spears stop charges.
+            <p className="w-foot">
+              <InfoButton label="About designs">
+                <span>A change does not re-arm troops in the field: they show as outdated.</span>
+                <span>
+                  Mixed formations win: front line screens archers, cavalry flanks, spears stop
+                  charges.
+                </span>
+              </InfoButton>
             </p>
           </aside>
         </div>

@@ -61,7 +61,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           v => set({ uiScale: v }),
         )}
         {choice(
-          'Text in panels and dialogs',
+          'Text size',
           s.textScale,
           [
             [1, 'Normal'],
@@ -118,8 +118,11 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           <InstallButton />
         </div>
         <p className="muted small">
-          Music is not in the game yet. Settings are kept in this browser.{' '}
-          <button className="link" onClick={() => set(DEFAULT_SETTINGS)}>
+          <button
+            className="link"
+            onClick={() => set(DEFAULT_SETTINGS)}
+            title="Settings are kept in this browser"
+          >
             Reset to defaults
           </button>
         </p>

@@ -1,0 +1,159 @@
+/* declutter pass, world group: diplomacy, designs, research, events, crises, menu */
+.w-inline {
+  display: inline-flex;
+  vertical-align: middle;
+  font-size: 14px;
+  margin-left: 6px;
+}
+.w-tag {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(120, 90, 50, 0.12);
+  color: var(--ink, #2a2419);
+  white-space: nowrap;
+}
+.w-tag.good {
+  background: #e6efd8;
+  color: var(--good, #2f7d3a);
+}
+.w-tag.bad {
+  background: #f4dcd6;
+  color: var(--bad, #b0302a);
+}
+.people .people-body.chips {
+  margin: 6px 0;
+  font-size: 13px;
+}
+.people .opinion {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.people .row button .chip,
+.peoples .row button .chip {
+  margin-left: 2px;
+}
+@media (max-width: 700px) {
+  .people-head {
+    flex-wrap: wrap;
+  }
+  .people .ident-bar {
+    display: none;
+  }
+  .deal-goods .w-hide-phone {
+    display: none;
+  }
+}
+
+/* effects of a choice: chips, then a few words */
+.w-effects {
+  gap: 2px 10px;
+  font-size: 13px;
+}
+.w-eff small {
+  margin-right: 2px;
+  color: var(--ink-soft);
+}
+.w-words {
+  color: var(--ink-soft);
+}
+
+/* crisis risks: name, meter, percent, (i) */
+.w-risk {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr 44px auto;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+.crisis-risks {
+  list-style: none;
+  padding: 0;
+}
+.w-meter {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(120, 90, 50, 0.15);
+  overflow: hidden;
+}
+.w-meter > span {
+  display: block;
+  height: 100%;
+  background: var(--bad, #b0302a);
+}
+
+/* proposals */
+.w-offer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+.w-offer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.w-offer-row > small {
+  min-width: 56px;
+  color: var(--ink-soft);
+}
+
+/* unit designer stats */
+.w-s {
+  font-size: 12px;
+  gap: 2px;
+}
+.w-s small {
+  font-weight: normal;
+  color: var(--ink-soft);
+}
+.w-stats-sm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+.w-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  margin: 6px 0;
+}
+.w-stats .w-s {
+  font-size: 14px;
+}
+.loadout-side .w-foot {
+  margin-top: 8px;
+}
+
+/* research: unlocks as pictures */
+.tech-card .w-unlocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+}
+.tech-card .w-unlocks small {
+  font-size: 11px;
+}
+.w-dep {
+  display: inline-flex;
+  align-items: center;
+}
+.modal.research h2 .chip .link {
+  padding: 0 4px;
+  min-height: 0;
+}
+
+/* menu: room under the title ornament now that the tagline is gone */
+.menu-card .menu-tools {
+  margin-top: 22px;
+}
+.menu-card h2 .info-card {
+  text-transform: none;
+  font-family: inherit;
+}

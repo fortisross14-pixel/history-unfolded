@@ -171,5 +171,46 @@
    "face/11",
    "face/12"
   ]
+ },
+ {
+  "file": "map-8-emblems.png",
+  "cols": 8,
+  "rows": 4,
+  "style": "figure",
+  "height": 96,
+  "cells": [
+   "emblem/cleopatra",
+   "emblem/hammurabi",
+   "emblem/moctezuma",
+   "emblem/qin-shi-huang",
+   "emblem/alexander",
+   "emblem/caesar",
+   "emblem/ashoka",
+   "emblem/wu-zetian",
+   "emblem/charlemagne",
+   "emblem/theodora",
+   "emblem/saladin",
+   "emblem/genghis-khan",
+   "emblem/lorenzo",
+   "emblem/elizabeth",
+   "emblem/suleiman",
+   "emblem/louis",
+   "emblem/lincoln",
+   "emblem/bismarck",
+   "emblem/meiji",
+   "emblem/custom-1",
+   "emblem/custom-2",
+   "emblem/custom-3",
+   "emblem/custom-4",
+   "emblem/custom-5",
+   "emblem/custom-6",
+   "emblem/custom-7",
+   "emblem/custom-8",
+   "emblem/custom-9",
+   "emblem/custom-10",
+   "emblem/custom-11",
+   "emblem/custom-12",
+   "emblem/custom-13"
+  ]
  }
 ]

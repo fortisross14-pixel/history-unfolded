@@ -13,6 +13,7 @@ made**, with the same style lines word for word, so they sit with them:
 | M5. Wonders | 10 wonders | ✓ done |
 | M6. Leaders | 19 rulers and a raider chief | ✓ done |
 | M7. Faces for your own ruler | 12 invented faces | ✓ done |
+| **M8. Nation emblems** | **19 nations’ symbols and 13 more for your own** | **to make: below** |
 
 ## Rules for every sheet
 
@@ -138,4 +139,33 @@ Format: one image, 1024 x 128 pixels, an invisible row of 8 equal square cells (
 Cells left to right: 1 a manor house behind a row of fields; 2 a pickaxe on a scroll; 3 a closed money chest with a ship on its lid; 4 (empty); 5 (empty); 6 (empty); 7 (empty); 8 (empty).
 Draw exactly these symbols in exactly this order; do not substitute other symbols.
 ```
+
+---
+
+## Sheet M8: Nation emblems
+
+File: `map-8-emblems.png` · 1024 × 512 px · 8 × 4 cells of 128 × 128 px · Badges: each nation’s symbol, laid by the game on a shield in its colour; 13 more for a nation of your own.
+
+### Prompt to paste
+
+```
+A sprite sheet for a historical strategy game: nation emblems.
+Style: heraldic badge symbols for a historical strategy game, like the charges painted on a shield: each symbol a bold, simple, flat silhouette filled with one pale ivory colour (#F7EFD8) and outlined in a thick dark sepia ink line (#3A2A1A), with only a few interior ink lines for detail. No shading, no watercolour wash, no other colours, no gradients. One symbol per cell, centred, filling about 75% of the cell, readable at 24 pixels; the same line weight and scale in every cell. No shield, frame, circle or plaque behind the symbols (the game draws the shield). Nothing in the symbols is magenta. No text, letters, numbers or mottos anywhere.
+Background: one flat, solid, pure magenta (#FF00FF) everywhere, with no gradient, texture, floor, horizon or shadow. Nothing in the pictures is magenta.
+Format: one image, 1024 x 512 pixels, an invisible 8 x 4 grid of equal cells (128 x 128 pixels each). One subject per cell, centred, filling about 80% of the cell, never touching or crossing a cell edge. No grid lines, borders or numbers.
+Cells in reading order (row A left to right, then row B, and so on):
+Row A: 1 an ankh; 2 a winged bull seen from the side; 3 an eagle perched on a cactus; 4 a coiled dragon; 5 a sun with sixteen rays (the Vergina sun); 6 an eagle with spread wings on a short pole; 7 a spoked wheel with 24 spokes; 8 a phoenix with a long tail.
+Row B: 1 a fleur-de-lis; 2 a double-headed eagle; 3 an eagle facing left with raised wings; 4 a horse head with a flowing mane; 5 six round balls arranged in a ring; 6 a Tudor rose; 7 a tulip; 8 a sun with a face-less disc and wavy rays.
+Row C: 1 a bald eagle head; 2 an eagle with spread wings, facing right; 3 a chrysanthemum flower seen from the front; 4 a standing lion; 5 a howling wolf; 6 a stag’s head with antlers; 7 a castle tower; 8 an eight-pointed star.
+Row D: 1 a crescent moon; 2 an oak tree; 3 a leaping fish; 4 a bear standing; 5 a raven; 6 two crossed keys; 7 a three-towered mountain; 8 a ship with one sail.
+```
+
+### Cell map
+
+| | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| **A** | an ankh<br>`emblem/cleopatra` | a winged bull seen from the side<br>`emblem/hammurabi` | an eagle perched on a cactus<br>`emblem/moctezuma` | a coiled dragon<br>`emblem/qin-shi-huang` | a sun with sixteen rays<br>`emblem/alexander` | an eagle with spread wings on a short pole<br>`emblem/caesar` | a spoked wheel with 24 spokes<br>`emblem/ashoka` | a phoenix with a long tail<br>`emblem/wu-zetian` |
+| **B** | a fleur-de-lis<br>`emblem/charlemagne` | a double-headed eagle<br>`emblem/theodora` | an eagle facing left with raised wings<br>`emblem/saladin` | a horse head with a flowing mane<br>`emblem/genghis-khan` | six round balls arranged in a ring<br>`emblem/lorenzo` | a Tudor rose<br>`emblem/elizabeth` | a tulip<br>`emblem/suleiman` | a sun with a face-less disc and wavy rays<br>`emblem/louis` |
+| **C** | a bald eagle head<br>`emblem/lincoln` | an eagle with spread wings, facing right<br>`emblem/bismarck` | a chrysanthemum flower seen from the front<br>`emblem/meiji` | a standing lion<br>`emblem/custom-1` | a howling wolf<br>`emblem/custom-2` | a stag’s head with antlers<br>`emblem/custom-3` | a castle tower<br>`emblem/custom-4` | an eight-pointed star<br>`emblem/custom-5` |
+| **D** | a crescent moon<br>`emblem/custom-6` | an oak tree<br>`emblem/custom-7` | a leaping fish<br>`emblem/custom-8` | a bear standing<br>`emblem/custom-9` | a raven<br>`emblem/custom-10` | two crossed keys<br>`emblem/custom-11` | a three-towered mountain<br>`emblem/custom-12` | a ship with one sail<br>`emblem/custom-13` |
 

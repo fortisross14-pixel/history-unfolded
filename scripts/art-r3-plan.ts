@@ -236,6 +236,42 @@ const LEADER: Record<string, string[]> = {
 };
 const RAIDER = 'a raider chief with a wild beard, a wolf-pelt hood and face paint';
 
+// ---------------------------------------------------------------- nation emblems (badge symbols)
+const EMBLEMS: Cell[] = [
+  ['emblem/cleopatra', 'an ankh'],
+  ['emblem/hammurabi', 'a winged bull seen from the side'],
+  ['emblem/moctezuma', 'an eagle perched on a cactus'],
+  ['emblem/qin-shi-huang', 'a coiled dragon'],
+  ['emblem/alexander', 'a sun with sixteen rays (the Vergina sun)'],
+  ['emblem/caesar', 'an eagle with spread wings on a short pole'],
+  ['emblem/ashoka', 'a spoked wheel with 24 spokes'],
+  ['emblem/wu-zetian', 'a phoenix with a long tail'],
+  ['emblem/charlemagne', 'a fleur-de-lis'],
+  ['emblem/theodora', 'a double-headed eagle'],
+  ['emblem/saladin', 'an eagle facing left with raised wings'],
+  ['emblem/genghis-khan', 'a horse head with a flowing mane'],
+  ['emblem/lorenzo', 'six round balls arranged in a ring'],
+  ['emblem/elizabeth', 'a Tudor rose'],
+  ['emblem/suleiman', 'a tulip'],
+  ['emblem/louis', 'a sun with a face-less disc and wavy rays'],
+  ['emblem/lincoln', 'a bald eagle head'],
+  ['emblem/bismarck', 'an eagle with spread wings, facing right'],
+  ['emblem/meiji', 'a chrysanthemum flower seen from the front'],
+  ['emblem/custom-1', 'a standing lion'],
+  ['emblem/custom-2', 'a howling wolf'],
+  ['emblem/custom-3', 'a stag’s head with antlers'],
+  ['emblem/custom-4', 'a castle tower'],
+  ['emblem/custom-5', 'an eight-pointed star'],
+  ['emblem/custom-6', 'a crescent moon'],
+  ['emblem/custom-7', 'an oak tree'],
+  ['emblem/custom-8', 'a leaping fish'],
+  ['emblem/custom-9', 'a bear standing'],
+  ['emblem/custom-10', 'a raven'],
+  ['emblem/custom-11', 'two crossed keys'],
+  ['emblem/custom-12', 'a three-towered mountain'],
+  ['emblem/custom-13', 'a ship with one sail'],
+];
+
 // ---------------------------------------------------------------- faces for a player's own ruler
 const FACES: Cell[] = [
   ['face/1', 'a young woman of about 20 with long dark braids and a plain linen tunic (ancient)'],
@@ -328,6 +364,8 @@ for (const s of cream) if (s.cells.length > 64) throw new Error(`${s.file}: ${s.
 
 interface FigureSheet {
   file: string;
+  /** 'badge': flat heraldic symbols instead of painted miniatures */
+  style?: 'badge';
   done?: boolean;
   title: string;
   use: string;
@@ -384,11 +422,26 @@ const figures: FigureSheet[] = [
     lead: 'Each portrait is a head-and-shoulders bust of an ordinary-looking, invented person (not anyone famous, not resembling any real ruler), three-quarter view facing right, cut off at mid-chest, with the same framing, size and eye height in every cell as the attached rulers sheet. Expressions calm and confident. Simple clothes of the stated time with no crowns, no insignia and no national symbols, so the face suits any people; where a sash, collar or cloak would carry a people’s colour, leave it plain off-white. Row A and the first two cells of row B are women; the rest are men. Mix of ages and of origins (Mediterranean, North African, West African, Near Eastern, South Asian, East Asian, Northern European, Central Asian, South American).',
     cells: FACES,
   },
+  {
+    file: 'map-8-emblems.png',
+    title: 'Nation emblems',
+    use: 'Badges: each nation’s symbol, laid by the game on a shield in its colour; 13 more for a nation of your own.',
+    cols: 8,
+    rows: 4,
+    cell: 128,
+    height: 96,
+    style: 'badge',
+    lead: '',
+    cells: EMBLEMS,
+  },
 ];
 
 // ---------------------------------------------------------------- the style lines (as the earlier sheets)
 const EMBLEM =
   'Style: simple hand-drawn emblem icons for a historical strategy game, dark sepia ink line work with one flat light watercolour wash, like the small symbols in the margin of an old atlas. One bold, simple symbol per cell, centred, filling about 70% of the cell, readable at 32 pixels: no fine detail, no scenery, no background objects. Same line weight, same light from the top left, same scale in every cell. Warm limited palette: sepia ink, ochre, muted brick red, faded slate blue, olive green, on cream. No frames, no circles or plaques behind the symbols. No text, letters, numbers or labels anywhere.';
+/** badge symbols sit on a shield of any colour: one pale fill and a dark outline read on all of them */
+const BADGE =
+  'Style: heraldic badge symbols for a historical strategy game, like the charges painted on a shield: each symbol a bold, simple, flat silhouette filled with one pale ivory colour (#F7EFD8) and outlined in a thick dark sepia ink line (#3A2A1A), with only a few interior ink lines for detail. No shading, no watercolour wash, no other colours, no gradients. One symbol per cell, centred, filling about 75% of the cell, readable at 24 pixels; the same line weight and scale in every cell. No shield, frame, circle or plaque behind the symbols (the game draws the shield). Nothing in the symbols is magenta. No text, letters, numbers or mottos anywhere.';
 const EMBLEM_GRID =
   'Format: one square image, 1024 x 1024 pixels, an invisible 8 x 8 grid of 64 equal square cells (128 x 128 pixels each). Keep each symbol inside its cell with about 16 pixels of empty space on every side, so no symbol touches or crosses a cell edge. Do not draw grid lines, borders or numbers. Background: one flat, plain cream colour (#F3E9D2) everywhere, with no texture, vignette or border.';
 const FIGURE =
@@ -411,7 +464,7 @@ made**, with the same style lines word for word, so they sit with them:
 | 9. Interface II | 48 icons | ✓ done |
 | M5. Wonders | 10 wonders | ✓ done |
 | M6. Leaders | 19 rulers and a raider chief | ✓ done |
-| M7. Faces for your own ruler | 12 invented faces | ✓ done |
+| M7. Faces for your own ruler | 12 invented faces | ✓ done |\n| **M8. Nation emblems** | **19 nations’ symbols and 13 more for your own** | **to make: below** |
 
 ## Rules for every sheet
 
@@ -476,7 +529,7 @@ for (const s of figures) {
   if (s.done) continue;
   const w = s.cols * s.cell,
     h = s.rows * s.cell;
-  md += `---\n\n## Sheet ${s.file.startsWith('map-5') ? 'M5' : s.file.startsWith('map-6') ? 'M6' : 'M7'}: ${s.title}\n\nFile: \`${s.file}\` · ${w} × ${h} px · ${s.cols} × ${s.rows} cells of ${s.cell} × ${s.cell} px · ${s.use}\n\n### Prompt to paste\n\n\`\`\`\nA sprite sheet for a historical strategy game: ${s.title.toLowerCase()}.\n${FIGURE}\n${s.lead}\n${MAGENTA}\nFormat: one image, ${w} x ${h} pixels, an invisible ${s.cols} x ${s.rows} grid of equal cells (${s.cell} x ${s.cell} pixels each). One subject per cell, centred, filling about 80% of the cell, never touching or crossing a cell edge. No grid lines, borders or numbers.\nCells in reading order (row A left to right, then row B, and so on):\n${rowsText(s.cells, s.cols, s.rows)}\`\`\`\n\n### Cell map\n\n${cellMap(s.cells, s.cols, s.rows)}\n`;
+  md += `---\n\n## Sheet ${s.file.startsWith('map-5') ? 'M5' : s.file.startsWith('map-6') ? 'M6' : s.file.startsWith('map-7') ? 'M7' : 'M8'}: ${s.title}\n\nFile: \`${s.file}\` · ${w} × ${h} px · ${s.cols} × ${s.rows} cells of ${s.cell} × ${s.cell} px · ${s.use}\n\n### Prompt to paste\n\n\`\`\`\nA sprite sheet for a historical strategy game: ${s.title.toLowerCase()}.\n${s.style === 'badge' ? BADGE : FIGURE}\n${s.lead ? s.lead + '\n' : ''}${MAGENTA}\nFormat: one image, ${w} x ${h} pixels, an invisible ${s.cols} x ${s.rows} grid of equal cells (${s.cell} x ${s.cell} pixels each). One subject per cell, centred, filling about 80% of the cell, never touching or crossing a cell edge. No grid lines, borders or numbers.\nCells in reading order (row A left to right, then row B, and so on):\n${rowsText(s.cells, s.cols, s.rows)}\`\`\`\n\n### Cell map\n\n${cellMap(s.cells, s.cols, s.rows)}\n`;
 }
 writeFileSync('art/R3-SHEETS.md', md);
 

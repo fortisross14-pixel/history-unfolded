@@ -3405,3 +3405,12 @@ input.rename {
   background: #2b6a5f !important;
   color: #fff !important;
 }
+.install {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.install-help {
+  max-width: 280px;
+}

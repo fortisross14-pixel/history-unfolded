@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { InstallButton } from './InstallButton.tsx';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './settings.ts';
 
 /** Interface and text size, motion, sound and autosave, applied as they change. */
@@ -112,6 +113,10 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           ],
           v => set({ autosave: v }),
         )}
+        <div className="setting">
+          <span>Play as an app</span>
+          <InstallButton />
+        </div>
         <p className="muted small">
           Music is not in the game yet. Settings are kept in this browser.{' '}
           <button className="link" onClick={() => set(DEFAULT_SETTINGS)}>

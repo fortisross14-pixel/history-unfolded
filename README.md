@@ -4,6 +4,13 @@ A turn-based hex strategy game in the civilization-builder mould where every peo
 same and the player builds everything: troops from equipment, districts from building slots, and
 a culture from a web of choices. Design: [`docs/DESIGN.md`](docs/DESIGN.md).
 
+## Install as an app
+
+The game is a web app you can install: on the menu (or in Settings) press **Install app**. On
+Android and in Chrome or Edge on a PC this installs it like any app, with its own icon and
+window; on iPhone or iPad use Share → Add to Home Screen. Once installed (or visited once) it
+also runs offline.
+
 ## Run
 
 ```bash

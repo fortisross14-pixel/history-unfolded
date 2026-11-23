@@ -4,6 +4,7 @@ import { randomSeed } from '../engine/rng.ts';
 import type { GameSettings, GameState, Level3, MapSize, MapType } from '../engine/types.ts';
 import { deleteGame, importSave, listGames } from './save.ts';
 import { SettingsDialog } from './SettingsDialog.tsx';
+import { InstallButton } from './InstallButton.tsx';
 import { artUrl } from '../render/art.ts';
 import { DIFFICULTIES, DIFFICULTY_ORDER, type Difficulty } from '../engine/difficulty.ts';
 import { VICTORY } from '../engine/victory.ts';
@@ -92,6 +93,7 @@ export function Menu({
           <button className="secondary" onClick={() => setShowSettings(true)}>
             Settings
           </button>
+          <InstallButton />
         </div>
         {importError && <p className="bad small">{importError}</p>}
         {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}

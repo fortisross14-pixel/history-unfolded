@@ -7,8 +7,8 @@ the cells can be cut and keyed out. Generate a sheet, cut it into cells, and dro
 District buildings are not in this list. The city and district views are drawn in low-poly 3D in code
 (see `docs/ui-proposals/city-lowpoly.html`). Sheet 5 only gives the UI flat icons for them.
 
-Shared style line (already inside every prompt): *hand-drawn engraving, sepia and umber ink with light
-watercolour washes, on nothing, as in an 18th-century atlas*. This matches the current map symbols.
+Shared style line (already inside every prompt): _hand-drawn engraving, sepia and umber ink with light
+watercolour washes, on nothing, as in an 18th-century atlas_. This matches the current map symbols.
 
 ---
 

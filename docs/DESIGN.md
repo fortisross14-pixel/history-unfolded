@@ -7,7 +7,7 @@ Status: draft 0.2 (decisions from review applied, see §17) · Scope: a turn-bas
 
 ## 1. One-line pitch
 
-Every civilization starts the same. What you research gives you *parts*, not finished things:
+Every civilization starts the same. What you research gives you _parts_, not finished things:
 you build your own troops from equipment, your own districts from building slots, and your own
 culture from a branching web of choices that close other doors. By the late game, no two
 civilizations look, fight or think alike, and each got that way through its own choices.
@@ -17,7 +17,7 @@ civilizations look, fight or think alike, and each got that way through its own 
 1. **Familiar chassis.** Hex map, fog of war, cities, units that move and fight, resources on the
    map, a tech tree, turns. If you have played a civ-style game you know how to play in 5 minutes.
    We do not reinvent any of this.
-2. **Parts, not products.** Research unlocks *components* (a bow, plate armour, a cattle pen, a
+2. **Parts, not products.** Research unlocks _components_ (a bow, plate armour, a cattle pen, a
    bank). The player combines them. There is no "Musketman" or "Bank building" in the game data.
 3. **Real people, real goods.** Soldiers are population. Equipment is made of goods that come
    from real places on the map. A strong army costs you citizens and resources.
@@ -28,20 +28,20 @@ civilizations look, fight or think alike, and each got that way through its own 
 
 ## 3. What we keep, cut and add
 
-| Keep (standard 4X) | Cut | Add / change |
-|---|---|---|
-| Hex map, terrain, rivers, coasts, fog of war | Fixed unit types and unit upgrade lines | Units built from cohorts of 100 people with editable loadouts |
-| Cities that grow and claim territory | Fixed building lists per city | Districts: a 3×3 slot grid the player designs and names |
-| Map resources (bonus, strategic, luxury) | Unique civ abilities, unique units, unique buildings | All civs start identical; identity comes from the culture web |
-| Movement points, zones of control, combat odds preview | "One unit per tile" stacking rule | Moving a formation onto a friendly one merges them |
-| Tech tree with eras | Tech that unlocks finished units/buildings | Tech unlocks equipment, slot types and caps |
-| Diplomacy, war, peace, borders | Civics/policy cards swapped freely | Culture web with exclusive branches and upheaval events |
-| Turn-based, single player vs AI | Global/national resource pool | Goods stored per city; roads join cities into shared **markets** |
+| Keep (standard 4X)                                     | Cut                                                  | Add / change                                                     |
+| ------------------------------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------- |
+| Hex map, terrain, rivers, coasts, fog of war           | Fixed unit types and unit upgrade lines              | Units built from cohorts of 100 people with editable loadouts    |
+| Cities that grow and claim territory                   | Fixed building lists per city                        | Districts: a 3×3 slot grid the player designs and names          |
+| Map resources (bonus, strategic, luxury)               | Unique civ abilities, unique units, unique buildings | All civs start identical; identity comes from the culture web    |
+| Movement points, zones of control, combat odds preview | "One unit per tile" stacking rule                    | Moving a formation onto a friendly one merges them               |
+| Tech tree with eras                                    | Tech that unlocks finished units/buildings           | Tech unlocks equipment, slot types and caps                      |
+| Diplomacy, war, peace, borders                         | Civics/policy cards swapped freely                   | Culture web with exclusive branches and upheaval events          |
+| Turn-based, single player vs AI                        | Global/national resource pool                        | Goods stored per city; roads join cities into shared **markets** |
 
 ## 4. The map
 
 - **Always procedural.** Every game generates a new map from a seed; there is no Earth or fixed
-  map. Map *types* make games feel different, not just reshuffled:
+  map. Map _types_ make games feel different, not just reshuffled:
   - **Continents** (2–4 large landmasses), **Pangaea** (one landmass, land war heavy),
     **Archipelago** (many islands, sea game), **Inland Sea** (land ring around a central sea),
     **Highlands** (mountain chains and valleys, choke points), **Fractal/Random** (anything).
@@ -59,13 +59,13 @@ civilizations look, fight or think alike, and each got that way through its own 
   **Features** (optional, on top): forest, jungle, marsh, hills, mountains (impassable early),
   river edges, oasis, floodplain.
 - **Deposits** (zero or one per hex, some hidden until researched):
-  - *Food & animals:* wild game, pigs, cattle, sheep, horses, fish, whales, wheat, rice, maize.
-  - *Raw materials:* wood (forests), stone, clay, copper, tin, iron, coal, saltpeter, sulfur, oil.
-  - *Luxuries:* ivory, furs, silk, spices, dyes, gold, silver, gems, wine, incense.
+  - _Food & animals:_ wild game, pigs, cattle, sheep, horses, fish, whales, wheat, rice, maize.
+  - _Raw materials:_ wood (forests), stone, clay, copper, tin, iron, coal, saltpeter, sulfur, oil.
+  - _Luxuries:_ ivory, furs, silk, spices, dyes, gold, silver, gems, wine, incense.
   - Each deposit has a **richness** (1–3) that scales what slots built on it produce.
 - **Revealing deposits.** Iron, coal, saltpeter and oil are invisible until the right tech
   ("Prospecting", "Mineralogy", "Chemistry", "Geology") is known, as in the genre standard.
-- **Goods on the map.** Deposits are what you can *extract*. Districts turn them into goods
+- **Goods on the map.** Deposits are what you can _extract_. Districts turn them into goods
   (§7). Trade routes and roads move goods between your cities.
 
 ## 5. Units: designs, cohorts and formations
@@ -78,8 +78,8 @@ civilizations look, fight or think alike, and each got that way through its own 
 - A **cohort** is **100 people**. Each cohort is assigned to one design and carries that design's
   gear.
 - A **formation** is what you see on the map: one counter on one hex, made of cohorts.
-- **The combination is what is powerful.** A levy of 500 can become 200 *Foot Falcons*
-  (spear and shield) and 300 *Hornets* (javelins). The formation's strength comes from how its
+- **The combination is what is powerful.** A levy of 500 can become 200 _Foot Falcons_
+  (spear and shield) and 300 _Hornets_ (javelins). The formation's strength comes from how its
   designs work together in battle (§6), not from any single design.
 - The formation panel groups cohorts by design, e.g.
   `"Northern Host" — 10 cohorts (1,000 people): 6 × Hoplites, 4 × Longbows`.
@@ -88,27 +88,27 @@ civilizations look, fight or think alike, and each got that way through its own 
 
 - A city **levies** a new formation of **5 cohorts (500 people)**. These come out of the city's
   population and only return when the troops heal at home or are disbanded there.
-- A fresh levy carries no gear (improvised weapons). It shows as *Levy* until assigned a design.
+- A fresh levy carries no gear (improvised weapons). It shows as _Levy_ until assigned a design.
 - Later techs raise levy size (Conscription → 8 cohorts) and the formation cap (§5.5).
 
 ### 5.3 Equipment slots
 
-| Slot | Examples (by era) | What it mostly affects |
-|---|---|---|
-| **Weapon** | club, sling, javelins, spear, bow, axe, sword, crossbow, pike, musket | attack, ranged or melee, damage type, anti-charge |
-| **Shield** | wicker, hide, bronze, kite, pavise | protection, mostly against missiles; not with two-handed weapons |
-| **Helmet** | leather cap, bronze helmet, great helm | protection against crushing blows, morale |
-| **Body armour** | padded, leather, bronze scale, ivory lamellar, chain, plate | protection by damage type, weight |
-| **Footwear** | sandals, marching boots | morale, crossing rough ground faster |
-| **Ride** | on foot, horse, camel, elephant, later wagons and trucks | movement, charge, flanking, upkeep |
-| **Kit** | scouting gear, war banner, field medics, siege tools | special effects for the cohort or the whole formation |
+| Slot            | Examples (by era)                                                     | What it mostly affects                                           |
+| --------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Weapon**      | club, sling, javelins, spear, bow, axe, sword, crossbow, pike, musket | attack, ranged or melee, damage type, anti-charge                |
+| **Shield**      | wicker, hide, bronze, kite, pavise                                    | protection, mostly against missiles; not with two-handed weapons |
+| **Helmet**      | leather cap, bronze helmet, great helm                                | protection against crushing blows, morale                        |
+| **Body armour** | padded, leather, bronze scale, ivory lamellar, chain, plate           | protection by damage type, weight                                |
+| **Footwear**    | sandals, marching boots                                               | morale, crossing rough ground faster                             |
+| **Ride**        | on foot, horse, camel, elephant, later wagons and trucks              | movement, charge, flanking, upkeep                               |
+| **Kit**         | scouting gear, war banner, field medics, siege tools                  | special effects for the cohort or the whole formation            |
 
 Very few combinations are forbidden; the only hard rule so far is no shield with a two-handed
 weapon (bow, axe). Everything else is "allowed, but here is the trade-off": weight slows foot
 troops, horses are poor in forest and marsh, heavy gear costs scarce metals.
 
 Each item has a tech requirement (if any), a goods cost per cohort, gold upkeep per turn, weight,
-and its combat numbers: attack and damage type (*cut, pierce, crush, missile*), protection per
+and its combat numbers: attack and damage type (_cut, pierce, crush, missile_), protection per
 damage type, charge, anti-charge, morale, movement, sight.
 
 ### 5.4 Designing and assigning
@@ -119,7 +119,7 @@ damage type, charge, anti-charge, morale, movement, sight.
 - **Assigning:** in a formation, choose how many cohorts of each group to select (e.g. 2 of the
   5 levy cohorts), pick a design, see the goods it will cost from the nearest city, and equip.
   Only slots that change are paid for; gear taken off returns 50% to the city's store.
-- **Editing a design** does not re-arm troops in the field. Their cohorts show as *outdated*
+- **Editing a design** does not re-arm troops in the field. Their cohorts show as _outdated_
   until they are equipped again (paying only for the difference).
 - Equipping is done inside your own territory, paid from the city whose territory the formation
   stands in (+50% away from the city itself), and uses the formation's remaining moves.
@@ -183,7 +183,7 @@ close.
 
 ### 6.3 Why there is no single best build
 
-The player *can* find an overwhelming combination; we only make sure it has a natural limit:
+The player _can_ find an overwhelming combination; we only make sure it has a natural limit:
 
 - **Damage-type triangle.** Plate beats cut and missile, loses to crush and later to firearms
   (pierce). Each armour has a weak point.
@@ -243,11 +243,11 @@ You grow by founding many small towns, not by growing a few huge cities.
   clusters of towns form one market from the start.
 - **Ranks.** Districts are slots inside the settlement, each a 3×3 grid (§7.2):
 
-| Rank | Districts | Rural buildings | Bonus to buildings | Needs |
-|---|---|---|---|---|
-| Town | 2 (the centre with the town hall + 1) | farms, woodlots, mines, docks | — | founding |
-| City | 4 | none: the towns around supply them | +15%, research and industry +35% | City Charter (culture), 6 housing cells, 6,000 people, 150 gold, 10 stone, 30 wood |
-| Metropolis | 6 (one per people) | none | +30%, research and industry +70% | Seat of Empire (culture), 8 housing cells, 15,000 people, 400 gold, 30 stone, 50 wood |
+| Rank       | Districts                             | Rural buildings                    | Bonus to buildings               | Needs                                                                                 |
+| ---------- | ------------------------------------- | ---------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------- |
+| Town       | 2 (the centre with the town hall + 1) | farms, woodlots, mines, docks      | —                                | founding                                                                              |
+| City       | 4                                     | none: the towns around supply them | +15%, research and industry +35% | City Charter (culture), 6 housing cells, 6,000 people, 150 gold, 10 stone, 30 wood    |
+| Metropolis | 6 (one per people)                    | none                               | +30%, research and industry +70% | Seat of Empire (culture), 8 housing cells, 15,000 people, 400 gold, 30 stone, 50 wood |
 
 - **Becoming a city pulls down every rural building** (farming, forestry, extraction groups):
   those districts must be redesigned as quarters. A town's open land feeds a few people
@@ -277,20 +277,21 @@ You grow by founding many small towns, not by growing a few huge cities.
   - **modern multiplier** (×2 the line in its district), late; **one per district**;
   - **great building** (+200%, ×3, the line in its district); **one in the whole realm**,
     unlocked in a given age.
-  Supports stack; the multiplier and the great building multiply each other.
+    Supports stack; the multiplier and the great building multiply each other.
 
-| Line | Bases | Support | Multiplier | Great building (age) |
-|---|---|---|---|---|
-| Food | farm, pasture, plantation, boats, lodge | granary, windmill | food packaging | Royal Granaries (Classical) |
-| Wood | woodcutter | lumber mill | steam sawmill | Royal Forest (Classical) |
-| Mining | mine | infirmary | pumping station | King's Mine (Medieval) |
-| Science | school, university, observatory | library | research lab | Academy of Sciences (Renaissance) |
-| Religion and arts | shrine, monument, temple | amphitheatre | printing house | Cathedral (Theology) |
-| Money | market, bank, mint, harbour | guild hall | counting house | Stock exchange (Joint-Stock) |
-| Industry | workshop, smithy, foundry, tannery, weaver | engineers' lodge | factory | Ironworks (Renaissance) |
+| Line              | Bases                                      | Support           | Multiplier      | Great building (age)              |
+| ----------------- | ------------------------------------------ | ----------------- | --------------- | --------------------------------- |
+| Food              | farm, pasture, plantation, boats, lodge    | granary, windmill | food packaging  | Royal Granaries (Classical)       |
+| Wood              | woodcutter                                 | lumber mill       | steam sawmill   | Royal Forest (Classical)          |
+| Mining            | mine                                       | infirmary         | pumping station | King's Mine (Medieval)            |
+| Science           | school, university, observatory            | library           | research lab    | Academy of Sciences (Renaissance) |
+| Religion and arts | shrine, monument, temple                   | amphitheatre      | printing house  | Cathedral (Theology)              |
+| Money             | market, bank, mint, harbour                | guild hall        | counting house  | Stock exchange (Joint-Stock)      |
+| Industry          | workshop, smithy, foundry, tannery, weaver | engineers' lodge  | factory         | Ironworks (Renaissance)           |
 
-  The market also puts ½ gold on each housing cell of its district. Example: three
-  universities make 3 science; a library makes it 4½; a research lab 9; the Academy 27.
+The market also puts ½ gold on each housing cell of its district. Example: three
+universities make 3 science; a library makes it 4½; a research lab 9; the Academy 27.
+
 - **Housing perks**: each housing cell beyond its districts' two makes growth 8% cheaper (to
   60%), sends settlers out for 10% fewer people (to 600), and every two add a cohort to the
   levies raised there (up to +3).
@@ -305,15 +306,15 @@ You grow by founding many small towns, not by growing a few huge cities.
   built slot by slot (each slot has its own build cost and time).
 - **Slot types** are unlocked by research and culture, e.g.:
 
-| Group | Slot types (examples) |
-|---|---|
-| Farming | grain field, rice paddy, orchard, vineyard, pig pen, cattle pasture, sheep run, horse stud |
-| Forestry | woodlot, lumber mill, charcoal kiln |
-| Extraction | quarry, clay pit, copper mine, iron mine, coal mine, saltpeter works, oil well |
-| Craft & industry | smithy, armoury, tannery, weaver, foundry, factory, shipyard (coastal) |
-| Services | infirmary, school, temple, barracks, granary, warehouse |
-| Commerce & finance | market, guild hall, bank, stock exchange, trading house |
-| Residential | huts, houses, tenements, apartments (housing capacity) |
+| Group              | Slot types (examples)                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| Farming            | grain field, rice paddy, orchard, vineyard, pig pen, cattle pasture, sheep run, horse stud |
+| Forestry           | woodlot, lumber mill, charcoal kiln                                                        |
+| Extraction         | quarry, clay pit, copper mine, iron mine, coal mine, saltpeter works, oil well             |
+| Craft & industry   | smithy, armoury, tannery, weaver, foundry, factory, shipyard (coastal)                     |
+| Services           | infirmary, school, temple, barracks, granary, warehouse                                    |
+| Commerce & finance | market, guild hall, bank, stock exchange, trading house                                    |
+| Residential        | huts, houses, tenements, apartments (housing capacity)                                     |
 
 The player's examples are just designs:
 
@@ -370,14 +371,14 @@ of them: the centre district (with the town hall) on the centre, the others on t
 hexes the player picks on the land map. Settlements keep two hexes between them (centres at
 least 3 apart), so no two share land.
 
-| Size | Districts | Bonus to every building / research and industry |
-| --- | --- | --- |
-| Settlement | 1 (the centre) | — |
-| Town | 2 | — |
-| Large town | 3 | +5% / +10% |
-| City | 4 | +15% / +35% (City Charter) |
-| Large city | 5 | +22% / +50% (City Charter) |
-| Metropolis | 7 (all) | +30% / +70% (Seat of Empire; one per people) |
+| Size       | Districts      | Bonus to every building / research and industry |
+| ---------- | -------------- | ----------------------------------------------- |
+| Settlement | 1 (the centre) | —                                               |
+| Town       | 2              | —                                               |
+| Large town | 3              | +5% / +10%                                      |
+| City       | 4              | +15% / +35% (City Charter)                      |
+| Large city | 5              | +22% / +50% (City Charter)                      |
+| Metropolis | 7 (all)        | +30% / +70% (Seat of Empire; one per people)    |
 
 Each step costs people, gold, wood and stone and a number of housing cells (town 2,500 people
 and 25 gold; up to a metropolis at 15,000 and 400). **Where a district stands matters**: it
@@ -461,15 +462,15 @@ in 7–21 ms; a new view builds over a few frames.
 
 Every rural building gives a little anywhere; what lies on the settlement's land adds more.
 
-| Building | Anywhere | With what lies on the land |
-|---|---|---|
-| Farm | ½ food | wheat or rice: 1 food |
-| Pasture | ½ food | pigs: 1 food · cattle: +1 leather · sheep: +1 wool · horses (Animal Husbandry): +1 horses |
-| Woodcutter | ½ wood | a forest or jungle: 1 wood |
-| Mine | ½ stone | stone, coal, iron, copper, tin, gold, silver, saltpeter: +1 of it (special) |
-| Plantation | ½ food | sugar, spices, silk, dyes, wine: +1 of it (special) |
-| Hunting lodge | ½ food | game: +½ food and ½ hides · furs, ivory: +1 (special) |
-| Fishing boats (coast) | ½ food | fish: 1 food · whales: +1 whale oil, pearls: +1 pearls (special) |
+| Building              | Anywhere | With what lies on the land                                                                |
+| --------------------- | -------- | ----------------------------------------------------------------------------------------- |
+| Farm                  | ½ food   | wheat or rice: 1 food                                                                     |
+| Pasture               | ½ food   | pigs: 1 food · cattle: +1 leather · sheep: +1 wool · horses (Animal Husbandry): +1 horses |
+| Woodcutter            | ½ wood   | a forest or jungle: 1 wood                                                                |
+| Mine                  | ½ stone  | stone, coal, iron, copper, tin, gold, silver, saltpeter: +1 of it (special)               |
+| Plantation            | ½ food   | sugar, spices, silk, dyes, wine: +1 of it (special)                                       |
+| Hunting lodge         | ½ food   | game: +½ food and ½ hides · furs, ivory: +1 (special)                                     |
+| Fishing boats (coast) | ½ food   | fish: 1 food · whales: +1 whale oil, pearls: +1 pearls (special)                          |
 
 - **Special goods need a dedicated district**: a town beside the deposit and at least **3** of
   the working building in one district. Then every one of them brings a unit, so goods add up:
@@ -479,6 +480,7 @@ Every rural building gives a little anywhere; what lies on the settlement's land
 - A thousand people eat one food a turn (two farms' worth).
 
 **Demand.** Goods are made to be used, and use grows with the people:
+
 - **Comforts**: every settlement takes one luxury a turn per 4,000 people (sugar, spices, silk,
   dyes, wine, furs, ivory, gold, silver, pearls, whale oil, and the cloth and leatherwork cities
   make). Each kind it gets adds 5% gold and
@@ -505,13 +507,13 @@ of, or to buy what you have to spare. A seller who cannot deliver is remembered 
 
 About 28 goods are in play, and they arrive over time:
 
-| Age | New goods | Where from | Spent on, every turn | Spent on, once |
-|---|---|---|---|---|
-| Ancient | wood, stone, hides, wool, salt, copper, tin, horses, gold, silver; luxuries (ivory, furs, spices, silk, dyes, wine, sugar, pearls, whale oil) | woodcutters, mines, pastures, plantations, lodges, boats | workshops (wood), smithies (copper, tin), tanneries (hides), weavers (wool), mints (gold), comforts (luxuries, salt) | buildings, gear (bronze, horses) |
-| Classical | iron; paper | mines (Iron Working); paper mills | libraries (paper) | iron gear |
-| Medieval | coal, saltpeter; cloth, leatherwork, tools | mines (Mineralogy, Alchemy); weavers, tanneries, smithies | city hearths (coal or wood), comforts (cloth, leatherwork) | — |
-| Renaissance | steel | foundries (coal, iron) | printing houses (paper), firearms (saltpeter as powder) | guns |
-| Industrial | oil, electricity | mines (Oil Drilling); power plants (oil, else coal) | railway stations (coal), steam pumps and sawmills (coal), power plants (oil or coal), factories (tools, electricity), research labs (electricity), food packaging (salt) | rifles (steel), factories, plants and stations (steel) |
+| Age         | New goods                                                                                                                                     | Where from                                                | Spent on, every turn                                                                                                                                                     | Spent on, once                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| Ancient     | wood, stone, hides, wool, salt, copper, tin, horses, gold, silver; luxuries (ivory, furs, spices, silk, dyes, wine, sugar, pearls, whale oil) | woodcutters, mines, pastures, plantations, lodges, boats  | workshops (wood), smithies (copper, tin), tanneries (hides), weavers (wool), mints (gold), comforts (luxuries, salt)                                                     | buildings, gear (bronze, horses)                       |
+| Classical   | iron; paper                                                                                                                                   | mines (Iron Working); paper mills                         | libraries (paper)                                                                                                                                                        | iron gear                                              |
+| Medieval    | coal, saltpeter; cloth, leatherwork, tools                                                                                                    | mines (Mineralogy, Alchemy); weavers, tanneries, smithies | city hearths (coal or wood), comforts (cloth, leatherwork)                                                                                                               | —                                                      |
+| Renaissance | steel                                                                                                                                         | foundries (coal, iron)                                    | printing houses (paper), firearms (saltpeter as powder)                                                                                                                  | guns                                                   |
+| Industrial  | oil, electricity                                                                                                                              | mines (Oil Drilling); power plants (oil, else coal)       | railway stations (coal), steam pumps and sawmills (coal), power plants (oil or coal), factories (tools, electricity), research labs (electricity), food packaging (salt) | rifles (steel), factories, plants and stations (steel) |
 
 - **Powder**: arquebuses, muskets, field guns and rifles burn saltpeter each turn (a quarter of a
   unit per cohort, half for guns). A realm out of it fires its firearms at half strength.
@@ -533,12 +535,12 @@ About 28 goods are in play, and they arrive over time:
 - **Cutting a market**: an enemy army you are at war with standing on a road or river hex
   breaks the link at once; the cities pay from their own stores again until the link is back.
 - Equipping troops, building slots and workshop inputs all draw from the market.
-- Later: caravans between separate markets, pillaging, *Paved Roads*, *Canals*, *Railways*,
+- Later: caravans between separate markets, pillaging, _Paved Roads_, _Canals_, _Railways_,
   sea routes between friendly ports.
 
 ## 9. Culture: the culture web
 
-Inspired by the age- and identity-shaping ideas of games like *Millennia*, pushed further:
+Inspired by the age- and identity-shaping ideas of games like _Millennia_, pushed further:
 culture is not a side tree, it is the civilization's identity.
 
 ### 9.1 Structure
@@ -546,8 +548,8 @@ culture is not a side tree, it is the civilization's identity.
 - The web is split into **domains**: Cosmology (calendars, astronomy, cosmogony), Politics,
   Religion, Society, Economy, War, Seafaring, Knowledge, Arts.
 - Nodes are bought with **Culture points**. A node can require nodes from **other domains**
-  (that is what makes it a web, not a set of trees). Example: *Celestial Navigation* (Seafaring)
-  needs *Solar Calendar* (Cosmology) **or** *Lunar Tides Lore* (Cosmology, lunar path), and
+  (that is what makes it a web, not a set of trees). Example: _Celestial Navigation_ (Seafaring)
+  needs _Solar Calendar_ (Cosmology) **or** _Lunar Tides Lore_ (Cosmology, lunar path), and
   gives a different bonus depending on which.
 - Each node grants **tags** (e.g. `solar`, `lunar`, `maritime`, `absolutist`, `rationalist`,
   `zealot`, `mercantile`, `martial`, `tolerant`). Later nodes require or are boosted by tags.
@@ -557,15 +559,15 @@ culture is not a side tree, it is the civilization's identity.
 - Many nodes come in **exclusive forks**. Taking one **locks** the others.
 - Example, Cosmology fork in the ancient era:
   - **Solar Calendar** → agriculture timing, monumental astronomy, sun cults, later
-    *Rational Astronomy* (science) and *Divine Kingship* (politics).
+    _Rational Astronomy_ (science) and _Divine Kingship_ (politics).
   - **Lunar Calendar** → tides and fishing, night navigation, moon cults, later
-    *Celestial Navigation* (seafaring) and *Mystic Orders* (religion).
+    _Celestial Navigation_ (seafaring) and _Mystic Orders_ (religion).
   - Both lead to rich later content, but different content. About a third of later Cosmology,
     Seafaring and Religion nodes depend on this one choice.
 - Example, Politics path:
   - **Chiefdom → Council of Elders** (consensus path) or **Chiefdom → Warlord** (autocracy path).
-  - The autocracy path continues: *Divine Right → Court Bureaucracy → Absolutism → Enlightened
-    Despotism*. Each step gives strong bonuses (production, levy size, command cap) and raises
+  - The autocracy path continues: _Divine Right → Court Bureaucracy → Absolutism → Enlightened
+    Despotism_. Each step gives strong bonuses (production, levy size, command cap) and raises
     **Rigidity** in the Politics domain.
 
 ### 9.3 Identity emerges from tags
@@ -576,9 +578,9 @@ culture is not a side tree, it is the civilization's identity.
   naval combat +, exploration vision +, coastal district slots cheaper; Rationalist 5 gives
   science + and unlocks secular nodes.
 - The player's two examples are just two places on the web:
-  - *Sea-faring scholars:* Lunar Calendar → tides → Celestial Navigation → Free Ports →
+  - _Sea-faring scholars:_ Lunar Calendar → tides → Celestial Navigation → Free Ports →
     Academies; tags `maritime`, `rationalist`, `mercantile`.
-  - *Zealous expansionist warriors:* Solar Calendar → Sun Cult → State Religion → Holy War →
+  - _Zealous expansionist warriors:_ Solar Calendar → Sun Cult → State Religion → Holy War →
     Militant Orders; tags `zealot`, `martial`, `intolerant`, `expansionist`.
 
 ### 9.4 Upheavals: changing course
@@ -588,15 +590,15 @@ Society, etc.) that rises as you go deep into a path and with certain events (lo
 contact with very different cultures, low stability).
 
 - When it crosses a threshold, an **upheaval** can trigger (or the player can provoke one):
-  *Revolution* (Politics), *Reformation / Schism* (Religion), *Social Upheaval* (Society),
-  *Scientific Revolution* (Knowledge).
+  _Revolution_ (Politics), _Reformation / Schism_ (Religion), _Social Upheaval_ (Society),
+  _Scientific Revolution_ (Knowledge).
 - During the upheaval (5–10 turns): unrest, lower yields, possible rebel formations, a chance
   that some cities flip.
 - When it resolves, the domain's **locks are lifted**: the player can buy nodes on other forks of
   that domain. Some old nodes become **legacy** (keep half their bonus, lose their tags) and the
   player chooses which to keep.
-- Example: absolutist civ → Revolution → can now take *Republic*, *Constitutional Monarchy* or
-  *People's Commune* branches, keeping *Court Bureaucracy* as legacy.
+- Example: absolutist civ → Revolution → can now take _Republic_, _Constitutional Monarchy_ or
+  _People's Commune_ branches, keeping _Court Bureaucracy_ as legacy.
 
 ### 9.5 Culture and other civs
 
@@ -611,11 +613,11 @@ contact with very different cultures, low stability).
   paid with Science.
 - Techs unlock **components only**: equipment items, slot types, ship parts, deposit reveals,
   caps (levy size, command cap, work radius), and rule changes (roads, embarking, ocean travel).
-- A tech can have **culture-dependent bonuses**: *Astronomy* is cheaper for `solar` civs, gives
+- A tech can have **culture-dependent bonuses**: _Astronomy_ is cheaper for `solar` civs, gives
   +sight to ships for `lunar` civs. This ties the two trees together without merging them.
-- Example chain: *Woodworking → Archery* (Bow) → *Composite Bows* (Composite Bow, needs Horn +
-  Wood) → *Mechanics* (Crossbow); *Bronze Working* (Bronze scale, Spear) → *Iron Working* (Iron
-  mine slot reveals iron, Sword, Chain) → *Metallurgy* (Plate, Foundry slot) → *Gunpowder*
+- Example chain: _Woodworking → Archery_ (Bow) → _Composite Bows_ (Composite Bow, needs Horn +
+  Wood) → _Mechanics_ (Crossbow); _Bronze Working_ (Bronze scale, Spear) → _Iron Working_ (Iron
+  mine slot reveals iron, Sword, Chain) → _Metallurgy_ (Plate, Foundry slot) → _Gunpowder_
   (needs saltpeter + sulfur; Arquebus).
 
 ### 9.6 As built
@@ -797,14 +799,14 @@ Three presets chosen on the New game screen, their modifiers listed under the ch
 changes how able and forgiving the rivals are, never which mechanics exist. All knobs live in one
 profile (`src/engine/difficulty.ts`); saves without a difficulty play as Standard.
 
-| | Discovery (casual) | Standard (normal) | Veteran (hard) |
-| --- | --- | --- | --- |
-| Rival gold, science, culture | ×0.85 | ×1 | ×1.15 |
-| First war anywhere / on the player | turn 40 / 60 | 30 / 30 | 25 / 25 |
-| War chance per turn, strength edge wanted | 4%, ×1.4 | 6%, ×1 | 8%, ×0.85 |
-| Player start | +50 gold, +2 levy cohorts | even | even |
-| Harmful realm events | ×0.5 | ×1 | ×1.3 |
-| Player houses' unrest growth | ×0.8 | ×1 | ×1.15 |
+|                                           | Discovery (casual)        | Standard (normal) | Veteran (hard) |
+| ----------------------------------------- | ------------------------- | ----------------- | -------------- |
+| Rival gold, science, culture              | ×0.85                     | ×1                | ×1.15          |
+| First war anywhere / on the player        | turn 40 / 60              | 30 / 30           | 25 / 25        |
+| War chance per turn, strength edge wanted | 4%, ×1.4                  | 6%, ×1            | 8%, ×0.85      |
+| Player start                              | +50 gold, +2 levy cohorts | even              | even           |
+| Harmful realm events                      | ×0.5                      | ×1                | ×1.3           |
+| Player houses' unrest growth              | ×0.8                      | ×1                | ×1.15          |
 
 `scripts/difficultycheck.ts` checks that one seed gives the same world on all three and that
 rivals end weaker on Discovery than on Veteran. A 3-seed, 180-turn sweep gave rival scores
@@ -817,14 +819,14 @@ Victories open by age, per people (each people's own age, never the first to arr
 dominance goal must be held 10 turns; everyone is warned when someone starts holding one, and the
 Victory screen (V) shows each goal's progress for you and the leading rival.
 
-| Victory | Opens | Goal |
-| --- | --- | --- |
-| Conquest | Ancient (always) | Be the last great people standing (free peoples do not count) |
-| Cultural domination | Renaissance | 40% of the world's culture each turn, held 10 turns |
-| Economic dominance | Renaissance | 50% of world GDP each turn, held 10 turns |
-| Diplomatic federation | Industrial | A league of you and your allies with over half the world's people, you its largest member, held 10 turns |
-| Scientific | Industrial | Every Industrial tech, then three national projects: Great Observatory, Transcontinental Telegraph, First Powered Flight |
-| Score | turn limit (default 400) | Best score: people, settlements, techs, culture |
+| Victory               | Opens                    | Goal                                                                                                                     |
+| --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Conquest              | Ancient (always)         | Be the last great people standing (free peoples do not count)                                                            |
+| Cultural domination   | Renaissance              | 40% of the world's culture each turn, held 10 turns                                                                      |
+| Economic dominance    | Renaissance              | 50% of world GDP each turn, held 10 turns                                                                                |
+| Diplomatic federation | Industrial               | A league of you and your allies with over half the world's people, you its largest member, held 10 turns                 |
+| Scientific            | Industrial               | Every Industrial tech, then three national projects: Great Observatory, Transcontinental Telegraph, First Powered Flight |
+| Score                 | turn limit (default 400) | Best score: people, settlements, techs, culture                                                                          |
 
 GDP per turn = gold + production + goods made (food ×0.5, raw ×1, luxury ×2, made ×3) + a
 quarter of the food surplus. The world economy counts free peoples; culture shares count great
@@ -839,16 +841,16 @@ chooses a **national direction**: a lasting legacy (its bonuses stay all game, h
 strong when the people holds its culture tag) and an **edict** with a cooldown. The Nation
 screen (O) lists them.
 
-| Age | Direction | Legacy | Edict |
-| --- | --- | --- | --- |
-| Classical | Merchant Republic (republican) | +12% gold, +5% culture, +10% upkeep | Convene the Senate: houses −20 unrest |
-| Classical | Centralized Monarchy (absolutist) | +1 levy cohort, +1 guard, −10% upkeep, −5% gold | Royal Levy |
-| Classical | Imperial Bureaucracy (rationalist) | +10% science, +5% gold, faster roads | Census and Tax: 5 gold per 1,000 people, houses +10 unrest |
-| Renaissance | Chartered Companies (maritime) | +15% coastal yields, +10% naval, +5% gold | Charter a Company: 25 gold per port |
-| Renaissance | Colonial Administration (expansionist) | +15% growth, +10% housing | Colonial Charter: free settlers |
-| Renaissance | Religious Reform (devout) | +15% culture, −10% culture costs | Reformation Sermons: +25 culture, houses −10 unrest |
-| Renaissance | Commercial Renaissance (alternate, mercantile) | +20% gold, +10% production | Great Fair: +60 gold, +10 culture |
-| Renaissance | Age of Conquest (alternate, martial) | +10% attack, +15% siege, +1 morale | Muster the Hosts: two levies |
+| Age         | Direction                                      | Legacy                                          | Edict                                                      |
+| ----------- | ---------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| Classical   | Merchant Republic (republican)                 | +12% gold, +5% culture, +10% upkeep             | Convene the Senate: houses −20 unrest                      |
+| Classical   | Centralized Monarchy (absolutist)              | +1 levy cohort, +1 guard, −10% upkeep, −5% gold | Royal Levy                                                 |
+| Classical   | Imperial Bureaucracy (rationalist)             | +10% science, +5% gold, faster roads            | Census and Tax: 5 gold per 1,000 people, houses +10 unrest |
+| Renaissance | Chartered Companies (maritime)                 | +15% coastal yields, +10% naval, +5% gold       | Charter a Company: 25 gold per port                        |
+| Renaissance | Colonial Administration (expansionist)         | +15% growth, +10% housing                       | Colonial Charter: free settlers                            |
+| Renaissance | Religious Reform (devout)                      | +15% culture, −10% culture costs                | Reformation Sermons: +25 culture, houses −10 unrest        |
+| Renaissance | Commercial Renaissance (alternate, mercantile) | +20% gold, +10% production                      | Great Fair: +60 gold, +10 culture                          |
+| Renaissance | Age of Conquest (alternate, martial)           | +10% attack, +15% siege, +1 morale              | Muster the Hosts: two levies                               |
 
 Alternate developments are offered only to a people whose history fits: a quarter of world GDP
 for the Commercial Renaissance, a settlement taken in war for the Age of Conquest. AI peoples
@@ -866,13 +868,13 @@ Veteran for the player). The Nation screen (O) shows the pressures building befo
 happens; the crisis card explains why it struck. Each crisis can be answered once; some end early
 when their cause is fixed. AI peoples answer at once.
 
-| Crisis | Ages | Cause | While it lasts | Ways out |
-| --- | --- | --- | --- | --- |
-| Famine | Ancient–Medieval | a third of settlements short of food | growth −40%, houses +2 unrest/turn | buy grain abroad (ends); send the hungry as settlers (eases); ration (eases, +5 unrest); feeding the realm ends it |
-| Debt Crisis | Classical+ | troop upkeep near income, treasury under 40 | gold −15%, morale −1 | borrow from the houses (ends, +10 unrest); debase the coinage (gold, eases); send the veterans home (ends); a healthy treasury ends it |
-| Plague | Classical+ | crowded settlements in a realm of 15,000+ | growth −60%, gold −15%, two largest lose 3% a turn | physicians (2 turns, eased); quarantine (no deaths, half as long); prayer (eases, −10 unrest) |
-| Schism | Medieval–Renaissance | religious tension 60+ with houses of worship | culture −25%, houses +3 unrest/turn | council (ends, tension −50); suppress (ends, −20 culture); let the faith divide (religious upheaval); tension under 30 ends it |
-| Strikes | Industrial | factories, worse with crowding or too few comforts | production −30%, gold −10% | concede wages (ends); labour laws (−30 culture, ends); break the strike (ends, +15 unrest); better conditions end it |
+| Crisis      | Ages                 | Cause                                              | While it lasts                                     | Ways out                                                                                                                               |
+| ----------- | -------------------- | -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Famine      | Ancient–Medieval     | a third of settlements short of food               | growth −40%, houses +2 unrest/turn                 | buy grain abroad (ends); send the hungry as settlers (eases); ration (eases, +5 unrest); feeding the realm ends it                     |
+| Debt Crisis | Classical+           | troop upkeep near income, treasury under 40        | gold −15%, morale −1                               | borrow from the houses (ends, +10 unrest); debase the coinage (gold, eases); send the veterans home (ends); a healthy treasury ends it |
+| Plague      | Classical+           | crowded settlements in a realm of 15,000+          | growth −60%, gold −15%, two largest lose 3% a turn | physicians (2 turns, eased); quarantine (no deaths, half as long); prayer (eases, −10 unrest)                                          |
+| Schism      | Medieval–Renaissance | religious tension 60+ with houses of worship       | culture −25%, houses +3 unrest/turn                | council (ends, tension −50); suppress (ends, −20 culture); let the faith divide (religious upheaval); tension under 30 ends it         |
+| Strikes     | Industrial           | factories, worse with crowding or too few comforts | production −30%, gold −10%                         | concede wages (ends); labour laws (−30 culture, ends); break the strike (ends, +15 unrest); better conditions end it                   |
 
 In 320-turn AI games each realm met one or two crises, from mid-game on, mostly plague and
 schism: AI realms keep food and gold in hand, so famine and debt are the player's own risks.
@@ -886,13 +888,13 @@ lever can be moved again 10 turns after it was last moved. Earlier levers stay i
 late realm pulls five; the new one is shown on the age card. Kept deliberately small: no new
 screens, no new resources, every effect stated in one line.
 
-| Age | Policy | Left | Right |
-| --- | --- | --- | --- |
-| Ancient | Way of Life | Migratory: settlers −25% people, +1 sight, growth −10% | Settled: growth +10%, food +5%, settlers +25% people |
-| Classical | Revenue | Light Taxes: growth +10%, culture +5%, gold −10% | Heavy Taxes: gold +15%, houses +1 unrest/turn, debt less likely |
-| Medieval | Feudal Balance | Noble Autonomy: houses −1 unrest/turn, levies −1 cohort | Royal Authority: levies +1 cohort, +1 guard, houses +1.5 unrest/turn |
-| Renaissance | Trade Policy | Mercantilism: production +10%, gold +5%, culture −5%, plague less likely | Free Trade: gold +10%, science +10%, plague more likely |
-| Industrial | Labour | Laissez-faire: production +15%, strikes far more likely | Welfare: growth +10%, gold −10%, strikes half as likely |
+| Age         | Policy         | Left                                                                     | Right                                                                |
+| ----------- | -------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Ancient     | Way of Life    | Migratory: settlers −25% people, +1 sight, growth −10%                   | Settled: growth +10%, food +5%, settlers +25% people                 |
+| Classical   | Revenue        | Light Taxes: growth +10%, culture +5%, gold −10%                         | Heavy Taxes: gold +15%, houses +1 unrest/turn, debt less likely      |
+| Medieval    | Feudal Balance | Noble Autonomy: houses −1 unrest/turn, levies −1 cohort                  | Royal Authority: levies +1 cohort, +1 guard, houses +1.5 unrest/turn |
+| Renaissance | Trade Policy   | Mercantilism: production +10%, gold +5%, culture −5%, plague less likely | Free Trade: gold +10%, science +10%, plague more likely              |
+| Industrial  | Labour         | Laissez-faire: production +15%, strikes far more likely                  | Welfare: growth +10%, gold −10%, strikes half as likely              |
 
 AI peoples review their levers every 5 turns from their own situation (few settlements →
 migratory; restless houses → autonomy; crowding → mercantilism; many factories → welfare).
@@ -904,6 +906,7 @@ of the event pools were retired so plague exists once, as the crisis.
 From turn 100, when one great people runs away with the game (it holds a victory goal, or its
 score is 1.5 times the next people's), the others band together against it, and say why.
 Everything is out in the open: no hidden bonus for anyone.
+
 - Members think worse of the leader (−20, fading) and better of each other (+10).
 - Members end their trade treaties with the leader (an embargo).
 - A held victory goal is news everywhere: every great people can join, and learns of the leader.
@@ -912,9 +915,9 @@ Everything is out in the open: no hidden bonus for anyone.
 - AI members also look for war on the leader twice as often, at any distance they can reach.
 - It breaks up when the leader no longer holds a goal and its score falls under 1.25 times the
   next.
-The Victory screen names the coalition and its reason. In 400-turn AI games coalitions formed
-against peoples holding the Cultural goal and fought four wars in one game; the leader still won
-there, so a coalition is counterplay, not a guaranteed stop.
+  The Victory screen names the coalition and its reason. In 400-turn AI games coalitions formed
+  against peoples holding the Cultural goal and fought four wars in one game; the leader still won
+  there, so a coalition is counterplay, not a guaranteed stop.
 
 ## 12f. Peace terms and sieges (as built)
 
@@ -948,15 +951,16 @@ breached) and says so in its panel. Supply lines and war weariness were left out
 Every turn each great people's numbers are recorded: population, settlements, techs, culture
 and wealth (GDP) per turn, military power and score (free peoples are left out). The
 **Chronicle & statistics** screen (top bar, or L) has three tabs:
+
 - **Rankings**: the peoples the player has met, side by side with their age and each number's
   rank; sort by any column. Peoples not met yet are counted but not shown.
 - **Over time**: a line chart per number, a line per known people (the player's thicker).
 - **Chronicle**: the moments kept for good: ages entered, wars and peace, captures and cessions,
   settlements founded and grown, crises, national directions, dynasty turns, victory goals; all
   peoples known, or the player's own.
-The end screen shows the score over the game and the player's chronicle. Saves stay small: the
-last 40 turns are kept turn by turn, older ones every fourth turn, and the chronicle keeps its
-last 800 moments (a 220-turn save is about 340 KB in all).
+  The end screen shows the score over the game and the player's chronicle. Saves stay small: the
+  last 40 turns are kept turn by turn, older ones every fourth turn, and the chronicle keeps its
+  last 800 moments (a 220-turn save is about 340 KB in all).
 
 ## 12i. Finding your way (as built)
 
@@ -973,6 +977,7 @@ last 800 moments (a 220-turn save is about 340 KB in all).
 ## 12j. Faith (as built)
 
 Kept light: nothing to move or manage. Faith screen (I); also from the Nation screen.
+
 - **Founding is a race.** With Mysticism and a shrine built, a people can found a faith (a name and
   a founding belief). The world has room for one faith per two great peoples (two at least). AI
   peoples found none before turn 40 / 30 / 20 (Discovery / Standard / Veteran), then by chance
@@ -1000,6 +1005,7 @@ Kept light: nothing to move or manage. Faith screen (I); also from the Nation sc
 
 A race, with nothing to manage. Wonders screen (W), the settlement panel's "Build a wonder", or
 the Nation screen.
+
 - **10 wonders**, two per age, each opened by a tech: Great Pyramid, Hanging Gardens; Great
   Library, Great Wall; Dome of Heaven, Grand Bazaar; House of Printing, Grand Admiralty (coast);
   Crystal Palace, Grand Terminus.
@@ -1026,20 +1032,21 @@ about and what it offers. Later chapters wait some turns and often the next age;
 settlement, house or people is gone simply ends. The event card shows "story · chapter n of 3";
 each chapter goes into the chronicle.
 
-| Story | Opens | Thread |
-|---|---|---|
-| The Founder's Legend | Ancient, the capital | who the founder was → the tomb (shrine, study, or the legend's own gift) → a scholar doubts it all |
-| The Lost Expedition | Ancient–Classical, with Sailing, a coastal town | fund or not → a survivor (a far land revealed, or the crews honoured) → kin across the sea (Renaissance) |
-| A Marriage of Houses | two houses | bless, dowry or forbid → an heir, or lovers fled → the heir grown, or the quarrel ended |
-| The Merchant Guild | Classical–Medieval, Currency | charter or free trade → a rich guild or smugglers → guild to company |
-| The Wandering Preacher | Classical–Renaissance, a realm with a faith | pulpit or silence → followers or a martyr → a reformed faith or a split (religious tension) |
-| The River Town | a river settlement | levees, move or trust → the great flood → a canal (Renaissance) |
-| The Old Grudge | a people met | forgive or swear vengeance → friendship or the oath → a hundred years on (opinion) |
-| The Teacher | Classical–Medieval, Writing | a schoolhouse or the temple → her students → a university |
+| Story                  | Opens                                           | Thread                                                                                                   |
+| ---------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| The Founder's Legend   | Ancient, the capital                            | who the founder was → the tomb (shrine, study, or the legend's own gift) → a scholar doubts it all       |
+| The Lost Expedition    | Ancient–Classical, with Sailing, a coastal town | fund or not → a survivor (a far land revealed, or the crews honoured) → kin across the sea (Renaissance) |
+| A Marriage of Houses   | two houses                                      | bless, dowry or forbid → an heir, or lovers fled → the heir grown, or the quarrel ended                  |
+| The Merchant Guild     | Classical–Medieval, Currency                    | charter or free trade → a rich guild or smugglers → guild to company                                     |
+| The Wandering Preacher | Classical–Renaissance, a realm with a faith     | pulpit or silence → followers or a martyr → a reformed faith or a split (religious tension)              |
+| The River Town         | a river settlement                              | levees, move or trust → the great flood → a canal (Renaissance)                                          |
+| The Old Grudge         | a people met                                    | forgive or swear vengeance → friendship or the oath → a hundred years on (opinion)                       |
+| The Teacher            | Classical–Medieval, Writing                     | a schoolhouse or the temple → her students → a university                                                |
 
 ## 12m. Raiders (as built)
 
 A threat of the early ages that belongs to no people (engine/raiders.ts).
+
 - **Camps** appear in empty wild land 4–8 hexes from a settlement, from turn 35 / 25 / 18
   (Discovery / Standard / Veteran), up to one per three, two or one and a half great peoples. No
   new camps once a great people reaches the Medieval age; at the Renaissance the last scatter.
@@ -1142,16 +1149,39 @@ The realm grows as one piece (engine/colonies.ts). A new settlement is a **town*
 within twice the territory radius of one of the people's towns (3–4 hexes with the usual radius
 of 2: just outside the border or one hex further, so the two lands touch or overlap). The first
 settlement is always a town. Founded further out, it is a **colony**:
+
 - one district; only farms, pastures, fishing, woodlots, mines, houses, and the harbour or
   shipyard to ship from; it cannot grow past a settlement;
 - its goods reach the realm only by road (the market), or by sea when it lies on the coast and
   the realm has a harbour (a coastal colony counts as its own port);
 - once a town of the realm stands within reach of it, it can be **made a town** for 40 gold per
   age.
-From the Renaissance a colony may build anything and grow to four districts; from the Industrial
-age every new settlement is a town. The settlers' panel says before founding whether the spot
-makes a town or a colony; banners mark colonies. AI peoples avoid colonies unless a rich deposit
-pays for one, and make their colonies towns as soon as they can.
+  From the Renaissance a colony may build anything and grow to four districts; from the Industrial
+  age every new settlement is a town. The settlers' panel says before founding whether the spot
+  makes a town or a colony; banners mark colonies. AI peoples avoid colonies unless a rich deposit
+  pays for one, and make their colonies towns as soon as they can.
+
+## 12s. Release 2: living ages (as built so far)
+
+- **Balance matrix** (scripts/matrix.ts): each difficulty × seeds 11, 29, 47 × 200 and 400 turns,
+  the player's people played by the AI. Found and fixed: difficulty made AI peoples fight and be
+  raided more among themselves, so rivals were weaker on Veteran. Now the level sets how
+  readily rivals turn on the player (war chance, edge wanted, first war), AI-vs-AI wars follow
+  the standard rules, raider camps are as many on every level (the level sets how near the
+  player they come and how strong those bands are), and rivals earn 20% less on Discovery and
+  25% more on Veteran. 400-turn games end in scientific and cultural victories as well as score.
+- **Pacing** (scripts/pacecheck.ts): events every 4–9 turns in the Ancient age, 5–15 later, and
+  never 8 turns without one; no age goes 10 turns without a moment that matters.
+- **What decided a battle:** numbers, weapons and training, armour, ground and walls, archers
+  without a front, a charge on open ground or blocked, morale; in the battle window and the news.
+- **Shortages:** factories, homes or the army first (Goods). **Rail & power lens** on the map.
+- **Industrial techs** each change how something works or open something (Machine Tools:
+  equipping a quarter cheaper, railways half the gold); the three scientific projects cost 900,
+  1,100 and 1,300.
+- **Shocks** (scripts/shockcheck.ts): iron lost, a road cut, a restless house: more than one way
+  out each.
+- **Empire priority** (Nation): balanced, growth, trade, expand, war, followed by governed
+  settlements; settlers can settle on their own. **Routine news** folds into one line.
 
 ## 13. Core screens and flows
 
@@ -1175,9 +1205,9 @@ pays for one, and make their colonies towns as soon as they can.
    reason it is closed. Almost every building sits behind early research (farms, pastures,
    woodcutters and houses do not).
 10. **End turn / to-do list.** Nothing opens by itself (founding a city opens neither research
-   nor the city). The turn box's button walks through what is left: choose research, plan a
-   city with nothing under construction, order idle units. Enter asks once while the list is
-   not empty.
+    nor the city). The turn box's button walks through what is left: choose research, plan a
+    city with nothing under construction, order idle units. Enter asks once while the list is
+    not empty.
 
 ## 14. Technical plan
 
@@ -1196,27 +1226,98 @@ Keep what the repo already uses: **TypeScript + React + Vite**, browser-first, n
 ### 14.2 Core data model (sketch)
 
 ```ts
-type HexId = string;            // "q,r"
-type GoodId = string;           // "iron", "wood", "ivory", ...
-type ItemId = string;           // "bow", "plate", "horse", ...
+type HexId = string; // "q,r"
+type GoodId = string; // "iron", "wood", "ivory", ...
+type ItemId = string; // "bow", "plate", "horse", ...
 
-interface Hex { id: HexId; terrain: Terrain; feature?: Feature; deposit?: { kind: string; richness: 1|2|3; hidden: boolean }; ownerCityId?: string; districtId?: string; }
+interface Hex {
+  id: HexId;
+  terrain: Terrain;
+  feature?: Feature;
+  deposit?: { kind: string; richness: 1 | 2 | 3; hidden: boolean };
+  ownerCityId?: string;
+  districtId?: string;
+}
 
-interface Loadout { weapon: ItemId; armour: ItemId; mount: ItemId; kit?: ItemId; }
-interface Cohort { id: string; strength: number /* 0-100 */; xp: number; loadout: Loadout; }
-interface Formation { id: string; civId: string; hex: HexId; cohorts: Cohort[]; movesLeft: number; }
+interface Loadout {
+  weapon: ItemId;
+  armour: ItemId;
+  mount: ItemId;
+  kit?: ItemId;
+}
+interface Cohort {
+  id: string;
+  strength: number /* 0-100 */;
+  xp: number;
+  loadout: Loadout;
+}
+interface Formation {
+  id: string;
+  civId: string;
+  hex: HexId;
+  cohorts: Cohort[];
+  movesLeft: number;
+}
 
-interface SlotType { id: string; group: string; requires: { tech?: string; culture?: string; deposit?: string; terrain?: string[] }; labour: number; inputs: Record<GoodId, number>; outputs: Record<GoodId|Yield, number>; adjacency?: { target: string; bonusPct: number }[]; }
-interface DistrictDesign { name: string; slots: (string | null)[] /* length 9, row-major */; }
-interface District { id: string; hex: HexId; design: DistrictDesign; built: boolean[]; }
+interface SlotType {
+  id: string;
+  group: string;
+  requires: { tech?: string; culture?: string; deposit?: string; terrain?: string[] };
+  labour: number;
+  inputs: Record<GoodId, number>;
+  outputs: Record<GoodId | Yield, number>;
+  adjacency?: { target: string; bonusPct: number }[];
+}
+interface DistrictDesign {
+  name: string;
+  slots: (string | null)[] /* length 9, row-major */;
+}
+interface District {
+  id: string;
+  hex: HexId;
+  design: DistrictDesign;
+  built: boolean[];
+}
 
-interface CultureNode { id: string; domain: Domain; cost: number; requiresAll: string[]; requiresAny: string[]; excludes: string[]; tags: string[]; effects: Effect[]; }
-interface CultureState { taken: Set<string>; locked: Set<string>; legacy: Set<string>; tension: Record<Domain, number>; upheaval?: { domain: Domain; turnsLeft: number }; }
+interface CultureNode {
+  id: string;
+  domain: Domain;
+  cost: number;
+  requiresAll: string[];
+  requiresAny: string[];
+  excludes: string[];
+  tags: string[];
+  effects: Effect[];
+}
+interface CultureState {
+  taken: Set<string>;
+  locked: Set<string>;
+  legacy: Set<string>;
+  tension: Record<Domain, number>;
+  upheaval?: { domain: Domain; turnsLeft: number };
+}
 
-interface City { id: string; civId: string; hex: HexId; population: number; stockpile: Record<GoodId, number>; districtIds: string[]; }
-interface Market { id: string; cityIds: string[]; } // recomputed when roads change; pooled view = sum of member stockpiles
+interface City {
+  id: string;
+  civId: string;
+  hex: HexId;
+  population: number;
+  stockpile: Record<GoodId, number>;
+  districtIds: string[];
+}
+interface Market {
+  id: string;
+  cityIds: string[];
+} // recomputed when roads change; pooled view = sum of member stockpiles
 
-interface Civ { id: string; name: string; techs: Set<string>; culture: CultureState; templates: Record<string, Loadout>; blueprints: Record<string, DistrictDesign>; }
+interface Civ {
+  id: string;
+  name: string;
+  techs: Set<string>;
+  culture: CultureState;
+  templates: Record<string, Loadout>;
+  blueprints: Record<string, DistrictDesign>;
+}
 ```
 
 ### 14.3 What happens to the current code
@@ -1234,18 +1335,18 @@ construction, blueprints, roads and markets. M5 the research tree (§10.1), M6 t
 (§9.6). M7 smarter AI and M8 diplomacy and victory (§10.2), M9 ships (§6.4). Next: balance passes,
 more eras (industrial, modern), and naming/visual polish.
 
-| # | Milestone | Done when |
-|---|---|---|
-| M0 | Clean slate | Old code archived, new skeleton builds, empty hex map renders |
-| M1 | Map & movement | Procedural hex map (several map types, seeded) with terrain/rivers/deposits, fog of war, a formation moves with movement points, merge on move, split |
-| M2 | Cohorts & loadouts | Levy from a city, equipment items from data, assign loadouts to N cohorts, templates, per-city stockpiles pay for it |
-| M3 | Combat | Ranged/charge/melee/morale resolution, odds preview, terrain modifiers, casualties, a dumb AI that attacks |
-| M4 | Cities & districts | Found cities, 3×3 district designer, hex requirements, adjacency, labour, production of goods, blueprints, roads and markets |
-| M5 | Tech tree | ~60 techs across 4 eras unlocking items and slot types |
-| M6 | Culture web | ~120 nodes, forks and locks, tags, tension meters, one upheaval type (Revolution), then the rest |
-| M7 | AI civs | 8–10 AI civs that expand, design troops/districts, pick culture, fight and make peace |
-| M8 | Diplomacy, trade, victory | Relations, goods deals, victory conditions, end-of-game score |
-| M9 | Naval & late eras | Fleets with ship slots, embarking, industrial/modern items |
+| #   | Milestone                 | Done when                                                                                                                                             |
+| --- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Clean slate               | Old code archived, new skeleton builds, empty hex map renders                                                                                         |
+| M1  | Map & movement            | Procedural hex map (several map types, seeded) with terrain/rivers/deposits, fog of war, a formation moves with movement points, merge on move, split |
+| M2  | Cohorts & loadouts        | Levy from a city, equipment items from data, assign loadouts to N cohorts, templates, per-city stockpiles pay for it                                  |
+| M3  | Combat                    | Ranged/charge/melee/morale resolution, odds preview, terrain modifiers, casualties, a dumb AI that attacks                                            |
+| M4  | Cities & districts        | Found cities, 3×3 district designer, hex requirements, adjacency, labour, production of goods, blueprints, roads and markets                          |
+| M5  | Tech tree                 | ~60 techs across 4 eras unlocking items and slot types                                                                                                |
+| M6  | Culture web               | ~120 nodes, forks and locks, tags, tension meters, one upheaval type (Revolution), then the rest                                                      |
+| M7  | AI civs                   | 8–10 AI civs that expand, design troops/districts, pick culture, fight and make peace                                                                 |
+| M8  | Diplomacy, trade, victory | Relations, goods deals, victory conditions, end-of-game score                                                                                         |
+| M9  | Naval & late eras         | Fleets with ship slots, embarking, industrial/modern items                                                                                            |
 
 **Vertical slice target (end of M4):** one civ vs one AI on a small map, ancient era only,
 ~10 equipment items, ~20 slot types, combat working, no culture yet.
@@ -1256,13 +1357,13 @@ None right now.
 
 ## 17. Decisions log
 
-| # | Question | Decision |
-|---|---|---|
-| 1 | What does "replace" on troops mean? | Re-equipping: swap weapons, armour, shields, mounts, tools and kit on any number of cohorts (§5.5). |
-| 2 | National or per-city goods? | Per city. Roads (and later rivers, rail, sea routes) connect cities into a **market** with one shared pool; cutting the link splits it (§8.1). |
-| 3 | Do soldiers cost population? | Yes (§5.2). |
-| 4 | Maps? | Procedural only, many map types, every game different; no Earth map. Art from the owner's asset packs added later through a sprite registry (§4). |
-| 5 | Multiplayer? | No. Single player against AI peoples. |
-| 6 | First playable content? | About 10 equipment items and 20 district slot types. |
-| 8 | How are troops customised? | Through named **unit designs** with a full kit (weapon, shield, helmet, armour, footwear, ride, kit). Cohorts are assigned to designs; the mix of designs in a formation is what makes it strong. |
-| 7 | Art? | Reuse the Age of Sail art set (parchment, terrain symbols, unit, city and goods sprites) for now. |
+| #   | Question                            | Decision                                                                                                                                                                                          |
+| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | What does "replace" on troops mean? | Re-equipping: swap weapons, armour, shields, mounts, tools and kit on any number of cohorts (§5.5).                                                                                               |
+| 2   | National or per-city goods?         | Per city. Roads (and later rivers, rail, sea routes) connect cities into a **market** with one shared pool; cutting the link splits it (§8.1).                                                    |
+| 3   | Do soldiers cost population?        | Yes (§5.2).                                                                                                                                                                                       |
+| 4   | Maps?                               | Procedural only, many map types, every game different; no Earth map. Art from the owner's asset packs added later through a sprite registry (§4).                                                 |
+| 5   | Multiplayer?                        | No. Single player against AI peoples.                                                                                                                                                             |
+| 6   | First playable content?             | About 10 equipment items and 20 district slot types.                                                                                                                                              |
+| 8   | How are troops customised?          | Through named **unit designs** with a full kit (weapon, shield, helmet, armour, footwear, ride, kit). Cohorts are assigned to designs; the mix of designs in a formation is what makes it strong. |
+| 7   | Art?                                | Reuse the Age of Sail art set (parchment, terrain symbols, unit, city and goods sprites) for now.                                                                                                 |

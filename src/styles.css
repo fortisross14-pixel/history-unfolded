@@ -3431,3 +3431,11 @@ input.rename {
   margin: 4px 0 0;
   padding-left: 18px;
 }
+/* a realm screen's tabs sit above its window: the window starts below them */
+.game:has(.hub-tabs) .modal-back {
+  padding-top: 116px;
+  align-items: start;
+}
+.game:has(.hub-tabs) .modal-back .modal {
+  max-height: calc(100vh - 132px);
+}

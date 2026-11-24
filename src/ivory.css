@@ -93,6 +93,29 @@ svg.icon.ico {
 }
 
 /* ---------------------------------------------------------------- controls */
+/* Buttons are small embossed plaques: a gentle vertical gradient, a thin bronze edge with a light
+   line just inside it, a soft drop below. Pressed, they sink; hovered, the edge warms to gold.
+   Card-like buttons (tech cards, ruler cards, toasts, rows...) keep their own look: the bevel is
+   only for the buttons in the list below, at the specificity of a bare `button`. */
+:root {
+  --bt-face: linear-gradient(180deg, #fffdf6 0%, #f8f1df 48%, #ece0c3 100%);
+  --bt-face-hover: linear-gradient(180deg, #fffefa 0%, #fbf5e6 48%, #f1e6cb 100%);
+  --bt-face-down: linear-gradient(180deg, #e4d6b5 0%, #eee3c9 60%, #f4ecd8 100%);
+  --bt-edge: #b39456;
+  --bt-bevel:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 252, 240, 0.55),
+    inset 0 -2px 0 rgba(120, 88, 36, 0.12), 0 1px 2px rgba(70, 50, 20, 0.22);
+  --bt-glow: 0 0 0 3px rgba(212, 178, 106, 0.28), 0 1px 6px rgba(184, 146, 74, 0.45);
+  --bt-sunk: inset 0 2px 4px rgba(70, 50, 20, 0.28), inset 0 0 0 1px rgba(120, 88, 36, 0.12);
+  --bt-teal: linear-gradient(180deg, #4b9185 0%, #367a6e 46%, #2a6258 100%);
+  --bt-teal-hover: linear-gradient(180deg, #56a093 0%, #3d8478 46%, #2f6b60 100%);
+  --bt-teal-down: linear-gradient(180deg, #22524a 0%, #2c645a 60%, #33736a 100%);
+  --bt-teal-edge: #7c6030;
+  --bt-teal-bevel:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 0 0 1px rgba(231, 214, 172, 0.42),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.14), 0 1px 3px rgba(20, 40, 35, 0.35);
+  --gold-ring: linear-gradient(160deg, #f6e2a6 0%, #b9893a 38%, #f0d58e 62%, #8d6526 100%);
+}
 button {
   font-family: var(--iv-body);
   font-size: 15px;
@@ -104,78 +127,299 @@ button {
   transition:
     background-color 0.12s,
     border-color 0.12s,
-    box-shadow 0.12s;
+    box-shadow 0.14s,
+    transform 0.06s;
 }
-button:hover:not(:disabled) {
-  background: #fffdf7;
+button:where(
+  :not(
+    .link,
+    .toast,
+    .sheet-handle,
+    .tech-card,
+    .cnode,
+    .rp-card,
+    .rp-facebtn,
+    .rp-emblembtn,
+    .rp-color,
+    .rp-traitbtn,
+    .roster-name,
+    .path-card,
+    .news-line,
+    .item,
+    .city-scene-whole,
+    .tenet,
+    .plot-opt,
+    .end-turn,
+    .rail-btn,
+    .info-i,
+    .stat-btn,
+    .tracker,
+    .event-choice,
+    .cell,
+    .pal,
+    .keep-row,
+    .tech,
+    .design-row:not(.primary)
+  )
+) {
+  background: var(--bt-face);
+  border-color: var(--bt-edge);
+  box-shadow: var(--bt-bevel);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+button:where(:not(.link, .toast, .sheet-handle, .end-turn, .rail-btn, .info-i, :disabled)):hover {
   border-color: var(--iv-gold);
 }
-button:active:not(:disabled) {
-  background: var(--iv-panel-2);
+button:where(
+    :not(
+      .link,
+      .toast,
+      .sheet-handle,
+      .tech-card,
+      .cnode,
+      .rp-card,
+      .rp-facebtn,
+      .rp-emblembtn,
+      .rp-color,
+      .rp-traitbtn,
+      .roster-name,
+      .path-card,
+      .news-line,
+      .item,
+      .city-scene-whole,
+      .tenet,
+      .plot-opt,
+      .end-turn,
+      .rail-btn,
+      .info-i,
+      .stat-btn,
+      .tracker,
+      .event-choice,
+      .cell,
+      .pal,
+      .keep-row,
+      .tech,
+      .design-row:not(.primary),
+      :disabled
+    )
+  ):hover {
+  background: var(--bt-face-hover);
+  box-shadow: var(--bt-bevel), var(--bt-glow);
 }
+button:where(
+    :not(
+      .link,
+      .toast,
+      .sheet-handle,
+      .end-turn,
+      .rail-btn,
+      .info-i,
+      .tech-card,
+      .rp-card,
+      .city-scene-whole,
+      :disabled
+    )
+  ):active {
+  background: var(--bt-face-down);
+  box-shadow: var(--bt-sunk);
+  transform: translateY(1px);
+}
+button:disabled,
+button:disabled:hover {
+  cursor: default;
+  opacity: 0.55;
+  filter: saturate(0.35);
+  box-shadow: none !important;
+  text-shadow: none;
+  transform: none;
+}
+button:where(:not(.link, .toast, .tech-card, .rp-card, .map-type)):disabled {
+  background:
+    repeating-linear-gradient(135deg, rgba(120, 90, 40, 0.05) 0 3px, transparent 3px 7px), #efe7d4;
+  border-color: var(--iv-line-soft);
+  border-style: dashed;
+  color: var(--iv-muted);
+}
+/* primary: teal enamel in a bronze bezel */
 button.primary,
 .modal button.primary {
-  background: linear-gradient(var(--iv-teal-2), var(--iv-teal));
+  background: var(--bt-teal);
   color: var(--iv-on-teal);
-  border-color: var(--iv-teal-edge);
+  border-color: var(--bt-teal-edge);
+  box-shadow: var(--bt-teal-bevel);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
   font-family: var(--iv-display);
   font-size: 14px;
   letter-spacing: 0.05em;
 }
 button.primary:hover:not(:disabled) {
-  background: linear-gradient(#448a7e, var(--iv-teal-2));
-  border-color: var(--iv-teal-edge);
+  background: var(--bt-teal-hover);
+  border-color: var(--iv-gold);
+  box-shadow: var(--bt-teal-bevel), var(--bt-glow);
 }
+button.primary:active:not(:disabled) {
+  background: var(--bt-teal-down);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(231, 214, 172, 0.25);
+  transform: translateY(1px);
+}
+button.primary:disabled {
+  background: linear-gradient(180deg, #8fb0a9, #7c9e97);
+  border-color: #8a7a5a;
+  border-style: solid;
+  color: #f3efe4;
+}
+/* sizes */
+button.small,
+button.small-btn {
+  font-size: 13.5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+button.primary.small {
+  font-size: 12.5px;
+}
+button.wide {
+  padding: 10px 14px;
+  border-radius: 9px;
+  font-size: 15.5px;
+}
+button.primary.wide {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+}
+/* link buttons stay text */
 button.link {
+  background: none;
+  box-shadow: none;
   color: var(--iv-teal);
   text-decoration: none;
+  border: 0;
   border-bottom: 1px solid var(--iv-gold-soft);
   border-radius: 0;
   padding: 0 2px;
 }
 button.link:hover:not(:disabled) {
   background: none;
+  color: var(--iv-teal-edge);
   border-color: var(--iv-gold);
 }
+button.link:disabled {
+  background: none;
+  filter: none;
+}
+/* the close cross: a small medallion with a gold ring */
 button.x {
   width: 34px;
   height: 34px;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid var(--iv-line-soft);
-  background: var(--iv-btn);
-  color: var(--iv-muted);
+  border: 2px solid transparent;
+  background:
+    radial-gradient(circle at 50% 32%, #fffdf6 0%, #f4ead3 62%, #e4d3ab 100%) padding-box,
+    var(--gold-ring) border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(154, 122, 59, 0.35),
+    0 1px 3px rgba(60, 40, 15, 0.3);
+  color: var(--iv-bronze);
   font-size: 20px;
   line-height: 1;
   display: inline-grid;
   place-items: center;
+  text-shadow: 0 1px 0 #fff;
+}
+button.x:hover:not(:disabled) {
+  color: var(--iv-bad);
+  background:
+    radial-gradient(circle at 50% 32%, #fffefb 0%, #f8f0de 62%, #eadcb8 100%) padding-box,
+    var(--gold-ring) border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(154, 122, 59, 0.35),
+    0 0 0 3px rgba(212, 178, 106, 0.3),
+    0 1px 6px rgba(184, 146, 74, 0.5);
+}
+button.x:active:not(:disabled) {
+  background:
+    radial-gradient(circle at 50% 60%, #f4ead3 0%, #e4d3ab 100%) padding-box,
+    var(--gold-ring) border-box;
+  box-shadow: inset 0 2px 4px rgba(70, 50, 20, 0.3);
 }
 button.x.small {
   width: 26px;
   height: 26px;
   font-size: 14px;
+  border-width: 1.5px;
 }
+/* inputs and selects sit in the page: a sunk well with a bronze edge */
 input,
 select,
 textarea {
   font-family: var(--iv-body);
   font-size: 15px;
   color: var(--iv-ink);
-  background: #fffdf7;
-  border: 1px solid var(--iv-line);
-  border-radius: 8px;
+  background: linear-gradient(180deg, #f3ead6 0%, #fbf6ea 35%, #fffdf7 100%);
+  border: 1px solid #b9a06c;
+  border-radius: 7px;
   padding: 5px 9px;
+  box-shadow:
+    inset 0 2px 3px rgba(70, 50, 20, 0.16),
+    inset 0 0 0 1px rgba(120, 88, 36, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.85);
+}
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 28px;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--iv-bronze) 50%) calc(100% - 15px) 55% / 6px 6px
+      no-repeat,
+    linear-gradient(135deg, var(--iv-bronze) 50%, transparent 50%) calc(100% - 9px) 55% / 6px 6px
+      no-repeat,
+    linear-gradient(var(--iv-line-soft), var(--iv-line-soft)) calc(100% - 25px) 50% / 1px 60%
+      no-repeat,
+    linear-gradient(180deg, #fffdf6 0%, #f6eedb 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 2px rgba(120, 88, 36, 0.1),
+    0 1px 2px rgba(70, 50, 20, 0.14);
+  cursor: pointer;
+}
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'] {
+  box-shadow: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  accent-color: var(--iv-teal);
 }
 input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--iv-teal);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(47, 106, 96, 0.18);
+  box-shadow:
+    inset 0 2px 3px rgba(70, 50, 20, 0.14),
+    0 0 0 3px rgba(47, 106, 96, 0.2);
+}
+input:disabled,
+select:disabled {
+  opacity: 0.6;
+  box-shadow: none;
 }
 :focus-visible {
   outline: 2px solid var(--iv-gold);
   outline-offset: 2px;
+}
+button:focus-visible {
+  outline: 2px solid var(--iv-teal);
+  outline-offset: 2px;
+  box-shadow:
+    var(--bt-bevel),
+    0 0 0 4px rgba(231, 214, 172, 0.9);
 }
 .war-pill {
   font-family: var(--iv-body);
@@ -672,22 +916,7 @@ button.toast {
 }
 
 /* ---------------------------------------------------------------- selection states */
-/* tabs and segmented choices: the chosen one is teal */
-.age-tabs button.on,
-.domain-tabs button.on,
-.district-tabs button.on,
-.land-sea button.on {
-  background: linear-gradient(var(--iv-teal-2), var(--iv-teal)) !important;
-  color: var(--iv-on-teal) !important;
-  border-color: var(--iv-teal-edge) !important;
-  outline: none;
-}
-.district-tabs button.on small,
-.district-tabs button.on .muted,
-.land-sea button.on small {
-  color: var(--iv-on-teal);
-  opacity: 0.85;
-}
+/* tabs and segmented choices: see src/ui/r4-style.css */
 /* chosen cards: a gold ring on a slightly deeper ivory */
 .map-type.on,
 .item.on,

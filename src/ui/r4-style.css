@@ -1,0 +1,520 @@
+/*
+ * Round 4 control style: medallion icon buttons, real tabs and segmented switches, framed title
+ * bars, inset stat cells and a paper grain, all in the Ivory Codex palette. The plain button,
+ * input and select look lives in src/ivory.css (controls); this file is loaded last and only
+ * restyles: no layout of the screens changes here beyond paddings and gaps.
+ */
+:root {
+  --r4-paper:
+    radial-gradient(120% 70% at 0% 0%, rgba(255, 255, 255, 0.55), transparent 60%),
+    radial-gradient(110% 80% at 100% 100%, rgba(196, 160, 90, 0.13), transparent 62%),
+    radial-gradient(60% 40% at 70% 20%, rgba(214, 190, 140, 0.1), transparent 70%),
+    repeating-linear-gradient(
+      112deg,
+      rgba(120, 90, 40, 0.022) 0 1px,
+      transparent 1px 4px,
+      rgba(255, 255, 255, 0.03) 4px 5px,
+      transparent 5px 9px
+    );
+  --r4-frame: inset 0 0 0 3px rgba(247, 241, 227, 0.9), inset 0 0 0 4px rgba(184, 146, 74, 0.42);
+  --r4-trough: linear-gradient(180deg, #e4d6b6 0%, #ece1c7 100%);
+  --r4-medal: radial-gradient(circle at 50% 30%, #fffdf6 0%, #f6edd8 55%, #e2d0a6 100%);
+  --r4-medal-on: radial-gradient(circle at 50% 30%, #57a194 0%, #33766b 58%, #22524a 100%);
+}
+
+/* ---------------------------------------------------------------- panels and modals */
+.panel,
+.menu-card,
+.modal {
+  background: var(--r4-paper), var(--iv-panel);
+  border-color: #b9995c;
+  box-shadow: var(--r4-frame), var(--iv-shadow);
+}
+.hover-info .panel {
+  box-shadow:
+    var(--r4-frame),
+    0 6px 16px rgba(70, 50, 20, 0.2);
+}
+/* the title bar: a deeper parchment band closed by a double gold rule with a lozenge */
+.modal > header {
+  background:
+    radial-gradient(80% 140% at 50% 0%, rgba(255, 255, 255, 0.5), transparent 70%),
+    linear-gradient(180deg, #f6eedb 0%, #eadcbc 100%);
+  border-bottom: 1px solid var(--iv-gold);
+  box-shadow:
+    inset 0 1px 0 #fffaf0,
+    inset 0 -2px 0 #ebdec0,
+    inset 0 -3px 0 rgba(184, 146, 74, 0.45);
+}
+.modal > header::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 9px;
+  height: 9px;
+  transform: translateX(-50%) rotate(45deg);
+  background: linear-gradient(135deg, #f0d58e, var(--iv-gold) 55%, #8d6526);
+  border: 2px solid var(--iv-panel);
+  box-shadow: 0 0 0 1px rgba(184, 146, 74, 0.6);
+  pointer-events: none;
+}
+.modal > header h2 {
+  color: #34250f;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+/* a window with no title bar keeps its top margin */
+.modal:not(:has(> header)) {
+  padding-top: 16px;
+}
+/* a confirm has no bar: its question gets the rule under it */
+.modal.confirm > h2 {
+  padding-bottom: 10px;
+  background: linear-gradient(
+      90deg,
+      transparent,
+      var(--iv-gold) 18%,
+      var(--iv-gold) 82%,
+      transparent
+    )
+    bottom / 100% 1px no-repeat;
+}
+
+/* ---------------------------------------------------------------- inset stat cells */
+.dc-stats,
+.dc-yields,
+.stat-row,
+.hp-chips {
+  gap: 5px 6px;
+}
+.dc-stats > .chip,
+.dc-yields > .chip,
+.stat-row > .chip,
+.hp-chips > .chip {
+  min-height: 28px;
+  padding: 2px 8px 2px 6px;
+  background: linear-gradient(180deg, #e9ddc2 0%, #f3ebd9 100%);
+  border: 1px solid rgba(154, 122, 59, 0.38);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 2px rgba(70, 50, 20, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* ---------------------------------------------------------------- medallions */
+/* the realm rail, More, the round tool buttons in the band and the (i): a framed disc with a
+   gold ring, a pale face and a dark line inside the ring */
+.rail-btn,
+.topbar .more-btn,
+.topbar button.round {
+  border: 3px solid transparent;
+  background:
+    var(--r4-medal) padding-box,
+    var(--gold-ring) border-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.85),
+    inset 0 0 0 2px rgba(154, 122, 59, 0.45),
+    inset 0 -6px 10px rgba(150, 112, 50, 0.16),
+    0 0 0 1px rgba(110, 78, 28, 0.45),
+    0 4px 10px rgba(60, 40, 15, 0.32);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition:
+    box-shadow 0.14s,
+    transform 0.06s,
+    filter 0.14s;
+}
+.topbar .more-btn,
+.topbar button.round {
+  border-width: 2px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.85),
+    inset 0 0 0 2px rgba(154, 122, 59, 0.35),
+    inset 0 -4px 6px rgba(150, 112, 50, 0.14),
+    0 1px 3px rgba(60, 40, 15, 0.3);
+}
+.rail-btn:hover:not(:disabled),
+.topbar .more-btn:hover:not(:disabled),
+.topbar button.round:hover:not(:disabled) {
+  border-color: transparent;
+  background:
+    radial-gradient(circle at 50% 30%, #fffefb 0%, #faf3e3 55%, #e9dab6 100%) padding-box,
+    var(--gold-ring) border-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.9),
+    inset 0 0 0 2px rgba(154, 122, 59, 0.45),
+    0 0 0 3px rgba(231, 214, 172, 0.55),
+    0 0 12px rgba(201, 160, 80, 0.55),
+    0 4px 10px rgba(60, 40, 15, 0.3);
+}
+.rail-btn:active:not(:disabled),
+.topbar .more-btn:active:not(:disabled),
+.topbar button.round:active:not(:disabled) {
+  transform: translateY(1px);
+  background:
+    radial-gradient(circle at 50% 65%, #f3e8cf 0%, #dfcb9e 100%) padding-box,
+    var(--gold-ring) border-box;
+  box-shadow:
+    inset 0 3px 6px rgba(70, 50, 20, 0.35),
+    0 0 0 1px rgba(110, 78, 28, 0.45),
+    0 1px 3px rgba(60, 40, 15, 0.3);
+}
+.rail-btn.on,
+.rail-btn.on:hover:not(:disabled),
+.topbar.menu-open .more-btn {
+  border-color: transparent;
+  background:
+    var(--r4-medal-on) padding-box,
+    var(--gold-ring) border-box;
+  color: var(--iv-on-teal);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25),
+    inset 0 0 0 2px rgba(231, 214, 172, 0.45),
+    0 0 0 3px rgba(231, 214, 172, 0.6),
+    0 4px 12px rgba(30, 50, 45, 0.4);
+}
+.rail-btn svg.icon {
+  color: #6b4a2a;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.7));
+}
+.rail-btn.on svg.icon {
+  color: var(--iv-on-teal);
+  filter: none;
+}
+.rail-btn .rail-label {
+  font-family: var(--iv-body);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #4a3518;
+  max-width: 54px;
+  overflow: hidden;
+}
+.rail-btn.on .rail-label {
+  color: var(--iv-on-teal);
+}
+/* in the phone's opened menu the round tools become ordinary plaques in the grid */
+@media (max-width: 700px) {
+  .topbar.menu-open button.round,
+  .topbar.menu-open button.round:hover:not(:disabled) {
+    border: 1px solid var(--bt-edge);
+    background: var(--bt-face);
+    box-shadow: var(--bt-bevel);
+  }
+  .topbar.menu-open button.round:active:not(:disabled) {
+    background: var(--bt-face-down);
+    box-shadow: var(--bt-sunk);
+  }
+}
+/* the (i): a small medallion when it has no emblem art of its own */
+button.info-i:not(:has(img)) {
+  border: 1.5px solid transparent;
+  background:
+    var(--r4-medal) padding-box,
+    var(--gold-ring) border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(60, 40, 15, 0.28);
+  color: var(--iv-bronze);
+}
+button.info-i:not(:has(img)):hover,
+button.info-i.on:not(:has(img)) {
+  background:
+    radial-gradient(circle at 50% 30%, #fffefb, #efe0bd) padding-box,
+    var(--gold-ring) border-box;
+  box-shadow:
+    0 0 0 3px rgba(231, 214, 172, 0.55),
+    0 1px 6px rgba(184, 146, 74, 0.5);
+}
+button.info-i:has(img) {
+  border-radius: 50%;
+  transition:
+    filter 0.14s,
+    transform 0.06s;
+  filter: drop-shadow(0 1px 1.5px rgba(60, 40, 15, 0.35));
+}
+button.info-i:has(img):hover,
+button.info-i.on:has(img) {
+  filter: drop-shadow(0 0 4px rgba(201, 160, 80, 0.8)) brightness(1.04);
+}
+button.info-i:active {
+  transform: translateY(1px);
+}
+
+/* ---------------------------------------------------------------- segmented switches */
+/* a sunk trough holding flat choices; the chosen one rises out of it in teal enamel */
+.setting-opts,
+.land-sea,
+.city-tabs,
+.stats-tabs,
+.stats-metrics {
+  gap: 2px;
+  padding: 3px;
+  background: var(--r4-trough);
+  border: 1px solid #c2a874;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 3px rgba(70, 50, 20, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.setting-opts,
+.city-tabs,
+.stats-tabs,
+.stats-metrics {
+  width: fit-content;
+  max-width: 100%;
+}
+.setting-opts button,
+.land-sea button,
+.city-tabs button,
+.stats-tabs button,
+.stats-metrics button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  box-shadow: none;
+  color: #5c4d33;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform: none;
+}
+.setting-opts button:hover:not(:disabled, .on),
+.land-sea button:hover:not(:disabled, .on),
+.city-tabs button:hover:not(:disabled, .on),
+.stats-tabs button:hover:not(:disabled, .on),
+.stats-metrics button:hover:not(:disabled, .on) {
+  background: rgba(255, 252, 242, 0.6);
+  border-color: rgba(184, 146, 74, 0.45);
+  color: var(--iv-ink);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.setting-opts button:active:not(:disabled, .on),
+.land-sea button:active:not(:disabled, .on),
+.city-tabs button:active:not(:disabled, .on),
+.stats-tabs button:active:not(:disabled, .on),
+.stats-metrics button:active:not(:disabled, .on) {
+  background: rgba(150, 112, 50, 0.14);
+  box-shadow: inset 0 1px 3px rgba(70, 50, 20, 0.25);
+}
+.setting-opts button.on,
+.land-sea button.on,
+.city-tabs button.on,
+.stats-tabs button.on,
+.stats-metrics button.on,
+.policy-lever button.on {
+  background: var(--bt-teal) !important;
+  color: var(--iv-on-teal) !important;
+  border-color: var(--bt-teal-edge) !important;
+  outline: none;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  box-shadow:
+    var(--bt-teal-bevel),
+    0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+.setting-opts button.on:focus-visible,
+.land-sea button.on:focus-visible,
+.city-tabs button.on:focus-visible {
+  outline: 2px solid var(--iv-gold);
+}
+.land-sea button.on small {
+  color: var(--iv-on-teal);
+  opacity: 0.85;
+}
+/* ---------------------------------------------------------------- tabs */
+/* folder tabs on a gold rule; the chosen one is the page colour and opens into the page */
+.age-tabs,
+.domain-tabs,
+.district-tabs {
+  gap: 3px;
+  padding: 0 6px;
+  align-items: flex-end;
+  background: linear-gradient(var(--iv-gold), var(--iv-gold)) left bottom / 100% 1px no-repeat;
+}
+.age-tabs button,
+.domain-tabs button,
+.district-tabs button {
+  border: 1px solid #b9995c;
+  border-bottom-color: var(--iv-gold);
+  border-radius: 9px 9px 0 0;
+  border-width: 1px;
+  background: linear-gradient(180deg, #efe4c9 0%, #e2d2ae 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -4px 6px -4px rgba(70, 50, 20, 0.18);
+  color: #5c4d33;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform: none;
+}
+.age-tabs button:hover:not(:disabled, .on),
+.domain-tabs button:hover:not(:disabled, .on),
+.district-tabs button:hover:not(:disabled, .on) {
+  background: linear-gradient(180deg, #f8f0dd 0%, #ebdfc2 100%);
+  border-color: var(--iv-gold);
+  color: var(--iv-ink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 -2px 8px rgba(201, 160, 80, 0.35);
+}
+.age-tabs button:active:not(:disabled, .on),
+.domain-tabs button:active:not(:disabled, .on),
+.district-tabs button:active:not(:disabled, .on) {
+  background: linear-gradient(180deg, #e0cfa8, #e9dcbd);
+  box-shadow: inset 0 2px 3px rgba(70, 50, 20, 0.22);
+}
+.age-tabs button.on,
+.domain-tabs button.on,
+.district-tabs button.on {
+  background: linear-gradient(180deg, #fffcf3 0%, var(--iv-panel) 100%) !important;
+  color: var(--iv-ink) !important;
+  border-color: #b39456 !important;
+  border-bottom-color: var(--iv-panel) !important;
+  font-weight: 600;
+  outline: none;
+  box-shadow:
+    inset 0 3px 0 var(--iv-teal),
+    inset 0 4px 0 rgba(255, 255, 255, 0.35),
+    0 -2px 6px rgba(70, 50, 20, 0.1) !important;
+}
+.district-tabs button.on small,
+.district-tabs button.on .muted {
+  color: var(--iv-muted);
+  opacity: 1;
+}
+.district-tabs button.add {
+  border-style: dashed;
+  border-bottom-style: solid;
+}
+@media (max-width: 700px) {
+  .age-tabs,
+  .domain-tabs,
+  .district-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .age-tabs button,
+  .domain-tabs button,
+  .district-tabs button {
+    flex: none;
+  }
+}
+
+/* a realm's tabs in its window's title bar: the same folder tabs, on the bar's bottom edge, so
+   the chosen one opens into the page */
+.modal > header.has-hub {
+  padding-bottom: 0;
+  border-bottom: 0;
+  box-shadow: inset 0 1px 0 #fffaf0;
+}
+.modal > header.has-hub::after {
+  display: none;
+}
+.modal > header > .hub-tabs {
+  gap: 3px;
+  padding: 0 4px;
+  margin-top: 4px;
+  border-bottom: 0;
+  align-items: flex-end;
+  background: linear-gradient(var(--iv-gold), var(--iv-gold)) left bottom / 100% 1px no-repeat;
+}
+.modal > header > .hub-tabs button,
+.modal > header > .hub-tabs button:hover {
+  margin-bottom: 0;
+  padding: 6px 18px 5px;
+  border: 1px solid #b9995c;
+  border-bottom-color: var(--iv-gold);
+  border-radius: 9px 9px 0 0;
+  background: linear-gradient(180deg, #efe4c9 0%, #e2d2ae 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -4px 6px -4px rgba(70, 50, 20, 0.18);
+  color: #5c4d33;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform: none;
+}
+.modal > header > .hub-tabs button:hover:not(.on) {
+  background: linear-gradient(180deg, #f8f0dd 0%, #ebdfc2 100%);
+  border-color: var(--iv-gold);
+  color: var(--iv-ink);
+}
+.modal > header > .hub-tabs button.on,
+.modal > header > .hub-tabs button.on:hover,
+.modal > header > .hub-tabs button.on:focus {
+  background: linear-gradient(180deg, #fffcf3 0%, var(--iv-panel) 100%) !important;
+  color: var(--iv-ink) !important;
+  border-color: #b39456;
+  border-bottom-color: var(--iv-panel);
+  box-shadow:
+    inset 0 3px 0 var(--iv-teal),
+    inset 0 4px 0 rgba(255, 255, 255, 0.35),
+    0 -2px 6px rgba(70, 50, 20, 0.1);
+}
+
+/* the file picker that stands in for a button */
+.button-like {
+  background: var(--bt-face);
+  border: 1px solid var(--bt-edge);
+  border-radius: 8px;
+  box-shadow: var(--bt-bevel);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.button-like:hover {
+  border-color: var(--iv-gold);
+  box-shadow: var(--bt-bevel), var(--bt-glow);
+}
+
+/* ---------------------------------------------------------------- the band */
+.topbar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45), transparent 70%), var(--r4-paper),
+    linear-gradient(#f6efdd, #ebdfc4);
+  border-bottom: 1px solid var(--iv-gold);
+  box-shadow:
+    inset 0 -2px 0 #eee3c9,
+    inset 0 -3px 0 rgba(184, 146, 74, 0.4),
+    0 2px 0 rgba(231, 214, 172, 0.6),
+    0 6px 18px rgba(60, 40, 15, 0.18);
+}
+.turn-box button.next {
+  background: var(--bt-face);
+  border: 1px solid var(--bt-edge);
+  box-shadow:
+    var(--bt-bevel),
+    inset 0 0 0 3px rgba(251, 247, 238, 0.6),
+    inset 0 0 0 4px rgba(184, 146, 74, 0.3),
+    var(--iv-shadow);
+}
+.turn-box button.next:hover:not(:disabled) {
+  box-shadow:
+    var(--bt-bevel),
+    inset 0 0 0 3px rgba(251, 247, 238, 0.6),
+    inset 0 0 0 4px rgba(184, 146, 74, 0.45),
+    var(--bt-glow),
+    var(--iv-shadow);
+}
+.turn-box button.end-turn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* ---------------------------------------------------------------- touch */
+@media (pointer: coarse) {
+  button.x {
+    width: 40px;
+    height: 40px;
+  }
+  button.x.small {
+    width: 34px;
+    height: 34px;
+  }
+  .setting-opts button,
+  .city-tabs button,
+  .stats-tabs button,
+  .stats-metrics button,
+  .modal > header > .hub-tabs button {
+    min-height: 40px;
+  }
+  .topbar .more-btn,
+  .topbar button.round {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}

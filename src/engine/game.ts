@@ -1858,9 +1858,24 @@ export function endWar(s: GameState, a: number, b: number) {
 }
 
 /** Total fighting power of a civ (rough, for the AI and the peoples screen). */
+/**
+ * A formation's strength as one number, shown on the map and in panels: its gear's power,
+ * cohort by cohort, scaled by people, experience and the people's attack and morale bonuses.
+ * A 250 should most likely beat a 137 on open ground. The realm's military power is the sum.
+ */
+export function formationStrength(s: GameState, f: Formation): number {
+  const base = powerOf(f);
+  if (!base) return 0;
+  const m = civMods(s, f.civId);
+  const xp = f.cohorts.length
+    ? f.cohorts.reduce((a, c) => a + Math.min(5, c.xp), 0) / f.cohorts.length
+    : 0;
+  return Math.round(base * 10 * (1 + xp * 0.05) * pct(m.attackPct / 2 + m.morale / 2));
+}
+
 export function militaryPower(s: GameState, civId: number): number {
   let p = 0;
-  for (const f of s.formations) if (f.civId === civId) p += powerOf(f);
+  for (const f of s.formations) if (f.civId === civId) p += formationStrength(s, f);
   return Math.round(p);
 }
 

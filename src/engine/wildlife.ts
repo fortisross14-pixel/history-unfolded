@@ -77,7 +77,7 @@ export const BEASTS: Record<
  * A pack's strength against the reference army of the people nearest it (see refArmy), and the
  * guardians' at ruins (a little stronger: what they guard is worth more).
  */
-export const WILD = { packRatio: 1, guardRatio: 1.1, spread: 0.12 };
+export const WILD = { packRatio: 0.92, guardRatio: 0.85, spread: 0.12 };
 /** each kind's number against how it fights: bears fight below theirs, boars a little above */
 const KIND_RATIO: Record<Beast, number> = { wolves: 0.98, boars: 1.01, bears: 1.15, guardians: 1 };
 /** lairs near each people's start, and how far from it */

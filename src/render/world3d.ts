@@ -14,7 +14,13 @@ import { DEPOSITS, GOODS } from '../data/goods.ts';
 import { SLOT_TYPES } from '../data/slots.ts';
 import { isWater } from '../data/terrain.ts';
 import { cityDistricts } from '../engine/economy.ts';
-import { depositVisible, formationStrength, territory, visibleHexes } from '../engine/game.ts';
+import {
+  depositVisible,
+  formationStrength,
+  strengthText,
+  territory,
+  visibleHexes,
+} from '../engine/game.ts';
 import { lairsSeenBy, packOf } from '../engine/wildlife.ts';
 import { people } from '../engine/units.ts';
 import { centerUnit, distance, hexAtUnit, neighbors, SQRT3, type Grid } from '../engine/hex.ts';
@@ -1454,7 +1460,7 @@ export class World3DRenderer {
         const p = u.mesh.position;
         const [sx, sy] = this.project(p.x + 0.2 * UNIT_SCALE, p.y + 0.46 * UNIT_SCALE, p.z);
         if (sx < -40 || sy < -20 || sx > this.w + 40 || sy > this.h + 20) continue;
-        const text = `${st.n}`;
+        const text = strengthText(st.n);
         const w = Math.max(fs * 1.7, ctx.measureText(text).width + fs * 0.8);
         const h = fs * 1.35;
         const wild = s.civs[f.civId].raiders;

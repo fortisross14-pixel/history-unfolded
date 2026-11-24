@@ -1861,7 +1861,9 @@ export function endWar(s: GameState, a: number, b: number) {
 /**
  * A formation's strength as one number, shown on the map and in panels: its gear's power,
  * cohort by cohort, scaled by people, experience and the people's attack and morale bonuses.
- * A 250 should most likely beat a 137 on open ground. The realm's military power is the sum.
+ * Small at the start (a scout about 1, a spear levy about 7) and growing fast with better gear
+ * and bigger formations; it stays proportional to fighting power, so a 25 most likely beats a 14.
+ * The realm's military power is the sum. Not rounded: see `strengthText` for display.
  */
 export function formationStrength(s: GameState, f: Formation): number {
   const base = powerOf(f);
@@ -1870,8 +1872,12 @@ export function formationStrength(s: GameState, f: Formation): number {
   const xp = f.cohorts.length
     ? f.cohorts.reduce((a, c) => a + Math.min(5, c.xp), 0) / f.cohorts.length
     : 0;
-  return Math.round(base * 10 * (1 + xp * 0.05) * pct(m.attackPct / 2 + m.morale / 2));
+  return base * STRENGTH_SCALE * (1 + xp * 0.05) * pct(m.attackPct / 2 + m.morale / 2);
 }
+/** strength points per unit of gear power */
+export const STRENGTH_SCALE = 0.45;
+/** A strength as shown: a whole number, never below 1 for a fighting formation. */
+export const strengthText = (n: number) => (n <= 0 ? '—' : String(Math.max(1, Math.round(n))));
 
 export function militaryPower(s: GameState, civId: number): number {
   let p = 0;

@@ -12,6 +12,7 @@ import {
   cargoOf,
   formationsAt,
   formationStrength,
+  strengthText,
   refitPreview,
   supplyingCity,
   territoryRadius,
@@ -124,7 +125,7 @@ export function FormationPanel(p: Props) {
                 className="fp-strength"
                 title="Strength: gear, people, experience. A 250 most likely beats a 137."
               >
-                <Chip icon="sword" n={formationStrength(game, f)} title="Strength" />
+                <Chip icon="sword" n={strengthText(formationStrength(game, f))} title="Strength" />
               </span>
             )}
             <Chip icon="people" n={people(f).toLocaleString()} title={`${civ.name}: people`} />

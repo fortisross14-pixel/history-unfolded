@@ -211,7 +211,7 @@ for (const seed of [9, 17]) {
   check(mine, 'the player meets one by turn 15');
 }
 
-// fights: a spear levy beats a pack about three times in four; a lone scout mostly loses
+// fights: a spear levy beats a pack about nine times in ten; a lone scout mostly loses
 {
   const tally: Record<string, { won: number; n: number }> = {
     levy: { won: 0, n: 0 },
@@ -262,7 +262,10 @@ for (const seed of [9, 17]) {
     `     spear levy beat a pack ${pc('levy')}% of ${tally.levy.n}; a scout ${pc('scout')}% of ${tally.scout.n}`,
   );
   check(strengthsShown, 'every pack has a strength number');
-  check(pc('levy') >= 62 && pc('levy') <= 88, 'a spear levy wins about three fights in four');
+  check(
+    pc('levy') >= 80 && pc('levy') <= 97,
+    'a spear levy wins most of its fights (about 9 in 10)',
+  );
   check(pc('scout') <= 25, 'a lone scout loses most of its fights');
 }
 

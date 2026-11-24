@@ -29,6 +29,7 @@ import {
   formation,
   formationsAt,
   formationStrength,
+  strengthText,
   fortify,
   sentry,
   foundCity,
@@ -1277,8 +1278,8 @@ export function Game({
                   }`}
                   title="Strength: gear, people, experience"
                 >
-                  You <b>{battlePreview.strength[0]}</b> <span className="muted">vs</span>{' '}
-                  <b>{battlePreview.strength[1]}</b>
+                  You <b>{strengthText(battlePreview.strength[0])}</b>{' '}
+                  <span className="muted">vs</span> <b>{strengthText(battlePreview.strength[1])}</b>
                 </p>
                 {battlePreview.report ? (
                   <div className="gm-preview">

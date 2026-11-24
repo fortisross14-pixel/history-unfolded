@@ -1,7 +1,7 @@
 import { WONDERS } from '../data/wonders.ts';
 import { faithById } from '../engine/faith.ts';
 import { useState } from 'react';
-import { formationStrength, militaryPower } from '../engine/game.ts';
+import { formationStrength, militaryPower, strengthText } from '../engine/game.ts';
 import {
   formationArtKey,
   formationMoves,
@@ -256,7 +256,7 @@ export function EmpireDialog({
                       </span>
                     </td>
                     <td>
-                      <b>{isCivilian(f) ? '—' : formationStrength(game, f)}</b>
+                      <b>{isCivilian(f) ? '—' : strengthText(formationStrength(game, f))}</b>
                     </td>
                     <td className="troop-mix">{mix(f)}</td>
                     <td>

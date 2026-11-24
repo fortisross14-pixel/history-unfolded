@@ -1,0 +1,167 @@
+/* round 4, navigation: hub tabs inside the dialog header, the military lists, the minimap at the
+   bottom left, assigning cohorts by hundreds, a settlement's people in the side panel */
+
+/* ---- hub tabs: a row of tabs under the dialog's title */
+.modal > header.has-hub {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.modal > header > .hub-tabs {
+  position: static;
+  transform: none;
+  z-index: auto;
+  order: 3;
+  flex: 1 0 100%;
+  display: flex;
+  gap: 2px;
+  padding: 0;
+  margin: 2px 0 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgba(120, 90, 50, 0.35);
+  border-radius: 0;
+  box-shadow: none;
+  max-width: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.modal > header > .hub-tabs button {
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  padding: 6px 16px;
+  margin-bottom: -1px;
+  font-size: 15px;
+  white-space: nowrap;
+  box-shadow: none;
+}
+.modal > header > .hub-tabs button:hover {
+  background: rgba(43, 106, 95, 0.08);
+}
+.modal > header > .hub-tabs button.on,
+.modal > header > .hub-tabs button.on:hover,
+.modal > header > .hub-tabs button.on:focus {
+  background: rgba(43, 106, 95, 0.12) !important;
+  color: #1f5249 !important;
+  border-bottom-color: #2b6a5f;
+  font-weight: 600;
+}
+
+/* ---- the military lists */
+.troop-table td {
+  vertical-align: middle;
+}
+.troop-table .troop-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.troop-table .troop-name .portrait.small {
+  flex: none;
+}
+.troop-table .troop-mix {
+  font-size: 13px;
+}
+
+/* ---- the minimap: bottom left, the hover card beside it */
+.minimap-box.minimap-dock {
+  top: auto;
+  left: calc(14px + env(safe-area-inset-left));
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 4;
+}
+.game.mini-on .hover-info {
+  left: calc(282px + env(safe-area-inset-left));
+}
+/* narrower screens: the hover card above the minimap, clear of the turn box */
+@media (max-width: 980px) {
+  .game.mini-on .hover-info {
+    left: calc(14px + env(safe-area-inset-left));
+    bottom: calc(240px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 700px) {
+  .game.mini-on .hover-info.preview-box {
+    left: 8px;
+    bottom: auto;
+  }
+}
+
+/* ---- strength */
+.fp-strength .chip {
+  font-weight: 700;
+}
+.gm-strength {
+  margin: 2px 0 6px;
+  font-size: 15px;
+}
+.gm-strength b {
+  font-size: 18px;
+}
+.gm-strength.ahead b:first-of-type {
+  color: #2b6a5f;
+}
+.gm-strength.behind b:last-of-type {
+  color: #a3392b;
+}
+
+/* ---- assign by hundreds */
+.assign.mix {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mix-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.mix-row.on {
+  background: rgba(43, 106, 95, 0.08);
+}
+.mix-row .mix-name {
+  font-weight: 600;
+}
+.mix-row.rest .mix-name {
+  font-weight: 400;
+}
+.mix-row.rest .stepper {
+  min-width: 84px;
+  text-align: center;
+}
+.mix-cost {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mix-cost li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.mix-total {
+  border-top: 1px solid rgba(120, 90, 50, 0.25);
+  padding-top: 2px;
+}
+
+/* ---- a foreign settlement's people, under its card */
+.side .panel.city-people {
+  margin-top: 8px;
+}
+.side .panel.city-people .people {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+}
+.side .panel.city-people .row {
+  flex-wrap: wrap;
+}

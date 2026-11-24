@@ -1,12 +1,30 @@
 import { WONDERS } from '../data/wonders.ts';
 import { faithById } from '../engine/faith.ts';
 import { useState } from 'react';
+import { formationStrength, militaryPower } from '../engine/game.ts';
+import {
+  formationArtKey,
+  formationMoves,
+  formationSprite,
+  groupCohorts,
+  groupName,
+  isCivilian,
+} from '../engine/units.ts';
 import { cityEconomy, DISTRICT_CAP, TIER_NAME } from '../engine/economy.ts';
 import type { GameState } from '../engine/types.ts';
-import { Chip, Delta, Ico } from './bits.tsx';
+import { Chip, Delta, Ico, UnitPortrait } from './bits.tsx';
 import './declutter-city.css';
+import './r4-nav.css';
 
-type Tab = 'cities' | 'armies' | 'find';
+export type EmpireTab = 'cities' | 'land' | 'sea' | 'find';
+type Tab = EmpireTab;
+
+const TITLE: Record<Tab, string> = {
+  cities: 'Cities',
+  land: 'Military',
+  sea: 'Military',
+  find: 'Find',
+};
 
 const KIND: Record<string, string> = {
   army: 'Army',
@@ -17,8 +35,9 @@ const KIND: Record<string, string> = {
 };
 
 /**
- * The empire at a glance: every settlement and every army in one list, and a search across them
- * and the foreign settlements the player knows. Clicking a row looks there and selects it.
+ * The realm's lists: settlements (the Cities screen), land formations and fleets (the Military
+ * screen), and a search across them and the foreign settlements the player knows. The hub's tabs
+ * sit in the header (drawn by Game). Clicking a row looks there and selects it.
  */
 export function EmpireDialog({
   game,
@@ -35,13 +54,29 @@ export function EmpireDialog({
   onFormation: (id: number) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<Tab>(startTab ?? 'cities');
+  const tab: Tab = startTab ?? 'cities';
   const [q, setQ] = useState('');
   const known = game.civs[civId].explored;
   const mine = game.cities.filter(c => c.civId === civId).sort((a, b) => b.pop - a.pop);
   const troops = game.formations
     .filter(f => f.civId === civId)
     .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
+  const land = troops.filter(f => f.kind !== 'fleet');
+  // armies first, then crews and settlers
+  land.sort((a, b) => Number(isCivilian(a)) - Number(isCivilian(b)));
+  const sea = troops.filter(f => f.kind === 'fleet');
+  const shown = tab === 'sea' ? sea : land;
+  const civ = game.civs[civId];
+  /** cohorts by design: "3 Spearmen · 1 Riders" */
+  const mix = (f: (typeof troops)[number]) => {
+    if (isCivilian(f)) return `${f.cohorts.length} × ${KIND[f.kind]}`;
+    const n = new Map<string, number>();
+    for (const g of groupCohorts(f)) {
+      const k = groupName(civ, g, f.kind);
+      n.set(k, (n.get(k) ?? 0) + g.cohorts.length);
+    }
+    return [...n].map(([k, c]) => `${c} ${k}`).join(' · ');
+  };
   const districts = (id: number) => game.districts.filter(d => d.cityId === id).length;
   const where = (hex: number) => game.cities.find(c => c.hex === hex)?.name;
   const near = (hex: number) => {
@@ -82,40 +117,27 @@ export function EmpireDialog({
         className="modal empire"
         role="dialog"
         aria-modal="true"
-        aria-label="Empire overview"
+        aria-label={TITLE[tab]}
         onClick={e => e.stopPropagation()}
       >
         <header>
           <h2>
-            Empire{' '}
+            {TITLE[tab]}{' '}
             <small className="chips">
-              <Chip icon="cities" n={mine.length} title="Settlements" />
-              <Chip icon="army" n={troops.length} title="Formations" />
+              {tab === 'cities' ? (
+                <Chip icon="cities" n={mine.length} title="Settlements" />
+              ) : tab === 'find' ? null : (
+                <>
+                  <Chip icon="sword" n={militaryPower(game, civId)} title="Military strength" />
+                  <Chip icon="army" n={land.length} title="Land formations" />
+                </>
+              )}
             </small>
           </h2>
           <button className="x" onClick={onClose} aria-label="Close">
             ×
           </button>
         </header>
-        <div className="stats-tabs" role="tablist">
-          {(
-            [
-              ['cities', 'Settlements'],
-              ['armies', 'Armies & crews'],
-              ['find', 'Find'],
-            ] as [Tab, string][]
-          ).map(([k, label]) => (
-            <button
-              key={k}
-              role="tab"
-              aria-selected={tab === k}
-              className={tab === k ? 'on' : ''}
-              onClick={() => setTab(k)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
 
         {tab === 'cities' && (
           <div className="stats-table-wrap">
@@ -196,36 +218,65 @@ export function EmpireDialog({
           </div>
         )}
 
-        {tab === 'armies' && (
+        {(tab === 'land' || tab === 'sea') && (
           <div className="stats-table-wrap">
-            <table className="stats-table empire-table">
+            <table className="stats-table empire-table troop-table">
               <thead>
                 <tr>
-                  <th>Formation</th>
-                  <th>Kind</th>
-                  <th title="Cohorts" aria-label="Cohorts">
-                    <Ico name="people" fallback="#" size={18} />
+                  <th>{tab === 'sea' ? 'Fleet' : 'Formation'}</th>
+                  <th title="Strength" aria-label="Strength">
+                    <Ico name="sword" fallback="⚔" size={18} />
+                  </th>
+                  <th>{tab === 'sea' ? 'Ships' : 'Cohorts'}</th>
+                  <th title="Moves" aria-label="Moves">
+                    <Ico name="moves" fallback="→" size={18} />
                   </th>
                   <th>Orders</th>
                 </tr>
               </thead>
               <tbody>
-                {troops.map(f => (
+                {shown.map(f => (
                   <tr key={f.id} className="go" onClick={() => onFormation(f.id)}>
-                    <td>
-                      <b>{f.name}</b> <small className="muted">{near(f.hex)}</small>
+                    <td className="troop-name">
+                      <UnitPortrait
+                        sprite={formationSprite(f)}
+                        art={formationArtKey(f)}
+                        color={game.civs[civId].color}
+                        small
+                      />
+                      <span>
+                        <b>{f.name}</b>
+                        <small className="muted">
+                          {' '}
+                          {f.kind === 'army' || f.kind === 'fleet' || f.name === KIND[f.kind]
+                            ? ''
+                            : KIND[f.kind]}{' '}
+                          {near(f.hex)}
+                        </small>
+                      </span>
                     </td>
-                    <td>{KIND[f.kind]}</td>
-                    <td>{f.cohorts.length}</td>
+                    <td>
+                      <b>{isCivilian(f) ? '—' : formationStrength(game, f)}</b>
+                    </td>
+                    <td className="troop-mix">{mix(f)}</td>
+                    <td>
+                      {f.moves}/{formationMoves(f)}
+                    </td>
                     <td>
                       {f.auto === 'crew' ? (
                         'Automated'
                       ) : f.auto === 'explore' ? (
                         'Exploring'
+                      ) : f.auto === 'settle' ? (
+                        'Settling'
+                      ) : f.aboard !== undefined ? (
+                        'Aboard'
                       ) : f.path.length ? (
                         <span title={`Moving: ${f.path.length} hexes`}>→ {f.path.length}</span>
                       ) : f.fortified ? (
                         'Fortified'
+                      ) : f.sentry ? (
+                        'Sentry'
                       ) : f.moves > 0 ? (
                         <b>Waiting</b>
                       ) : (
@@ -234,10 +285,10 @@ export function EmpireDialog({
                     </td>
                   </tr>
                 ))}
-                {!troops.length && (
+                {!shown.length && (
                   <tr>
-                    <td colSpan={4} className="muted">
-                      No formations.
+                    <td colSpan={5} className="muted">
+                      {tab === 'sea' ? 'No fleets.' : 'No formations.'}
                     </td>
                   </tr>
                 )}

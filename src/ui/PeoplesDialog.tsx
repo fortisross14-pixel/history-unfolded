@@ -27,6 +27,7 @@ import { Art, Chip, Delta, GoodIcon, Ico, InfoButton } from './bits.tsx';
 import { leaderArt } from './leaderArt.ts';
 import { TraitChips } from './RulerPicker.tsx';
 import './declutter-world.css';
+import './r4-nav.css';
 import { PeaceTerms } from './PeaceTerms.tsx';
 import { CivBadge } from './Badge.tsx';
 
@@ -50,20 +51,6 @@ export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, on
     .filter(c => c.id !== civId && me.met.includes(c.id))
     .sort((a, b) => Number(!!a.independent) - Number(!!b.independent));
   const [dealWith, setDealWith] = useState<number | null>(null);
-  const mineTags = tagCounts(me);
-  const relation = (other: number) => {
-    const theirs = tagCounts(game.civs[other]);
-    const strong = (t: Record<string, number>, k: string) => (t[k] ?? 0) >= 2;
-    const clash = OPPOSED.filter(
-      ([a, b]) =>
-        (strong(mineTags, a) && strong(theirs, b)) || (strong(mineTags, b) && strong(theirs, a)),
-    );
-    const shared = Object.keys(mineTags).filter(t => strong(mineTags, t) && strong(theirs, t));
-    if (clash.length)
-      return `Clashing ideas (${clash.map(([a, b]) => `${TAGS[a].name}/${TAGS[b].name}`).join(', ')})`;
-    if (shared.length) return `Kindred (${shared.map(t => TAGS[t].name).join(', ')})`;
-    return '';
-  };
   if (dealWith !== null)
     return (
       <DealDialog
@@ -95,175 +82,257 @@ export function PeoplesDialog({ game, civId, onWar, onDeal, onGift, onAbsorb, on
         </header>
         {!known.length && <p className="muted">No one met yet.</p>}
         <div className="peoples-list">
-          {known.map(c => {
-            const war = atWar(game, civId, c.id);
-            const p = militaryPower(game, c.id);
-            const op = opinion(game, c.id, civId);
-            const parts = opinionParts(game, c.id, civId);
-            const treaties = treatiesOf(game, civId, c.id);
-            const w = game.wars.find(
-              x => (x.a === civId && x.b === c.id) || (x.b === civId && x.a === c.id),
-            );
-            const rel = relation(c.id);
-            const pct = mine ? Math.round((p / Math.max(1, mine)) * 100) : null;
-            const absorbWhy = c.independent ? absorbProblem(game, civId, c.id) : null;
-            const tribute = c.independent ? tributeTo(game, c.id, civId) : null;
-            const pact = hasPact(game, civId, c.id);
-            return (
-              <div key={c.id} className={`people ${c.alive ? '' : 'gone'}`}>
-                <div className="people-head">
-                  {!c.independent && (
-                    <Art k={c.ruler?.face ?? leaderArt(game, c)} size={44} className="leader-art" />
-                  )}
-                  <CivBadge civ={c} size={24} />
-                  <b>{c.name}</b>
-                  {c.independent && (
-                    <span className="w-tag" title="A free people">
-                      Free · {standing(game, c.id, civId)}
-                    </span>
-                  )}
-                  <span className="ident-bar">
-                    {identity(c)
-                      .slice(0, 3)
-                      .map(i => (
-                        <TagChip key={i.tag} tag={i.tag} />
-                      ))}
-                  </span>
-                  <span className="spacer" />
-                  {c.alive ? (
-                    <>
-                      <span
-                        className="opinion"
-                        title={`${attitude(op)}\n${parts
-                          .map(x => `${x.value > 0 ? '+' : ''}${x.value} ${x.label}`)
-                          .join('\n')}`}
-                      >
-                        <Ico name="eye" fallback="👁" size={16} /> <Delta n={op} />
-                      </span>
-                      <InfoButton label={`Opinion of the ${c.name}`} align="right">
-                        <b>
-                          {attitude(op)} <Delta n={op} />
-                        </b>
-                        {parts.map((x, i) => (
-                          <span key={i}>
-                            <Delta n={x.value} /> {x.label}
-                          </span>
-                        ))}
-                        {rel && <span className="muted">{rel}</span>}
-                      </InfoButton>
-                    </>
-                  ) : (
-                    <span className="muted">Gone</span>
-                  )}
-                </div>
-                {c.alive && (
-                  <div className="people-body chips">
-                    {!c.independent && <LeaderTags game={game} civId={civId} them={c.id} />}
-                    <Chip
-                      icon="house"
-                      n={game.cities.filter(x => x.civId === c.id).length}
-                      title="Cities"
-                    />
-                    <Chip
-                      icon="sword"
-                      n={p}
-                      title={`Army strength${pct !== null ? `: ${pct}% of yours` : ''}`}
-                    />
-                    <Chip icon="laurel" n={score(game, c.id)} title="Score" />
-                    {war && (
-                      <b className="bad" title={`At war since turn ${w?.since}`}>
-                        War · t{w?.since}
-                      </b>
-                    )}
-                    {treaties.map((t, i) => (
-                      <span
-                        key={i}
-                        className="treaty"
-                        title={
-                          t.kind === 'pact'
-                            ? `Non-aggression pact until turn ${t.until}`
-                            : t.kind === 'alliance'
-                              ? 'Alliance'
-                              : `Trade deal until turn ${t.until}`
-                        }
-                      >
-                        {t.kind === 'pact'
-                          ? `Pact → t${t.until}`
-                          : t.kind === 'alliance'
-                            ? 'Allies'
-                            : `Trade → t${t.until}`}
-                      </span>
-                    ))}
-                    {rel && (
-                      <span
-                        className={`w-tag ${rel.startsWith('Kindred') ? 'good' : 'bad'}`}
-                        title={rel}
-                      >
-                        {rel.startsWith('Kindred') ? 'Kindred' : 'Clash'}
-                      </span>
-                    )}
-                    {tribute && (tribute.gold > 0 || Object.keys(tribute.goods).length > 0) && (
-                      <span className="chips" title="Tribute to you a turn">
-                        <small className="muted">Tribute</small>
-                        {tribute.gold > 0 && (
-                          <Chip icon="coin" n={`${tribute.gold}/t`} title="Gold a turn" />
-                        )}
-                        {Object.entries(tribute.goods).map(([g, n]) => (
-                          <Chip
-                            key={g}
-                            good={g}
-                            n={`${n}/t`}
-                            title={`${GOODS[g]?.name ?? g} a turn`}
-                          />
-                        ))}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {c.alive && (
-                  <div className="row">
-                    {war ? (
-                      <PeaceTerms
-                        game={game}
-                        me={civId}
-                        them={c.id}
-                        onOffer={o => onDeal(c.id, o)}
-                      />
-                    ) : (
-                      <>
-                        <button onClick={() => setDealWith(c.id)}>Propose a deal…</button>
-                        {c.independent && (
-                          <>
-                            <button onClick={() => onGift(c.id, 25)} title="Gift 25 gold">
-                              Gift <Chip icon="coin" n={25} title="25 gold" />
-                            </button>
-                            <button onClick={() => onGift(c.id, 100)} title="Gift 100 gold">
-                              Gift <Chip icon="coin" n={100} title="100 gold" />
-                            </button>
-                            <button
-                              disabled={absorbWhy !== null}
-                              title={absorbWhy ?? 'Absorb them into your realm'}
-                              onClick={() => onAbsorb(c.id)}
-                            >
-                              Absorb <Chip icon="coin" n={absorbCost(game, c.id)} title="Gold" />
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => onWar(c.id)}
-                          title={pact ? 'Breaks your pact: everyone thinks less of you' : ''}
-                        >
-                          Declare war{pact ? ' ⚠' : ''}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {known.map(c => (
+            <PeopleCard
+              key={c.id}
+              game={game}
+              civId={civId}
+              them={c.id}
+              onWar={onWar}
+              onDeal={onDeal}
+              onGift={onGift}
+              onAbsorb={onAbsorb}
+              onProposeDeal={setDealWith}
+            />
+          ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** One people: badge, ruler, opinion, standing, and what you can do with them. */
+export function PeopleCard({
+  game,
+  civId,
+  them,
+  onWar,
+  onDeal,
+  onGift,
+  onAbsorb,
+  onProposeDeal,
+}: {
+  game: GameState;
+  civId: number;
+  them: number;
+  onWar: (other: number) => void;
+  onDeal: (other: number, o: Offer) => void;
+  onGift: (other: number, gold: number) => void;
+  onAbsorb: (other: number) => void;
+  onProposeDeal: (other: number) => void;
+}) {
+  const me = game.civs[civId];
+  const c = game.civs[them];
+  const mine = militaryPower(game, civId);
+  const mineTags = tagCounts(me);
+  const relation = (other: number) => {
+    const theirs = tagCounts(game.civs[other]);
+    const strong = (t: Record<string, number>, k: string) => (t[k] ?? 0) >= 2;
+    const clash = OPPOSED.filter(
+      ([a, b]) =>
+        (strong(mineTags, a) && strong(theirs, b)) || (strong(mineTags, b) && strong(theirs, a)),
+    );
+    const shared = Object.keys(mineTags).filter(t => strong(mineTags, t) && strong(theirs, t));
+    if (clash.length)
+      return `Clashing ideas (${clash.map(([a, b]) => `${TAGS[a].name}/${TAGS[b].name}`).join(', ')})`;
+    if (shared.length) return `Kindred (${shared.map(t => TAGS[t].name).join(', ')})`;
+    return '';
+  };
+  const war = atWar(game, civId, c.id);
+  const p = militaryPower(game, c.id);
+  const op = opinion(game, c.id, civId);
+  const parts = opinionParts(game, c.id, civId);
+  const treaties = treatiesOf(game, civId, c.id);
+  const w = game.wars.find(x => (x.a === civId && x.b === c.id) || (x.b === civId && x.a === c.id));
+  const rel = relation(c.id);
+  const pct = mine ? Math.round((p / Math.max(1, mine)) * 100) : null;
+  const absorbWhy = c.independent ? absorbProblem(game, civId, c.id) : null;
+  const tribute = c.independent ? tributeTo(game, c.id, civId) : null;
+  const pact = hasPact(game, civId, c.id);
+  return (
+    <div key={c.id} className={`people ${c.alive ? '' : 'gone'}`}>
+      <div className="people-head">
+        {!c.independent && (
+          <Art k={c.ruler?.face ?? leaderArt(game, c)} size={44} className="leader-art" />
+        )}
+        <CivBadge civ={c} size={24} />
+        <b>{c.name}</b>
+        {c.independent && (
+          <span className="w-tag" title="A free people">
+            Free · {standing(game, c.id, civId)}
+          </span>
+        )}
+        <span className="ident-bar">
+          {identity(c)
+            .slice(0, 3)
+            .map(i => (
+              <TagChip key={i.tag} tag={i.tag} />
+            ))}
+        </span>
+        <span className="spacer" />
+        {c.alive ? (
+          <>
+            <span
+              className="opinion"
+              title={`${attitude(op)}\n${parts
+                .map(x => `${x.value > 0 ? '+' : ''}${x.value} ${x.label}`)
+                .join('\n')}`}
+            >
+              <Ico name="eye" fallback="👁" size={16} /> <Delta n={op} />
+            </span>
+            <InfoButton label={`Opinion of the ${c.name}`} align="right">
+              <b>
+                {attitude(op)} <Delta n={op} />
+              </b>
+              {parts.map((x, i) => (
+                <span key={i}>
+                  <Delta n={x.value} /> {x.label}
+                </span>
+              ))}
+              {rel && <span className="muted">{rel}</span>}
+            </InfoButton>
+          </>
+        ) : (
+          <span className="muted">Gone</span>
+        )}
+      </div>
+      {c.alive && (
+        <div className="people-body chips">
+          {!c.independent && <LeaderTags game={game} civId={civId} them={c.id} />}
+          <Chip icon="house" n={game.cities.filter(x => x.civId === c.id).length} title="Cities" />
+          <Chip
+            icon="sword"
+            n={p}
+            title={`Army strength${pct !== null ? `: ${pct}% of yours` : ''}`}
+          />
+          <Chip icon="laurel" n={score(game, c.id)} title="Score" />
+          {war && (
+            <b className="bad" title={`At war since turn ${w?.since}`}>
+              War · t{w?.since}
+            </b>
+          )}
+          {treaties.map((t, i) => (
+            <span
+              key={i}
+              className="treaty"
+              title={
+                t.kind === 'pact'
+                  ? `Non-aggression pact until turn ${t.until}`
+                  : t.kind === 'alliance'
+                    ? 'Alliance'
+                    : `Trade deal until turn ${t.until}`
+              }
+            >
+              {t.kind === 'pact'
+                ? `Pact → t${t.until}`
+                : t.kind === 'alliance'
+                  ? 'Allies'
+                  : `Trade → t${t.until}`}
+            </span>
+          ))}
+          {rel && (
+            <span className={`w-tag ${rel.startsWith('Kindred') ? 'good' : 'bad'}`} title={rel}>
+              {rel.startsWith('Kindred') ? 'Kindred' : 'Clash'}
+            </span>
+          )}
+          {tribute && (tribute.gold > 0 || Object.keys(tribute.goods).length > 0) && (
+            <span className="chips" title="Tribute to you a turn">
+              <small className="muted">Tribute</small>
+              {tribute.gold > 0 && <Chip icon="coin" n={`${tribute.gold}/t`} title="Gold a turn" />}
+              {Object.entries(tribute.goods).map(([g, n]) => (
+                <Chip key={g} good={g} n={`${n}/t`} title={`${GOODS[g]?.name ?? g} a turn`} />
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+      {c.alive && (
+        <div className="row">
+          {war ? (
+            <PeaceTerms game={game} me={civId} them={c.id} onOffer={o => onDeal(c.id, o)} />
+          ) : (
+            <>
+              <button onClick={() => onProposeDeal(c.id)}>Propose a deal…</button>
+              {c.independent && (
+                <>
+                  <button onClick={() => onGift(c.id, 25)} title="Gift 25 gold">
+                    Gift <Chip icon="coin" n={25} title="25 gold" />
+                  </button>
+                  <button onClick={() => onGift(c.id, 100)} title="Gift 100 gold">
+                    Gift <Chip icon="coin" n={100} title="100 gold" />
+                  </button>
+                  <button
+                    disabled={absorbWhy !== null}
+                    title={absorbWhy ?? 'Absorb them into your realm'}
+                    onClick={() => onAbsorb(c.id)}
+                  >
+                    Absorb <Chip icon="coin" n={absorbCost(game, c.id)} title="Gold" />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => onWar(c.id)}
+                title={pact ? 'Breaks your pact: everyone thinks less of you' : ''}
+              >
+                Declare war{pact ? ' ⚠' : ''}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The people who hold a settlement, for the side panel when you click a foreign or free
+ * settlement: the same card as the peoples screen, and its deal window.
+ */
+export function SettlementPeople({
+  game,
+  civId,
+  them,
+  ...act
+}: {
+  game: GameState;
+  civId: number;
+  them: number;
+  onWar: (other: number) => void;
+  onDeal: (other: number, o: Offer) => void;
+  onGift: (other: number, gold: number) => void;
+  onAbsorb: (other: number) => void;
+}) {
+  const [deal, setDeal] = useState(false);
+  const c = game.civs[them];
+  if (!game.civs[civId].met.includes(them))
+    return (
+      <div className="panel city-people">
+        <span className="chips">
+          <CivBadge civ={c} size={24} /> <b>{c.name}</b> <span className="muted">Not met</span>
+        </span>
+      </div>
+    );
+  return (
+    <div className="panel city-people peoples-list">
+      <PeopleCard
+        game={game}
+        civId={civId}
+        them={them}
+        {...act}
+        onProposeDeal={() => setDeal(true)}
+      />
+      {deal && (
+        <DealDialog
+          game={game}
+          from={civId}
+          to={them}
+          onBack={() => setDeal(false)}
+          onSend={o => {
+            act.onDeal(them, o);
+            setDeal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

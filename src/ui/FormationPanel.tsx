@@ -11,11 +11,13 @@ import {
   railGold,
   cargoOf,
   formationsAt,
+  formationStrength,
   refitPreview,
   supplyingCity,
   territoryRadius,
 } from '../engine/game.ts';
 import type { Formation, GameState } from '../engine/types.ts';
+import type { RefitPreview } from '../engine/game.ts';
 import {
   capOf,
   fleetCapacity,
@@ -36,6 +38,7 @@ import {
 } from '../engine/units.ts';
 import { Chip, Goods, InfoButton, UnitPortrait } from './bits.tsx';
 import './declutter-map.css';
+import './r4-nav.css';
 
 interface Props {
   game: GameState;
@@ -64,7 +67,6 @@ export function FormationPanel(p: Props) {
   const [pick, setPick] = useState<Record<string, number>>(allPicked);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(f.name);
-  const [designId, setDesignId] = useState<number | null>(null);
   // a new selection or a new cohort count resets the picks to "everyone"
   useEffect(() => {
     setPick(allPicked());
@@ -75,7 +77,6 @@ export function FormationPanel(p: Props) {
   const selected = groups.flatMap(g => g.cohorts.slice(0, pick[g.key] ?? 0).map(c => c.id));
   const stats = formationStats(f);
   const others = formationsAt(game, f.hex).filter(o => o.id !== f.id && o.civId === f.civId);
-  const supply = supplyingCity(game, f.civId, f.hex);
   const m = game.map;
   const foundWhy = f.kind === 'settlers' ? canFoundCity(game, f) : null;
   const kind =
@@ -86,14 +87,6 @@ export function FormationPanel(p: Props) {
   const railWhy = f.kind === 'engineers' ? railProblem(game, f) : null;
   const setAll = (n: 'all' | 'none') =>
     setPick(Object.fromEntries(groups.map(g => [g.key, n === 'all' ? g.cohorts.length : 0])));
-  const design = civ.designs.find(d => d.id === designId) ?? null;
-  const preview = useMemo(
-    () => (design && selected.length ? refitPreview(game, f.id, selected, design.loadout) : null),
-    [design, selected.join(','), game.turn, f.hex],
-  );
-  const missing = new Set(
-    preview && preview.problem === null ? preview.missing.map(x => x.good) : [],
-  );
   const roles = new Set(f.kind === 'fleet' ? [] : f.cohorts.map(c => cohortStats(c.loadout).role));
 
   return (
@@ -126,6 +119,14 @@ export function FormationPanel(p: Props) {
             </h2>
           )}
           <span className="chips fp-sub">
+            {!isCivilian(f) && (
+              <span
+                className="fp-strength"
+                title="Strength: gear, people, experience. A 250 most likely beats a 137."
+              >
+                <Chip icon="sword" n={formationStrength(game, f)} title="Strength" />
+              </span>
+            )}
             <Chip icon="people" n={people(f).toLocaleString()} title={`${civ.name}: people`} />
             <Chip icon="army" n={`${f.cohorts.length}/${capOf(f, game)}`} title="Cohorts" />
             <Chip icon="moves" n={`${f.moves}/${formationMoves(f)}`} title="Moves" />
@@ -272,60 +273,7 @@ export function FormationPanel(p: Props) {
       </div>
 
       {mine && !isCivilian(f) && f.aboard === undefined && (
-        <div className="assign">
-          <div className="row">
-            <span className="assign-label" title="Refit the selected cohorts">
-              <Chip icon="equip" n={selected.length * 100} title="People to refit" />
-            </span>
-            <select
-              value={designId ?? ''}
-              onChange={e => setDesignId(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">— design —</option>
-              {civ.designs
-                .filter(d => !!d.naval === (f.kind === 'fleet'))
-                .map(d => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-            </select>
-            <button onClick={() => p.onDesigns('new')} title="Design a new unit type">
-              New…
-            </button>
-          </div>
-          {preview && preview.problem !== null && <p className="bad small">{preview.problem}</p>}
-          {preview && preview.problem === null && (
-            <p className="small fp-cost">
-              <Goods goods={preview.cost} empty="Free" missing={missing} />
-              <span className="muted">· {preview.city.name}</span>
-              {preview.far && (
-                <span className="fp-tag bad" title="Away from the city: +50% cost">
-                  +50%
-                </span>
-              )}
-              {Object.values(preview.refund).some(n => n > 0) && (
-                <span title="Refund">
-                  ↩ <Goods goods={preview.refund} />
-                </span>
-              )}
-            </p>
-          )}
-          <button
-            className="primary"
-            disabled={
-              !design ||
-              !selected.length ||
-              !preview ||
-              preview.problem !== null ||
-              preview.missing.length > 0
-            }
-            onClick={() => design && p.onAssign(selected, design.id)}
-          >
-            <Icon name="equip" /> Equip as {design?.name ?? '…'}
-          </button>
-          {!supply && <p className="muted small">Equip only near your cities.</p>}
-        </div>
+        <AssignMix game={game} f={f} onAssign={p.onAssign} onDesigns={p.onDesigns} />
       )}
 
       {mine && (
@@ -445,6 +393,230 @@ export function FormationPanel(p: Props) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Split a formation's cohorts (100 people each) among designs: one stepper per design, the rest
+ * stays as it is. Only the cohorts that change are paid for, line by line.
+ */
+function AssignMix({
+  game,
+  f,
+  onAssign,
+  onDesigns,
+}: {
+  game: GameState;
+  f: Formation;
+  onAssign: (cohortIds: number[], designId: number) => void;
+  onDesigns: (open?: number | 'new') => void;
+}) {
+  const civ = game.civs[f.civId];
+  const designs = civ.designs.filter(d => !!d.naval === (f.kind === 'fleet'));
+  // what each design has now; cohorts of no design (levies, custom gear) by their group
+  const now = (): Record<string, number> => {
+    const t: Record<string, number> = {};
+    for (const d of designs) t[`d${d.id}`] = 0;
+    for (const c of f.cohorts) {
+      const k =
+        c.designId !== null && designs.some(d => d.id === c.designId) ? `d${c.designId}` : 'rest';
+      t[k] = (t[k] ?? 0) + 1;
+    }
+    return t;
+  };
+  const shape = f.cohorts.map(c => `${c.id}:${c.designId}`).join(',');
+  const [want, setWant] = useState(now);
+  useEffect(() => setWant(now()), [f.id, shape, designs.length]);
+  const total = f.cohorts.length;
+  const stale = groupCohorts(f).filter(
+    g => g.designId !== null && designs.some(d => d.id === g.designId) && outdated(civ, g),
+  );
+  const rest = want.rest ?? 0;
+  const used = Object.values(want).reduce((a, n) => a + n, 0);
+  const free = total - used;
+  const restNow = now().rest ?? 0;
+  const restName = (() => {
+    const names = new Set(
+      groupCohorts(f)
+        .filter(g => !designs.some(d => d.id === g.designId))
+        .map(g => groupName(civ, g, f.kind)),
+    );
+    return [...names].join(', ') || 'Levy';
+  })();
+  const step = (k: string, by: 1 | -1) => {
+    const w = { ...want };
+    if (by > 0) {
+      // a free place first, else one from those of no design
+      if (free <= 0) {
+        if ((w.rest ?? 0) <= 0) return;
+        w.rest--;
+      }
+      w[k] = (w[k] ?? 0) + 1;
+    } else {
+      if ((w[k] ?? 0) <= 0) return;
+      w[k]--;
+    }
+    setWant(w);
+  };
+  // which cohorts change: each design keeps its own up to its count, the others are re-equipped
+  const plan = useMemo(() => {
+    const keep = new Set<number>();
+    const kept: Record<string, number> = {};
+    for (const c of f.cohorts) {
+      const k =
+        c.designId !== null && designs.some(d => d.id === c.designId) ? `d${c.designId}` : 'rest';
+      if ((kept[k] ?? 0) < (want[k] ?? 0)) {
+        kept[k] = (kept[k] ?? 0) + 1;
+        keep.add(c.id);
+      }
+    }
+    // donors: those of no design first, then the ones a design gives up
+    const donors = f.cohorts
+      .filter(c => !keep.has(c.id))
+      .sort((a, b) => Number(a.designId !== null) - Number(b.designId !== null));
+    const lines: { design: (typeof designs)[number]; ids: number[] }[] = [];
+    for (const d of designs) {
+      const need = (want[`d${d.id}`] ?? 0) - (kept[`d${d.id}`] ?? 0);
+      if (need > 0) lines.push({ design: d, ids: donors.splice(0, need).map(c => c.id) });
+    }
+    return lines
+      .filter(l => l.ids.length)
+      .map(l => ({
+        ...l,
+        preview: refitPreview(game, f.id, l.ids, l.design.loadout),
+      }));
+  }, [want, shape, game.turn, f.hex, designs.length]);
+  const sum: Record<string, number> = {};
+  for (const l of plan)
+    if (l.preview.problem === null)
+      for (const [k, n] of Object.entries(l.preview.cost)) sum[k] = (sum[k] ?? 0) + n;
+  const first = plan
+    .map(l => l.preview)
+    .find((x): x is Extract<RefitPreview, { problem: null }> => x.problem === null);
+  const blocked = plan.some(l => l.preview.problem !== null || l.preview.missing.length > 0);
+  const changed = plan.reduce((a, l) => a + l.ids.length, 0);
+  const row = (k: string, label: string, n: number, canAdd: boolean, tip: string) => (
+    <div key={k} className={`mix-row ${n ? 'on' : ''}`} title={tip}>
+      <span className="mix-name">{label}</span>
+      <span className="mix-people muted small">{(n * 100).toLocaleString()}</span>
+      <div className="stepper">
+        <button
+          aria-label={`One cohort less ${label}`}
+          disabled={n <= 0}
+          onClick={() => step(k, -1)}
+        >
+          −
+        </button>
+        <span>{n}</span>
+        <button
+          aria-label={`One cohort more ${label}`}
+          disabled={!canAdd}
+          onClick={() => step(k, 1)}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+  return (
+    <div className="assign mix">
+      <div className="groups-head">
+        <span title="Each cohort is 100 people">
+          <Chip icon="equip" n={`${total} × 100`} title="Cohorts of 100 to equip" />
+        </span>
+        <button className="link" onClick={() => onDesigns('new')} title="Design a new unit type">
+          New design…
+        </button>
+      </div>
+      {designs.map(d =>
+        row(
+          `d${d.id}`,
+          d.name,
+          want[`d${d.id}`] ?? 0,
+          free > 0 || rest > 0,
+          `${d.name}: cohorts of 100`,
+        ),
+      )}
+      {(restNow > 0 || rest > 0 || free > 0) && (
+        <div className="mix-row rest muted">
+          <span className="mix-name">{restNow > 0 ? restName : 'Unchanged'}</span>
+          <span className="mix-people small">{((rest + free) * 100).toLocaleString()}</span>
+          <span className="stepper">
+            <span>{rest + free}</span>
+          </span>
+        </div>
+      )}
+      {!designs.length && <p className="muted small">No designs yet.</p>}
+      {plan.length > 0 && (
+        <ul className="mix-cost small">
+          {plan.map(l => (
+            <li key={l.design.id}>
+              <b>
+                {l.ids.length} × {l.design.name}:
+              </b>{' '}
+              {l.preview.problem !== null ? (
+                <span className="bad">{l.preview.problem}</span>
+              ) : (
+                <>
+                  <Goods
+                    goods={l.preview.cost}
+                    empty="Free"
+                    missing={new Set(l.preview.missing.map(x => x.good))}
+                  />
+                  {Object.values(l.preview.refund).some(n => n > 0) && (
+                    <span className="muted" title="Refund">
+                      {' '}
+                      ↩ <Goods goods={l.preview.refund} />
+                    </span>
+                  )}
+                </>
+              )}
+            </li>
+          ))}
+          {plan.length > 1 && first && (
+            <li className="mix-total">
+              <b>Total:</b> <Goods goods={sum} empty="Free" />
+            </li>
+          )}
+          {first && (
+            <li className="muted">
+              {first.city.name}
+              {first.far && (
+                <span className="fp-tag bad" title="Away from the city: +50% cost">
+                  +50%
+                </span>
+              )}
+            </li>
+          )}
+        </ul>
+      )}
+      <button
+        className="primary"
+        disabled={!changed || blocked}
+        onClick={() => {
+          for (const l of plan) onAssign(l.ids, l.design.id);
+        }}
+      >
+        <Icon name="equip" /> Equip {changed ? `${changed} × 100` : ''}
+      </button>
+      {stale.map(g => (
+        <button
+          key={g.key}
+          onClick={() =>
+            onAssign(
+              g.cohorts.map(c => c.id),
+              g.designId!,
+            )
+          }
+          title="The design changed since these were equipped"
+        >
+          Upgrade {g.cohorts.length} × {groupName(civ, g, f.kind)}
+        </button>
+      ))}
+      {!supplyingCity(game, f.civId, f.hex) && (
+        <p className="muted small">Equip only near your cities.</p>
       )}
     </div>
   );

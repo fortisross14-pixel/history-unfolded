@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fx } from '../render/fx.ts';
 import { isMuted, setMuted, sound } from './sound.ts';
 import { difficultyOf } from '../engine/difficulty.ts';
@@ -27,6 +28,7 @@ import {
   endTurn,
   formation,
   formationsAt,
+  formationStrength,
   fortify,
   sentry,
   foundCity,
@@ -62,7 +64,7 @@ import { FormationPanel } from './FormationPanel.tsx';
 import { HexPanel } from './HexPanel.tsx';
 import { MapView, mapMode, setMapMode } from './MapView.tsx';
 import { Minimap } from './Minimap.tsx';
-import { EmpireDialog } from './EmpireDialog.tsx';
+import { EmpireDialog, type EmpireTab } from './EmpireDialog.tsx';
 import { FaithDialog } from './FaithDialog.tsx';
 import { WhyPop } from './WhyPop.tsx';
 import { GUIDE, guideSeen, guideStep, startGuide, type GuideStep } from './guide.ts';
@@ -76,7 +78,7 @@ import { locate, type NewsTarget } from './news.ts';
 import { WonderDialog } from './WonderDialog.tsx';
 import { foundProblem, tenetDue } from '../engine/faith.ts';
 import { promoteColony } from '../engine/colonies.ts';
-import { PeoplesDialog } from './PeoplesDialog.tsx';
+import { PeoplesDialog, SettlementPeople } from './PeoplesDialog.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
 import { DynastiesDialog } from './DynastiesDialog.tsx';
 import { RealmEventDialog } from './RealmEventDialog.tsx';
@@ -89,6 +91,7 @@ import { playerEvent, resolveEvent } from '../engine/events.ts';
 import { absorb, giveGift } from '../engine/independents.ts';
 import { EventDialog } from './EventDialog.tsx';
 import { Icon } from './icons.tsx';
+import './r4-nav.css';
 import { CultureDialog, KeepDialog, TagChip } from './CultureDialog.tsx';
 import { resolveUpheaval, startUpheaval, takeNode } from '../engine/culture.ts';
 import { cityEconomy, constructionQueue } from '../engine/economy.ts';
@@ -116,7 +119,7 @@ type Dialog =
   | { kind: 'nation'; age?: number }
   | { kind: 'crisis' }
   | { kind: 'stats'; tab?: 'rank' | 'chart' | 'chronicle' }
-  | { kind: 'empire'; tab?: 'cities' | 'armies' | 'find' }
+  | { kind: 'empire'; tab?: EmpireTab }
   | { kind: 'faith' }
   | { kind: 'settings' }
   | { kind: 'name-city'; cityId: number }
@@ -693,7 +696,15 @@ export function Game({
     if (!mySelF || hover < 0 || !enemyAt(hover)) return null;
     const chk = canAttack(game, mySelF.id, hover);
     if (chk.problem) return { problem: chk.problem };
-    return { report: previewBattle(game, mySelF.id, hover), needsWar: chk.needsWar };
+    // the one strength number each side shows on the map
+    const theirs = formationsAt(game, hover)
+      .filter(f => f.civId !== me.id)
+      .reduce((a, f) => a + formationStrength(game, f), 0);
+    return {
+      report: previewBattle(game, mySelF.id, hover),
+      needsWar: chk.needsWar,
+      strength: [formationStrength(game, mySelF), theirs] as const,
+    };
   }, [hover, version, sel]);
 
   const overlay = useMemo(() => {
@@ -845,7 +856,7 @@ export function Game({
   }
 
   return (
-    <div className="game">
+    <div className={`game ${mini ? 'mini-on' : ''}`}>
       <div className="map-wrap">
         <MapView
           key={map3d ? '3d' : '2d'}
@@ -933,34 +944,7 @@ export function Game({
             ) : null}
           </button>
         </WhyPop>
-        <div className={`minimap-box ${mini ? '' : 'closed'}`}>
-          <div className="minimap-bar">
-            <button
-              className="link"
-              onClick={() => setDialog({ kind: 'empire' })}
-              title="Empire: settlements, armies, find"
-            >
-              <Icon name="sight" /> Find
-            </button>
-            <button
-              className="link"
-              onClick={toggleMini}
-              title="Show or hide the minimap"
-              aria-pressed={mini}
-            >
-              {mini ? 'Hide map' : 'Minimap'}
-            </button>
-            {me.techs.includes('steam-power') && (
-              <button
-                className={`link ${lens ? 'on' : ''}`}
-                onClick={() => setLens(l => (l ? null : 'industry'))}
-                title="Rail and power: which settlements are on the railway and what their industry lacks"
-                aria-pressed={!!lens}
-              >
-                Rail &amp; power
-              </button>
-            )}
-          </div>
+        <div className="minimap-box guide-box">
           {guide && (
             <div className="guide-card" role="note" aria-label="Guide">
               <small className="muted">
@@ -983,9 +967,6 @@ export function Game({
                 </button>
               </span>
             </div>
-          )}
-          {mini && (
-            <Minimap game={game} civId={me.id} version={version} view={view} onJump={focus} />
           )}
         </div>
         <button
@@ -1079,6 +1060,36 @@ export function Game({
           Menu
         </button>
       </header>
+      <div className={`minimap-box minimap-dock ${mini ? '' : 'closed'}`}>
+        <div className="minimap-bar">
+          <button
+            className="link"
+            onClick={() => setDialog({ kind: 'empire', tab: 'find' })}
+            title="Find a settlement or army"
+          >
+            <Icon name="sight" /> Find
+          </button>
+          <button
+            className="link"
+            onClick={toggleMini}
+            title="Show or hide the minimap"
+            aria-pressed={mini}
+          >
+            {mini ? 'Hide map' : 'Minimap'}
+          </button>
+          {me.techs.includes('steam-power') && (
+            <button
+              className={`link ${lens ? 'on' : ''}`}
+              onClick={() => setLens(l => (l ? null : 'industry'))}
+              title="Rail and power: which settlements are on the railway and what their industry lacks"
+              aria-pressed={!!lens}
+            >
+              Rail &amp; power
+            </button>
+          )}
+        </div>
+        {mini && <Minimap game={game} civId={me.id} version={version} view={view} onJump={focus} />}
+      </div>
       <nav className="left-rail" aria-label="Realm">
         {HUBS.map(h => (
           <button
@@ -1199,6 +1210,21 @@ export function Game({
             }}
           />
         )}
+        {selCity && selCity.civId !== me.id && (
+          <SettlementPeople
+            key={selCity.civId}
+            game={game}
+            civId={me.id}
+            them={selCity.civId}
+            onWar={id => setDialog({ kind: 'war', civId: id })}
+            onGift={(id, gold) => report(giveGift(game, me.id, id, gold) as Result)}
+            onAbsorb={id => report(absorb(game, me.id, id) as Result)}
+            onDeal={(id, o) => {
+              const r = proposeDeal(game, me.id, id, o);
+              report({ ok: r.ok, msg: r.msg } as Result);
+            }}
+          />
+        )}
         {sel?.kind === 'hex' && (
           <HexPanel
             game={game}
@@ -1245,6 +1271,15 @@ export function Game({
                   Attack{' '}
                   {battlePreview.needsWar !== undefined && <span className="fp-tag bad">War</span>}
                 </h2>
+                <p
+                  className={`gm-strength ${
+                    battlePreview.strength[0] > battlePreview.strength[1] ? 'ahead' : 'behind'
+                  }`}
+                  title="Strength: gear, people, experience"
+                >
+                  You <b>{battlePreview.strength[0]}</b> <span className="muted">vs</span>{' '}
+                  <b>{battlePreview.strength[1]}</b>
+                </p>
                 {battlePreview.report ? (
                   <div className="gm-preview">
                     <span className="chip" title="Your expected losses">
@@ -1496,20 +1531,7 @@ export function Game({
         />
       )}
       {hub && dialog && HUB_TABS[hub].some(t => sameTab(t.dialog, dialog)) && (
-        <div className="hub-tabs" role="tablist" aria-label={HUBS.find(h => h.id === hub)!.name}>
-          <b>{HUBS.find(h => h.id === hub)!.name}</b>
-          {HUB_TABS[hub].map(t => (
-            <button
-              key={t.label}
-              role="tab"
-              aria-selected={sameTab(t.dialog, dialog)}
-              className={sameTab(t.dialog, dialog) ? 'on' : ''}
-              onClick={() => setDialog(t.dialog)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <HubTabs hub={hub} dialog={dialog} onTab={setDialog} />
       )}
       {dialog?.kind === 'wonders' && (
         <WonderDialog
@@ -1747,14 +1769,15 @@ function NameCity({ suggested, onDone }: { suggested: string; onDone: (n: string
 
 type HubId = 'military' | 'cities' | 'nation' | 'diplomacy';
 const HUBS: { id: HubId; name: string; icon: string; title: string }[] = [
-  { id: 'military', name: 'Military', icon: 'army', title: 'Military: your units and designs' },
+  { id: 'military', name: 'Military', icon: 'army', title: 'Military: armies, fleets, designs' },
   { id: 'cities', name: 'Cities', icon: 'cities', title: 'Cities and wonders' },
   { id: 'nation', name: 'Nation', icon: 'flag', title: 'Nation, faith, dynasties and chronicle' },
   { id: 'diplomacy', name: 'Diplomacy', icon: 'peoples', title: 'Diplomacy and rankings' },
 ];
 const HUB_TABS: Record<HubId, { label: string; dialog: Dialog }[]> = {
   military: [
-    { label: 'Units', dialog: { kind: 'empire', tab: 'armies' } },
+    { label: 'Land', dialog: { kind: 'empire', tab: 'land' } },
+    { label: 'Sea', dialog: { kind: 'empire', tab: 'sea' } },
     { label: 'Designs', dialog: { kind: 'designs' } },
   ],
   cities: [
@@ -1778,4 +1801,78 @@ function sameTab(a: Dialog, b: Dialog): boolean {
   const ta = (a as { tab?: string }).tab,
     tb = (b as { tab?: string }).tab;
   return !ta || !tb || ta === tb;
+}
+
+/** The modal each hub tab's dialog draws, so its tabs can sit in that modal's header. */
+const MODAL_CLASS: Record<string, string> = {
+  empire: 'empire',
+  designs: 'designs',
+  wonders: 'wonders',
+  nation: 'nation',
+  faith: 'faith',
+  dynasties: 'dynasties',
+  stats: 'stats',
+  peoples: 'peoples',
+};
+
+/**
+ * A hub's tabs, drawn inside the open dialog's header (each dialog draws its own modal, so the
+ * tabs are placed into it). They follow the header if the dialog redraws it.
+ */
+function HubTabs({
+  hub,
+  dialog,
+  onTab,
+}: {
+  hub: HubId;
+  dialog: NonNullable<Dialog>;
+  onTab: (d: Dialog) => void;
+}) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  const cls = MODAL_CLASS[dialog.kind];
+  useLayoutEffect(() => {
+    const el = document.createElement('div');
+    el.className = 'hub-tabs';
+    el.setAttribute('role', 'tablist');
+    let header: Element | null = null;
+    const place = () => {
+      const h = cls ? document.querySelector(`.modal.${cls} > header`) : null;
+      if (h === header && el.isConnected) return;
+      header?.classList.remove('has-hub');
+      header = h;
+      if (h) {
+        h.classList.add('has-hub');
+        h.appendChild(el);
+      }
+      setHost(h ? el : null);
+    };
+    place();
+    const root = document.querySelector('.game') ?? document.body;
+    const mo = new MutationObserver(place);
+    mo.observe(root, { childList: true, subtree: true });
+    return () => {
+      mo.disconnect();
+      header?.classList.remove('has-hub');
+      el.remove();
+    };
+  }, [cls]);
+  const h = HUBS.find(x => x.id === hub)!;
+  if (!host) return null;
+  host.setAttribute('aria-label', h.name);
+  return createPortal(
+    <>
+      {HUB_TABS[hub].map(t => (
+        <button
+          key={t.label}
+          role="tab"
+          aria-selected={sameTab(t.dialog, dialog)}
+          className={sameTab(t.dialog, dialog) ? 'on' : ''}
+          onClick={() => onTab(t.dialog)}
+        >
+          {t.label}
+        </button>
+      ))}
+    </>,
+    host,
+  );
 }

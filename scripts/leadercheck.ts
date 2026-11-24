@@ -88,8 +88,7 @@ for (const seed of [5, 19, 33, 47, 61]) {
     // the player keeps no field army after turn 60: a tempting target in every game, so some
     // rival should march on it (whether one does in a given game depends on its neighbours'
     // wars and alliances), and warn first
-    if (t >= 60)
-      s.formations = s.formations.filter(f => f.civId !== me.id || f.kind !== 'army');
+    if (t >= 60) s.formations = s.formations.filter(f => f.civId !== me.id || f.kind !== 'army');
     endTurn(s);
     for (const e of s.log.filter(x => x.turn === s.turn - 1)) {
       if (/are massing troops on the Testers border/.test(e.text)) {

@@ -4,6 +4,7 @@ import { pendingRealmEvent, resolveRealmEvent } from '../engine/realmEvents.ts';
 import type { Civ, GameState } from '../engine/types.ts';
 import { Delta, GoodIcon, Ico } from './bits.tsx';
 import './declutter-world.css';
+import './r4-missionev.css';
 
 const KIND_ICON: Record<string, string> = {
   land: '🌾',
@@ -150,7 +151,7 @@ export function RealmEventDialog({
           {ev.choices.map((ch, i) => (
             <button
               key={i}
-              className="event-choice"
+              className={`event-choice${ch.mission ? ' mev-choice' : ''}`}
               disabled={!!ch.blocked}
               title={ch.blocked ?? ch.effect}
               onClick={() => {
@@ -159,6 +160,11 @@ export function RealmEventDialog({
               }}
             >
               <b>{ch.label}</b>
+              {ch.mission && (
+                <span className="mev-tag" title={`Culture mission: ${ch.mission}`}>
+                  <Ico name="culture" fallback="♪" size={14} /> Mission · {ch.mission}
+                </span>
+              )}
               {ch.blocked ? <small>{ch.blocked}</small> : <EffectChips text={ch.effect} />}
             </button>
           ))}

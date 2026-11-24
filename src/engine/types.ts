@@ -171,6 +171,8 @@ export interface BuildOrder {
 
 export interface Civ {
   id: number;
+  /** culture mission events: pacing, progress kept, foes called up (missionEvents.ts) */
+  missionEvents?: import('./missionEvents.ts').MissionEventState;
   name: string;
   color: string;
   isPlayer: boolean;

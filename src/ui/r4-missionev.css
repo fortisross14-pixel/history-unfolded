@@ -1,0 +1,19 @@
+/* mission events (engine/missionEvents.ts): the choice that serves a culture mission */
+.event-choice.mev-choice {
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.mev-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  color: var(--ink);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

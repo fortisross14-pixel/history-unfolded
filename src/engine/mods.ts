@@ -11,6 +11,11 @@ import { WONDERS } from '../data/wonders.ts';
 import { rulerMods } from '../data/rulers.ts';
 import type { Civ, GameState } from './types.ts';
 
+const boostOf = (s: GameState, civ: Civ) => {
+  const b = civ.missionEvents?.boost;
+  return b && s.turn <= b.until ? b : undefined;
+};
+
 const cache = new WeakMap<Civ, { key: string; mods: Mods }>();
 
 /** How many kept culture choices (missions done) carry each tag. */
@@ -68,7 +73,7 @@ export function civMods(s: GameState, civId: number): Mods {
     civ.policies ?? {},
   )
     .map(([k, v]) => k + v.pos)
-    .join()}|${faithTenets(s, civ).join()}|${heldWonders(s, civ.id).join()}`;
+    .join()}|${faithTenets(s, civ).join()}|${heldWonders(s, civ.id).join()}|${boostOf(s, civ)?.until ?? ''}`;
   const hit = cache.get(civ);
   if (hit && hit.key === key) return hit.mods;
   const m = ZERO_MODS();
@@ -100,6 +105,9 @@ export function civMods(s: GameState, civId: number): Mods {
   for (const id of heldWonders(s, civ.id)) addMods(m, WONDERS[id].mods);
   // faith: the teachings of the faith the people keeps, and its own founding belief
   for (const t of faithTenets(s, civ)) if (TENETS[t]?.mods) addMods(m, TENETS[t].mods!);
+  // a yield raised for a few turns by a mission event (missionEvents.ts)
+  const b = boostOf(s, civ);
+  if (b) addMods(m, { [b.key]: b.pct });
   cache.set(civ, { key, mods: m });
   return m;
 }

@@ -1312,6 +1312,21 @@ settlement is always a town. Founded further out, it is a **colony**:
 - **Strength numbers** are small and proportional: a scout about 1, a spear levy about 7; packs
   are sized so a spear levy wins about 9 fights in 10.
 
+## 12aa. Mission events (as built)
+
+- A bought mission that stalls (no progress for 5 turns, or under half after 8) may bring an
+  event aimed at it: 40% a turn, at most one every 7 turns per people, through the normal event
+  queue (one pending at a time), pushing the next random event back. `src/engine/missionEvents.ts`.
+- Each event has one choice that serves the mission (tagged "Mission") and one or two that are
+  good on their own: raiders gather near a town (let them come: a band sized so your usual army
+  wins about 9 in 10; or pay them off); a house asks for patrons (one level in its line for gold;
+  or half a tech for less gold); a guild offers to finish a building; a map, new goods, migrants,
+  a pact, a war, a treasure for a house, honours, a new house, a civil war, a ship; for yields per
+  turn, a 10-turn boost or a lump sum now. Events exist for 53 of the 56 mandate types.
+- A choice that starts a war or a civil war is never the default (turn end takes the first). The
+  AI answers on its own turn, taking the mission choice when it is worth it; it never declares war
+  on or signs a pact with the player through these events.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

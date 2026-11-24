@@ -26,6 +26,7 @@ import { hashSeed, mulberry32, type Rng } from './rng.ts';
 import type { City, Civ, Dynasty, GameState } from './types.ts';
 import { difficultyOf } from './difficulty.ts';
 import { STORY_EVENTS } from './storyEvents.ts';
+import { MISSION_EVENT_DEFS, missionEventDue, missionOf } from './missionEvents.ts';
 
 export type EventKind = 'land' | 'people' | 'court' | 'trade' | 'war' | 'faith' | 'knowledge';
 
@@ -37,6 +38,10 @@ export interface Subject {
   civ?: number;
   good?: string;
   hex?: number;
+  /** a mission event (missionEvents.ts): the culture choice of the mission it serves */
+  mission?: string;
+  /** anything else a mission event keeps (a slot, a wonder, an army) */
+  extra?: string;
 }
 
 export interface RealmEventState {
@@ -60,10 +65,14 @@ export interface Ctx {
   other?: Civ;
   good?: string;
   hex?: number;
+  mission?: string;
+  extra?: string;
 }
 
 export interface Choice {
   label: string;
+  /** the mission this choice serves, named on it (missionEvents.ts) */
+  mission?: string;
   /** what it costs and gives, shown before choosing */
   effect: string;
   /** why it cannot be chosen now, or null */
@@ -862,7 +871,7 @@ const EVENTS: EventDef[] = [
 ];
 
 export const REALM_EVENTS: Record<string, EventDef> = Object.fromEntries(
-  [...EVENTS, ...STORY_EVENTS].map(e => [e.id, e]),
+  [...EVENTS, ...STORY_EVENTS, ...MISSION_EVENT_DEFS].map(e => [e.id, e]),
 );
 
 // ---------------------------------------------------------------- pacing
@@ -894,6 +903,10 @@ function ctxOf(s: GameState, civ: Civ, sub: Subject): Ctx | null {
   }
   c.good = sub.good;
   c.hex = sub.hex;
+  // a mission event lapses once its mission is done
+  if (sub.mission !== undefined && !missionOf(civ, sub.mission)) return null;
+  c.mission = sub.mission;
+  c.extra = sub.extra;
   return c;
 }
 
@@ -921,6 +934,16 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
     if (ctxOf(s, civ, q.subject)) {
       id = q.id;
       subject = q.subject;
+      st.next = Math.max(st.next, s.turn + 5);
+    }
+  }
+  // a stalled culture mission may bring an event aimed at it (missionEvents.ts), within the
+  // same pacing: when the next event is due, or after 5 quiet turns
+  if (!id && (s.turn >= st.next || s.turn - last >= 5)) {
+    const m = missionEventDue(s, civ);
+    if (m) {
+      id = m.id;
+      subject = m.subject;
       st.next = Math.max(st.next, s.turn + 5);
     }
   }
@@ -983,6 +1006,7 @@ export function pendingRealmEvent(s: GameState, civ: Civ) {
     choices: choices.map(ch => ({
       label: ch.label,
       effect: ch.effect,
+      mission: ch.mission,
       blocked: ch.blocked?.(c) ?? null,
     })),
   };

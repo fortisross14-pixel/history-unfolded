@@ -73,6 +73,13 @@ function newHouse(s: GameState, civ: Civ, color: string): Dynasty {
   };
 }
 
+/** A house raised at court out of turn (missionEvents.ts). */
+export function riseHouse(s: GameState, civ: Civ): Dynasty {
+  const d = newHouse(s, civ, HOUSE_COLORS[civ.dynasties.length % HOUSE_COLORS.length]);
+  civ.dynasties.push(d);
+  return d;
+}
+
 /** A people's first house. */
 export function foundingDynasty(s: GameState, civ: Civ): Dynasty {
   return newHouse(s, civ, HOUSE_COLORS[0]);

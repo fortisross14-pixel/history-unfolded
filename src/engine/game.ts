@@ -96,6 +96,7 @@ import { chronicle, recordStats } from './stats.ts';
 import { aiPolicyTurn, policyTurn } from './policies.ts';
 import { settlerFactor } from '../data/policies.ts';
 import { realmEventTurn, settleRealmEvent } from './realmEvents.ts';
+import { missionEventTurn } from './missionEvents.ts';
 import type { Blueprint, District } from './types.ts';
 import { resolveBattle, type BattleReport } from './combat.ts';
 import {
@@ -1497,6 +1498,8 @@ export function endTurn(s: GameState): string[] {
     if (!civ.alive || civ.independent) continue;
     const msgs = cultureTurn(s, civ, cultureOf.get(civ.id) ?? 0);
     if (civ.isPlayer) events.push(...msgs);
+    // stalled missions may bring an event aimed at them; AI peoples answer theirs here
+    missionEventTurn(s, civ);
     const dyn = dynastyTurn(s, civ);
     if (civ.isPlayer) events.push(...dyn);
     // AI peoples choose their national direction and issue edicts

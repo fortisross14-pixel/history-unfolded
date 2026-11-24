@@ -14,7 +14,9 @@ import { DEPOSITS, GOODS } from '../data/goods.ts';
 import { SLOT_TYPES } from '../data/slots.ts';
 import { isWater } from '../data/terrain.ts';
 import { cityDistricts } from '../engine/economy.ts';
-import { depositVisible, territory, visibleHexes } from '../engine/game.ts';
+import { depositVisible, formationStrength, territory, visibleHexes } from '../engine/game.ts';
+import { lairsSeenBy, packOf } from '../engine/wildlife.ts';
+import { people } from '../engine/units.ts';
 import { centerUnit, distance, hexAtUnit, neighbors, SQRT3, type Grid } from '../engine/hex.ts';
 import type { City, Civ, Formation, GameState } from '../engine/types.ts';
 import { emblemOf } from '../data/rulers.ts';
@@ -43,7 +45,7 @@ import {
 import { wondersIn } from '../engine/wonders.ts';
 import { industryStatus } from '../engine/economy.ts';
 import { fx, Motion, reducedMotion } from './fx.ts';
-import { buildTroops, troopLook } from './troops.ts';
+import { buildBeasts, buildTroops, troopLook } from './troops.ts';
 import type { Insets, Overlay } from './mapRenderer.ts';
 
 const ELEV = (55 * Math.PI) / 180;
@@ -118,6 +120,202 @@ function nationBase(g: THREE.Object3D, colour: string, r: number) {
   cyl(g, r + 0.012, r + 0.016, 0.01, '#2a2620', 0, -0.006, 0, 20);
   cyl(g, r, r, 0.014, colour, 0, -0.004, 0, 20);
   cyl(g, r * 0.72, r * 0.72, 0.016, pale, 0, -0.004, 0, 20);
+}
+
+/**
+ * A deposit on the map: a clear low-poly sign of what it is, on a pale pad in its good's colour,
+ * set to one side of the hex so troops and buildings leave it in view. Ore is rocks shot with
+ * the metal, beasts stand as beasts, crops grow in a patch, the sea's goods break the water.
+ */
+function depositMark(
+  deck: THREE.Object3D,
+  kind: string,
+  water: boolean,
+  built: boolean,
+  r: () => number,
+) {
+  const good = Object.keys(DEPOSITS[kind]?.yields ?? {})[0];
+  const col = GOODS[good]?.color ?? '#b0905a';
+  const g = new THREE.Group();
+  // on a built hex the buildings take the middle: the sign sits at the rim
+  g.position.set(built ? 0.58 : 0.32, 0, built ? -0.4 : -0.24);
+  g.scale.setScalar(built ? 1.05 : 1.75);
+  deck.add(g);
+  const pad = new THREE.Color(col).lerp(new THREE.Color('#fff6e0'), 0.3).getStyle();
+  if (!water) {
+    cyl(g, 0.21, 0.22, 0.012, '#4a3f30', 0, 0, 0, 12);
+    cyl(g, 0.195, 0.195, 0.02, pad, 0, 0, 0, 12);
+  }
+  const quad = (x: number, z: number, coat: string, len = 0.13, ht = 0.06, a = 0) => {
+    const q = new THREE.Group();
+    q.position.set(x, 0, z);
+    q.rotation.y = a;
+    g.add(q);
+    for (const [lx, lz] of [
+      [len * 0.35, -ht * 0.4],
+      [len * 0.35, ht * 0.4],
+      [-len * 0.35, -ht * 0.4],
+      [-len * 0.35, ht * 0.4],
+    ])
+      cyl(q, 0.01, 0.01, 0.05, '#3a3530', lx, 0, lz, 4);
+    box(q, len, ht, ht, coat, 0, 0.045, 0);
+    box(q, ht * 0.8, ht * 0.8, ht * 0.7, coat, len * 0.55, 0.06, 0);
+    return q;
+  };
+  const ore = (vein: string, base = '#8f877a') => {
+    rock(g, -0.06, 0.02, 0.13, base);
+    rock(g, 0.1, -0.06, 0.09, base);
+    for (let k = 0; k < 4; k++)
+      ball(g, 0.035, vein, -0.08 + r() * 0.18, 0.08 + r() * 0.06, -0.07 + r() * 0.14);
+  };
+  switch (kind) {
+    case 'wheat':
+    case 'rice':
+      for (let a = -1; a <= 1; a++)
+        for (let b = -1; b <= 1; b++)
+          cone(g, 0.035, 0.2, kind === 'rice' ? '#b7c46a' : '#e0bd52', a * 0.1, 0, b * 0.1, 4);
+      break;
+    case 'cattle':
+      quad(-0.05, 0.05, '#6e4a30', 0.15, 0.07, 0.3);
+      quad(0.08, -0.08, '#efe6d6', 0.15, 0.07, -0.4);
+      break;
+    case 'pigs':
+      quad(-0.04, 0.05, '#e3a39a', 0.12, 0.06, 0.5);
+      quad(0.08, -0.07, '#d6928a', 0.12, 0.06, -0.3);
+      break;
+    case 'sheep':
+      for (const [x, z] of [
+        [-0.07, 0.05],
+        [0.07, -0.06],
+        [0.08, 0.09],
+      ]) {
+        ball(g, 0.065, '#f3eee2', x, 0.09, z);
+        box(g, 0.04, 0.04, 0.04, '#3a3530', x + 0.07, 0.08, z);
+        cyl(g, 0.008, 0.008, 0.05, '#3a3530', x, 0, z, 4);
+      }
+      break;
+    case 'game': {
+      const d = quad(0, 0, '#9a6a40', 0.14, 0.06, 0.2);
+      for (const s of [-1, 1]) {
+        const a = cyl(d, 0.006, 0.004, 0.08, '#e8dcc0', 0.08, 0.09, s * 0.02, 3);
+        a.rotation.x = s * 0.4;
+      }
+      break;
+    }
+    case 'horses': {
+      for (const [x, z, a] of [
+        [-0.05, 0.05, 0.3],
+        [0.08, -0.07, -0.5],
+      ]) {
+        const h = quad(x, z, '#7b4b2a', 0.16, 0.06, a);
+        const neck = box(h, 0.04, 0.08, 0.035, '#7b4b2a', 0.08, 0.07, 0);
+        neck.rotation.z = -0.5;
+        box(h, 0.06, 0.03, 0.03, '#7b4b2a', 0.12, 0.13, 0);
+        box(h, 0.012, 0.05, 0.01, '#2a2420', -0.09, 0.06, 0);
+      }
+      break;
+    }
+    case 'ivory': {
+      const e = quad(0, 0, '#9a958e', 0.2, 0.11, 0.2);
+      for (const s of [-1, 1]) {
+        const t = cone(e, 0.012, 0.09, '#f6f0e0', 0.16, 0.03, s * 0.03, 4);
+        t.rotation.z = -1.1;
+      }
+      break;
+    }
+    case 'furs':
+      quad(0, 0, '#c8682e', 0.13, 0.05, 0.4);
+      box(g, 0.16, 0.02, 0.12, '#6d4a2e', -0.04, 0, 0.1);
+      break;
+    case 'stone':
+      box(g, 0.16, 0.1, 0.12, '#c9c0ad', -0.04, 0, 0.02);
+      box(g, 0.12, 0.08, 0.1, '#b3a994', 0.1, 0, -0.06);
+      box(g, 0.1, 0.07, 0.09, '#d8d0bc', 0.02, 0.1, 0);
+      break;
+    case 'copper':
+      ore('#d07a3e');
+      break;
+    case 'tin':
+      ore('#c6d0d4');
+      break;
+    case 'iron':
+      ore('#4a4646', '#9b8d7c');
+      break;
+    case 'coal':
+      ore('#1f1c1a', '#6b645a');
+      break;
+    case 'gold':
+      ore('#f0c43a');
+      break;
+    case 'silver':
+      ore('#e8ecf0');
+      break;
+    case 'saltpeter':
+    case 'salt':
+      for (let k = 0; k < 5; k++)
+        cone(g, 0.04, 0.1 + r() * 0.08, '#f2efe8', -0.1 + r() * 0.2, 0, -0.1 + r() * 0.2, 4);
+      break;
+    case 'wine':
+      for (let k = -1; k <= 1; k++) {
+        cyl(g, 0.008, 0.008, 0.16, C.timber, k * 0.1, 0, 0, 4);
+        ball(g, 0.045, '#6b2a4a', k * 0.1, 0.12, 0.02);
+        ball(g, 0.04, '#5f8a3a', k * 0.1, 0.16, -0.03);
+      }
+      break;
+    case 'spices':
+    case 'dyes':
+    case 'silk':
+    case 'sugar':
+      for (let k = 0; k < 4; k++) {
+        const x = -0.1 + (k % 2) * 0.18,
+          z = -0.08 + Math.floor(k / 2) * 0.16;
+        if (kind === 'sugar') cyl(g, 0.012, 0.012, 0.24, '#8fbf5a', x, 0, z, 4);
+        else {
+          cyl(g, 0.01, 0.01, 0.08, C.timber, x, 0, z, 4);
+          ball(g, 0.06, kind === 'silk' ? '#5f8a3a' : '#4f7a34', x, 0.11, z);
+          ball(g, 0.028, kind === 'silk' ? '#f4efe3' : col, x + 0.03, 0.15, z);
+        }
+      }
+      break;
+    case 'fish':
+      for (const [x, z, a] of [
+        [-0.05, 0.04, 0.4],
+        [0.09, -0.06, -0.6],
+      ]) {
+        const f = new THREE.Group();
+        f.position.set(x, 0.12, z);
+        f.rotation.set(0, a, 0.5);
+        g.add(f);
+        const body = ball(f, 0.05, '#c7d4d8', 0, 0, 0);
+        body.scale.set(1.6, 0.8, 0.5);
+        const tail = cone(f, 0.035, 0.05, '#9fb4ba', -0.09, -0.025, 0, 3);
+        tail.rotation.z = Math.PI / 2;
+      }
+      cyl(g, 0.14, 0.14, 0.008, '#e8f1f2', 0, 0.06, 0, 12);
+      break;
+    case 'whales': {
+      const back = ball(g, 0.12, '#4a5a66', 0, 0.06, 0);
+      back.scale.set(1.8, 0.6, 0.8);
+      const tail = box(g, 0.05, 0.02, 0.14, '#4a5a66', -0.22, 0.12, 0);
+      tail.rotation.z = 0.4;
+      break;
+    }
+    case 'pearls': {
+      const shell = cyl(g, 0.1, 0.12, 0.03, '#d9cbb8', 0, 0.06, 0, 8);
+      shell.rotation.z = 0.15;
+      ball(g, 0.04, '#f6f2fa', 0.02, 0.1, 0);
+      break;
+    }
+    case 'oil':
+      cyl(g, 0.14, 0.15, 0.015, '#1e1c1a', 0, 0.01, 0, 10);
+      for (const s of [-1, 1]) {
+        const leg = cyl(g, 0.008, 0.008, 0.3, '#5a4f45', s * 0.05, 0, 0, 4);
+        leg.rotation.z = s * -0.18;
+      }
+      break;
+    default:
+      ore(col);
+  }
 }
 
 /** a hex's main formation: base radius before scaling (× UNIT_SCALE on the map) */
@@ -196,6 +394,10 @@ export class World3DRenderer {
   private industry = new Map<number, { key: string } & ReturnType<typeof industryStatus>>();
   /** ruins not yet searched, by hex */
   private ruinMeshes = new Map<number, THREE.Object3D>();
+  /** lairs of wild beasts, by hex */
+  private lairMeshes = new Map<number, THREE.Object3D>();
+  /** strength numbers of formations, kept until what they depend on changes */
+  private strengths = new Map<number, { key: string; n: number }>();
   private units = new Map<number, { key: string; mesh: THREE.Object3D }>();
   private border: { key: string; mesh: THREE.Mesh | null } = { key: '', mesh: null };
   private overlay: { key: string; group: THREE.Group } = { key: '', group: new THREE.Group() };
@@ -374,6 +576,7 @@ export class World3DRenderer {
     const known = s.civs[civId].explored;
     const root = new THREE.Group();
     const top = (i: number) => this.top(s, i);
+    const ruinHexes = new Set((s.ruins ?? []).map(x => x.hex));
     for (let row = cy * CHUNK; row < Math.min(g.h, (cy + 1) * CHUNK); row++)
       for (let col = cx * CHUNK; col < Math.min(g.w, (cx + 1) * CHUNK); col++) {
         const i = row * g.w + col;
@@ -426,24 +629,27 @@ export class World3DRenderer {
             cone(deck, 0.14, ph * 0.32, '#f3f2ee', px, ph * 0.68, pz, 5);
           }
         const veg = m.vegetation[i];
+        // a deposit's sign keeps its corner of the hex (+x, -z) clear of trees
+        const mark = depositVisible(s, civId, i);
+        // ruins stand in a clearing, so the treasure shows
+        const ruin = ruinHexes.has(i);
+        const clearOf = (px: number, pz: number) => !ruin && (!mark || px < 0.05 || pz > -0.05);
         // settlements and districts clear their own hex of trees
         const built = s.cities.some(c => c.hex === i) || s.districts.some(d => d.hex === i);
         if (!built) {
           if (veg === 'forest') {
             const n = 4 + Math.floor(r() * 3);
-            for (let k = 0; k < n; k++)
-              tree(
-                deck,
-                (r() - 0.5) * 1.1,
-                (r() - 0.5) * 1.1,
-                1.6 + r() * 0.6,
-                t === 'tundra' || t === 'snow' || r() < 0.4 ? 'pine' : 'leaf',
-                r,
-              );
+            for (let k = 0; k < n; k++) {
+              const px = (r() - 0.5) * 1.1,
+                pz = (r() - 0.5) * 1.1;
+              const kind = t === 'tundra' || t === 'snow' || r() < 0.4 ? 'pine' : 'leaf';
+              if (clearOf(px, pz)) tree(deck, px, pz, 1.6 + r() * 0.6, kind, r);
+            }
           } else if (veg === 'jungle') {
             for (let k = 0; k < 5; k++) {
               const px = (r() - 0.5) * 1.1,
                 pz = (r() - 0.5) * 1.1;
+              if (!clearOf(px, pz)) continue;
               cyl(deck, 0.03, 0.04, 0.28, C.timber, px, 0, pz, 5);
               ball(deck, 0.2 + r() * 0.06, r() < 0.5 ? '#3f6e34' : '#4f7f3a', px, 0.36, pz);
             }
@@ -465,12 +671,7 @@ export class World3DRenderer {
           } else if (!isWater(t) && m.relief[i] === 'flat' && r() < 0.25)
             rock(deck, (r() - 0.5) * 0.9, (r() - 0.5) * 0.9, 0.05);
         }
-        if (depositVisible(s, civId, i)) {
-          const good = Object.keys(DEPOSITS[m.deposit[i]!.kind].yields)[0];
-          const c = GOODS[good]?.color ?? '#b0905a';
-          for (let k = 0; k < 3; k++)
-            rock(deck, 0.42 + (r() - 0.5) * 0.15, -0.32 + (r() - 0.5) * 0.15, 0.07, c);
-        }
+        if (mark) depositMark(deck, m.deposit[i]!.kind, isWater(t), built, r);
         if (t === 'ocean' && r() < 0.15)
           box(deck, 0.3, 0.01, 0.04, '#9fc3d0', (r() - 0.5) * 0.8, 0.005, (r() - 0.5) * 0.8);
         // a river leaves through the edge it shares with the hex downstream
@@ -666,7 +867,8 @@ export class World3DRenderer {
   // ---------------------------------------------------------------- troops
 
   private unitKey(s: GameState, f: Formation, big: boolean) {
-    return `${f.kind}|${Math.min(4, Math.ceil(f.cohorts.length / 3))}|${s.civs[f.civId].color}|${troopLook(f)}|${big}`;
+    const pack = packOf(s, f)?.kind ?? '';
+    return `${f.kind}|${Math.min(4, Math.ceil(f.cohorts.length / 3))}|${s.civs[f.civId].color}|${troopLook(f)}|${big}|${pack}`;
   }
 
   private buildUnit(s: GameState, f: Formation, big: boolean): THREE.Object3D {
@@ -676,9 +878,13 @@ export class World3DRenderer {
       boat(grp, 0, 0, 0.6, 2.6);
       flag(grp, 0, 0.32, 0, col, 0.18);
     } else {
-      // figures in the formation's own gear, one to four by its size
-      buildTroops(grp, f, col);
-      flag(grp, -0.16, 0, -0.12, col, 0.4);
+      const pack = packOf(s, f)?.kind;
+      // wild beasts stand as beasts; everyone else in the formation's own gear, one to four
+      if (pack && pack !== 'guardians') buildBeasts(grp, pack, f.cohorts.length);
+      else {
+        buildTroops(grp, f, col);
+        flag(grp, -0.16, 0, -0.12, col, 0.4);
+      }
     }
     // a round base in the people's colour: whose troops these are, at a glance
     // the hex's main formation stands on a base filling almost the whole hex (inner radius
@@ -705,6 +911,8 @@ export class World3DRenderer {
       this.cities.clear();
       this.camps.clear();
       this.ruinMeshes.clear();
+      this.lairMeshes.clear();
+      this.strengths.clear();
       this.cityGroup.clear();
       this.units.clear();
       this.unitGroup.clear();
@@ -929,7 +1137,7 @@ export class World3DRenderer {
       const grp = new THREE.Group();
       const [x, z] = centerUnit(g, h);
       grp.position.set(x, this.top(s, h), z);
-      grp.scale.setScalar(1.5);
+      grp.scale.setScalar(1.8);
       const r = rng(h * 53 + 11);
       box(grp, 0.5, 0.04, 0.36, C.stone2, 0, 0, 0);
       for (let k = 0; k < 4; k++) {
@@ -939,10 +1147,50 @@ export class World3DRenderer {
       const fallen = cyl(grp, 0.035, 0.035, 0.26, C.stone, 0.05, 0.08, 0.12, 6);
       fallen.rotation.z = Math.PI / 2;
       ball(grp, 0.05, C.stone2, -0.22, 0.06, 0.12);
-      cone(grp, 0.05, 0.08, '#e6c35a', 0.2, 0.04, 0.1, 5);
+      // a treasure chest at the foot of the columns, its lid ajar and gold showing
+      box(grp, 0.16, 0.08, 0.1, '#7a4a26', 0.17, 0.04, 0.1);
+      box(grp, 0.17, 0.012, 0.11, '#c79a3e', 0.17, 0.1, 0.1);
+      const lid = box(grp, 0.16, 0.04, 0.1, '#8a5630', 0.17, 0.12, 0.05);
+      lid.rotation.x = -0.6;
+      for (let k = 0; k < 3; k++) ball(grp, 0.022, '#f0c43a', 0.12 + k * 0.05, 0.12, 0.12);
       const mesh = bakedMesh(grp) ?? grp;
       this.cityGroup.add(mesh);
       this.ruinMeshes.set(h, mesh);
+    }
+
+    // ---- lairs of wild beasts: a den of rocks with a dark mouth and old bones
+    const lairHexes = new Set(
+      lairsSeenBy(s, civId)
+        .filter(l => l.kind !== 'guardians')
+        .map(l => l.hex),
+    );
+    for (const [h, m] of this.lairMeshes)
+      if (!lairHexes.has(h)) {
+        this.cityGroup.remove(m);
+        this.lairMeshes.delete(h);
+      }
+    for (const h of lairHexes) {
+      if (this.lairMeshes.has(h)) continue;
+      const grp = new THREE.Group();
+      const [x, z] = centerUnit(g, h);
+      grp.position.set(x - 0.45, this.top(s, h), z - 0.4);
+      grp.scale.setScalar(1.5);
+      const r = rng(h * 71 + 3);
+      for (let k = 0; k < 4; k++) {
+        const a = Math.PI * (0.2 + k * 0.35);
+        rock(grp, Math.cos(a) * 0.12, -Math.sin(a) * 0.1, 0.07 + r() * 0.04, '#857b6c');
+      }
+      const mouth = add(grp, new THREE.CircleGeometry(0.06, 6), '#1e1a16', 0, 0.06, 0.02, {
+        side: THREE.DoubleSide,
+      });
+      mouth.rotation.y = 0;
+      for (let k = 0; k < 3; k++) {
+        const b = cyl(grp, 0.008, 0.008, 0.08, '#efe8d8', 0.05 + k * 0.04, 0, 0.12, 4);
+        b.rotation.z = Math.PI / 2 + (r() - 0.5);
+      }
+      const mesh = bakedMesh(grp) ?? grp;
+      this.cityGroup.add(mesh);
+      this.lairMeshes.set(h, mesh);
     }
 
     // ---- troops: the player's own everywhere, others where the player sees them
@@ -1185,26 +1433,43 @@ export class World3DRenderer {
         ctx.fillText(text, sx, sy + 24);
       }
     }
-    // cohort counts by troops
-    if (zoom >= 26) {
-      ctx.font = `bold ${Math.min(13, zoom * 0.2)}px Georgia, serif`;
+    // strength numbers by troops, in their people's colour (hidden at the strategic zoom):
+    // a 250 most likely beats a 137, beasts and raiders included
+    if (zoom >= 20) {
+      const fs = Math.max(11, Math.min(15, zoom * 0.24));
+      ctx.font = `bold ${fs}px Georgia, serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      const byId = new Map(s.formations.map(f => [f.id, f]));
       for (const [id, u] of this.units) {
-        const f = s.formations.find(x => x.id === id);
-        if (!f || f.kind === 'fleet') continue;
+        const f = byId.get(id);
+        if (!f || f.kind !== 'army') continue;
+        const key = `${s.turn}|${f.cohorts.length}|${people(f)}|${troopLook(f)}|${f.cohorts.reduce((a, c) => a + c.xp, 0)}`;
+        let st = this.strengths.get(id);
+        if (!st || st.key !== key) {
+          st = { key, n: formationStrength(s, f) };
+          this.strengths.set(id, st);
+        }
+        if (!st.n) continue;
         const p = u.mesh.position;
-        const [sx, sy] = this.project(p.x + 0.18 * UNIT_SCALE, p.y + 0.42 * UNIT_SCALE, p.z);
-        const r = Math.min(10, zoom * 0.14);
-        ctx.fillStyle = s.civs[f.civId].color;
+        const [sx, sy] = this.project(p.x + 0.2 * UNIT_SCALE, p.y + 0.46 * UNIT_SCALE, p.z);
+        if (sx < -40 || sy < -20 || sx > this.w + 40 || sy > this.h + 20) continue;
+        const text = `${st.n}`;
+        const w = Math.max(fs * 1.7, ctx.measureText(text).width + fs * 0.8);
+        const h = fs * 1.35;
+        const wild = s.civs[f.civId].raiders;
+        ctx.fillStyle = wild ? '#5a2a1e' : s.civs[f.civId].color;
         ctx.beginPath();
-        ctx.arc(sx, sy, r, 0, Math.PI * 2);
+        ctx.roundRect(sx - w / 2, sy - h / 2, w, h, h / 2);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(250,245,232,0.95)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = wild ? '#e0a040' : 'rgba(250,245,232,0.95)';
+        ctx.lineWidth = 1.6;
         ctx.stroke();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(20,14,8,0.55)';
+        ctx.strokeText(text, sx, sy + 0.5);
         ctx.fillStyle = '#fff';
-        ctx.fillText(`${f.cohorts.length}`, sx, sy + 0.5);
+        ctx.fillText(text, sx, sy + 0.5);
       }
     }
     // battle flashes and floating numbers

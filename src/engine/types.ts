@@ -157,6 +157,16 @@ export interface City {
   founded: number;
   /** city guard readiness 0..1; battered by assaults, recovers each turn */
   guard: number;
+  /** the builders' queue, in the player's order (economy.ts cityQueue); absent in older saves */
+  queue?: BuildOrder[];
+}
+
+/** One planned building in a settlement's queue: a district plot, or the centre row (slot ≥ 9). */
+export interface BuildOrder {
+  districtId: number;
+  slot: number;
+  type: string;
+  paused?: boolean;
 }
 
 export interface Civ {

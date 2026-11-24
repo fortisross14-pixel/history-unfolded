@@ -1,0 +1,178 @@
+/* round 4, city group: the build queue, the centre row and the before → after preview */
+.r4-queue {
+  margin: 10px 0 6px;
+}
+.r4-queue .dc-h {
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.r4-queue .dc-h .chip {
+  font-size: 14px;
+  font-weight: 400;
+}
+.r4-q {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.r4-qi {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'pic name state acts'
+    'pic bar bar acts';
+  align-items: center;
+  gap: 0 8px;
+  padding: 4px 6px;
+  border: 1px solid var(--iv-line-soft, #e0d2b4);
+  border-radius: 6px;
+  background: var(--iv-btn, #fbf7ee);
+}
+.r4-qi > .art,
+.r4-qi > .cell-glyph {
+  grid-area: pic;
+  justify-self: center;
+}
+.r4-qn {
+  grid-area: name;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.r4-qn small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.r4-qs {
+  grid-area: state;
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+}
+.r4-qi .bar {
+  grid-area: bar;
+  margin-top: 3px;
+}
+.r4-qa {
+  grid-area: acts;
+  display: flex;
+  gap: 2px;
+}
+.r4-qa .icon-btn {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1;
+}
+.r4-qa .r4-pause.on {
+  background: var(--iv-gold-soft, #e7d6ac);
+}
+.r4-qi.paused,
+.r4-qi.waiting,
+.r4-qi.goods,
+.r4-qi.blocked {
+  opacity: 0.72;
+}
+.r4-qi.paused .bar span,
+.r4-qi.waiting .bar span {
+  background: var(--iv-muted, #76674d);
+}
+.r4-qi.goods .r4-qs small,
+.r4-qi.blocked .r4-qs small {
+  color: var(--iv-bad, #a2402f);
+}
+.r4-queue.compact .r4-q {
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+/* the centre row */
+.r4-centre {
+  margin: 8px 0;
+}
+.r4-crow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.r4-cell,
+.r4-copt {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 64px;
+  max-width: 84px;
+  padding: 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.1;
+}
+.r4-cell {
+  border: 1px solid var(--iv-line, #c9b083);
+  background: var(--iv-panel-2, #efe6d1);
+}
+.r4-cell.planned {
+  border-style: dashed;
+  opacity: 0.75;
+}
+.r4-copt {
+  border: 1px dashed var(--iv-line, #c9b083);
+  background: transparent;
+  color: var(--iv-muted, #76674d);
+  cursor: pointer;
+}
+.r4-copt.on {
+  border-style: solid;
+  background: var(--iv-gold-soft, #e7d6ac);
+  color: var(--iv-ink, #2a2419);
+}
+.r4-cpick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.r4-cpick .build-tip {
+  flex: 1 1 260px;
+}
+
+/* before → after */
+.r4-diff {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 2px 0;
+}
+.r4-diff .chip {
+  gap: 3px;
+  font-size: 13px;
+}
+.r4-diff .chip.muted {
+  opacity: 0.6;
+}
+.r4-ba b {
+  font-weight: 700;
+}
+.r4-builders .chip {
+  font-size: 13px;
+}
+@media (max-width: 700px) {
+  .r4-qi {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'pic name acts'
+      'pic state acts'
+      'pic bar bar';
+  }
+}

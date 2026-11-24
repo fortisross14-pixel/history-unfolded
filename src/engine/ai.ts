@@ -92,6 +92,7 @@ import { personalityOf } from '../data/leaders.ts';
 import { nearRuin } from './ruins.ts';
 import { foundKind, promoteColony, promoteInfo } from './colonies.ts';
 import {
+  aiCentre,
   cityDistricts,
   marketStock,
   constructionQueue,
@@ -680,6 +681,7 @@ export function planDistricts(s: GameState, civ: Civ, c: City, force = false) {
   const ds = cityDistricts(s, c);
   if (!force && (s.turn + c.id) % 3 !== 0 && ds.length > 1) return;
   const centre = ds.find(isCentre);
+  aiCentre(s, c);
   if (!isUrban(c)) {
     // a small settlement's districts work the land: each on the free hex that serves it best
     if (districtRoom(s, c) > 0) {

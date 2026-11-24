@@ -486,13 +486,12 @@ for (const seed of [1, 2, 3, 42]) {
     const blocker = s.formations.find(f => f.civId === foe.id && f.kind === 'army')!;
     const oldHex = blocker.hex;
     blocker.hex = cut;
+    // rivers carry trade too: this part is about the road alone, so take them away for it
+    const rivers = s.map.river;
+    s.map.river = rivers.map(() => 0);
     invalidateMarkets();
-    const riverLink = s.map.river[cut] === 1;
-    if (!path.some(h => s.map.river[h]))
-      check(
-        marketCities(s, second).length === 1 || riverLink,
-        'an enemy on the road splits the market',
-      );
+    check(marketCities(s, second).length === 1, 'an enemy on the road splits the market');
+    s.map.river = rivers;
     blocker.hex = oldHex;
     invalidateMarkets();
     endWar(s, me.id, foe.id);

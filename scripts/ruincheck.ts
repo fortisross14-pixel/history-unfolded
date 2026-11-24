@@ -10,7 +10,7 @@ import {
   serialize,
 } from '../src/engine/game.ts';
 import { distance } from '../src/engine/hex.ts';
-import { searchRuins } from '../src/engine/ruins.ts';
+import { RUIN_NEAR, searchRuins } from '../src/engine/ruins.ts';
 import type { GameState } from '../src/engine/types.ts';
 
 let failures = 0;
@@ -43,8 +43,8 @@ const make = (seed: number): GameState =>
   check(n >= 10, `ruins are scattered at the start (${n})`);
   const starts = s.formations.map(f => f.hex);
   check(
-    s.ruins!.every(r => starts.every(h => distance(g, h, r.hex) >= 4)),
-    'none right by a starting people',
+    s.ruins!.every(r => starts.every(h => distance(g, h, r.hex) >= 2)),
+    'none on or next to a starting people',
   );
   check(deserialize(serialize(s)).ruins?.length === n, 'ruins survive a save');
   // every kind of find works for an army
@@ -69,10 +69,33 @@ const make = (seed: number): GameState =>
   check(searchRuins(s, army) === null || s.ruins!.length >= 0, 'searched ruins are gone');
 }
 
+// two or three ruins a short walk from every great people's start, on several maps
+for (const seed of [8, 3, 14, 21, 33]) {
+  const s = make(seed);
+  const g = { w: s.map.w, h: s.map.h };
+  const near = s.civs
+    .filter(c => !c.independent)
+    .map(c => {
+      const home =
+        s.cities.find(x => x.civId === c.id)?.hex ??
+        s.formations.find(f => f.civId === c.id && f.kind === 'settlers')!.hex;
+      return s.ruins!.filter(r => {
+        const d = distance(g, home, r.hex);
+        return d >= RUIN_NEAR[0] && d <= RUIN_NEAR[1];
+      }).length;
+    });
+  console.log(`     seed ${seed}: ruins within ${RUIN_NEAR[1]} of each start: ${near.join(' ')}`);
+  check(
+    near.every(n => n >= 2),
+    `seed ${seed}: every start has two or more ruins nearby`,
+  );
+}
+
 // in play, ruins get found (by the player's scouts or the AI)
 {
   let found = 0,
-    total = 0;
+    total = 0,
+    early = 0;
   for (const seed of [3, 14]) {
     const s = make(seed);
     total += s.ruins!.length;
@@ -83,11 +106,16 @@ const make = (seed: number): GameState =>
       me.isPlayer = true;
       if (!me.researching) me.researching = availableTechs(me)[0]?.id ?? null;
       endTurn(s);
+      if (t === 19)
+        early += s.log.filter(
+          e => e.civId === me.id && /searched .* and found/.test(e.text),
+        ).length;
     }
     found += s.log.filter(e => /searched .* and found/.test(e.text)).length;
     console.log(`     seed ${seed}: ${s.ruins!.length} ruins left after 80 turns`);
   }
   check(found > 0, `ruins are searched in play (${found} of ${total} in the log)`);
+  check(early >= 2, `the player finds ruins in the first 20 turns (${early} on two maps)`);
 }
 
 if (failures) {

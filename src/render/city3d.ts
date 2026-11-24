@@ -933,6 +933,103 @@ export const scaffold: Builder = g => {
   return C.dirt;
 };
 
+// ---------------------------------------------------------------- the centre row
+
+/** Defences drawn as a ring round the centre's plinth, weakest first. */
+const WALL_RING = ['palisade', 'walls', 'castle'];
+
+/** A ring round the centre plinth: timber stakes, stone walls, or high walls with towers. */
+function wallRing(g: THREE.Object3D, kind: string, built: boolean) {
+  const R = (3 * PITCH + 0.2) / 2 + 0.35;
+  const y = -0.16;
+  const tall = kind === 'castle' ? 0.5 : kind === 'walls' ? 0.32 : 0.28;
+  const col = kind === 'palisade' ? C.wood : kind === 'castle' ? C.stone2 : C.stone;
+  const sides: [number, number, number][] = [
+    [0, -R, 0],
+    [R, 0, Math.PI / 2],
+    [0, R, 0],
+    [-R, 0, Math.PI / 2],
+  ];
+  sides.forEach(([x, z, rot], k) => {
+    // a gate on the front side
+    const parts = k === 2 ? [-1, 1] : [0];
+    for (const p of parts) {
+      const len = k === 2 ? R - 0.35 : 2 * R;
+      const seg = new THREE.Group();
+      seg.position.set(x + (k === 2 ? p * (R / 2 + 0.17) : 0), y, z);
+      seg.rotation.y = rot;
+      g.add(seg);
+      if (kind === 'palisade') {
+        const n = Math.round(len / 0.11);
+        for (let s = 0; s < n; s++) {
+          const px = -len / 2 + (s + 0.5) * (len / n);
+          cyl(seg, 0.045, 0.05, tall * (0.9 + (s % 3) * 0.06), col, px, 0, 0, 5);
+          cone(seg, 0.05, 0.06, C.timber, px, tall, 0, 5);
+        }
+      } else {
+        box(seg, len, built ? tall : tall * 0.4, 0.14, col);
+        if (built)
+          for (let s = 0; s < Math.floor(len / 0.22); s++)
+            box(seg, 0.08, 0.06, 0.15, col, -len / 2 + 0.11 + s * 0.22, tall, 0);
+      }
+    }
+  });
+  if (kind === 'palisade') return;
+  for (const [x, z] of [
+    [-R, -R],
+    [R, -R],
+    [R, R],
+    [-R, R],
+  ]) {
+    const h = kind === 'castle' ? 0.8 : 0.48;
+    cyl(g, 0.16, 0.18, built ? h : h * 0.4, col, x, y, z, 8);
+    if (built) cone(g, 0.2, 0.22, C.roof2, x, y + h, z, 8);
+  }
+  // the gate towers
+  for (const p of [-1, 1]) {
+    cyl(g, 0.12, 0.13, built ? tall + 0.16 : tall * 0.4, col, p * 0.36, y, R, 8);
+  }
+}
+
+/** The centre's improvements: a wall ring, and the rest on small yards round the plinth. */
+function centreRow(
+  g: THREE.Object3D,
+  slots: { type: string | null; built: boolean; group?: string }[],
+  seed: number,
+) {
+  const walls = slots
+    .filter(x => x.type && WALL_RING.includes(x.type))
+    .sort((a, b) => WALL_RING.indexOf(b.type!) - WALL_RING.indexOf(a.type!));
+  const best = walls.find(x => x.built) ?? walls[0];
+  if (best) wallRing(g, best.type!, best.built);
+  const rest = slots.filter(x => x.type && !WALL_RING.includes(x.type));
+  const R = (3 * PITCH + 0.2) / 2 + (best ? 1.0 : 0.65);
+  // yards along the back and the sides, clear of the gate
+  const spots: [number, number][] = [
+    [-1.1, -R],
+    [0, -R],
+    [1.1, -R],
+    [R, -0.9],
+    [-R, -0.9],
+    [R, 0.4],
+    [-R, 0.4],
+  ];
+  rest.forEach((x, k) => {
+    const at = spots[k];
+    if (!at) return;
+    const t = new THREE.Group();
+    t.position.set(at[0], -0.1, at[1]);
+    t.scale.setScalar(0.78);
+    const rr = rng(seed * 17 + k * 5 + 3);
+    const make: Builder = !x.built ? scaffold : (builderFor(x.type!) ?? generic(x.group));
+    const ground = make(t, rr) || C.paved;
+    const top = add(t, new THREE.BoxGeometry(TILE, 0.06, TILE), ground, 0, -0.03, 0);
+    top.castShadow = false;
+    add(t, new THREE.BoxGeometry(TILE, 0.1, TILE), C.slab, 0, -0.11, 0).castShadow = false;
+    g.add(t);
+  });
+}
+
 // ---------------------------------------------------------------- the scene
 
 const TILE = 1,
@@ -1161,6 +1258,7 @@ export class CityScene3D {
       g.add(t);
       this.tops.push(t);
     }
+    if (d.slots && d.slots.length > 9) centreRow(g, d.slots.slice(9), seed);
     g.userData.index = i;
     this.world.add(g);
   }

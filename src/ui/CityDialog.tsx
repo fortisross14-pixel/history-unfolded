@@ -2,12 +2,15 @@ import { useMemo, useRef, useState } from 'react';
 import { CityScene } from './CityScene.tsx';
 import { Icon } from './icons.tsx';
 import { DEPOSITS, GOODS, SPECIAL_MIN } from '../data/goods.ts';
-import { GROUPS, MIN_HOUSING, SLOT_LIST, SLOT_TYPES } from '../data/slots.ts';
+import { CENTRE_LIST, GROUPS, MIN_HOUSING, SLOT_LIST, SLOT_TYPES } from '../data/slots.ts';
 import { RELIEF, TERRAIN, VEGETATION } from '../data/terrain.ts';
 import {
+  builderPlan,
+  buildPreview,
+  centreProblem,
+  centreRow,
   cityDistricts,
   cityEconomy,
-  constructionQueue,
   DISTRICT_CAP,
   districtKind,
   isCentre,
@@ -19,9 +22,15 @@ import {
   rankOf,
   isUrban,
   marketStock,
-  slotPreview,
+  planCentre,
+  queueMove,
+  queuePause,
+  queueRemove,
   slotProblem,
+  turnsToBuild,
+  type Totals,
 } from '../engine/economy.ts';
+import { WONDER_SHARE } from '../engine/wonders.ts';
 import {
   applyBlueprint,
   deleteBlueprint,
@@ -39,8 +48,9 @@ import {
 } from '../engine/game.ts';
 import { centerUnit, within } from '../engine/hex.ts';
 import type { City, District, GameState } from '../engine/types.ts';
-import { Art, Chip, Delta, GoodIcon, Goods, InfoButton } from './bits.tsx';
+import { Art, Chip, Delta, GoodIcon, Goods, Ico, InfoButton } from './bits.tsx';
 import './declutter-city.css';
+import './r4-city.css';
 
 interface Props {
   game: GameState;
@@ -113,7 +123,8 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
   const centre = mineD ? isCentre(mineD) : false;
   const up = upgradeInfo(game, c);
   const bonus = TIER_BONUS[c.tier];
-  const queue = constructionQueue(game, c);
+  // what the builders get: the production, less a wonder's share
+  const prod = e.total.prod * (c.wonder ? 1 - WONDER_SHARE : 1);
   const market = marketCities(game, c);
   const stock = marketStock(game, c);
   const m = game.map;
@@ -420,29 +431,8 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 )}
                 <GoodChips goods={stock} unit=" in store" />
               </div>
-              <h3>Being built</h3>
-              {queue.length === 0 && <p className="muted small">—</p>}
-              <ol className="queue">
-                {queue.slice(0, 8).map(({ d: qd, i }, k) => {
-                  const t = SLOT_TYPES[qd.slots[i].type!];
-                  return (
-                    <li key={`${qd.id}-${i}`} title={qd.name}>
-                      {t.name}
-                      <div className="bar">
-                        <span
-                          className="good"
-                          style={{ width: `${(qd.slots[i].progress / t.build.prod) * 100}%` }}
-                        />
-                      </div>
-                      {k === 0 && (
-                        <span className="muted small">
-                          {r1(qd.slots[i].progress)}/{t.build.prod} · +{r1(e.total.prod)}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
+              <QueuePanel game={game} c={c} prod={prod} act={act} />
+              <CentrePanel game={game} c={c} prod={prod} act={act} />
             </section>
             {landMap}
           </div>
@@ -570,7 +560,13 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                           </div>
                           <div className="build-tip-slot">
                             {tipT && SLOT_TYPES[tipT] ? (
-                              <BuildTip game={game} c={c} d={mineD} cell={cell} typeId={tipT} />
+                              <BuildTip
+                                game={game}
+                                c={c}
+                                at={{ d: mineD, i: cell }}
+                                typeId={tipT}
+                                prod={prod}
+                              />
                             ) : null}
                           </div>
                         </>
@@ -594,6 +590,8 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 </div>
               ) : mineD ? (
                 <>
+                  <QueuePanel game={game} c={c} prod={prod} act={act} compact />
+                  {centre && <CentrePanel game={game} c={c} prod={prod} act={act} />}
                   <div className="row">
                     <input
                       className="design-name"
@@ -760,25 +758,80 @@ const YIELD_ICON: Record<string, [string, string]> = {
   housing: ['housing', 'Room for people'],
 };
 
-/** A building on this plot: its picture, name, what it would add here a turn, and its cost. */
+const YIELD_KEYS = ['food', 'prod', 'gold', 'science', 'culture', 'housing'] as const;
+
+/** The settlement's yields before → after: each line an icon, the two numbers and the change. */
+function YieldDiff({ before, after }: { before: Totals; after: Totals }) {
+  const goods = [...new Set([...Object.keys(before.goods), ...Object.keys(after.goods)])].filter(
+    k => r1(after.goods[k] ?? 0) !== r1(before.goods[k] ?? 0),
+  );
+  return (
+    <span className="r4-diff">
+      {YIELD_KEYS.map(k => {
+        const b = before[k],
+          a = after[k];
+        const same = r1(a) === r1(b);
+        if (k === 'housing' && same) return null;
+        return (
+          <span
+            key={k}
+            className={`chip ${same ? 'muted' : ''}`}
+            title={`${YIELD_ICON[k][1]}${k === 'housing' ? '' : ' a turn'}: before → after`}
+          >
+            <Ico name={YIELD_ICON[k][0]} fallback="•" size={18} />
+            <span className="r4-ba">
+              {k === 'housing' ? b.toLocaleString() : r1(b)}
+              {!same && (
+                <>
+                  {' → '}
+                  <b>{k === 'housing' ? a.toLocaleString() : r1(a)}</b>
+                </>
+              )}
+            </span>
+            {!same && <Delta n={a - b} />}
+          </span>
+        );
+      })}
+      {goods.map(k => {
+        const b = before.goods[k] ?? 0,
+          a = after.goods[k] ?? 0;
+        return (
+          <span key={k} className="chip" title={`${GOODS[k]?.name ?? k} a turn: before → after`}>
+            <GoodIcon id={k} />
+            <span className="r4-ba">
+              {r1(b)} → <b>{r1(a)}</b>
+            </span>
+            <Delta n={a - b} />
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/**
+ * A building being chosen: its picture and name, the settlement's yields before → after it
+ * stands, the turns it takes with the builders free now, and its cost.
+ */
 function BuildTip({
   game,
   c,
-  d,
-  cell,
+  at,
   typeId,
+  prod,
 }: {
   game: GameState;
   c: City;
-  d: District;
-  cell: number;
+  /** the plot; none for the centre row */
+  at?: { d: District; i: number };
   typeId: string;
+  prod: number;
 }) {
   const t = SLOT_TYPES[typeId];
-  const p = slotPreview(game, c, d, cell, typeId);
-  const gains = Object.keys(p.yields).length + Object.keys(p.goods).length;
+  const p = buildPreview(game, c, typeId, at);
+  const turns = turnsToBuild(game, c, typeId, prod);
   return (
-    <div className="build-tip" role="tooltip">
+    <div className="build-tip r4-tip" role="tooltip">
       <Art
         k={`building/${t.id}`}
         size={34}
@@ -786,32 +839,233 @@ function BuildTip({
       />
       <div>
         <b>{t.name}</b>
-        {gains ? (
-          <span className="chips">
-            {Object.entries(p.yields).map(([k, v]) => (
-              <Chip
-                key={k}
-                icon={YIELD_ICON[k][0]}
-                n={v}
-                signed
-                title={`${YIELD_ICON[k][1]}${k === 'housing' ? '' : ' a turn'}`}
-              />
-            ))}
-            {Object.entries(p.goods).map(([k, v]) => (
-              <Chip key={k} good={k} n={v} signed title={`${GOODS[k]?.name ?? k} a turn`} />
-            ))}
-          </span>
-        ) : (
-          <small className="muted">{(t.labour && p.why) || 'Nothing here'}</small>
-        )}
+        <YieldDiff before={p.before} after={p.after} />
+        {t.labour > 0 && p.why && <small className="muted">{p.why}</small>}
         <span className="chips muted dc-cost">
+          <Chip icon="end-turn" n={turns ?? '—'} title="Turns to build with the builders now" />
           <Chip icon="production" n={t.build.prod} title="Cost: production" />
           {Object.entries(t.build.goods ?? {}).map(([g, n]) => (
             <Chip key={g} good={g} n={n} title={`Cost: ${GOODS[g]?.name ?? g}`} />
           ))}
-          {t.labour ? <Chip icon="workers" n={t.labour} title="Workers" /> : null}
+          {t.labour ? <Chip icon="workers" n={t.labour} title="Workers to staff it" /> : null}
         </span>
       </div>
     </div>
+  );
+}
+
+const STATE_LABEL: Record<string, string> = {
+  paused: 'Paused',
+  waiting: 'Waiting',
+  goods: 'Needs goods',
+  blocked: 'Blocked',
+};
+
+/**
+ * The build queue: builders busy of the crew, what 100 builders add a turn, and each order with
+ * its builders, turns left and progress; move it up or down, pause it, or take it off.
+ */
+function QueuePanel({
+  game,
+  c,
+  prod,
+  act,
+  compact,
+}: {
+  game: GameState;
+  c: City;
+  prod: number;
+  act: (r: Result) => void;
+  compact?: boolean;
+}) {
+  const p = builderPlan(game, c, prod);
+  const n = p.lines.length;
+  return (
+    <section className={`r4-queue ${compact ? 'compact' : ''}`}>
+      <h3 className="dc-h">
+        Queue
+        <Chip icon="production" n={`${p.busy}/${p.builders}`} title="Builders busy" />
+        <Chip
+          icon="production"
+          n={`${r1(p.perCrew)}/100`}
+          title="Production a turn for every 100 builders"
+        />
+        <InfoButton label="About builders">
+          <span>
+            {p.crews} crew{p.crews > 1 ? 's' : ''} of 100: one more each time the settlement grows.
+          </span>
+          <span>Orders going share the builders evenly. Pause one to speed the rest.</span>
+          <span>Builders × production per 100 = progress a turn.</span>
+        </InfoButton>
+      </h3>
+      {!n && <p className="muted small">—</p>}
+      <ol className="r4-q">
+        {p.lines.map(l => {
+          const pct = Math.min(100, (l.progress / Math.max(1, l.cost)) * 100);
+          const where = l.order.slot >= 9 ? 'Centre' : l.d.name;
+          return (
+            <li key={`${l.d.id}:${l.order.slot}`} className={`r4-qi ${l.state}`}>
+              <Art
+                k={`building/${l.t.id}`}
+                size={28}
+                fallback={
+                  <span className="cell-glyph" style={{ background: GROUPS[l.t.group].color }}>
+                    {l.t.glyph}
+                  </span>
+                }
+              />
+              <span className="r4-qn" title={l.why ?? where}>
+                <b>{l.t.name}</b>
+                <small className="muted">{where}</small>
+              </span>
+              <span className="r4-qs">
+                {l.state === 'building' ? (
+                  <>
+                    <Chip
+                      icon="production"
+                      n={Math.round(l.builders)}
+                      title={`Builders on it: +${r1(l.perTurn)} a turn`}
+                    />
+                    <Chip icon="end-turn" n={l.turns ?? '—'} title="Turns left" />
+                  </>
+                ) : (
+                  <small className="muted" title={l.why}>
+                    {STATE_LABEL[l.state]}
+                  </small>
+                )}
+              </span>
+              <div className="bar" title={`${r1(l.progress)}/${l.cost}`}>
+                <span className="good" style={{ width: `${pct}%` }} />
+              </div>
+              <span className="r4-qa">
+                <button
+                  className="icon-btn"
+                  aria-label="Move up"
+                  title="Move up"
+                  disabled={l.at === 0}
+                  onClick={() => act(queueMove(game, c, l.at, -1))}
+                >
+                  ↑
+                </button>
+                <button
+                  className="icon-btn"
+                  aria-label="Move down"
+                  title="Move down"
+                  disabled={l.at === n - 1}
+                  onClick={() => act(queueMove(game, c, l.at, 1))}
+                >
+                  ↓
+                </button>
+                <button
+                  className={`icon-btn r4-pause ${l.order.paused ? 'on' : ''}`}
+                  aria-label={l.order.paused ? 'Resume' : 'Pause'}
+                  title={l.order.paused ? 'Resume' : 'Pause'}
+                  onClick={() => act(queuePause(game, c, l.at))}
+                >
+                  {l.order.paused ? '▶' : '❚❚'}
+                </button>
+                <button
+                  className="icon-btn"
+                  aria-label="Remove"
+                  title="Take off the queue"
+                  onClick={() => act(queueRemove(game, c, l.at))}
+                >
+                  ✕
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+/**
+ * The centre row: buildings that stand in the centre and need no plot (market, railway station,
+ * defences…). What stands, what is queued, and what can be added, with its yields before → after.
+ */
+function CentrePanel({
+  game,
+  c,
+  prod,
+  act,
+}: {
+  game: GameState;
+  c: City;
+  prod: number;
+  act: (r: Result) => void;
+}) {
+  const [pick, setPick] = useState<string | null>(null);
+  const row = centreRow(game, c);
+  const options = CENTRE_LIST.filter(t => !centreProblem(game, c, t.id));
+  if (!row.length && !options.length) return null;
+  return (
+    <section className="r4-centre">
+      <h3 className="dc-h">
+        Centre
+        <InfoButton label="About the centre row">
+          Built in the town centre: no plot needed. One of each; stone walls replace a palisade, a
+          castle the walls.
+        </InfoButton>
+      </h3>
+      <div className="r4-crow">
+        {row.map(e => {
+          const t = SLOT_TYPES[e.st.type!];
+          return (
+            <span
+              key={e.i}
+              className={`r4-cell ${e.st.built ? 'built' : 'planned'}`}
+              title={`${t.name}${e.st.built ? '' : ' (queued)'}: ${t.note}`}
+            >
+              <Art
+                k={`building/${t.id}`}
+                size={30}
+                fallback={
+                  <span className="cell-glyph" style={{ background: GROUPS[t.group].color }}>
+                    {t.glyph}
+                  </span>
+                }
+              />
+              <small>{t.name}</small>
+            </span>
+          );
+        })}
+        {options.map(t => (
+          <button
+            key={t.id}
+            className={`r4-copt ${pick === t.id ? 'on' : ''}`}
+            aria-pressed={pick === t.id}
+            title={t.name}
+            onClick={() => setPick(x => (x === t.id ? null : t.id))}
+          >
+            <Art
+              k={`building/${t.id}`}
+              size={30}
+              fallback={
+                <span className="cell-glyph" style={{ background: GROUPS[t.group].color }}>
+                  {t.glyph}
+                </span>
+              }
+            />
+            <small>+ {t.name}</small>
+          </button>
+        ))}
+      </div>
+      {pick && options.some(t => t.id === pick) && (
+        <div className="r4-cpick">
+          <BuildTip game={game} c={c} typeId={pick} prod={prod} />
+          <button
+            className="primary"
+            onClick={() => {
+              act(planCentre(game, c, pick));
+              setPick(null);
+            }}
+          >
+            Build
+          </button>
+        </div>
+      )}
+    </section>
   );
 }

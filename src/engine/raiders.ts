@@ -25,6 +25,7 @@ import { distance, neighbors } from './hex.ts';
 import { isPassableLand } from './mapgen.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
 import type { City, Civ, Formation, GameState } from './types.ts';
+import { aiHuntLairs, lairAt, wildlifeTurn, type Lair } from './wildlife.ts';
 
 export interface RaiderCamp {
   hex: number;
@@ -39,14 +40,28 @@ export interface RaiderState {
   bands: { fid: number; camp: number; loot?: number; orphan?: number }[];
   /** settlements pillaged recently, by id: the turn (a town is not raided again at once) */
   raided: Record<number, number>;
+  /** lairs of wild beasts and ruin guardians (wildlife.ts) */
+  lairs?: Lair[];
+  /** a camp near a people burned: no new camp near it until this turn, by people */
+  quiet?: Record<number, number>;
 }
 
-/** turn the first camp may appear, chance per turn of a new one, camps per great people */
+/**
+ * Turn the first camp may appear, chance per turn of a new camp in the wild, camps per great
+ * people in all, and the band size near the player. Besides those, every great people gets a
+ * camp of its own within CAMP_NEAR hexes of home early on (by about turn 15 on Normal).
+ */
 export const RAIDERS = {
-  casual: { from: 35, chance: 0.04, perPeople: 0.34, band: 2 },
-  normal: { from: 25, chance: 0.06, perPeople: 0.5, band: 3 },
-  hard: { from: 18, chance: 0.08, perPeople: 0.67, band: 3 },
+  casual: { from: 30, chance: 0.04, perPeople: 0.34, band: 2 },
+  normal: { from: 8, chance: 0.06, perPeople: 1, band: 3 },
+  hard: { from: 6, chance: 0.08, perPeople: 0.67, band: 3 },
 };
+/** a people's own camp lies this far from its first settlement */
+export const CAMP_NEAR = [5, 10] as const;
+/** chance per turn that a people with no camp near it gets one */
+const OWN_CAMP_CHANCE = 0.4;
+/** after a camp near a people burns, none new near it for this many turns */
+const CAMP_QUIET = 25;
 /** no new camps once a great people reaches this age; bands scatter at the next */
 export const RAIDERS_END_AGE = 3;
 export const BANDS_PER_CAMP = 2;
@@ -63,7 +78,7 @@ const greatPeoples = (s: GameState) => s.civs.filter(c => c.alive && !c.independ
 const leadingAge = (s: GameState) => Math.max(1, ...greatPeoples(s).map(c => ageOf(c.techs)));
 
 /** The raider people, made the first time it is needed. */
-function raiderCiv(s: GameState): Civ {
+export function raiderCiv(s: GameState): Civ {
   if (s.raiders) return s.civs[s.raiders.civ];
   const civ = addRaiderCiv(s);
   s.raiders = { civ: civ.id, camps: [], bands: [], raided: {} };
@@ -84,6 +99,7 @@ function campSite(s: GameState, r: () => number): number | undefined {
     if (own[i] >= 0 || isWaterHex(s, i) || !isPassableLand(s.map, i)) continue;
     if (s.formations.some(f => f.hex === i)) continue;
     if (s.raiders?.camps.some(c => distance(g, c.hex, i) < 6)) continue;
+    if (lairAt(s, i) || s.ruins?.some(x => x.hex === i)) continue;
     let near = Infinity;
     for (const c of cities) near = Math.min(near, distance(g, c.hex, i));
     if (near < 4 || near > 8) continue;
@@ -95,6 +111,30 @@ function campSite(s: GameState, r: () => number): number | undefined {
   if (level === 'hard' && !s.raiders?.camps.some(c => nearPlayer(c.hex))) {
     const close = options.filter(nearPlayer);
     if (close.length) return close[Math.floor(r() * close.length)];
+  }
+  return options.length ? options[Math.floor(r() * options.length)] : undefined;
+}
+
+/** A people's first settlement (or its settlers while it has none). */
+function homeOf(s: GameState, civId: number): number | undefined {
+  const c = s.cities.filter(x => x.civId === civId).sort((a, b) => a.id - b.id)[0];
+  return c?.hex ?? s.formations.find(f => f.civId === civId && f.kind === 'settlers')?.hex;
+}
+
+/** A camp site of a people's own: wild land CAMP_NEAR hexes from its home, clear of towns. */
+function ownCampSite(s: GameState, home: number, r: () => number): number | undefined {
+  const g = { w: s.map.w, h: s.map.h };
+  const own = territory(s);
+  const options: number[] = [];
+  for (let i = 0; i < g.w * g.h; i++) {
+    const d = distance(g, home, i);
+    if (d < CAMP_NEAR[0] || d > CAMP_NEAR[1]) continue;
+    if (own[i] >= 0 || isWaterHex(s, i) || !isPassableLand(s.map, i)) continue;
+    if (s.formations.some(f => f.hex === i)) continue;
+    if (lairAt(s, i) || s.ruins?.some(x => x.hex === i)) continue;
+    if (s.raiders?.camps.some(c => distance(g, c.hex, i) < 6)) continue;
+    if (s.cities.some(c => distance(g, c.hex, i) < 4)) continue;
+    options.push(i);
   }
   return options.length ? options[Math.floor(r() * options.length)] : undefined;
 }
@@ -154,15 +194,18 @@ function pillage(s: GameState, f: Formation, cityHex: number, out: string[]) {
 /** Once a turn, when the raiders act. Returns messages for the player. */
 export function raidersTurn(s: GameState): string[] {
   const out: string[] = [];
-  // how many camps and when: the same on every level (the level decides where, and how strong
-  // the bands near the player are)
-  const diff = { ...RAIDERS.normal, from: RAIDERS[difficultyOf(s).id].from };
+  // how many camps and when: the same on every level (the level decides where, when the
+  // player's own camp comes, and how strong the bands near the player are)
+  const diff = RAIDERS.normal;
+  // the level decides only when the player's own camp may come (the AI peoples' is the same)
+  const playerFrom = RAIDERS[difficultyOf(s).id].from;
   const age = leadingAge(s);
   const me = s.civs.find(c => c.isPlayer);
   const g = { w: s.map.w, h: s.map.h };
-  if (!s.raiders && (s.turn < diff.from || age >= RAIDERS_END_AGE)) return out;
+  // the raider people holds the wild beasts too, from the first turn
   const civ = raiderCiv(s);
   const st = s.raiders!;
+  out.push(...wildlifeTurn(s, civ));
   const r = mulberry32(hashSeed(s.settings.map.seed, s.turn * 4219 + 77));
   const bandsOf = (camp: number) => st.bands.filter(b => b.camp === camp && !b.orphan).length;
   // forget bands that are gone
@@ -172,7 +215,9 @@ export function raidersTurn(s: GameState): string[] {
   if (age > RAIDERS_END_AGE) {
     if (st.camps.length || st.bands.length) {
       st.camps = [];
-      s.formations = s.formations.filter(f => f.civId !== civ.id);
+      // the bands scatter; the beasts stay in their lairs
+      const beasts = new Set((st.lairs ?? []).map(l => l.fid));
+      s.formations = s.formations.filter(f => f.civId !== civ.id || beasts.has(f.id));
       st.bands = [];
       if (me)
         out.push('With order on the roads and walls round every town, the last raiders scatter.');
@@ -191,13 +236,38 @@ export function raidersTurn(s: GameState): string[] {
       25 * age + st.bands.filter(b => b.camp === camp.hex).reduce((a, b) => a + (b.loot ?? 0), 0);
     s.civs[army.civId].gold += hoard;
     for (const b of st.bands) if (b.camp === camp.hex) b.orphan = s.turn;
+    // the peoples near it get a quiet spell before another camp is made near them
+    st.quiet ??= {};
+    for (const p of greatPeoples(s)) {
+      const h = homeOf(s, p.id);
+      if (h !== undefined && distance(g, h, camp.hex) <= CAMP_NEAR[1] + 2)
+        st.quiet[p.id] = s.turn + CAMP_QUIET;
+    }
     const msg = `The ${s.civs[army.civId].name} burned a raider camp and took its hoard of ${hoard} gold.`;
     log(s, army.civId, msg);
     if (army.civId === me?.id) out.push(msg);
   }
 
-  // new camps, while the early ages last
+  // new camps, while the early ages last: first one near each great people, then in the wild
   const room = Math.ceil(greatPeoples(s).length * diff.perPeople);
+  const level = difficultyOf(s).id;
+  if (age < RAIDERS_END_AGE && s.turn >= Math.min(diff.from, playerFrom))
+    for (const p of greatPeoples(s)) {
+      if (st.camps.length >= room) break;
+      if (s.turn < (p.isPlayer ? playerFrom : diff.from)) continue;
+      // Discovery: raiders keep away from the player while the game is young
+      if (p.isPlayer && level === 'casual' && s.turn < 90) continue;
+      if ((st.quiet?.[p.id] ?? 0) > s.turn) continue;
+      const home = homeOf(s, p.id);
+      if (home === undefined) continue;
+      if (st.camps.some(c => distance(g, c.hex, home) <= CAMP_NEAR[1])) continue;
+      if (r() > OWN_CAMP_CHANCE) continue;
+      const hex = ownCampSite(s, home, r);
+      if (hex === undefined) continue;
+      st.camps.push({ hex, since: s.turn, next: s.turn + 2 });
+      if (p.isPlayer && p.explored[hex])
+        out.push('Smoke in the hills: raiders have made camp near your lands.');
+    }
   if (age < RAIDERS_END_AGE && s.turn >= diff.from && st.camps.length < room && r() < diff.chance) {
     const hex = campSite(s, r);
     if (hex !== undefined) {
@@ -299,6 +369,7 @@ export function aiHuntRaiders(s: GameState, civ: Civ) {
     );
     if (band) attack(s, a.id, band.hex);
   }
+  aiHuntLairs(s, civ);
   for (const camp of st.camps) {
     if (!mine.some(c => distance(g, c.hex, camp.hex) <= 7)) continue;
     const hunter = armies

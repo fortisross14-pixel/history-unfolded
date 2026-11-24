@@ -410,3 +410,72 @@ export function troopLook(f: Formation): string {
   const l = groupCohorts(f)[0]?.loadout;
   return l ? `${l.weapon}|${l.shield}|${l.helmet}|${l.armour}|${l.mount}|${l.boots}|${l.kit}` : '';
 }
+
+/** A low-poly beast facing +x: a body, head and snout, legs, ears and a tail. */
+function beast(g: THREE.Object3D, kind: string, x: number, z: number, turn = 0) {
+  const b = new THREE.Group();
+  b.position.set(x, 0, z);
+  b.rotation.y = turn;
+  g.add(b);
+  const look = {
+    wolves: { coat: '#8d8a86', belly: '#c9c4bc', len: 0.17, h: 0.07, leg: 0.07, k: 1 },
+    bears: { coat: '#5b3b24', belly: '#6f4a2e', len: 0.2, h: 0.11, leg: 0.06, k: 1.3 },
+    boars: { coat: '#4a3528', belly: '#5d4533', len: 0.16, h: 0.08, leg: 0.045, k: 1.05 },
+  }[kind as 'wolves' | 'bears' | 'boars'];
+  if (!look) return;
+  const { coat, belly, len, h, leg, k } = look;
+  for (const [lx, lz] of [
+    [len * 0.36, -h * 0.4],
+    [len * 0.36, h * 0.4],
+    [-len * 0.36, -h * 0.4],
+    [-len * 0.36, h * 0.4],
+  ])
+    cyl(b, 0.012 * k, 0.01 * k, leg, coat, lx, 0, lz, 5);
+  box(b, len, h, h * 0.9, coat, 0, leg - 0.01, 0);
+  box(b, len * 0.7, h * 0.3, h * 0.92, belly, 0, leg - 0.015, 0);
+  if (kind === 'bears') {
+    // a hump and a round head
+    box(b, len * 0.35, h * 0.3, h * 0.8, coat, len * 0.2, leg + h * 0.85, 0);
+    ball(b, h * 0.42, coat, len * 0.58, leg + h * 0.65, 0);
+    box(b, h * 0.3, h * 0.25, h * 0.3, DARK, len * 0.58 + h * 0.4, leg + h * 0.45, 0);
+    ball(b, h * 0.14, coat, len * 0.5, leg + h, -h * 0.25);
+    ball(b, h * 0.14, coat, len * 0.5, leg + h, h * 0.25);
+  } else if (kind === 'boars') {
+    // a low heavy head, a ridge of bristles and white tusks
+    box(b, h * 0.9, h * 0.8, h * 0.75, coat, len * 0.55, leg, 0);
+    box(b, h * 0.35, h * 0.35, h * 0.45, '#7a5a48', len * 0.55 + h * 0.55, leg + h * 0.1, 0);
+    for (const s of [-1, 1]) {
+      const t = cone(
+        b,
+        0.008,
+        0.04,
+        '#f1ead8',
+        len * 0.55 + h * 0.6,
+        leg + h * 0.15,
+        s * h * 0.25,
+        4,
+      );
+      t.rotation.z = -0.6;
+    }
+    box(b, len * 0.8, h * 0.18, h * 0.2, DARK, 0, leg + h - 0.02, 0);
+  } else {
+    // a long head and snout, pointed ears and a raised bushy tail
+    box(b, h * 0.9, h * 0.75, h * 0.75, coat, len * 0.55, leg + h * 0.5, 0);
+    box(b, h * 0.6, h * 0.35, h * 0.45, belly, len * 0.55 + h * 0.65, leg + h * 0.55, 0);
+    for (const s of [-1, 1]) cone(b, 0.012, 0.035, coat, len * 0.5, leg + h * 1.2, s * h * 0.2, 4);
+    const tail = box(b, h * 0.9, h * 0.3, h * 0.3, coat, -len * 0.58, leg + h * 0.6, 0);
+    tail.rotation.z = 0.7;
+  }
+}
+
+/** A pack of wild beasts (wildlife.ts): two to four animals by its size, milling about. */
+export function buildBeasts(g: THREE.Object3D, kind: string, cohorts: number): void {
+  const n = Math.min(4, Math.max(2, Math.ceil(cohorts / 2)));
+  const spots: [number, number, number][] = [
+    [0.05, 0.02, 0.2],
+    [-0.12, -0.14, -0.5],
+    [-0.1, 0.16, 0.6],
+    [0.16, -0.16, -0.2],
+  ];
+  for (const [x, z, t] of spots.slice(0, n)) beast(g, kind, x * 1.3, z * 1.3, t);
+}

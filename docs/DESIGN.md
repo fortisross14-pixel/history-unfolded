@@ -1266,6 +1266,28 @@ settlement is always a town. Founded further out, it is a **colony**:
 - No hand-made models: every gear combination draws itself, nothing to download, one draw call a
   formation. `tools/preview/troops.html` (dev server) shows every look in a row.
 
+## 12y. Owner feedback, round 4 (as built)
+
+- **Building:** a city has 100 builders per size step (settlement 100 … metropolis 600), apart from
+  the workers who staff buildings. A queue the player orders, pauses and cancels; active items share
+  the crew evenly (300 on two items = 150 each), never more items than crews of 100; speed = builders
+  ÷ 100 × production per 100 builders, so anything that raises production builds faster. Nothing
+  queued is fine. Picking a building shows the city's yields before → after and turns to build.
+- **Centre improvements** need no plot: market, railway station, palisade → walls → castle (drawn
+  as a ring), monument, barracks, armoury.
+- **Hubs:** each opens its own window with its tabs in the header (Military: Land, Sea, Designs;
+  Cities: Cities, Wonders; Nation; Diplomacy). Minimap bottom left.
+- **Designs by hundreds:** the unit card splits a formation's cohorts of 100 among designs with
+  steppers and prices only the cohorts that change.
+- **Strength:** one number per formation (`formationStrength`), on the map, in the unit card and the
+  attack preview; military power is their sum.
+- **Diplomacy from a city:** a foreign or free people's settlement shows their badge, ruler, opinion
+  and actions.
+- **World:** 2–3 ruins near every start with early loot (caches, a research step, guardians);
+  wolf, bear and boar lairs scaled to a spear levy winning about 3 times in 4 (a scout loses);
+  raider camps from turn 8; 3–5 deposits by every start, drawn as low-poly signs.
+- **Controls:** bevelled buttons, gold-ringed round buttons, folder tabs, framed title bars.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

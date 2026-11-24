@@ -3,7 +3,9 @@
  * workers and production plus goods to build. Producers make things; boosters raise the
  * producers of their district: an adder (+0.5 to each, early to mid game) and a multiplier
  * (×2, late). Every district needs at least two housing cells for its other buildings to work.
- * Farming, forestry and extraction are rural: only towns have room for them.
+ * Farming, forestry and extraction are rural: only towns have room for them. Centre improvements
+ * (market, railway station, palisade → walls → castle, monument, barracks, armoury) take no plot:
+ * they stand in the centre row, one of each per settlement.
  */
 import type { ReliefId, TerrainId, VegetationId } from './terrain.ts';
 
@@ -106,6 +108,8 @@ export interface SlotType {
   guard?: number;
   /** cannot be built by the player (city hall) */
   fixed?: boolean;
+  /** a centre improvement: bought into the centre row (no plot), one per settlement */
+  centreRow?: boolean;
   /** one glyph for the grid view */
   glyph: string;
   note: string;
@@ -404,6 +408,7 @@ const list: SlotType[] = [
     labour: 0,
     build: { prod: 15, goods: { stone: 2 } },
     out: { culture: 1 },
+    centreRow: true,
     glyph: '⚱',
     note: '+1 culture. Needs no workers.',
   },
@@ -461,6 +466,19 @@ const list: SlotType[] = [
     note: "Uses a unit of paper a turn: doubles the district's religion and arts; +1 science. One multiplier per district.",
   },
   {
+    id: 'palisade',
+    name: 'Palisade',
+    group: 'civic',
+    labour: 0,
+    build: { prod: 10, goods: { wood: 4 } },
+    out: {},
+    needs: { centre: true },
+    walls: 0.15,
+    centreRow: true,
+    glyph: '⋔',
+    note: 'Centre. A timber stockade round the town: assaults do 15% less.',
+  },
+  {
     id: 'walls',
     name: 'City walls',
     group: 'civic',
@@ -471,8 +489,9 @@ const list: SlotType[] = [
     needs: { centre: true },
     walls: 0.25,
     guard: 1,
+    centreRow: true,
     glyph: '▥',
-    note: 'Centre only. Assaults do 25% less; one more guard cohort.',
+    note: 'Centre. Stone walls round the town: assaults do 25% less; one more guard cohort.',
   },
   {
     id: 'castle',
@@ -485,8 +504,9 @@ const list: SlotType[] = [
     needs: { centre: true },
     walls: 0.45,
     guard: 2,
+    centreRow: true,
     glyph: '♖',
-    note: 'Centre only. Assaults do 45% less; two more guard cohorts.',
+    note: 'Centre. A keep and towers: assaults do 45% less; two more guard cohorts.',
   },
   // ---------------- commerce
   {
@@ -500,8 +520,9 @@ const list: SlotType[] = [
     build: { prod: 12, goods: { wood: 2 } },
     out: { gold: 1 },
     boost: { of: ['houses', 'tenements', 'aqueduct'], add: 0.5 },
+    centreRow: true,
     glyph: '⚖',
-    note: '+1 gold, and each housing cell in the district brings ½ gold to it: shops on every street.',
+    note: '+1 gold, and each housing cell in the centre brings ½ gold to it: shops on every street.',
   },
   {
     id: 'bank',
@@ -664,6 +685,7 @@ const list: SlotType[] = [
     build: { prod: 16, goods: { wood: 2, stone: 1 } },
     out: { prod: 1 },
     armoury: true,
+    centreRow: true,
     glyph: '🛡',
     note: 'Equipping troops near this settlement costs 20% less and no distance surcharge.',
   },
@@ -676,6 +698,7 @@ const list: SlotType[] = [
     build: { prod: 14, goods: { wood: 2 } },
     out: {},
     barracks: true,
+    centreRow: true,
     glyph: '⚑',
     note: "New levies start with a battle's experience.",
   },
@@ -835,6 +858,7 @@ const list: SlotType[] = [
     build: { prod: 40, goods: { steel: 2, wood: 4 } },
     out: { gold: 2, prod: 2 },
     inputs: { coal: 1 },
+    centreRow: true,
     glyph: '🚂',
     note: 'Burns a unit of coal a turn: +2 gold, +2 production.',
   },
@@ -875,3 +899,7 @@ const list: SlotType[] = [
 
 export const SLOT_TYPES: Record<string, SlotType> = Object.fromEntries(list.map(t => [t.id, t]));
 export const SLOT_LIST = list.filter(t => !t.fixed);
+/** Centre improvements: built into the centre row, no plot needed. */
+export const CENTRE_LIST = list.filter(t => t.centreRow);
+/** The defences, weakest first: a stronger one replaces the one before. */
+export const WALL_STEPS = ['palisade', 'walls', 'castle'];

@@ -25,6 +25,7 @@ import {
   ROLE_MUL,
   SLOT_TYPES,
   type SlotGroup,
+  WALL_STEPS,
   type SlotType,
   type Yield,
 } from '../data/slots.ts';
@@ -32,7 +33,7 @@ import { isWater, RELIEF, VEGETATION } from '../data/terrain.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
 import { hexFood } from './mapgen.ts';
 import { colonyBuildProblem } from './colonies.ts';
-import type { City, District, GameState, SlotState, Tier } from './types.ts';
+import type { BuildOrder, City, District, GameState, SlotState, Tier } from './types.ts';
 import { civMods, pct } from './mods.ts';
 import { ITEMS } from '../data/items.ts';
 import { TECHS } from '../data/techs.ts';
@@ -194,10 +195,13 @@ export function slotProblem(
   centre: boolean,
   typeId: string,
   districtId = Infinity,
+  /** judging a building already standing or in the centre row (not a new plan for a plot) */
+  existing = false,
 ): string | null {
   const t = SLOT_TYPES[typeId];
   if (!t) return 'Unknown building.';
   if (t.fixed) return 'Built with the city.';
+  if (t.centreRow && !existing) return 'A centre improvement: add it from the centre row.';
   if (t.tech && !s.civs[civId].techs.includes(t.tech))
     return `Needs research: ${TECHS[t.tech]?.name ?? t.tech}`;
   const d = s.districts.find(x => x.id === districtId);
@@ -412,7 +416,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       }
     const lived = housing >= MIN_HOUSING;
     // 1. producers: staffing, inputs, base yield, what the land adds
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < d.slots.length; i++) {
       const st = d.slots[i];
       const out = zero();
       if (!st.type) {
@@ -420,7 +424,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
         continue;
       }
       const t = SLOT_TYPES[st.type];
-      const problem = t.fixed ? null : slotProblem(s, c.civId, d.hex, centre, st.type, d.id);
+      const problem = t.fixed ? null : slotProblem(s, c.civId, d.hex, centre, st.type, d.id, true);
       if (problem || !st.built) {
         reports.push({
           problem,
@@ -485,7 +489,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       d.slots
         .map((x, k) => ({ t: x.type ? SLOT_TYPES[x.type] : undefined, r: reports[k] }))
         .filter(b => b.t && b.r.staffed && pred(b.t));
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < d.slots.length; i++) {
       const r = reports[i];
       const t = d.slots[i].type ? SLOT_TYPES[d.slots[i].type!] : undefined;
       if (!r.staffed || !t) continue;
@@ -535,7 +539,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
         : `Boosts nothing here yet: needs ${t.boost ? 'housing' : `${LINES[t.line!].name.toLowerCase()} buildings`}`;
     }
     // 4. the settlement's rank and the people's research and culture, then into the totals
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < d.slots.length; i++) {
       const r = reports[i];
       const type = d.slots[i].type;
       if (!r.staffed || !type) continue;
@@ -623,8 +627,23 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
 
 // ---------------------------------------------------------------- construction
 
-/** The next slot the city's production goes into. */
-export function constructionQueue(s: GameState, c: City): { d: District; i: number }[] {
+/**
+ * Builders. A settlement keeps a crew of 100 builders for every size step it has reached (a
+ * settlement 100, a town 200, a large town 300 … a metropolis 600): each step up needs more
+ * housing cells, so the crews follow the housing. They are not the workers who staff buildings.
+ * Each queued building that is going (not paused, its goods paid) takes a share of the builders,
+ * evenly, one crew of 100 at least: 300 builders on two buildings is 150 each, and never more
+ * buildings going at once than there are crews. A building rises by builders/100 × the
+ * productivity of a crew, which is the settlement's production split over its crews: so a lone
+ * building gets the whole production, and everything that raises production (workshops, research,
+ * culture, the age, a railway) builds faster. Nothing queued is fine: the builders rest.
+ */
+export const CREW_SIZE = 100;
+export const builderCrews = (c: City) => Math.max(1, TIERS.indexOf(c.tier ?? 'town') + 1);
+export const builderCount = (c: City) => builderCrews(c) * CREW_SIZE;
+
+/** A district's planned plots in the old build order: housing first where a district lacks it. */
+function plannedPlots(s: GameState, c: City): { d: District; i: number }[] {
   const out: { d: District; i: number }[] = [];
   for (const d of cityDistricts(s, c)) {
     const centre = isCentre(d);
@@ -632,7 +651,7 @@ export function constructionQueue(s: GameState, c: City): { d: District; i: numb
     const housed = d.slots.filter(x => x.built && isHousing(x.type)).length >= MIN_HOUSING;
     const todo: { d: District; i: number }[] = [];
     d.slots.forEach((st, i) => {
-      if (st.type && !st.built && !slotProblem(s, c.civId, d.hex, centre, st.type, d.id))
+      if (st.type && !st.built && !slotProblem(s, c.civId, d.hex, centre, st.type, d.id, i >= 9))
         todo.push({ d, i });
     });
     if (!housed)
@@ -642,29 +661,371 @@ export function constructionQueue(s: GameState, c: City): { d: District; i: numb
   return out;
 }
 
-/** Spend a turn's production; returns the slots finished. */
+/** Everything of one kind in the settlement, built or planned, plots and centre row alike. */
+const allOf = (s: GameState, c: City, typeId: string) =>
+  cityDistricts(s, c).flatMap(d =>
+    d.slots.map((x, i) => ({ d, i, x })).filter(e => e.x.type === typeId),
+  );
+
+/** The strongest defence step built (or, with `planned`, built or queued): -1 for none. */
+function wallStep(s: GameState, c: City, planned: boolean): number {
+  let k = -1;
+  WALL_STEPS.forEach((id, n) => {
+    if (allOf(s, c, id).some(e => planned || e.x.built)) k = n;
+  });
+  return k;
+}
+
+/** Take a centre-row cell out, keeping the queue's places right. */
+function dropCentreCell(c: City, d: District, i: number) {
+  d.slots.splice(i, 1);
+  if (!c.queue) return;
+  c.queue = c.queue.filter(o => !(o.districtId === d.id && o.slot === i));
+  for (const o of c.queue) if (o.districtId === d.id && o.slot > i) o.slot--;
+}
+
+/** Give back the goods paid for a building not yet finished. */
+function refund(c: City, st: SlotState) {
+  if (!st.type || st.built || !st.paid) return;
+  for (const [k, n] of Object.entries(SLOT_TYPES[st.type].build.goods ?? {}))
+    c.stockpile[k] = (c.stockpile[k] ?? 0) + n;
+}
+
+/**
+ * Centre improvements planned on a plot (an old save, a blueprint, a governor) move to the
+ * centre row: one of each per settlement. A second one still planned is cleared (its goods back);
+ * a second one already standing keeps working where it is.
+ */
+function gatherCentreRow(s: GameState, c: City, centre: District) {
+  for (const d of cityDistricts(s, c))
+    for (let i = 0; i < Math.min(9, d.slots.length); i++) {
+      const st = d.slots[i];
+      if (!st.type || !SLOT_TYPES[st.type]?.centreRow) continue;
+      const row = centre.slots.slice(9).filter(x => x.type === st.type);
+      const step = WALL_STEPS.indexOf(st.type);
+      const beaten = step >= 0 && wallStep(s, c, true) > step;
+      if (!row.length && !beaten) {
+        centre.slots.push({ ...st });
+        d.slots[i] = emptySlot();
+        const o = c.queue?.find(q => q.districtId === d.id && q.slot === i);
+        if (o) Object.assign(o, { districtId: centre.id, slot: centre.slots.length - 1 });
+      } else if (!st.built) {
+        refund(c, st);
+        d.slots[i] = emptySlot();
+      }
+    }
+}
+
+/**
+ * The settlement's build queue, in the player's order. Newly planned plots join at the end;
+ * orders whose plot was changed, cleared or finished drop out. An older save's planned plots
+ * are queued in the order they used to be built.
+ */
+export function cityQueue(s: GameState, c: City): BuildOrder[] {
+  c.queue ??= [];
+  const ds = cityDistricts(s, c);
+  const centre = ds.find(isCentre);
+  if (centre) gatherCentreRow(s, c, centre);
+  const byId = new Map(ds.map(d => [d.id, d]));
+  const seen = new Set<string>();
+  const key = (d: number, i: number) => `${d}:${i}`;
+  c.queue = c.queue.filter(o => {
+    const st = byId.get(o.districtId)?.slots[o.slot];
+    const k = key(o.districtId, o.slot);
+    if (!st || st.built || st.type !== o.type || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  for (const { d, i } of plannedPlots(s, c)) {
+    if (seen.has(key(d.id, i))) continue;
+    seen.add(key(d.id, i));
+    c.queue.push({ districtId: d.id, slot: i, type: d.slots[i].type! });
+  }
+  return c.queue;
+}
+
+/** Why an order cannot be worked now (research lost, a colony's limits…), or null. */
+function orderProblem(s: GameState, c: City, d: District, i: number): string | null {
+  const st = d.slots[i];
+  if (!st?.type) return 'Nothing planned.';
+  return slotProblem(s, c.civId, d.hex, isCentre(d), st.type, d.id, i >= 9);
+}
+
+/** The orders the builders would take on, in queue order (not paused, nothing in the way). */
+export function constructionQueue(s: GameState, c: City): { d: District; i: number }[] {
+  const out: { d: District; i: number }[] = [];
+  for (const o of cityQueue(s, c)) {
+    if (o.paused) continue;
+    const d = s.districts.find(x => x.id === o.districtId);
+    if (d && !orderProblem(s, c, d, o.slot)) out.push({ d, i: o.slot });
+  }
+  return out;
+}
+
+export interface QueueLine {
+  order: BuildOrder;
+  /** its place in the queue */
+  at: number;
+  d: District;
+  t: SlotType;
+  progress: number;
+  cost: number;
+  builders: number;
+  /** production a turn going into it */
+  perTurn: number;
+  turns: number | null;
+  /** building: builders on it; waiting: every crew busy; goods: the market lacks its goods */
+  state: 'building' | 'paused' | 'waiting' | 'goods' | 'blocked';
+  why?: string;
+}
+
+const affordable = (s: GameState, c: City, cost: Record<string, number>) => {
+  const st = marketStock(s, c);
+  return Object.entries(cost).every(([k, n]) => (st[k] ?? 0) >= n - 1e-9);
+};
+
+/**
+ * Who builds what this turn, for `prod` production a turn: the crews, builders busy, what one
+ * crew of 100 adds a turn, and each order with its builders and turns left.
+ */
+export function builderPlan(s: GameState, c: City, prod: number) {
+  const crews = builderCrews(c);
+  const q = cityQueue(s, c);
+  const lines: QueueLine[] = [];
+  for (const [at, order] of q.entries()) {
+    const d = s.districts.find(x => x.id === order.districtId)!;
+    const st = d.slots[order.slot];
+    const t = SLOT_TYPES[order.type];
+    const why = orderProblem(s, c, d, order.slot);
+    const going = lines.filter(l => l.state === 'building').length;
+    const state: QueueLine['state'] = why
+      ? 'blocked'
+      : order.paused
+        ? 'paused'
+        : !st.paid && !affordable(s, c, t.build.goods ?? {})
+          ? 'goods'
+          : going < crews
+            ? 'building'
+            : 'waiting';
+    lines.push({
+      order,
+      at,
+      d,
+      t,
+      progress: st.progress,
+      cost: t.build.prod,
+      builders: 0,
+      perTurn: 0,
+      turns: null,
+      state,
+      why: why ?? undefined,
+    });
+  }
+  const active = lines.filter(l => l.state === 'building');
+  const perCrew = prod / crews;
+  for (const l of active) {
+    l.builders = (crews * CREW_SIZE) / active.length;
+    l.perTurn = (l.builders / CREW_SIZE) * perCrew;
+    l.turns =
+      l.perTurn > 0 ? Math.max(1, Math.ceil((l.cost - l.progress - 1e-9) / l.perTurn)) : null;
+  }
+  return {
+    crews,
+    builders: crews * CREW_SIZE,
+    busy: active.length ? crews * CREW_SIZE : 0,
+    perCrew,
+    lines,
+  };
+}
+
+/** Turns a new building would take if queued now, beside what is already going. */
+export function turnsToBuild(s: GameState, c: City, typeId: string, prod: number): number | null {
+  const p = builderPlan(s, c, prod);
+  const going = p.lines.filter(l => l.state === 'building').length;
+  const n = Math.min(p.crews, going + 1);
+  const per = prod / n;
+  return per > 0 ? Math.max(1, Math.ceil(SLOT_TYPES[typeId].build.prod / per)) : null;
+}
+
+/** Spend a turn's production through the builders; returns the buildings finished. */
 export function build(s: GameState, c: City, prod: number): { text: string; type: string }[] {
   const done: { text: string; type: string }[] = [];
+  const crews = builderCrews(c);
+  const q = [...cityQueue(s, c)];
+  type Job = { o: BuildOrder; d: District; st: SlotState; t: SlotType };
+  const open: Job[] = [];
+  let next = 0;
+  // the next order a free crew takes on: not paused, nothing in the way, its goods paid at start
+  const take = () => {
+    while (next < q.length && open.length < crews) {
+      const o = q[next++];
+      if (o.paused) continue;
+      const d = s.districts.find(x => x.id === o.districtId);
+      if (!d || orderProblem(s, c, d, o.slot)) continue;
+      const st = d.slots[o.slot];
+      const t = SLOT_TYPES[st.type!];
+      if (!st.paid) {
+        if (!marketSpend(s, c, t.build.goods ?? {})) continue; // waits until the goods are there
+        st.paid = true;
+      }
+      open.push({ o, d, st, t });
+    }
+  };
+  take();
   let left = prod;
-  for (const { d, i } of constructionQueue(s, c)) {
-    if (left <= 0) break;
-    const st = d.slots[i];
-    const t = SLOT_TYPES[st.type!];
-    if (!st.paid) {
-      if (!marketSpend(s, c, t.build.goods ?? {})) continue; // skip until the goods are there
-      st.paid = true;
+  // the crews share the work evenly; a crew that finishes moves on to the next order
+  for (let round = 0; left > 1e-9 && open.length && round < 50; round++) {
+    const share = left / open.length;
+    left = 0;
+    for (const j of [...open]) {
+      const put = Math.min(share, j.t.build.prod - j.st.progress);
+      j.st.progress += put;
+      left += share - put;
+      if (j.st.progress >= j.t.build.prod - 1e-9) {
+        j.st.built = true;
+        open.splice(open.indexOf(j), 1);
+        if (j.t.id === 'harbour' || j.t.id === 'shipyard') invalidateMarkets();
+        done.push({ text: `${j.t.name} in ${j.d.name}`, type: j.t.id });
+        finished(s, c, j.d, j.t.id);
+      }
     }
-    const need = t.build.prod - st.progress;
-    const put = Math.min(need, left);
-    st.progress += put;
-    left -= put;
-    if (st.progress >= t.build.prod - 1e-9) {
-      st.built = true;
-      if (t.id === 'harbour' || t.id === 'shipyard') invalidateMarkets();
-      done.push({ text: `${t.name} in ${d.name}`, type: t.id });
-    }
+    take();
   }
+  cityQueue(s, c);
   return done;
+}
+
+/** A stronger defence takes the place of the one before it. */
+function finished(s: GameState, c: City, d: District, typeId: string) {
+  const step = WALL_STEPS.indexOf(typeId);
+  if (step <= 0) return;
+  for (const id of WALL_STEPS.slice(0, step))
+    for (const e of allOf(s, c, id).reverse())
+      if (e.i >= 9) dropCentreCell(c, e.d, e.i);
+      else if (e.x.built) e.d.slots[e.i] = emptySlot();
+  void d;
+}
+
+type Done = { ok: true; msg?: string } | { ok: false; msg: string };
+
+/** Why a centre improvement cannot be added to the queue now, or null. */
+export function centreProblem(s: GameState, c: City, typeId: string): string | null {
+  const t = SLOT_TYPES[typeId];
+  if (!t?.centreRow) return 'Not a centre improvement.';
+  const centre = cityDistricts(s, c).find(isCentre);
+  if (!centre) return 'No centre district.';
+  const why = slotProblem(s, c.civId, centre.hex, true, typeId, centre.id, true);
+  if (why) return why;
+  const have = allOf(s, c, typeId);
+  if (have.some(e => e.x.built)) return 'Already built.';
+  if (have.length) return 'Already in the queue.';
+  const step = WALL_STEPS.indexOf(typeId);
+  if (step >= 0 && wallStep(s, c, true) > step) return 'Stronger defences are built or queued.';
+  return null;
+}
+
+/** Add a centre improvement to the end of the queue. */
+export function planCentre(s: GameState, c: City, typeId: string): Done {
+  const why = centreProblem(s, c, typeId);
+  if (why) return { ok: false, msg: why };
+  const centre = cityDistricts(s, c).find(isCentre)!;
+  centre.slots.push(emptySlot(typeId));
+  cityQueue(s, c);
+  return { ok: true, msg: `${SLOT_TYPES[typeId].name} queued.` };
+}
+
+/** Centre improvements standing or queued: the centre row. */
+export function centreRow(s: GameState, c: City): { d: District; i: number; st: SlotState }[] {
+  const centre = cityDistricts(s, c).find(isCentre);
+  if (!centre) return [];
+  return centre.slots.map((st, i) => ({ d: centre, i, st })).filter(e => e.i >= 9);
+}
+
+/** Move an order up (-1) or down (+1) the queue. */
+export function queueMove(s: GameState, c: City, at: number, by: -1 | 1): Done {
+  const q = cityQueue(s, c);
+  const to = at + by;
+  if (!q[at] || !q[to]) return { ok: false, msg: 'Cannot move it further.' };
+  [q[at], q[to]] = [q[to], q[at]];
+  return { ok: true };
+}
+
+/** Pause an order (its builders go to the others) or set it going again. */
+export function queuePause(s: GameState, c: City, at: number, paused?: boolean): Done {
+  const o = cityQueue(s, c)[at];
+  if (!o) return { ok: false, msg: 'No such order.' };
+  o.paused = paused ?? !o.paused;
+  if (!o.paused) delete o.paused;
+  return { ok: true };
+}
+
+/** Cancel an order: the plot is left empty (a centre cell goes); goods already paid come back. */
+export function queueRemove(s: GameState, c: City, at: number): Done {
+  const o = cityQueue(s, c)[at];
+  if (!o) return { ok: false, msg: 'No such order.' };
+  const d = s.districts.find(x => x.id === o.districtId)!;
+  const st = d.slots[o.slot];
+  refund(c, st);
+  if (o.slot >= 9) dropCentreCell(c, d, o.slot);
+  else d.slots[o.slot] = emptySlot();
+  cityQueue(s, c);
+  return { ok: true, msg: `${SLOT_TYPES[o.type]?.name ?? 'Building'} taken off the queue.` };
+}
+
+/**
+ * The settlement's yields before and after a building stands: on a plot (`d`, `i`) or in the
+ * centre row (no plot).
+ */
+export function buildPreview(
+  s: GameState,
+  c: City,
+  typeId: string,
+  at?: { d: District; i: number },
+): { before: Totals; after: Totals; why?: string } {
+  const before = cityEconomy(s, c).total;
+  const centre = cityDistricts(s, c).find(isCentre);
+  const d = at?.d ?? centre;
+  if (!d) return { before, after: before };
+  const i = at ? at.i : d.slots.length;
+  const keep = d.slots[i];
+  let after = before;
+  let why: string | undefined;
+  try {
+    d.slots[i] = { type: typeId, built: true, progress: 0, paid: true };
+    invalidateMarkets();
+    const e = cityEconomy(s, c);
+    after = e.total;
+    const rep = e.slots.get(d.id)?.[i];
+    why = rep?.problem ?? rep?.idle ?? undefined;
+  } finally {
+    if (at) d.slots[i] = keep;
+    else d.slots.splice(i, 1);
+    invalidateMarkets();
+  }
+  return { before, after, why };
+}
+
+/**
+ * A governor's (or AI's) pick for the centre row: a market, a monument, a railway station once
+ * there is coal to burn, and defences while at war. One at a time, and only when the queue is
+ * short.
+ */
+export function aiCentre(s: GameState, c: City) {
+  if (constructionQueue(s, c).length > 3) return;
+  const centre = cityDistricts(s, c).find(isCentre);
+  if (!centre || centre.slots.filter(x => x.built && isHousing(x.type)).length < MIN_HOUSING)
+    return;
+  const civ = s.civs[c.civId];
+  const stock = marketStock(s, c);
+  const atWar = s.wars.some(w => w.a === civ.id || w.b === civ.id);
+  const want = ['market', 'monument'];
+  if ((stock.coal ?? 0) >= 10) want.push('railway-station');
+  if (atWar) want.push(...WALL_STEPS);
+  for (const id of want)
+    if (!centreProblem(s, c, id) && affordable(s, c, SLOT_TYPES[id].build.goods ?? {})) {
+      planCentre(s, c, id);
+      return;
+    }
 }
 
 // ---------------------------------------------------------------- markets

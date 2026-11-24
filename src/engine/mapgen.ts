@@ -368,8 +368,8 @@ export function generateMap(s: MapSettings): MapData {
   // --- deposits ---
   const dRng = mulberry32(hashSeed(s.seed, 9));
   const deposit: (Deposit | null)[] = new Array(N).fill(null);
-  const pLand = [0.035, 0.055, 0.085][LEVEL[s.resources]];
-  const pWater = [0.04, 0.06, 0.09][LEVEL[s.resources]];
+  const pLand = [0.05, 0.08, 0.115][LEVEL[s.resources]];
+  const pWater = [0.05, 0.08, 0.11][LEVEL[s.resources]];
   for (let i = 0; i < N; i++) {
     const t = terrain[i];
     if (t === 'ocean') continue;
@@ -644,6 +644,57 @@ function balanceStart(m: MapData, s: number, r: Rng) {
     }
   }
   if (!has(ring4, ['horses'])) plant(ring4, ['horses']);
+  fillFirstRing(m, s, r);
+}
+
+/** deposits a start should have in its first ring of districts (within 2), seen from the start */
+export const START_DEPOSITS = [3, 5] as const;
+const seenAtStart = (m: MapData, k: number) =>
+  !!m.deposit[k] && !DEPOSITS[m.deposit[k]!.kind].revealedBy;
+
+/** Three to five deposits a new settlement can see and work in its first ring of districts. */
+function fillFirstRing(m: MapData, s: number, r: Rng) {
+  const g = { w: m.w, h: m.h };
+  const ring2 = within(g, s, 2).filter(k => k !== s);
+  const food = ['wheat', 'rice', 'cattle', 'pigs', 'fish', 'sheep', 'game'];
+  // too many: thin out the extras, keeping one food and one metal or horses
+  const shown = shuffleCopy(
+    r,
+    ring2.filter(k => seenAtStart(m, k)),
+  );
+  const keep = new Set<number>();
+  const f = shown.find(k => food.includes(m.deposit[k]!.kind));
+  if (f !== undefined) keep.add(f);
+  const metal = shown.find(k => ['copper', 'tin', 'stone', 'horses'].includes(m.deposit[k]!.kind));
+  if (metal !== undefined) keep.add(metal);
+  let n = shown.length;
+  for (const k of shown) {
+    if (n <= START_DEPOSITS[1]) break;
+    if (keep.has(k)) continue;
+    m.deposit[k] = null;
+    n--;
+  }
+  // too few: add what the ground can hold, plainest first
+  const bare = shuffleCopy(
+    r,
+    ring2.filter(k => !m.deposit[k] && m.terrain[k] !== 'ocean' && m.relief[k] !== 'mountains'),
+  );
+  const want = START_DEPOSITS[0] + (r() < 0.5 ? 1 : 0);
+  for (const k of bare) {
+    if (n >= want) break;
+    const ok = validDeposits(m.terrain[k], m.relief[k], m.vegetation[k]).filter(
+      d => !DEPOSITS[d].revealedBy,
+    );
+    if (!ok.length) continue;
+    m.deposit[k] = { kind: pickWeighted(r, ok), richness: 1 };
+    n++;
+  }
+}
+
+function pickWeighted(r: Rng, ok: string[]): string {
+  let x = r() * ok.reduce((a, k) => a + DEPOSITS[k].weight, 0);
+  for (const k of ok) if ((x -= DEPOSITS[k].weight) <= 0) return k;
+  return ok[ok.length - 1];
 }
 
 function shuffleCopy<T>(r: Rng, xs: T[]): T[] {

@@ -157,21 +157,43 @@ await page.fill('.design-name', 'Hornets');
 await page.click('.slot:has(h3:text("Weapon")) .item:has-text("Javelins")');
 await page.click('.loadout-side button.primary');
 await page.click('.modal.designs .x');
-// the levy is selected: pick 2 cohorts and make them Foot Falcons
-await page.click('button.link:has-text("none")');
-await page.click('.group .stepper button:has-text("+")');
-await page.click('.group .stepper button:has-text("+")');
-await page.selectOption('.assign select', { label: 'Foot Falcons' });
+// the levy is selected: split its 5 cohorts of 100 between the designs, 2 + 3, and pay once
+const levyName = ((await page.textContent('.panel.formation h2')) ?? '').trim();
+const mixRow = (name: string) => page.locator('.assign.mix .mix-row', { hasText: name });
+for (let i = 0; i < 2; i++) await mixRow('Foot Falcons').locator('button:has-text("+")').click();
+for (let i = 0; i < 3; i++) await mixRow('Hornets').locator('button:has-text("+")').click();
+const costLines: string[] = await page.$$eval('.assign.mix .mix-cost li', (lis: any[]) =>
+  lis.map(l => l.textContent ?? ''),
+);
+if (
+  !costLines.some(l => l.startsWith('2 × Foot Falcons')) ||
+  !costLines.some(l => l.startsWith('3 × Hornets'))
+)
+  throw new Error('the cost is not shown per design: ' + costLines.join(' | '));
+await page.screenshot({ path: `${out}/5a-mix.png` });
 await page.click('.assign button.primary');
 await page.waitForTimeout(150);
-// then the remaining 3 as Hornets
-await page.click('button.link:has-text("none")');
-const levyGroup = page.locator('.group', { hasText: 'Levy' });
-for (let i = 0; i < 3; i++) await levyGroup.locator('.stepper button:has-text("+")').click();
-await page.selectOption('.assign select', { label: 'Hornets' });
-await page.click('.assign button.primary');
-await page.waitForTimeout(150);
+const mixed = await page.evaluate((name: string) => {
+  const g = (globalThis as unknown as { __hu: { game: any } }).__hu.game;
+  const f = g.formations.find((x: any) => x.civId === 0 && x.name === name);
+  const names = f.cohorts.map(
+    (c: any) => g.civs[0].designs.find((d: any) => d.id === c.designId)?.name ?? '-',
+  );
+  return names.sort().join(',');
+}, levyName);
+if (mixed !== 'Foot Falcons,Foot Falcons,Hornets,Hornets,Hornets')
+  throw new Error('the levy was not split 2 + 3: ' + mixed);
 await page.screenshot({ path: `${out}/5-two-designs.png` });
+// the Military screen: Land, Sea and Designs tabs in its header; the levy's row reads its mix
+await page.click('.rail-btn[aria-label="Military"]');
+await page.waitForSelector('.modal.empire > header .hub-tabs button.on:has-text("Land")');
+const levyRow = (await page.textContent(`.troop-table tr:has-text("${levyName}")`)) ?? '';
+if (!levyRow.includes('2 Foot Falcons') || !levyRow.includes('3 Hornets'))
+  throw new Error('the Military list misses the cohorts by design: ' + levyRow);
+await page.click('.hub-tabs button:has-text("Sea")');
+await page.waitForSelector('.modal.empire .hub-tabs button.on:has-text("Sea")');
+await page.screenshot({ path: `${out}/5c-military-sea.png` });
+await page.click('.modal.empire .x');
 // the roster shows both designs and how many cohorts carry each
 await page.click('.rail-btn[aria-label="Military"]');
 await page.click('.hub-tabs button:has-text("Designs")');
@@ -187,6 +209,17 @@ if (
   throw new Error('the designs roster misses a design: ' + rows.join(' | '));
 await page.screenshot({ path: `${out}/5b-roster.png` });
 await page.click('.modal.designs .x');
+
+// a rival's settlement: its people's card and actions sit in the side panel
+await page.evaluate(() => {
+  const hu = (globalThis as unknown as { __hu: { game: any; selectCity: (id: number) => void } })
+    .__hu;
+  const c = hu.game.cities.find((x: any) => x.civId !== 0);
+  if (!hu.game.civs[0].met.includes(c.civId)) hu.game.civs[0].met.push(c.civId);
+  hu.selectCity(c.id);
+});
+await page.waitForSelector('.side .panel.city-people button:has-text("Propose a deal")');
+await page.screenshot({ path: `${out}/5d-rival-city.png` });
 
 // battle: put the formation next to a rival city, declare war, attack by clicking it
 const target = await page.evaluate(() => {
@@ -252,6 +285,8 @@ await page.mouse.move(720, 470);
 await page.mouse.move(720, 471);
 await page.waitForTimeout(200);
 await page.screenshot({ path: `${out}/6-attack-preview.png` });
+if ((await page.$('.preview-box')) && !(await page.$('.preview-box .gm-strength')))
+  throw new Error('the attack preview shows no strengths');
 await page.mouse.click(720, 471);
 await page.waitForTimeout(200);
 if (await page.$('.modal.confirm')) await page.click('.modal.confirm button.primary');

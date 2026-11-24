@@ -28,23 +28,53 @@ export const RUIN_NAME: Record<RuinKind, string> = {
 
 /** one ruin for about this many hexes of open land away from the starts */
 const LAND_PER_RUIN = 55;
+/** ruins near each great people's start, and how far from it */
+export const RUINS_NEAR_START = 3;
+export const RUIN_NEAR = [3, 7] as const;
 
-/** Scatter ruins over the wild land, away from where peoples start. */
+/**
+ * Scatter ruins over the wild land: two or three a short walk from every great people's start
+ * (never on it or next to it), the rest away from where peoples start.
+ */
 export function placeRuins(s: GameState) {
   const g = { w: s.map.w, h: s.map.h };
   const r = mulberry32(hashSeed(s.settings.map.seed, 7717));
   const starts = s.cities.map(c => c.hex).concat(s.formations.map(f => f.hex));
-  const land: number[] = [];
-  for (let i = 0; i < g.w * g.h; i++)
-    if (!isWaterHex(s, i) && isPassableLand(s.map, i) && starts.every(h => distance(g, h, i) >= 4))
-      land.push(i);
-  const want = Math.max(8, Math.round(land.length / LAND_PER_RUIN));
+  const open = (i: number) => !isWaterHex(s, i) && isPassableLand(s.map, i);
   const kinds: RuinKind[] = ['city', 'barrow', 'camp', 'temple'];
   const ruins: Ruin[] = [];
+  const put = (hex: number) => ruins.push({ hex, kind: kinds[Math.floor(r() * kinds.length)] });
+  // near each great people's start
+  for (const civ of s.civs) {
+    if (civ.independent || civ.raiders) continue;
+    const home =
+      s.cities.find(c => c.civId === civ.id)?.hex ??
+      s.formations.find(f => f.civId === civ.id && f.kind === 'settlers')?.hex;
+    if (home === undefined) continue;
+    const ring = within(g, home, RUIN_NEAR[1]).filter(
+      i =>
+        open(i) &&
+        distance(g, home, i) >= RUIN_NEAR[0] &&
+        starts.every(h => distance(g, h, i) >= 2) &&
+        s.map.starts.every(h => distance(g, h, i) >= 2),
+    );
+    const want = 2 + (r() < 0.5 ? 1 : 0);
+    for (let k = 0, n = 0; k < 80 && n < Math.min(want, RUINS_NEAR_START) && ring.length; k++) {
+      const hex = ring[Math.floor(r() * ring.length)];
+      if (ruins.some(x => distance(g, x.hex, hex) < 3)) continue;
+      put(hex);
+      n++;
+    }
+  }
+  // the wild
+  const land: number[] = [];
+  for (let i = 0; i < g.w * g.h; i++)
+    if (open(i) && starts.every(h => distance(g, h, i) >= 4)) land.push(i);
+  const want = ruins.length + Math.max(8, Math.round(land.length / LAND_PER_RUIN));
   for (let k = 0; k < want * 20 && ruins.length < want && land.length; k++) {
     const hex = land[Math.floor(r() * land.length)];
     if (ruins.some(x => distance(g, x.hex, hex) < 4)) continue;
-    ruins.push({ hex, kind: kinds[Math.floor(r() * kinds.length)] });
+    put(hex);
   }
   s.ruins = ruins;
 }
@@ -74,19 +104,30 @@ const FINDS: [number, Find][] = [
     },
   ],
   [
-    3,
+    4,
     (s, f, r) => {
       const cap = s.cities.filter(c => c.civId === f.civId).sort((a, b) => a.id - b.id)[0];
       if (!cap) return null;
+      // enough for a few cohorts of better troops early: lamellar, bronze, horses
       const caches: [string, Record<string, number>][] = [
-        ['ivory and hides', { ivory: 4, hides: 3 }],
-        ['copper and tin', { copper: 4, tin: 3 }],
-        ['fine furs', { furs: 5, hides: 2 }],
-        ['horses gone wild', { horses: 4 }],
+        ['ivory and hides', { ivory: 6, hides: 4 }],
+        ['copper and tin', { copper: 6, tin: 4 }],
+        ['fine furs', { furs: 6, hides: 4 }],
+        ['horses gone wild', { horses: 6 }],
+        ['iron bars', { iron: 5 }],
       ];
       const [what, goods] = caches[Math.floor(r() * caches.length)];
       for (const [k, n] of Object.entries(goods)) cap.stockpile[k] = (cap.stockpile[k] ?? 0) + n;
       return `a cache of ${what}, carried home to ${cap.name}`;
+    },
+  ],
+  [
+    1,
+    (s, f) => {
+      const civ = s.civs[f.civId];
+      if (!civ.researching) return null;
+      civ.science += techCost(s, civ, civ.researching);
+      return `old tablets: your current research completes this turn`;
     },
   ],
   [

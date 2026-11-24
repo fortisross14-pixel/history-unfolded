@@ -4,7 +4,15 @@ import { wondersIn } from '../engine/wonders.ts';
 import { CONVERT_TURNS, faithById } from '../engine/faith.ts';
 import { governorOf } from '../engine/dynasty.ts';
 import { Icon } from './icons.tsx';
-import { DISTRICT_CAP, marketCities, marketStock, rankOf, TIER_NAME } from '../engine/economy.ts';
+import {
+  builderPlan,
+  DISTRICT_CAP,
+  marketCities,
+  marketStock,
+  rankOf,
+  TIER_NAME,
+} from '../engine/economy.ts';
+import { WONDER_SHARE } from '../engine/wonders.ts';
 import { useState } from 'react';
 import { ageOf } from '../data/techs.ts';
 import {
@@ -146,6 +154,7 @@ export function CityPanel({
           <div className="dc-line">
             <GoodsChips goods={y.goods} unit=" a turn" />
           </div>
+          <BuildersRow game={game} c={c} prod={y.prod} />
           {(() => {
             const civ2 = game.civs[c.civId];
             const gov = governorOf(game, c);
@@ -418,6 +427,27 @@ function ColonyRow({ game, c, onPromote }: { game: GameState; c: City; onPromote
         </button>
       )}
       {info?.problem && <small className="muted">{info.problem}</small>}
+    </div>
+  );
+}
+
+/** The builders: how many are busy, and what the queue is putting up first. */
+function BuildersRow({ game, c, prod }: { game: GameState; c: City; prod: number }) {
+  const p = builderPlan(game, c, prod * (c.wonder ? 1 - WONDER_SHARE : 1));
+  const going = p.lines.filter(l => l.state === 'building');
+  return (
+    <div className="dc-line r4-builders" title="Builders and the queue">
+      <Chip icon="production" n={`${p.busy}/${p.builders}`} title="Builders busy" />
+      {going.slice(0, 2).map(l => (
+        <span key={`${l.d.id}:${l.order.slot}`} className="chip" title={`${l.t.name}: turns left`}>
+          {l.t.name}
+          <b>{l.turns ?? '—'}</b>
+          <Ico name="end-turn" fallback="⧗" size={14} />
+        </span>
+      ))}
+      {p.lines.length > Math.min(2, going.length) && (
+        <span className="muted small">+{p.lines.length - Math.min(2, going.length)}</span>
+      )}
     </div>
   );
 }

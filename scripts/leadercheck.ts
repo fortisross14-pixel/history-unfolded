@@ -85,9 +85,10 @@ for (const seed of [5, 19, 33, 47, 61]) {
     aiTurn(s, me);
     me.isPlayer = true;
     if (!me.researching) me.researching = availableTechs(me)[0]?.id ?? null;
-    // in the first game the player keeps no field army after turn 60: a tempting target, so
-    // rivals should march on it, and warn first
-    if (seed === 5 && t >= 60)
+    // the player keeps no field army after turn 60: a tempting target in every game, so some
+    // rival should march on it (whether one does in a given game depends on its neighbours'
+    // wars and alliances), and warn first
+    if (t >= 60)
       s.formations = s.formations.filter(f => f.civId !== me.id || f.kind !== 'army');
     endTurn(s);
     for (const e of s.log.filter(x => x.turn === s.turn - 1)) {

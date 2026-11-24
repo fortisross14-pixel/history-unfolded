@@ -1,0 +1,238 @@
+/* round 4, yields group: the city's Production tab, signed goods nets and their "why?" cards */
+.yl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.city-body.production {
+  display: block;
+}
+.yl-yields {
+  flex-wrap: wrap;
+}
+/* a yield chip wrapped in its "why?" keeps the recessed cell of the plain chips */
+.dc-yields > .whypop > .chip,
+.yl-yields > .whypop > .chip,
+.yl-yields > .chip {
+  min-height: 28px;
+  padding: 2px 8px 2px 6px;
+  background: linear-gradient(180deg, #e9ddc2 0%, #f3ebd9 100%);
+  border: 1px solid rgba(154, 122, 59, 0.38);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 2px rgba(70, 50, 20, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.85);
+}
+.yl-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.yl-row {
+  display: grid;
+  grid-template-columns:
+    28px minmax(110px, 1.2fr) 64px minmax(70px, 0.8fr) minmax(120px, 1.6fr)
+    minmax(80px, 1fr);
+  align-items: center;
+  gap: 2px 8px;
+  padding: 3px 6px;
+  border-bottom: 1px dotted var(--iv-line-soft, #e0d2b4);
+  font-size: 14px;
+}
+.yl-row > .art,
+.yl-row > .cell-glyph,
+.yl-row > .ico {
+  justify-self: center;
+}
+.yl-head {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--iv-ink-soft, #6b5a40);
+  border-bottom: 1px solid var(--iv-line-soft, #e0d2b4);
+}
+.yl-dist {
+  margin-top: 6px;
+  padding: 2px 6px;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  color: var(--iv-ink-soft, #6b5a40);
+  border-bottom: 1px solid var(--iv-line-soft, #e0d2b4);
+}
+.yl-row.idle {
+  background: rgba(176, 60, 40, 0.07);
+}
+.yl-row.idle .yl-name {
+  opacity: 0.75;
+}
+.yl-row.slow {
+  background: rgba(201, 150, 43, 0.1);
+}
+.yl-step .yl-name {
+  font-style: italic;
+  color: var(--iv-ink-soft, #6b5a40);
+}
+.yl-total {
+  border-top: 2px solid var(--iv-line, #c9b48a);
+  border-bottom: none;
+  font-weight: 600;
+}
+.yl-takes,
+.yl-makes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+.yl-c {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.yl-w {
+  font-variant-numeric: tabular-nums;
+  color: var(--iv-ink-soft, #6b5a40);
+  font-size: 13px;
+}
+.yl-why {
+  font-size: 13px;
+}
+.yl-goods td {
+  vertical-align: middle;
+}
+.yl-by {
+  font-size: 13px;
+}
+.yl-by > span {
+  display: inline-block;
+  margin-right: 10px;
+  white-space: nowrap;
+}
+.yl-nets {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.yl-net .chip,
+.yl-y .chip {
+  cursor: help;
+}
+/* the side card sits at the right edge: its cards open leftward */
+.panel.city .yl-net .why-pop {
+  left: auto;
+  right: 0;
+}
+.panel.city .yl-nets .yl-net:first-child .why-pop,
+.panel.city .yl-nets .yl-net:nth-child(2) .why-pop {
+  right: auto;
+  left: 0;
+}
+.why-pop .why-lines > span {
+  gap: 16px;
+}
+
+/* the Goods ledger sits mid-screen: its net card opens leftward so the dialog does not clip it */
+.goods-ledger .yl-net .why-pop {
+  left: auto;
+  right: 0;
+}
+
+@media (max-width: 700px) {
+  /* three tabs: they take a row of their own under the name */
+  .modal.city-screen > header {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .modal.city-screen > header > .city-tabs {
+    order: 3;
+    flex: 1 0 100%;
+  }
+  .modal.city-screen > header > .city-tabs button {
+    flex: 1;
+    padding: 6px 4px;
+  }
+  .yl-head {
+    display: none;
+  }
+  .yl-row {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'pic name w'
+      'pic takes makes'
+      'pic why why';
+    font-size: 13px;
+  }
+  .yl-row > :nth-child(1) {
+    grid-area: pic;
+  }
+  .yl-row > .yl-name {
+    grid-area: name;
+  }
+  .yl-row > .yl-w {
+    grid-area: w;
+    justify-self: end;
+  }
+  .yl-row > .yl-takes {
+    grid-area: takes;
+  }
+  .yl-row > .yl-makes {
+    grid-area: makes;
+    justify-content: flex-end;
+  }
+  .yl-row > :nth-child(6) {
+    grid-area: why;
+  }
+  .yl-row > :nth-child(6):empty {
+    display: none;
+  }
+  .yl-goods th:nth-child(2),
+  .yl-goods th:nth-child(3) {
+    display: none;
+  }
+  .yl-goods tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    align-items: center;
+    border-bottom: 1px dotted var(--iv-line-soft, #e0d2b4);
+  }
+  .yl-goods thead tr {
+    display: none;
+  }
+  .yl-goods td {
+    border: none;
+  }
+  .yl-goods td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .yl-goods.ledger td:nth-child(4) {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .yl-goods td:nth-child(5) {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .yl-goods td:nth-child(6) {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .yl-goods td.yl-by {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .yl-goods td.yl-by + td.yl-by {
+    grid-row: 3;
+  }
+  .yl-goods td.yl-by:empty {
+    display: none;
+  }
+  .why-pop {
+    max-width: min(320px, 86vw);
+  }
+}

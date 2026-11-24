@@ -6,6 +6,9 @@ import { atWar } from '../engine/game.ts';
 import type { GameState, Offer } from '../engine/types.ts';
 import { Chip, Delta, GoodIcon, Ico, InfoButton } from './bits.tsx';
 import './declutter-city.css';
+import './r4-yields.css';
+import { WhyPop } from './WhyPop.tsx';
+import { whyRealmGood } from '../engine/breakdown.ts';
 
 interface Props {
   game: GameState;
@@ -134,9 +137,16 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
                   <td>{l.used ? `\u2212${l.used}` : ''}</td>
                   <td>{l.traded ? <Delta n={l.traded} /> : ''}</td>
                   <td>
-                    <b>
-                      <Delta n={l.net} />
-                    </b>
+                    <WhyPop
+                      className="yl-net"
+                      title={`${GOODS[g]?.name ?? g} a turn`}
+                      unit=""
+                      why={() => whyRealmGood(game, civId, g)}
+                    >
+                      <b tabIndex={0} aria-label={`${GOODS[g]?.name ?? g} net a turn`}>
+                        <Delta n={l.net} />
+                      </b>
+                    </WhyPop>
                   </td>
                   <td>
                     {l.stock}

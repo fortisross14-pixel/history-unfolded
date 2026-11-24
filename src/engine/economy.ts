@@ -301,6 +301,14 @@ export interface SlotReport {
   idle?: string;
   /** what the land could add here, and what it takes (e.g. coal needs 3 mines in the district) */
   note?: string;
+  /** the goods it took from the store this turn (report only) */
+  uses?: Record<string, number>;
+}
+
+/** A settlement-wide change after the buildings are summed: what it added to each yield. */
+export interface EconomyStep {
+  label: string;
+  d: Totals;
 }
 
 export interface CityEconomy {
@@ -316,7 +324,28 @@ export interface CityEconomy {
   fuel: { need: number; good: string | null };
   /** luxuries wanted and received this turn, and the gold and culture change they make */
   comfort: { want: number; got: Record<string, number>; pct: number };
+  /**
+   * What came on top of the buildings and the open land, in order (fuel, comforts, the people,
+   * the coast, a railway, rounding): total = subsistence + every staffed slot's out + these.
+   */
+  steps: EconomyStep[];
 }
+
+/** total − before, for the "why?" lines (report only). */
+function diffTotals(now: Totals, before: Totals): Totals {
+  const d = zero();
+  for (const k of ['food', 'prod', 'science', 'gold', 'culture', 'housing'] as const)
+    d[k] = now[k] - before[k];
+  for (const [g, n] of Object.entries(now.goods)) {
+    const v = n - (before.goods[g] ?? 0);
+    if (Math.abs(v) > 1e-9) d.goods[g] = v;
+  }
+  return d;
+}
+const copyTotals = (t: Totals): Totals => ({ ...t, goods: { ...t.goods } });
+const isNil = (d: Totals) =>
+  (['food', 'prod', 'science', 'gold', 'culture'] as const).every(k => Math.abs(d[k]) < 1e-9) &&
+  !Object.keys(d.goods).length;
 
 /**
  * The deposits a building type works on this land, for a district holding `count` of them.
@@ -462,6 +491,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       free -= t.labour;
       if (!short.length)
         for (const [gd, n] of Object.entries(need)) inputs[gd] = (inputs[gd] ?? 0) + n;
+      const uses = short.length || !Object.keys(need).length ? undefined : { ...need };
       used[t.id] = (used[t.id] ?? 0) + 1;
       let rate = used[t.id] <= capacity(s, c.civId, d.hex, t) ? 1 : 0.5;
       if (short.length) rate /= 3;
@@ -481,7 +511,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       if (t.id === 'woodlot' && forest) out.goods.wood = (out.goods.wood ?? 0) + 0.5 * rate;
       if (short.length)
         note = `Short of ${short.map(([gd]) => gd).join(', ')}: a third of its output`;
-      reports.push({ problem: null, staffed: true, rate, out, note });
+      reports.push({ problem: null, staffed: true, rate, out, note, uses });
     }
     // 2. supports add ½ to every yield of each base of their line (and the market to each house);
     // 3. the district's multiplier doubles its line, a great building triples it
@@ -555,6 +585,13 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
   }
   // cities burn fuel as they grow: coal when the market has it (a little extra industry), else
   // wood; with neither, everything slows
+  const steps: EconomyStep[] = [];
+  let before = copyTotals(total);
+  const step = (label: string) => {
+    const d = diffTotals(total, before);
+    if (!isNil(d)) steps.push({ label, d });
+    before = copyTotals(total);
+  };
   const fuel: CityEconomy['fuel'] = hearthFirst ? early : { need: 0, good: null };
   if (hearthFirst) {
     if (fuel.good === 'coal') total.prod *= 1.05;
@@ -567,6 +604,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
     if (fuel.good === 'coal') total.prod *= 1.05;
     if (!fuel.good) scaleTotals(total, 0.85, false);
   }
+  step(fuel.good === 'coal' ? 'Coal in the hearths' : 'Nothing to burn');
   // comforts: a luxury a turn for every few thousand people, varied if possible
   const comfort: CityEconomy['comfort'] = {
     want: Math.floor(c.pop / COMFORT_PEOPLE),
@@ -590,12 +628,15 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
     total.gold *= pct(comfort.pct);
     total.culture *= pct(comfort.pct);
   }
+  step(comfort.pct >= 0 ? 'Comforts' : 'Comforts lacking');
   // a house at war with the throne
   const war = warPenalty(s, c);
   if (war < 1) scaleTotals(total, war, true);
+  step('House at war with the throne');
   total.science += Math.floor(c.pop / 2000);
   total.gold += Math.floor(c.pop / 2500);
   total.culture += 1 + Math.floor(c.pop / 4000);
+  step('Population');
   // people-wide bonuses, coastal cities, upheavals
   const coast = isCoastal(s, c) ? mods.coastalPct : 0;
   total.food *= pct(mods.foodPct + coast * 0.5);
@@ -606,9 +647,37 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
   total.gold *= pct(mods.goldPct + coast);
   total.culture *= pct(mods.culturePct);
   total.housing *= pct(mods.housingPct);
+  {
+    // one multiplication, shared out by its parts: the people's bonuses, the coast, the railway
+    const d = diffTotals(total, before);
+    const parts: Record<
+      string,
+      Partial<Record<'food' | 'prod' | 'science' | 'gold' | 'culture', number>>
+    > = {
+      'Realm bonuses': {
+        food: mods.foodPct,
+        prod: mods.prodPct,
+        science: mods.sciencePct,
+        gold: mods.goldPct,
+        culture: mods.culturePct,
+      },
+      'By the sea': { food: coast * 0.5, prod: coast * 0.5, gold: coast },
+      Railway: { prod: rail },
+    };
+    for (const [label, by] of Object.entries(parts)) {
+      const p = zero();
+      for (const k of ['food', 'prod', 'science', 'gold', 'culture'] as const) {
+        const sum = Object.values(parts).reduce((a, x) => a + (x[k] ?? 0), 0);
+        if (sum && by[k]) p[k] = (d[k] * by[k]!) / sum;
+      }
+      if (!isNil(p)) steps.push({ label, d: p });
+    }
+    before = copyTotals(total);
+  }
   for (const k of ['food', 'prod', 'science', 'gold', 'culture'] as const)
     total[k] = Math.round(total[k] * 10) / 10;
   total.housing = Math.round(total.housing / 50) * 50;
+  step('Rounding');
   // a thousand people eat a unit of food a turn (two farms' worth)
   const eat = Math.ceil(c.pop / 1000);
   return {
@@ -622,6 +691,7 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
     subsistence,
     fuel,
     comfort,
+    steps,
   };
 }
 

@@ -36,6 +36,7 @@ import { Chip, Delta, Ico, InfoButton } from './bits.tsx';
 import { GOODS } from '../data/goods.ts';
 import './declutter-city.css';
 import { CivBadge } from './Badge.tsx';
+import { GoodNets } from './YieldBits.tsx';
 
 export function CityPanel({
   game,
@@ -151,8 +152,8 @@ export function CityPanel({
               title="Workers busy"
             />
           </div>
-          <div className="dc-line">
-            <GoodsChips goods={y.goods} unit=" a turn" />
+          <div className="dc-line cp-goods">
+            <GoodNets game={game} c={c} />
           </div>
           <BuildersRow game={game} c={c} prod={y.prod} />
           {(() => {

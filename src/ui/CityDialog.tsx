@@ -51,13 +51,16 @@ import type { City, District, GameState } from '../engine/types.ts';
 import { Art, Chip, Delta, GoodIcon, Goods, Ico, InfoButton } from './bits.tsx';
 import './declutter-city.css';
 import './r4-city.css';
+import { GoodNets, ProductionView, YieldWhy } from './YieldBits.tsx';
+import { WhyPop } from './WhyPop.tsx';
+import { whyCityYield } from '../engine/breakdown.ts';
 
 interface Props {
   game: GameState;
   c: City;
   startHex?: number;
-  /** the tab to open on: the overview, or the districts */
-  startTab?: 'overview' | 'districts';
+  /** the tab to open on: the overview, the districts, or production */
+  startTab?: 'overview' | 'districts' | 'production';
   report: (r: Result) => void;
   onClose: () => void;
 }
@@ -108,7 +111,7 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
   const [cell, setCell] = useState<number | null>(null);
   const [tipT, setTipT] = useState<string | null>(null);
   const touchTap = useRef(false);
-  const [tab, setTab] = useState<'overview' | 'districts'>(startTab ?? 'overview');
+  const [tab, setTab] = useState<'overview' | 'districts' | 'production'>(startTab ?? 'overview');
   const [newName, setNewName] = useState('');
   const [bpName, setBpName] = useState('');
   const [bpPick, setBpPick] = useState<number | ''>('');
@@ -252,6 +255,7 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
               [
                 ['overview', 'Overview'],
                 ['districts', 'Districts'],
+                ['production', 'Production'],
               ] as const
             ).map(([k, label]) => (
               <button
@@ -291,30 +295,41 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
           </button>
         </header>
 
-        {tab === 'overview' ? (
+        {tab === 'production' ? (
+          <div className="city-body production">
+            <ProductionView game={game} c={c} />
+          </div>
+        ) : tab === 'overview' ? (
           <div className="city-body overview">
             <section className="city-main">
               <div className="chips dc-yields">
                 <Chip icon="people" n={c.pop.toLocaleString()} title="People" />
-                <span
-                  className="chip"
-                  title={`Food a turn: ${r1(e.total.food)} grown, ${e.eat} eaten; ${r1(c.food)}/${growthCost(game, c)} stored to grow by 250`}
-                  aria-label="Food a turn"
+                <WhyPop
+                  className="yl-y"
+                  title="Food a turn"
+                  unit=""
+                  why={() => whyCityYield(game, c, 'food', e)}
                 >
-                  <Icon name="food" size={22} />
-                  <Delta n={e.surplus} />
-                  <small className="muted">
-                    {r1(c.food)}/{growthCost(game, c)}
-                  </small>
-                </span>
-                <Chip icon="production" n={r1(e.total.prod)} title="Production a turn" />
-                <Chip icon="science" n={r1(e.total.science)} title="Science a turn" />
-                <Chip icon="gold" n={r1(e.total.gold)} title="Gold a turn" />
-                <Chip icon="culture" n={r1(e.total.culture)} title="Culture a turn" />
+                  <span
+                    className="chip"
+                    tabIndex={0}
+                    title={`${r1(c.food)}/${growthCost(game, c)} stored to grow by 250`}
+                    aria-label="Food a turn"
+                  >
+                    <Icon name="food" size={22} />
+                    <Delta n={e.surplus} />
+                    <small className="muted">
+                      {r1(c.food)}/{growthCost(game, c)}
+                    </small>
+                  </span>
+                </WhyPop>
+                {(['prod', 'science', 'gold', 'culture'] as const).map(k => (
+                  <YieldWhy key={k} game={game} c={c} k={k} e={e} />
+                ))}
                 <Chip icon="housing" n={e.total.housing.toLocaleString()} title="Room for people" />
               </div>
               <div className="chips dc-row">
-                <GoodChips goods={e.total.goods} unit=" a turn" />
+                <GoodNets game={game} c={c} e={e} />
               </div>
               <div className="chips dc-row muted">
                 <Chip

@@ -1,9 +1,9 @@
 /**
- * The culture web. Choices are grouped in domains, but a choice can require choices from other
- * domains, so it is a web rather than a set of trees. Many choices sit in exclusive forks: taking
- * one locks the others. Each choice gives tags; tags add up to an identity with its own bonuses.
- * Going deep down a path builds tension in that domain until an upheaval (a revolution, a
- * reformation…) lets the people change course.
+ * Culture choices, grouped in nine domains. Each domain is a Tome (data/tomes.ts): in each age a
+ * people opens one, and its missions give these choices as small buffs kept for good. Choices
+ * of the same fork exclude each other (one kept closes the rest). Each choice gives tags; tags
+ * add up to an identity with its own bonuses. The requirement fields are from the older culture
+ * web and are no longer used in play.
  */
 import type { Mods } from './mods.ts';
 
@@ -18,61 +18,49 @@ export type Domain =
   | 'knowledge'
   | 'arts';
 
-export const DOMAINS: Record<
-  Domain,
-  { name: string; upheaval: string; color: string; note: string }
-> = {
+export const DOMAINS: Record<Domain, { name: string; color: string; note: string }> = {
   cosmology: {
     name: 'Cosmology',
-    upheaval: 'Calendar reform',
     color: '#3d5a8a',
     note: 'Sky, time and the order of things.',
   },
   politics: {
     name: 'Politics',
-    upheaval: 'Revolution',
     color: '#a3342a',
     note: 'Who rules and how.',
   },
   religion: {
     name: 'Religion',
-    upheaval: 'Reformation',
     color: '#7a4ea0',
     note: 'Gods, priests and faith.',
   },
   society: {
     name: 'Society',
-    upheaval: 'Social upheaval',
     color: '#b5838d',
     note: 'Families, castes and classes.',
   },
   economy: {
     name: 'Economy',
-    upheaval: 'Economic crisis',
     color: '#c9962b',
     note: 'Wealth, land and trade.',
   },
   war: {
     name: 'War',
-    upheaval: 'Military reform',
     color: '#6b3f22',
     note: 'How the people fights.',
   },
   seafaring: {
     name: 'Seafaring',
-    upheaval: 'Turn from the sea',
     color: '#2f7d8a',
     note: 'The coast and beyond.',
   },
   knowledge: {
     name: 'Knowledge',
-    upheaval: 'Scientific revolution',
     color: '#3d7a3a',
     note: 'Learning and record.',
   },
   arts: {
     name: 'Arts',
-    upheaval: 'Renaissance',
     color: '#b0663a',
     note: 'Beauty, memory and pride.',
   },
@@ -81,12 +69,12 @@ export const DOMAIN_LIST = Object.keys(DOMAINS) as Domain[];
 
 export interface TagInfo {
   name: string;
-  /** bonuses at 3, 6 and 9 choices carrying the tag */
+  /** bonuses at 2, 4 and 6 kept choices carrying the tag */
   tiers: [Partial<Mods>, Partial<Mods>, Partial<Mods>];
   note: string;
 }
 
-export const TAG_TIERS = [3, 6, 9];
+export const TAG_TIERS = [2, 4, 6];
 
 export const TAGS: Record<string, TagInfo> = {
   solar: {

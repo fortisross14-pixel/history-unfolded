@@ -1288,6 +1288,30 @@ settlement is always a town. Founded further out, it is a **colony**:
   raider camps from turn 8; 3–5 deposits by every start, drawn as low-poly signs.
 - **Controls:** bevelled buttons, gold-ringed round buttons, folder tabs, framed title bars.
 
+## 12z. Culture Tomes (as built)
+
+- **Each world age, each people opens one Tome**: one of the nine culture domains. The world age
+  is the furthest age any great people has reached; when it rises, every open Tome closes and a
+  new pick is due. The same domain cannot be opened twice in a row.
+- **Missions:** a Tome offers 5 missions (6 from the Classical age). Buying one costs 30 culture in
+  the Ancient age (40 / 55 / 70 / 90 later) and starts its mandate, checked each turn against the
+  real game (57 mandate types: battles, beasts, army strength, techs, science per turn, goods,
+  ports, districts, workshops, faith, wonders…). Done, its buff — one of the domain's existing
+  culture choices — is kept forever.
+- **15 mandates are about houses** (a house's level in a line, houses governing, trinkets,
+  honours, calm houses, balance or concentration of power, coming through a civil war); every
+  Tome has at least one in every age, Politics and Society two.
+- **Major buff:** three missions done open it; it costs culture (80 / 160 / 240 / 320 / 400 by age)
+  and lasts forever (Knowledge: +25% science and the first tech of each age 25% cheaper; War: +20%
+  attack, +1 cohort per formation…). A Tome closed before it is bought loses its major for good;
+  the missions done are kept.
+- The old free-pick tree and upheavals are gone; old saves keep their choices as kept buffs.
+- **City yields:** a Production tab lists every building's takes and makes per turn and why it
+  idles; a goods table says which buildings make and use each good, its net and turns left; every
+  yield and good answers why, by building.
+- **Strength numbers** are small and proportional: a scout about 1, a spear levy about 7; packs
+  are sized so a spear levy wins about 9 fights in 10.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

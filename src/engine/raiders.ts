@@ -243,6 +243,12 @@ export function raidersTurn(s: GameState): string[] {
       if (h !== undefined && distance(g, h, camp.hex) <= CAMP_NEAR[1] + 2)
         st.quiet[p.id] = s.turn + CAMP_QUIET;
     }
+    // a deed for culture missions (counted here to keep imports one-way)
+    const burner = s.civs[army.civId];
+    burner.culture.deeds = {
+      ...burner.culture.deeds,
+      lairs: (burner.culture.deeds?.lairs ?? 0) + 1,
+    };
     const msg = `The ${s.civs[army.civId].name} burned a raider camp and took its hoard of ${hoard} gold.`;
     log(s, army.civId, msg);
     if (army.civId === me?.id) out.push(msg);

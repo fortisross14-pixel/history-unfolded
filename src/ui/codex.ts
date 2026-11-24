@@ -4,6 +4,7 @@
  * Codex never says something the game does not do.
  */
 import { DOMAINS, TAGS } from '../data/culture.ts';
+import { MAJORS } from '../data/tomes.ts';
 import { TENETS } from '../data/faiths.ts';
 import { GOODS } from '../data/goods.ts';
 import { PERSONALITIES } from '../data/leaders.ts';
@@ -46,8 +47,8 @@ const BASICS: [string, string][] = [
     'Science pays for techs. Each age has a gate tech that needs a number of the age’s other techs; it opens the next age, with new techs, a new policy and sometimes a national direction. There are five ages: Ancient, Classical, Medieval, Renaissance, Industrial.',
   ],
   [
-    'Culture and upheavals',
-    'Culture points buy choices in the culture web, by domain. Choices give bonuses and identity tags (solar, devout, martial…) that change how other peoples see you. Going deep into a domain builds tension; at 100 an upheaval lets you choose again, at 150 it starts by itself.',
+    'Culture Tomes',
+    'In each age you open one culture Tome, one of nine domains. Culture buys its missions; a mission done keeps its buff for good and its identity tags (solar, devout, martial…), which change how other peoples see you. Three missions done open the Tome’s major buff, bought with culture and kept forever. When any people enters a new age every open Tome closes: an unbought major buff is lost.',
   ],
   [
     'Cohorts, formations and designs',
@@ -195,8 +196,8 @@ export function codexEntries(): CodexEntry[] {
     out.push({
       id: `domain-${id}`,
       title: d.name,
-      group: 'Culture domains',
-      text: `${d.name}: its upheaval is the ${d.upheaval}.`,
+      group: 'Culture Tomes',
+      text: `${d.name}: ${d.note} Major buff: ${MAJORS[id as keyof typeof MAJORS].name}.`,
     });
   for (const [id, t] of Object.entries(TAGS))
     out.push({ id: `tag-${id}`, title: t.name, group: 'Identity tags', text: t.note });

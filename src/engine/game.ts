@@ -37,9 +37,16 @@ import {
   setPowerFn,
 } from './diplomacy.ts';
 import { civMods, pct } from './mods.ts';
-import { cultureTurn, newCultureState, nodeCost } from './culture.ts';
-import { CULTURE, CULTURE_LIST, TAGS } from '../data/culture.ts';
-import { tagCounts as tagCountsOf } from './mods.ts';
+import {
+  cultureTurn,
+  hasMajor,
+  migrateCulture,
+  missionCost,
+  newCultureState,
+  noteDeed,
+} from './culture.ts';
+import { CULTURE, TAGS } from '../data/culture.ts';
+import { majorDomains, tagCounts as tagCountsOf } from './mods.ts';
 import {
   build,
   cityDistricts,
@@ -308,8 +315,7 @@ export function ageGifts(s: GameState, civ: Civ) {
     }
   }
   if (m.freeCulture > 0) {
-    const open = CULTURE_LIST.filter(n => !civ.culture.taken.includes(n.id));
-    const cost = open.length ? Math.min(...open.map(n => nodeCost(s, civ, n))) : 0;
+    const cost = missionCost(s, civ, ageOf(civ.techs));
     if (cost) {
       civ.culture.points += cost * m.freeCulture;
       log(
@@ -1058,6 +1064,7 @@ export function foundCity(s: GameState, fid: number): Result {
   };
   if (colony) c.colony = true;
   s.cities.push(c);
+  noteDeed(civ, 'founded');
   // the city centre is a district of its own, with the town hall in the middle
   const centre: District = {
     id: s.nextId++,
@@ -1453,6 +1460,7 @@ export function endTurn(s: GameState): string[] {
     civ.stats = {
       gdp: Math.round(gdp),
       culture: Math.round(culture * yf),
+      science: Math.round(science * yf),
       crowd: Math.round(crowd * 100) / 100,
       starving,
       upkeep,
@@ -1729,6 +1737,8 @@ export function deserialize(json: string): GameState {
       d.traits ??= {};
       d.xp ??= {};
     }
+  // culture before Tomes: choices kept as buffs, a Tome to choose
+  for (const c of s.civs) migrateCulture(s, c);
   validate(s);
   return s;
 }
@@ -1830,6 +1840,7 @@ export function declareWar(s: GameState, a: number, b: number, called = false): 
   const treachery = hasPact(s, a, b);
   breakTreaties(s, a, b);
   s.wars.push({ a, b, since: s.turn });
+  if (!called) noteDeed(A, 'wars');
   invalidateMarkets();
   const msg = called
     ? `The ${A.name} joined their allies against the ${B.name}!`
@@ -1932,7 +1943,7 @@ export function cedeCity(s: GameState, cityId: number, to: number) {
   log(s, to, `The ${old.name} cede ${c.name} to the ${s.civs[to].name}.`);
 }
 
-/** Score: people, cities, knowledge and culture. Decides the game at the turn limit. */
+/** Score: people, cities, knowledge and culture (kept buffs, Tomes' major buffs). Decides the game at the turn limit. */
 export function score(s: GameState, civId: number): number {
   const cities = s.cities.filter(c => c.civId === civId);
   const pop = cities.reduce((a, c) => a + c.pop, 0);
@@ -1942,6 +1953,7 @@ export function score(s: GameState, civId: number): number {
       cities.length * 10 +
       civ.techs.length * 3 +
       civ.culture.taken.length * 3 +
+      majorDomains(civ).length * 6 +
       wondersOf(s, civId).length * WONDER_SCORE +
       civ.kills / 2000,
   );
@@ -2250,7 +2262,14 @@ export function techCost(s: GameState, civ: Civ, id: string): number {
   const t = TECHS[id];
   const m = civMods(s, civ.id);
   const fav = t.favoured && (tagCountsOf(civ)[t.favoured] ?? 0) >= 2 ? -20 : 0;
-  return Math.round(t.cost * ERA_COST[t.era] * pct(m.researchPct + fav));
+  // the Knowledge Tome's major buff: the first tech of each age is cheaper
+  const first =
+    t.gate === undefined &&
+    hasMajor(civ, 'knowledge') &&
+    !civ.techs.some(x => TECHS[x]?.era === t.era && TECHS[x]?.gate === undefined)
+      ? -25
+      : 0;
+  return Math.round(t.cost * ERA_COST[t.era] * pct(m.researchPct + fav + first));
 }
 
 /** What to research next: the player's goal path, else (AI) a pick that suits its plans. */
@@ -2431,6 +2450,20 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
   let result = '';
   const attackerAlive = s.formations.includes(f);
   const defenderAlive = b.df ? s.formations.includes(b.df) : false;
+  // battles won, for culture missions: the side that broke or wiped out the other
+  {
+    const won =
+      report.outcome === 'defender-broke' || (!!b.df && !defenderAlive && attackerAlive)
+        ? attCiv
+        : report.outcome === 'attacker-broke' || (!attackerAlive && (!b.df || defenderAlive))
+          ? defCiv
+          : null;
+    if (won) {
+      noteDeed(won, 'wins');
+      const lost = won === attCiv ? defCiv : attCiv;
+      if (lost.raiders) noteDeed(won, 'beasts');
+    }
+  }
   if (!b.df && b.city) {
     b.city.guard = Math.max(
       0,
@@ -2698,13 +2731,18 @@ export interface UpgradeInfo {
   lost: number;
 }
 
-/** Housing cells a settlement must have built to rise, and the culture choice it needs (if any). */
-export const RANK_NEEDS: Partial<Record<Tier, { housing: number; culture?: string }>> = {
+/**
+ * Housing cells a settlement must have built to rise, and the culture choice it needs (if any):
+ * won through a Society mission, or without it from a later age.
+ */
+export const RANK_NEEDS: Partial<
+  Record<Tier, { housing: number; culture?: string; age?: number }>
+> = {
   town: { housing: 2 },
   'large-town': { housing: 4 },
-  city: { housing: 6, culture: 'city-charter' },
-  'large-city': { housing: 7, culture: 'city-charter' },
-  metropolis: { housing: 8, culture: 'seat-of-empire' },
+  city: { housing: 6, culture: 'city-charter', age: 3 },
+  'large-city': { housing: 7, culture: 'city-charter', age: 3 },
+  metropolis: { housing: 8, culture: 'seat-of-empire', age: 4 },
 };
 
 /** What each step up costs: people, gold and building goods from the market. */
@@ -2742,8 +2780,12 @@ export function upgradeInfo(s: GameState, c: City): UpgradeInfo {
     s.cities.some(x => x.civId === c.civId && x.tier === 'metropolis' && x !== c)
   )
     problem = 'A people can have only one metropolis.';
-  else if (rank.culture && !civ.culture.taken.includes(rank.culture))
-    problem = `Needs the ${CULTURE[rank.culture].name} culture choice.`;
+  else if (
+    rank.culture &&
+    !civ.culture.taken.includes(rank.culture) &&
+    ageOf(civ.techs) < (rank.age ?? 9)
+  )
+    problem = `Needs the ${CULTURE[rank.culture].name} culture choice or the ${ERAS[rank.age ?? 5]} age.`;
   else if (housingCells(s, c).built < rank.housing)
     problem = `Needs ${rank.housing} housing cells built (${housingCells(s, c).built} now).`;
   else if (c.pop < need.pop)

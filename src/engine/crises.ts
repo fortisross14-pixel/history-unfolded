@@ -7,7 +7,7 @@
  */
 import { ageOf } from '../data/techs.ts';
 import { pressureFactor } from '../data/policies.ts';
-import { canStartUpheaval, startUpheaval, UPHEAVAL_AT } from './culture.ts';
+import { reopenTome } from './culture.ts';
 import { difficultyOf } from './difficulty.ts';
 import { cityDistricts } from './economy.ts';
 import { log, MIN_CITY_POP, trainSettlers } from './game.ts';
@@ -274,15 +274,12 @@ export const CRISES: CrisisDef[] = [
       },
       {
         label: 'Let the faith divide',
-        effect: () => 'A religious upheaval begins: your faith choices can be made anew',
-        blocked: (_s, civ) =>
-          civ.culture.upheaval || civ.culture.choosing
-            ? 'Your culture is already in upheaval.'
-            : null,
+        effect: () =>
+          'Religious tension clears; your open culture Tome closes (missions done are kept) and a new one is chosen',
+        blocked: (_s, civ) => (civ.culture.tome ? null : 'No culture Tome is open.'),
         apply: (s, civ) => {
-          civ.culture.tension.religion = Math.max(civ.culture.tension.religion ?? 0, UPHEAVAL_AT);
-          // canStartUpheaval returns a reason when it cannot start, null when it can
-          if (canStartUpheaval(civ, 'religion') === null) startUpheaval(s, civ.id, 'religion');
+          civ.culture.tension.religion = 0;
+          reopenTome(s, civ.id);
           return 'end';
         },
         ai: 1,

@@ -1,0 +1,231 @@
+/* round 4, culture group: Tomes, missions, the major buff, the Tome picker */
+.r4-culture .chips .info-wrap {
+  margin-left: 2px;
+}
+.r4-culture .tome-due {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 6px;
+}
+.tome-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.tome-pick-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  padding: 8px 10px;
+  border-top: 4px solid var(--iv-line);
+  min-height: 0;
+  height: auto;
+  white-space: normal;
+}
+.tome-pick-card:disabled {
+  opacity: 0.55;
+}
+.tome-pick-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+}
+.tome-major-mini {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.tome-extra {
+  display: block;
+  color: var(--iv-good);
+  font-style: italic;
+}
+.tome-sample {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--iv-muted);
+}
+.tome-sample li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0;
+}
+.tome-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--iv-line-soft);
+  border-left: 6px solid var(--iv-line);
+  border-radius: 8px;
+  background: var(--iv-panel-2);
+}
+.tome-card h3 {
+  margin: 0 0 4px;
+}
+.mission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+}
+.mission-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid var(--iv-line-soft);
+  border-radius: 8px;
+  background: var(--iv-btn);
+}
+.mission-card.active {
+  border-color: var(--iv-gold);
+  box-shadow: 0 0 0 2px var(--iv-gold-soft);
+}
+.mission-card.done {
+  background: var(--iv-sunk);
+  border-color: var(--iv-good);
+}
+.mission-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mission-head > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.mission-task {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--iv-muted);
+}
+.mission-bar {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: #cdb98e;
+  overflow: hidden;
+}
+.mission-bar span {
+  display: block;
+  height: 100%;
+  background: var(--iv-teal-2);
+}
+.mission-card.done .mission-bar span {
+  background: var(--iv-good);
+}
+.mission-bar small {
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  font-size: 11px;
+  line-height: 14px;
+  color: #fff;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+}
+.mission-card .buy,
+.major-card .buy {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mission-state {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.mission-state.done {
+  color: var(--iv-good);
+}
+.mission-state.active {
+  color: var(--iv-bronze);
+}
+.mission-state.locked {
+  color: var(--iv-muted);
+}
+.major-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 2px solid var(--iv-line);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fbf3dc, #efe1bd);
+}
+.major-card.locked {
+  opacity: 0.75;
+  border-style: dashed;
+}
+.major-card.bought {
+  background: linear-gradient(180deg, #eef3dc, #dfe9c2);
+}
+.tome-history {
+  margin-top: 14px;
+}
+.tome-history h4 {
+  margin: 0 0 4px;
+}
+.tome-closed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-top: 1px solid var(--iv-line-soft);
+}
+.tome-kept {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+.tome-major-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 13px;
+}
+.tome-major-state.won {
+  color: var(--iv-good);
+  font-weight: 600;
+}
+.tome-major-state.lost {
+  color: var(--iv-bad);
+}
+.tome-confirm-back {
+  position: fixed;
+  z-index: 60;
+}
+.tome-confirm h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tome-confirm .row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+@media (max-width: 600px) {
+  .tome-picker,
+  .mission-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

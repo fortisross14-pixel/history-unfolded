@@ -93,11 +93,10 @@ import { absorb, giveGift } from '../engine/independents.ts';
 import { EventDialog } from './EventDialog.tsx';
 import { Icon } from './icons.tsx';
 import './r4-nav.css';
-import { CultureDialog, KeepDialog, TagChip } from './CultureDialog.tsx';
-import { resolveUpheaval, startUpheaval, takeNode } from '../engine/culture.ts';
+import { CultureDialog, TagChip } from './CultureDialog.tsx';
+import { buyMajor, buyMission, pickTome } from '../engine/culture.ts';
 import { cityEconomy, constructionQueue } from '../engine/economy.ts';
 import { identity } from '../engine/mods.ts';
-import { DOMAINS } from '../data/culture.ts';
 import { saveGame } from './save.ts';
 import { emblemOf } from '../data/rulers.ts';
 import { artUrl } from '../render/art.ts';
@@ -141,6 +140,7 @@ function todoSummary(list: { key: string }[]): string {
   const n = (k: string) => list.filter(t => t.key.startsWith(k)).length;
   const parts: string[] = [];
   if (n('research')) parts.push('choose research');
+  if (n('tome')) parts.push('choose a culture Tome');
   if (n('trinkets')) parts.push('give out trinkets');
   if (n('event')) parts.push('an event to decide');
   const c = n('city:'),
@@ -391,6 +391,12 @@ export function Game({
         key: 'crisis',
         label: `Crisis: answer the ${CRISIS[me.crisis.id]?.name.toLowerCase() ?? 'crisis'}`,
         go: () => setDialog({ kind: 'crisis' }),
+      });
+    if (me.culture.pickDue && !me.culture.tome)
+      out.push({
+        key: 'tome',
+        label: 'Choose a culture Tome',
+        go: () => setDialog({ kind: 'culture' }),
       });
     if (me.pathDue)
       out.push({
@@ -666,7 +672,7 @@ export function Game({
         (e.target as HTMLElement).isContentEditable
       )
         return;
-      if (dialog || proposal || me.culture.choosing || busy) return;
+      if (dialog || proposal || busy) return;
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       if (key === 'Enter') {
         e.preventDefault();
@@ -940,8 +946,10 @@ export function Game({
           >
             <Icon name="culture" /> {Math.floor(me.culture.points)}{' '}
             <small className="muted">(+{culturePerTurn})</small>
-            {me.culture.upheaval ? (
-              <b className="war-pill">{DOMAINS[me.culture.upheaval.domain].upheaval}</b>
+            {me.culture.pickDue && !me.culture.tome ? (
+              <b className="war-pill" title="Choose a culture Tome">
+                Tome
+              </b>
             ) : null}
           </button>
         </WhyPop>
@@ -1502,17 +1510,9 @@ export function Game({
           civ={me}
           perTurn={culturePerTurn}
           onClose={() => setDialog(null)}
-          onTake={id => report(takeNode(game, me.id, id))}
-          onUpheaval={d => report(startUpheaval(game, me.id, d))}
-        />
-      )}
-      {me.culture.choosing && (
-        <KeepDialog
-          civ={me}
-          onKeep={ids => {
-            report(resolveUpheaval(game, me.id, ids));
-            saveGame(game);
-          }}
+          onPick={d => report(pickTome(game, me.id, d))}
+          onBuy={id => report(buyMission(game, me.id, id))}
+          onMajor={() => report(buyMajor(game, me.id))}
         />
       )}
       {dialog?.kind === 'realm-event' && (

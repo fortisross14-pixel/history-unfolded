@@ -16,7 +16,7 @@ import { difficultyOf } from './difficulty.ts';
 import { cityDistricts } from './economy.ts';
 import { log } from './game.ts';
 import { distance } from './hex.ts';
-import { tagCounts } from './mods.ts';
+import { civMods, pct, tagCounts } from './mods.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
 import type { City, Civ, Faith, GameState } from './types.ts';
 
@@ -305,7 +305,10 @@ export function faithTurn(s: GameState): string[] {
       const outside = (all - (by.get(civ.faith) ?? 0)) / all;
       const t = civ.culture.tension.religion ?? 0;
       if (outside > DIVIDED_AT && t < DIVIDED_CAP)
-        civ.culture.tension.religion = Math.min(DIVIDED_CAP, t + 0.8);
+        civ.culture.tension.religion = Math.min(
+          DIVIDED_CAP,
+          t + 0.8 * pct(civMods(s, civ.id).tensionPct),
+        );
     }
     // the founder's rewards
     const inc = faithIncome(s, civ.id);

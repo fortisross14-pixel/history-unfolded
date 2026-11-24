@@ -1,5 +1,6 @@
-/** A people's total bonuses: research + culture choices + identity tags + upheaval penalties. */
-import { CULTURE, TAGS, TAG_TIERS } from '../data/culture.ts';
+/** A people's total bonuses: research + culture choices + identity tags + Tomes' major buffs. */
+import { CULTURE, TAGS, TAG_TIERS, type Domain } from '../data/culture.ts';
+import { MAJORS, REPEAT_MAJOR } from '../data/tomes.ts';
 import { addMods, ZERO_MODS, type Mods } from '../data/mods.ts';
 import { TECHS } from '../data/techs.ts';
 import { PATHS } from '../data/paths.ts';
@@ -12,7 +13,7 @@ import type { Civ, GameState } from './types.ts';
 
 const cache = new WeakMap<Civ, { key: string; mods: Mods }>();
 
-/** How many current (not legacy) choices carry each tag. */
+/** How many kept culture choices (missions done) carry each tag. */
 export function tagCounts(civ: Civ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const id of civ.culture.taken)
@@ -34,14 +35,13 @@ export function identity(civ: Civ): IdentityTag[] {
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 }
 
-export const UPHEAVAL_PENALTY: Partial<Mods> = {
-  foodPct: -10,
-  prodPct: -25,
-  sciencePct: -25,
-  goldPct: -25,
-  culturePct: -25,
-  morale: -5,
-};
+/** The domains whose major buffs a people has won (a Tome's major bought), in order. */
+export function majorDomains(civ: Civ): Domain[] {
+  const c = civ.culture;
+  const out = (c.history ?? []).filter(h => h.major === 'won').map(h => h.domain);
+  if (c.tome?.major === 'bought') out.push(c.tome.domain);
+  return out;
+}
 
 /** The tenets that help a people (see faith.ts; kept here so mods need no engine import). */
 export function faithTenets(s: GameState, civ: Civ): string[] {
@@ -64,7 +64,7 @@ export function heldWonders(s: GameState, civId: number): string[] {
 export function civMods(s: GameState, civId: number): Mods {
   const civ = s.civs[civId];
   const c = civ.culture;
-  const key = `${civ.ruler?.major ?? ''}${civ.ruler?.minor ?? ''}|${civ.techs.length}|${c.taken.length}|${c.legacy.length}|${c.upheaval ? c.upheaval.domain : ''}|${civ.paths?.length ?? 0}|${civ.crisis ? civ.crisis.id + (civ.crisis.eased ? 'e' : '') : ''}|${Object.entries(
+  const key = `${civ.ruler?.major ?? ''}${civ.ruler?.minor ?? ''}|${civ.techs.length}|${c.taken.length}|${c.legacy?.length ?? 0}|${majorDomains(civ).join()}|${civ.paths?.length ?? 0}|${civ.crisis ? civ.crisis.id + (civ.crisis.eased ? 'e' : '') : ''}|${Object.entries(
     civ.policies ?? {},
   )
     .map(([k, v]) => k + v.pos)
@@ -76,10 +76,15 @@ export function civMods(s: GameState, civId: number): Mods {
   if (civ.ruler) for (const r of rulerMods(civ.ruler)) addMods(m, r);
   for (const t of civ.techs) if (TECHS[t]?.mods) addMods(m, TECHS[t].mods!);
   for (const id of c.taken) if (CULTURE[id]) addMods(m, CULTURE[id].mods);
-  for (const id of c.legacy) if (CULTURE[id]) addMods(m, CULTURE[id].mods, 0.5);
+  for (const id of c.legacy ?? []) if (CULTURE[id]) addMods(m, CULTURE[id].mods, 0.5);
   for (const it of identity(civ))
     for (let k = 0; k < it.tier; k++) addMods(m, TAGS[it.tag].tiers[k]);
-  if (c.upheaval) addMods(m, UPHEAVAL_PENALTY);
+  // Tomes' major buffs, for good; one won again in a later age counts less
+  const seen = new Set<Domain>();
+  for (const d of majorDomains(civ)) {
+    addMods(m, MAJORS[d].mods, seen.has(d) ? REPEAT_MAJOR : 1);
+    seen.add(d);
+  }
   // national directions: a lasting legacy, half again as strong with their culture tag
   const tags = identity(civ);
   for (const id of civ.paths ?? []) {

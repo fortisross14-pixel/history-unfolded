@@ -36,7 +36,7 @@ await page.waitForTimeout(200);
 if (!(await page.$('.modal.research'))) await page.click('[data-k="research"]');
 await page.screenshot({ path: `${out}/2b-research.png` });
 await page.click('.tech-card.can:has-text("Archery")');
-// set a far goal from the tree, then look at the culture web
+// set a far goal from the tree, then open a culture Tome
 await page.click('[data-k="research"]:has-text("Archery")');
 await page.click('.age-gate button');
 await page.screenshot({ path: `${out}/2c-research-goal.png` });
@@ -52,12 +52,14 @@ await page.evaluate(() => {
 });
 await page.click('[data-k="culture"]');
 await page.waitForSelector('.modal.culture');
-await page.click('.cnode.can:has-text("Star Lore")');
-await page.click('.cnode.can:has-text("Solar Calendar")');
-await page.click('.cnode.can:has-text("Chiefdom")');
-await page.screenshot({ path: `${out}/2d-culture.png` });
-await page.click('.domain-tabs button:has-text("Cosmology")');
-await page.screenshot({ path: `${out}/2e-culture-cosmology.png` });
+// a Tome is due: the picker, then a confirm, then the Tome's missions
+await page.screenshot({ path: `${out}/2d-culture-pick.png` });
+await page.click('.tome-pick-card:has-text("Cosmology")');
+await page.click('.tome-confirm button.primary');
+await page.waitForSelector('.mission-card');
+await page.click('.mission-card .buy:not([disabled]) >> nth=0');
+await page.waitForSelector('.mission-card.active');
+await page.screenshot({ path: `${out}/2e-culture-tome.png` });
 await page.click('.modal.culture .x');
 
 // founding opened nothing: the new city waits in the to-do list ("Plan Corin")

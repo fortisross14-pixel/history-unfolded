@@ -231,6 +231,8 @@ export function grantHonours(s: GameState, civId: number, dynId: number): Result
   if (civ.gold < cost) return fail(`Honours cost ${cost} gold.`);
   civ.gold -= cost;
   d.unrest = Math.max(0, d.unrest - HONOURS_CALM);
+  // counted for the culture missions that ask for honours (culture.ts noteDeed)
+  civ.culture.deeds = { ...civ.culture.deeds, honours: (civ.culture.deeds?.honours ?? 0) + 1 };
   return ok(`House ${d.name} is honoured at court (${cost} gold).`);
 }
 export const honoursCost = (s: GameState, civ: Civ) =>

@@ -36,8 +36,7 @@ import {
 } from './game.ts';
 import { distance, neighbors, within } from './hex.ts';
 import { SLOT_TYPES } from '../data/slots.ts';
-import { CULTURE_LIST, DOMAIN_LIST } from '../data/culture.ts';
-import { canStartUpheaval, nodeCost, nodeStatus, startUpheaval, takeNode } from './culture.ts';
+import { aiCulture } from './culture.ts';
 import {
   absorb,
   absorbCost,
@@ -336,27 +335,9 @@ function upgrade(s: GameState, civ: Civ, f: Formation) {
   }
 }
 
-/** Spend culture on the choice that best fits the people's leanings. */
+/** Culture: open a Tome that suits the people, buy missions, buy the major (culture.ts). */
 function chooseCulture(s: GameState, civ: Civ, rng: Rng) {
-  const avail = CULTURE_LIST.filter(n => nodeStatus(civ, n).kind === 'available');
-  if (!avail.length) return;
-  // score each choice once (no random draws inside a sort), then take the best
-  const scored = avail.map(n => ({
-    n,
-    v:
-      n.tags.filter(t => civ.leanings.includes(t)).length * 3 +
-      (5 - n.tier) * 0.5 +
-      rng() * 2 -
-      nodeCost(s, civ, n) / 60 +
-      // the ranks of settlement: a charter once there are towns to feed a city
-      (n.id === 'city-charter' && s.cities.filter(c => c.civId === civ.id).length >= 3 ? 8 : 0) +
-      (n.id === 'seat-of-empire' && s.cities.some(c => c.civId === civ.id && isUrban(c)) ? 6 : 0),
-  }));
-  const best = scored.reduce((a, b) => (b.v > a.v ? b : a)).n;
-  if (civ.culture.points >= nodeCost(s, civ, best)) takeNode(s, civ.id, best.id);
-  // the AI calls its own upheaval when a domain is close to boiling
-  const hot = DOMAIN_LIST.find(d => civ.culture.tension[d] >= 125);
-  if (hot && !canStartUpheaval(civ, hot)) startUpheaval(s, civ.id, hot);
+  aiCulture(s, civ, rng);
 }
 
 function ensureDesigns(s: GameState, civ: Civ) {

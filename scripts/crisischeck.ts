@@ -160,16 +160,30 @@ const until = (s: GameState, civ: Civ, max: number) => {
   check(!me.crisis && /granaries fill/.test(out[0] ?? ''), 'fixing the cause ends it early');
 }
 
-// ---- schism: letting the faith divide starts a religious upheaval
+// ---- schism: letting the faith divide closes the open culture Tome; a new one is chosen
 {
   const s = fresh();
   const me = player(s);
   toAge(me, 3);
   me.crisis = { id: 'schism', since: s.turn, until: s.turn + 15 };
   me.culture.tension.religion = 80;
+  me.culture.pickDue = null;
+  me.culture.tome = {
+    domain: 'religion',
+    age: 3,
+    offered: [],
+    taken: [],
+    done: [],
+    major: 'locked',
+    opened: s.turn,
+  };
   check(
-    respondCrisis(s, me.id, 2).ok && me.culture.upheaval?.domain === 'religion',
-    'letting the faith divide begins a religious upheaval',
+    respondCrisis(s, me.id, 2).ok &&
+      !me.culture.tome &&
+      !!me.culture.pickDue &&
+      me.culture.history?.at(-1)?.domain === 'religion' &&
+      !me.culture.tension.religion,
+    'letting the faith divide closes the Tome; a new one is due',
   );
 }
 

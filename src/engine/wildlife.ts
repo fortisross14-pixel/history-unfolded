@@ -304,6 +304,8 @@ function clear(s: GameState, lair: Lair, by: Formation, out: string[]) {
   const pack = s.formations.find(f => f.id === lair.fid);
   if (pack) s.formations = s.formations.filter(f => f !== pack);
   const civ = s.civs[by.civId];
+  // a deed for culture missions (counted here, not through culture.ts, to keep imports one-way)
+  civ.culture.deeds = { ...civ.culture.deeds, lairs: (civ.culture.deeds?.lairs ?? 0) + 1 };
   const age = Math.max(1, ageOf(civ.techs));
   const gold = 10 * age + (lair.kind === 'guardians' ? 15 : 0);
   civ.gold += gold;

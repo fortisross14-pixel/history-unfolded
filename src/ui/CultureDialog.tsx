@@ -1,35 +1,30 @@
 import { useState } from 'react';
-import {
-  CULTURE,
-  CULTURE_LIST,
-  DOMAIN_LIST,
-  DOMAINS,
-  TAG_TIERS,
-  TAGS,
-  type CultureNode,
-  type Domain,
-} from '../data/culture.ts';
+import { CULTURE, DOMAIN_LIST, DOMAINS, TAG_TIERS, TAGS, type Domain } from '../data/culture.ts';
 import { describeMods } from '../data/mods.ts';
+import { ERAS } from '../data/techs.ts';
+import { MAJOR_AT, MAJORS } from '../data/tomes.ts';
 import {
-  canStartUpheaval,
-  FORCED_AT,
-  KEEP_AFTER_UPHEAVAL,
-  keepable,
-  nodeCost,
-  nodeStatus,
-  UPHEAVAL_AT,
+  majorCost,
+  missionCost,
+  missionLabel,
+  missionProgress,
+  offerFor,
+  pickProblem,
 } from '../engine/culture.ts';
-import { identity } from '../engine/mods.ts';
-import type { Civ, GameState } from '../engine/types.ts';
+import { identity, majorDomains } from '../engine/mods.ts';
+import { MANDATES, survey } from '../engine/tomes.ts';
+import type { Civ, GameState, TomeMission } from '../engine/types.ts';
 import { Art, Ico, InfoButton } from './bits.tsx';
 import { EffChips, modEffs } from './NationDialog.tsx';
+import './r4-culture.css';
 
 interface Props {
   game: GameState;
   civ: Civ;
   perTurn: number;
-  onTake: (id: string) => void;
-  onUpheaval: (d: Domain) => void;
+  onPick: (d: Domain) => void;
+  onBuy: (node: string) => void;
+  onMajor: () => void;
   onClose: () => void;
 }
 
@@ -42,89 +37,188 @@ export function TagChip({ tag }: { tag: string }) {
   );
 }
 
-/** The culture web: nine domains, four tiers, forks that close doors, tension and upheavals. */
-export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose }: Props) {
-  const [focus, setFocus] = useState<Domain | 'all'>('all');
-  // by default only what can be taken now (and what is held); locked paths on request
-  const [showAll, setShowAll] = useState(false);
-  const visible = (n: CultureNode) => {
-    const k = nodeStatus(civ, n).kind;
-    return showAll || k === 'taken' || k === 'available' || k === 'legacy' || k === 'upheaval';
-  };
-  const hidden = CULTURE_LIST.filter(n => !visible(n)).length;
-  const ident = identity(civ);
-  const c = civ.culture;
-  const domains = focus === 'all' ? DOMAIN_LIST : [focus];
+/** A major buff's chips, and its extra rule if it has one. */
+function MajorEffs({ d }: { d: Domain }) {
+  const mj = MAJORS[d];
+  return (
+    <>
+      <EffChips effs={modEffs(mj.mods)} />
+      {mj.extra && <small className="tome-extra">{mj.extra}</small>}
+    </>
+  );
+}
 
-  const nodeCard = (n: CultureNode) => {
-    const st = nodeStatus(civ, n);
-    const cost = nodeCost(game, civ, n);
-    const can =
-      (st.kind === 'available' || (st.kind === 'legacy' && st.adoptable)) && c.points >= cost;
-    const reason =
-      st.kind === 'taken'
-        ? 'Adopted'
-        : st.kind === 'legacy'
-          ? st.adoptable
-            ? `Legacy ½ · ${cost}`
-            : 'Legacy ½'
-          : st.kind === 'locked'
-            ? `Closed by ${CULTURE[st.by].name}`
-            : st.kind === 'upheaval'
-              ? 'In upheaval'
-              : st.kind === 'needs'
-                ? `Needs ${st.missing
-                    .map(m =>
-                      m
-                        .split('|')
-                        .map(x => CULTURE[x]?.name ?? x)
-                        .join(' or '),
-                    )
-                    .join(', ')}`
-                : null;
-    const crossReq = [...n.requires, ...n.requiresAny].filter(r => CULTURE[r]?.domain !== n.domain);
+/** Culture: the Tome of this age, its missions and major buff, and the Tomes closed before. */
+export function CultureDialog({ game, civ, perTurn, onPick, onBuy, onMajor, onClose }: Props) {
+  const [confirm, setConfirm] = useState<Domain | null>(null);
+  const c = civ.culture;
+  const t = c.tome;
+  const ident = identity(civ);
+  const won = majorDomains(civ);
+  const x = survey(game, civ);
+
+  const missionCard = (m: TomeMission, age: number) => {
+    const node = CULTURE[m.node];
+    const md = MANDATES[m.task];
+    const taken = !!t?.taken.includes(m.node);
+    const done = !!t?.done.includes(m.node);
+    const p = missionProgress(game, civ, m, age, x);
+    const cost = missionCost(game, civ, age);
+    const state = done ? 'done' : taken ? 'active' : 'open';
     return (
-      <button
-        key={n.id}
-        className={`cnode ${st.kind} ${can ? 'can' : ''}`}
-        disabled={!can}
-        onClick={() => onTake(n.id)}
-        title={n.note}
-      >
-        <span className="cnode-head">
-          <Art k={`culture/${n.id}`} size={28} />
-          <b>{n.name}</b>
-        </span>
-        <span className="tags">
-          {n.tags.map(t => (
-            <TagChip key={t} tag={t} />
-          ))}
-        </span>
-        <EffChips effs={modEffs(n.mods, st.kind === 'legacy' ? 0.5 : 1)} />
-        {crossReq.length > 0 && (
-          <small
-            className="muted"
-            title={crossReq
-              .map(r => `${CULTURE[r].name} (${DOMAINS[CULTURE[r].domain].name})`)
-              .join(', ')}
-          >
-            ↔ {crossReq.map(r => CULTURE[r].name).join(', ')}
+      <div key={m.node} className={`mission-card ${state}`} title={node.note}>
+        <div className="mission-head">
+          <Art k={`culture/${node.id}`} size={40} />
+          <span>
+            <b>{node.name}</b>
+            <span className="mission-task">
+              <Ico name={md?.icon ?? 'culture'} fallback="•" size={16} /> {missionLabel(m, age)}
+            </span>
+          </span>
+        </div>
+        <div className="mission-bar" title={`${p.have} / ${p.need}`}>
+          <span style={{ width: `${(p.have / p.need) * 100}%` }} />
+          <small>
+            {p.have}/{p.need}
           </small>
+        </div>
+        <EffChips effs={modEffs(node.mods)} />
+        {node.tags.length > 0 && (
+          <span className="tags">
+            {node.tags.map(tg => (
+              <TagChip key={tg} tag={tg} />
+            ))}
+          </span>
         )}
-        {reason ? (
-          <small className={`cstate ${st.kind}`}>{reason}</small>
+        {done ? (
+          <span className="mission-state done">
+            <Ico name="check" fallback="✓" size={16} /> Done
+          </span>
+        ) : taken ? (
+          <span className="mission-state active">
+            <Ico name="end-turn" fallback="⧗" size={16} /> Active
+          </span>
         ) : (
-          <small className={`cstate ${st.kind}`} title={`${cost} culture`}>
-            <Ico name="culture" fallback="♪" size={14} /> {cost}
-          </small>
+          <button
+            className="buy"
+            disabled={c.points < cost}
+            title={`${cost} culture`}
+            onClick={() => onBuy(m.node)}
+          >
+            <Ico name="culture" fallback="♪" size={16} /> {cost}
+          </button>
         )}
-      </button>
+      </div>
     );
   };
 
+  const picker = () => {
+    const age = c.pickDue!;
+    return (
+      <>
+        <h3 className="tome-due">
+          <Ico name="culture" fallback="♪" size={20} /> Choose a Tome · {ERAS[age]} age
+        </h3>
+        <div className="tome-picker">
+          {DOMAIN_LIST.map(d => {
+            const why = pickProblem(civ, d);
+            const sample = why ? [] : offerFor(game, civ, d, age).slice(0, 3);
+            return (
+              <button
+                key={d}
+                className="tome-pick-card"
+                disabled={!!why}
+                title={why ?? DOMAINS[d].note}
+                style={{ borderTopColor: DOMAINS[d].color }}
+                onClick={() => setConfirm(d)}
+              >
+                <span className="tome-pick-head">
+                  <Art k={`domain/${d}`} size={44} />
+                  <b style={{ color: DOMAINS[d].color }}>{DOMAINS[d].name}</b>
+                </span>
+                <span className="tome-major-mini">
+                  <Ico name="crown" fallback="♛" size={16} /> {MAJORS[d].name}
+                </span>
+                <MajorEffs d={d} />
+                {why ? (
+                  <small className="muted">{why}</small>
+                ) : (
+                  <ul className="tome-sample">
+                    {sample.map(m => (
+                      <li key={m.node}>
+                        <Art k={`culture/${m.node}`} size={20} /> {missionLabel(m, age)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </>
+    );
+  };
+
+  const tomeView = () => {
+    if (!t) return null;
+    const d = t.domain;
+    const mCost = majorCost(game, civ, t.age);
+    return (
+      <>
+        <div className="tome-card" style={{ borderLeftColor: DOMAINS[d].color }}>
+          <Art k={`domain/${d}`} size={64} />
+          <div>
+            <h3 style={{ color: DOMAINS[d].color }}>Tome of {DOMAINS[d].name}</h3>
+            <span className="chips">
+              <span className="chip" title="Age">
+                <Ico name="research" fallback="⌛" size={16} /> <b>{ERAS[t.age]}</b>
+              </span>
+              <span className="chip" title={`Missions done (${MAJOR_AT} open the major buff)`}>
+                <Ico name="check" fallback="✓" size={16} />{' '}
+                <b>
+                  {t.done.length}/{t.offered.length}
+                </b>
+              </span>
+            </span>
+          </div>
+        </div>
+        <div className="mission-grid">{t.offered.map(m => missionCard(m, t.age))}</div>
+        <div className={`major-card ${t.major}`} style={{ borderColor: DOMAINS[d].color }}>
+          <Ico name="crown" fallback="♛" size={28} />
+          <div>
+            <b>{MAJORS[d].name}</b>
+            <small className="muted"> {MAJORS[d].note}</small>
+            <div>
+              <MajorEffs d={d} />
+            </div>
+          </div>
+          {t.major === 'bought' ? (
+            <span className="mission-state done">
+              <Ico name="check" fallback="✓" size={16} /> Won
+            </span>
+          ) : t.major === 'open' ? (
+            <button
+              className="buy primary"
+              disabled={c.points < mCost}
+              title={`${mCost} culture`}
+              onClick={onMajor}
+            >
+              <Ico name="culture" fallback="♪" size={16} /> {mCost}
+            </button>
+          ) : (
+            <span className="mission-state locked" title={`Complete ${MAJOR_AT} missions`}>
+              <Ico name="lock" fallback="🔒" size={16} /> {t.done.length}/{MAJOR_AT}
+            </span>
+          )}
+        </div>
+      </>
+    );
+  };
+
+  const history = c.history ?? [];
   return (
     <div className="modal-back" onClick={onClose}>
-      <div className="modal culture" onClick={e => e.stopPropagation()}>
+      <div className="modal culture r4-culture" onClick={e => e.stopPropagation()}>
         <header>
           <h2>
             Culture{' '}
@@ -133,14 +227,22 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
                 <Ico name="culture" fallback="♪" size={18} /> <b>{Math.floor(c.points)}</b>{' '}
                 <span className="delta good">+{perTurn}</span>
               </span>
-              <span className="chip" title="Adopted">
+              <span className="chip" title="Buffs kept">
                 <Ico name="check" fallback="✓" size={16} /> <b>{c.taken.length}</b>
               </span>
-              {c.legacy.length ? (
-                <span className="chip" title="Legacy (half effect)">
-                  ½ <b>{c.legacy.length}</b>
+              <span className="chip" title="Major buffs won">
+                <Ico name="crown" fallback="♛" size={16} /> <b>{won.length}</b>
+              </span>
+              <InfoButton label="About Tomes">
+                <span>
+                  One Tome an age. A mission costs culture; done, its buff stays for good.{' '}
+                  {MAJOR_AT} done open the major buff: buy it and it is yours forever.
                 </span>
-              ) : null}
+                <span>
+                  When any people enters a new age, every open Tome closes: an unbought major buff
+                  is lost. The same Tome cannot be opened twice in a row.
+                </span>
+              </InfoButton>
             </small>
           </h2>
           <button className="x" onClick={onClose}>
@@ -159,150 +261,69 @@ export function CultureDialog({ game, civ, perTurn, onTake, onUpheaval, onClose 
             >
               <TagChip tag={i.tag} /> {i.count}
               <span className="pips">
-                {TAG_TIERS.map((t, k) => (
-                  <i key={t} className={k < i.tier ? 'on' : ''} />
+                {TAG_TIERS.map((n, k) => (
+                  <i key={n} className={k < i.tier ? 'on' : ''} />
                 ))}
               </span>
             </span>
           ))}
-          {ident.some(i => i.tier > 0) && (
-            <InfoButton label="Identity bonuses">
-              {ident
-                .filter(i => i.tier > 0)
-                .map(i => (
-                  <span key={i.tag}>
-                    <b>{TAGS[i.tag].name}:</b>{' '}
-                    {TAGS[i.tag].tiers.slice(0, i.tier).map(describeMods).join(', ')}
-                  </span>
-                ))}
-            </InfoButton>
-          )}
         </div>
-        {c.upheaval && (
-          <p className="upheaval-banner">
-            {DOMAINS[c.upheaval.domain].upheaval}: {c.upheaval.turnsLeft} turns left{' '}
-            <InfoButton label="About upheavals">
-              Yields and morale suffer until it ends; then the old{' '}
-              {DOMAINS[c.upheaval.domain].name.toLowerCase()} gives way and closed paths reopen.
-            </InfoButton>
-          </p>
+
+        {c.pickDue && !t ? picker() : tomeView()}
+
+        {history.length > 0 && (
+          <div className="tome-history">
+            <h4 className="muted">Closed Tomes</h4>
+            {[...history].reverse().map(h => (
+              <div key={`${h.domain}-${h.age}-${h.turn}`} className="tome-closed">
+                <Art k={`domain/${h.domain}`} size={28} />
+                <b style={{ color: DOMAINS[h.domain].color }}>{DOMAINS[h.domain].name}</b>
+                <small className="muted">{ERAS[h.age]}</small>
+                <span className="tome-kept">
+                  {h.done.map(id => (
+                    <span
+                      key={id}
+                      title={`${CULTURE[id]?.name}: ${describeMods(CULTURE[id]?.mods ?? {})}`}
+                    >
+                      <Art k={`culture/${id}`} size={22} fallback={CULTURE[id]?.name} />
+                    </span>
+                  ))}
+                </span>
+                <span className={`tome-major-state ${h.major}`} title={MAJORS[h.domain].name}>
+                  <Ico name="crown" fallback="♛" size={14} />{' '}
+                  {h.major === 'won' ? 'major won' : 'major lost'}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
 
-        <div className="row filter-row">
-          <button className={showAll ? 'on' : ''} onClick={() => setShowAll(v => !v)}>
-            {showAll ? 'Hide locked' : `Locked (${hidden})`}
-          </button>
-        </div>
-        <div className="domain-tabs">
-          <button className={focus === 'all' ? 'on' : ''} onClick={() => setFocus('all')}>
-            All
-          </button>
-          {DOMAIN_LIST.map(d => (
-            <button
-              key={d}
-              className={focus === d ? 'on' : ''}
-              onClick={() => setFocus(d)}
-              style={{ borderColor: DOMAINS[d].color }}
-            >
-              {DOMAINS[d].name}
-            </button>
-          ))}
-        </div>
-
-        <div className="web">
-          {domains.map(d => {
-            const t = c.tension[d];
-            const why = canStartUpheaval(civ, d);
-            return (
-              <div key={d} className="domain-row" style={{ borderLeftColor: DOMAINS[d].color }}>
-                <div className="domain-head">
-                  <Art k={`domain/${d}`} size={40} />
-                  <h3 style={{ color: DOMAINS[d].color }} title={DOMAINS[d].note}>
-                    {DOMAINS[d].name}
-                  </h3>
-                  <div
-                    className="tension"
-                    title={`Tension builds as you go deep down a path and when neighbours with opposed ideas press on you. At ${UPHEAVAL_AT} you may call a ${DOMAINS[d].upheaval.toLowerCase()}; at ${FORCED_AT} it comes on its own.`}
-                  >
-                    <span
-                      style={{
-                        width: `${Math.min(100, (t / FORCED_AT) * 100)}%`,
-                        background: t >= UPHEAVAL_AT ? 'var(--bad)' : DOMAINS[d].color,
-                      }}
-                    />
-                    <i style={{ left: `${(UPHEAVAL_AT / FORCED_AT) * 100}%` }} />
-                  </div>
-                  <small title="Tension">
-                    <Ico name="warning" fallback="!" size={14} /> {Math.round(t)}
-                  </small>
-                  <button
-                    className="small-btn"
-                    disabled={!!why}
-                    title={why ?? ''}
-                    onClick={() => onUpheaval(d)}
-                  >
-                    {DOMAINS[d].upheaval}
-                  </button>
-                </div>
-                {[1, 2, 3, 4].map(tier => {
-                  const nodes = CULTURE_LIST.filter(
-                    n => n.domain === d && n.tier === tier && visible(n),
-                  );
-                  if (!nodes.length) return null;
-                  // group fork members together under a "choose one" bracket
-                  const forks = [...new Set(nodes.filter(n => n.fork).map(n => n.fork!))];
-                  return (
-                    <div key={tier} className="tier">
-                      {forks.map(f => (
-                        <div key={f} className="fork">
-                          <span className="fork-label">choose one</span>
-                          {nodes.filter(n => n.fork === f).map(nodeCard)}
-                        </div>
-                      ))}
-                      {nodes.filter(n => !n.fork).map(nodeCard)}
-                    </div>
-                  );
-                })}
+        {confirm && (
+          <div className="modal-back tome-confirm-back" onClick={() => setConfirm(null)}>
+            <div className="modal confirm tome-confirm" onClick={e => e.stopPropagation()}>
+              <h2>
+                <Art k={`domain/${confirm}`} size={36} /> Tome of {DOMAINS[confirm].name}
+              </h2>
+              <p className="muted small">
+                {ERAS[c.pickDue ?? 1]} age · <Ico name="crown" fallback="♛" size={14} />{' '}
+                {MAJORS[confirm].name}
+              </p>
+              <MajorEffs d={confirm} />
+              <div className="row">
+                <button onClick={() => setConfirm(null)}>Cancel</button>
+                <button
+                  className="primary"
+                  onClick={() => {
+                    onPick(confirm);
+                    setConfirm(null);
+                  }}
+                >
+                  Open
+                </button>
               </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** After an upheaval: pick up to two choices in the domain to keep; the rest become legacy. */
-export function KeepDialog({ civ, onKeep }: { civ: Civ; onKeep: (ids: string[]) => void }) {
-  const d = civ.culture.choosing!;
-  const opts = keepable(civ, d);
-  const [pick, setPick] = useState<string[]>([]);
-  return (
-    <div className="modal-back">
-      <div className="modal confirm keep" onClick={e => e.stopPropagation()}>
-        <h2>The {DOMAINS[d].upheaval.toLowerCase()} is over</h2>
-        <p className="muted small">
-          Keep up to {KEEP_AFTER_UPHEAVAL}. The rest: ½ effect, no tags; their forks reopen.
-        </p>
-        <div className="keep-list">
-          {opts.map(id => (
-            <label key={id} className={`keep-row ${pick.includes(id) ? 'on' : ''}`}>
-              <input
-                type="checkbox"
-                checked={pick.includes(id)}
-                disabled={!pick.includes(id) && pick.length >= KEEP_AFTER_UPHEAVAL}
-                onChange={e =>
-                  setPick(e.target.checked ? [...pick, id] : pick.filter(x => x !== id))
-                }
-              />
-              <b>{CULTURE[id].name}</b> <EffChips effs={modEffs(CULTURE[id].mods)} />
-            </label>
-          ))}
-          {!opts.length && <p className="muted">Nothing to keep.</p>}
-        </div>
-        <button className="primary wide" onClick={() => onKeep(pick)}>
-          Keep {pick.length ? pick.map(id => CULTURE[id].name).join(' and ') : 'nothing'}
-        </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

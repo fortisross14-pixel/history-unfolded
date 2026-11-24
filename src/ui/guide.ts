@@ -90,10 +90,11 @@ export const GUIDE: GuideStep[] = [
   },
   {
     id: 'culture',
-    title: 'Culture choice',
-    hint: 'Open Culture, spend the points.',
+    title: 'Culture Tome',
+    hint: 'Open Culture, choose a Tome, buy a mission.',
     show: 'culture',
-    done: (s, id) => s.civs[id].culture.taken.length > 0,
+    done: (s, id) =>
+      (s.civs[id].culture.tome?.taken.length ?? 0) > 0 || s.civs[id].culture.taken.length > 0,
   },
   {
     id: 'victory',

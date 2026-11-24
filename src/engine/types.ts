@@ -194,6 +194,8 @@ export interface Civ {
   stats?: {
     gdp: number;
     culture: number;
+    /** science made last turn */
+    science?: number;
     /** the most crowded settlement: people per housing */
     crowd?: number;
     /** settlements short of food */
@@ -332,13 +334,51 @@ export interface Blueprint {
 
 export interface CultureState {
   points: number;
+  /** culture choices kept for good: missions done (and older saves' choices) */
   taken: string[];
-  /** choices kept from before an upheaval: half their effect, no tags */
-  legacy: string[];
-  tension: Record<Domain, number>;
-  upheaval: { domain: Domain; turnsLeft: number } | null;
-  /** an upheaval has ended and the player must choose what to keep */
-  choosing: Domain | null;
+  /** older saves: choices kept from before an upheaval, half their effect, no tags */
+  legacy?: string[];
+  /** religious tension (faith.ts and the schism crisis); other domains no longer build any */
+  tension: Partial<Record<Domain, number>>;
+  /** the Tome open in this age (culture.ts) */
+  tome?: Tome | null;
+  /** an age whose Tome is still to be chosen */
+  pickDue?: number | null;
+  /** Tomes closed, oldest first */
+  history?: ClosedTome[];
+  /** deeds the missions count: battles won, lairs cleared, wars declared, settlements founded */
+  deeds?: Record<string, number>;
+}
+
+/** One mission of a Tome: a mandate (engine/tomes.ts) and the culture choice it gives. */
+export interface TomeMission {
+  node: string;
+  task: string;
+  /** the measure when bought, for mandates counted from then */
+  base?: number;
+  /** turns the mandate has held, for mandates counted in turns */
+  count?: number;
+}
+
+export interface Tome {
+  domain: Domain;
+  age: number;
+  offered: TomeMission[];
+  /** missions bought (active or done), by culture choice id */
+  taken: string[];
+  done: string[];
+  major: 'locked' | 'open' | 'bought';
+  opened: number;
+}
+
+export interface ClosedTome {
+  domain: Domain;
+  age: number;
+  done: string[];
+  major: 'won' | 'lost';
+  turn: number;
+  /** of the missions done, those about the noble houses */
+  houses?: number;
 }
 
 /** Something one people remembers about another. Fades over time. */

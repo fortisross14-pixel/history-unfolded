@@ -1222,25 +1222,6 @@ export function Game({
             onClick: () => setDialog({ kind: 'report' }),
           },
           {
-            key: 'map',
-            label: map3d ? '2D map' : '3D map',
-            icon: 'compass',
-            onClick: () => {
-              const next = map3d ? '2d' : '3d';
-              setMapMode(next);
-              setMap3d(next === '3d');
-            },
-          },
-          {
-            key: 'sound',
-            label: muted ? 'Sound off' : 'Sound on',
-            icon: muted ? 'mute' : 'sound',
-            onClick: () => {
-              setMuted(!muted);
-              setMute(!muted);
-            },
-          },
-          {
             key: 'settings',
             label: 'Settings',
             icon: 'settings',
@@ -1720,7 +1701,21 @@ export function Game({
           onClose={() => setDialog(null)}
         />
       )}
-      {dialog?.kind === 'settings' && <SettingsDialog onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'settings' && (
+        <SettingsDialog
+          onClose={() => setDialog(null)}
+          map3d={map3d}
+          onMap3d={on => {
+            setMapMode(on ? '3d' : '2d');
+            setMap3d(on);
+          }}
+          muted={muted}
+          onMuted={m => {
+            setMuted(m);
+            setMute(m);
+          }}
+        />
+      )}
       {dialog?.kind === 'name-city' && (
         <NameCity
           suggested={game.cities.find(c => c.id === dialog.cityId)?.name ?? ''}

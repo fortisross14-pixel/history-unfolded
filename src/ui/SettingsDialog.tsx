@@ -3,7 +3,20 @@ import { InstallButton } from './InstallButton.tsx';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './settings.ts';
 
 /** Interface and text size, motion, sound and autosave, applied as they change. */
-export function SettingsDialog({ onClose }: { onClose: () => void }) {
+export function SettingsDialog({
+  onClose,
+  map3d,
+  onMap3d,
+  muted,
+  onMuted,
+}: {
+  onClose: () => void;
+  /** the map mode and sound switch, when opened from a game */
+  map3d?: boolean;
+  onMap3d?: (on: boolean) => void;
+  muted?: boolean;
+  onMuted?: (muted: boolean) => void;
+}) {
   const [s, setS] = useState<Settings>(loadSettings);
   const set = (p: Partial<Settings>) => {
     const next = { ...s, ...p };
@@ -89,6 +102,28 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           ],
           v => set({ reducedMotion: v }),
         )}
+        {onMap3d &&
+          map3d !== undefined &&
+          choice(
+            'Map',
+            map3d,
+            [
+              [true, '3D'],
+              [false, '2D'],
+            ],
+            onMap3d,
+          )}
+        {onMuted &&
+          muted !== undefined &&
+          choice(
+            'Sound',
+            muted,
+            [
+              [false, 'On'],
+              [true, 'Off'],
+            ],
+            onMuted,
+          )}
         <div className="setting">
           <span>Effects volume</span>
           <input

@@ -1,0 +1,39 @@
+[
+  {
+    "file": "ui-1-frames.png",
+    "cols": 2,
+    "rows": 2,
+    "style": "figure",
+    "height": 512,
+    "cells": ["ui/frame", "ui/medal", "ui/divider", "ui/plate"]
+  },
+  {
+    "file": "ui-2-textures.png",
+    "cols": 2,
+    "rows": 2,
+    "style": "texture",
+    "height": 512,
+    "cells": ["ui/parchment", "ui/oxblood", "ui/leather", null]
+  },
+  {
+    "file": "ui-3-banners.png",
+    "cols": 6,
+    "rows": 2,
+    "style": "figure",
+    "height": 384,
+    "cells": [
+      "banner/cosmology",
+      "banner/politics",
+      "banner/religion",
+      "banner/society",
+      "banner/economy",
+      "banner/war",
+      "banner/seafaring",
+      "banner/knowledge",
+      "banner/arts",
+      null,
+      null,
+      null
+    ]
+  }
+]

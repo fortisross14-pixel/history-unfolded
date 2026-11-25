@@ -127,6 +127,7 @@ export function CultureDialog({ game, civ, perTurn, onPick, onBuy, onMajor, onCl
               <button
                 key={d}
                 className="tome-pick-card"
+                data-domain={d}
                 disabled={!!why}
                 title={why ?? DOMAINS[d].note}
                 style={{ borderTopColor: DOMAINS[d].color }}
@@ -165,7 +166,7 @@ export function CultureDialog({ game, civ, perTurn, onPick, onBuy, onMajor, onCl
     const mCost = majorCost(game, civ, t.age);
     return (
       <>
-        <div className="tome-card" style={{ borderLeftColor: DOMAINS[d].color }}>
+        <div className="tome-card" data-domain={d} style={{ borderLeftColor: DOMAINS[d].color }}>
           <Art k={`domain/${d}`} size={64} />
           <div>
             <h3 style={{ color: DOMAINS[d].color }}>Tome of {DOMAINS[d].name}</h3>

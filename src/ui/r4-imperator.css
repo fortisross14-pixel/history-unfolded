@@ -1,0 +1,878 @@
+/*
+ * Round 5, the Imperator look: gilded frames, oxblood title bands with gold capitals, an ornate
+ * dark top bar, medallion buttons and portraits, leather stat cells with gold numbers, bookmark
+ * tabs. Loaded last (main.tsx); it only restyles. Everything is drawn with CSS; where the painted
+ * pieces of art/R5-UI-SHEETS.md exist, src/ui/uiArt.ts sets `--im-art-*` and a `ui-art-*` class
+ * on <html> and the rules at the end of this file use them instead.
+ */
+:root {
+  --im-oxblood: #6b1e19;
+  --im-oxblood-hi: #84302a;
+  --im-oxblood-lo: #4a1310;
+  --im-on-band: #f3d98f;
+  --im-on-band-soft: #ecdcb4;
+  --im-leather: #3b2517;
+  --im-leather-lo: #26170d;
+  --im-on-leather: #f4dc9a;
+  --im-gilt: linear-gradient(
+    135deg,
+    #f8e8b4 0%,
+    #cfa24c 18%,
+    #8c6326 38%,
+    #e9cd85 55%,
+    #b08332 74%,
+    #f2dc9c 88%,
+    #9a7029 100%
+  );
+  --im-gilt-h: linear-gradient(
+    90deg,
+    #8c6326 0%,
+    #e9cd85 12%,
+    #b08332 30%,
+    #f6e3a8 50%,
+    #b08332 70%,
+    #e9cd85 88%,
+    #8c6326 100%
+  );
+  --im-gilt-ring: conic-gradient(
+    from 200deg,
+    #f8e8b4,
+    #b8873a,
+    #7d5520,
+    #d9b665,
+    #f6e3a8,
+    #a77a2e,
+    #6f4a1a,
+    #d1aa58,
+    #f8e8b4
+  );
+  --im-damask:
+    radial-gradient(circle at 50% 50%, rgba(255, 210, 160, 0.07) 0 2px, transparent 2.5px) 0 0 /
+      14px 14px,
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.12) 0 1.5px, transparent 2px) 7px 7px / 14px
+      14px;
+  --im-band: linear-gradient(
+    180deg,
+    var(--im-oxblood-hi) 0%,
+    var(--im-oxblood) 46%,
+    var(--im-oxblood-lo) 100%
+  );
+  --im-leather-face:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 220, 170, 0.1), transparent 60%),
+    repeating-linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0.018) 0 2px,
+      transparent 2px 5px,
+      rgba(0, 0, 0, 0.05) 5px 6px,
+      transparent 6px 11px
+    ),
+    linear-gradient(180deg, #4a2f1c 0%, var(--im-leather) 50%, var(--im-leather-lo) 100%);
+  /* the frame: a dark outer line, the gilt band (the border), a dark line inside it, a parchment
+     margin and a thin gold rule */
+  --im-frame:
+    0 0 0 1px #4a3210, inset 0 0 0 1px rgba(74, 50, 16, 0.7),
+    inset 0 0 0 2px rgba(255, 246, 220, 0.75), inset 0 0 0 5px rgba(247, 241, 227, 0.4),
+    inset 0 0 0 6px rgba(184, 146, 74, 0.5);
+  --im-corners:
+    var(--im-corner-tl) left 5px top 5px / 30px 30px no-repeat,
+    var(--im-corner-tr) right 5px top 5px / 30px 30px no-repeat,
+    var(--im-corner-bl) left 5px bottom 5px / 30px 30px no-repeat,
+    var(--im-corner-br) right 5px bottom 5px / 30px 30px no-repeat;
+  --im-corner-tl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M2.5 38V9.5Q2.5 2.5 9.5 2.5H38' fill='none' stroke='%236e4c1c' stroke-width='3.2'/%3E%3Cpath d='M2.5 38V9.5Q2.5 2.5 9.5 2.5H38' fill='none' stroke='%23c9a24f' stroke-width='2'/%3E%3Cpath d='M7.5 34V12Q7.5 7.5 12 7.5H34' fill='none' stroke='%23c9a24f' stroke-width='1' opacity='.8'/%3E%3Cpath d='M12.5 21q0-8.5 8.5-8.5q4 0 4 3.6q0 2.8-2.8 2.8q-2.2 0-2.2-2' fill='none' stroke='%236e4c1c' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M7 2.5l4.5 4.5L7 11.5 2.5 7z' fill='%23c9a24f' stroke='%236e4c1c' stroke-width='.8'/%3E%3Ccircle cx='7' cy='7' r='1.2' fill='%23f4e2a6'/%3E%3C/svg%3E");
+  --im-corner-tr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='translate(40 0) scale(-1 1)'%3E%3Cpath d='M2.5 38V9.5Q2.5 2.5 9.5 2.5H38' fill='none' stroke='%236e4c1c' stroke-width='3.2'/%3E%3Cpath d='M2.5 38V9.5Q2.5 2.5 9.5 2.5H38' fill='none' stroke='%23c9a24f' stroke-width='2'/%3E%3Cpath d='M7.5 34V12Q7.5 7.5 12 7.5H34' fill='none' stroke='%23c9a24f' stroke-width='1' opacity='.8'/%3E%3Cpath d='M12.5 21q0-8.5 8.5-8.5q4 0 4 3.6q0 2.8-2.8 2.8q-2.2 0-2.2-2' fill='none' stroke='%236e4c1c' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M7 2.5l4.5 4.5L7 11.5 2.5 7z' fill='%23c9a24f' stroke='%236e4c1c' stroke-width='.8'/%3E%3Ccircle cx='7' cy='7' r='1.2' fill='%23f4e2a6'/%3E%3C/g%3E%3C/svg%3E");
+  --im-corner-bl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='translate(0 40) scale(1 -1)'%3E%3Cpath d='M2.5 38V9.5Q2.5 2.5 9.5 2.5H38' fill='none' stroke='%236e4c1c' stroke-width='3.2'/%3E%3Cpath d='M2.5 38V9.5Q2.5 2.5 9.5 2.5H38' fill='none' stroke='%23c9a24f' stroke-width='2'/%3E%3Cpath d='M7.5 34V12Q7.5 7.5 12 7.5H34' fill='none' stroke='%23c9a24f' stroke-width='1' opacity='.8'/%3E%3Cpath d='M12.5 21q0-8.5 8.5-8.5q4 0 4 3.6q0 2.8-2.8 2.8q-2.2 0-2.2-2' fill='none' stroke='%236e4c1c' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M7 2.5l4.5 4.5L7 11.5 2.5 7z' fill='%23c9a24f' stroke='%236e4c1c' stroke-width='.8'/%3E%3Ccircle cx='7' cy='7' r='1.2' fill='%23f4e2a6'/%3E%3C/g%3E%3C/svg%3E");
+  --im-corner-br: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='translate(40 40) scale(-1 -1)'%3E%3Cpath d='M2.5 38V9.5Q2.5 2.5 9.5 2.5H38' fill='none' stroke='%236e4c1c' stroke-width='3.2'/%3E%3Cpath d='M2.5 38V9.5Q2.5 2.5 9.5 2.5H38' fill='none' stroke='%23c9a24f' stroke-width='2'/%3E%3Cpath d='M7.5 34V12Q7.5 7.5 12 7.5H34' fill='none' stroke='%23c9a24f' stroke-width='1' opacity='.8'/%3E%3Cpath d='M12.5 21q0-8.5 8.5-8.5q4 0 4 3.6q0 2.8-2.8 2.8q-2.2 0-2.2-2' fill='none' stroke='%236e4c1c' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M7 2.5l4.5 4.5L7 11.5 2.5 7z' fill='%23c9a24f' stroke='%236e4c1c' stroke-width='.8'/%3E%3Ccircle cx='7' cy='7' r='1.2' fill='%23f4e2a6'/%3E%3C/g%3E%3C/svg%3E");
+  --im-divider: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 18'%3E%3Cpath d='M0 9H52M108 9H160' stroke='%23c9a24f' stroke-width='1.4'/%3E%3Cpath d='M58 9q6-7 12-2.5M102 9q-6-7-12-2.5M58 9q6 7 12 2.5M102 9q-6 7-12 2.5' fill='none' stroke='%23c9a24f' stroke-width='1.4' stroke-linecap='round'/%3E%3Ccircle cx='54' cy='9' r='2' fill='%23c9a24f'/%3E%3Ccircle cx='106' cy='9' r='2' fill='%23c9a24f'/%3E%3Cpath d='M80 1.5l7.5 7.5L80 16.5 72.5 9z' fill='%23c9a24f' stroke='%236e4c1c' stroke-width='1'/%3E%3Cpath d='M80 5.5l3.5 3.5L80 12.5 76.5 9z' fill='%23f4e2a6'/%3E%3C/svg%3E");
+}
+
+/* ================================================================ frames */
+.modal,
+.menu-card,
+.panel {
+  border: 4px solid transparent;
+  border-radius: 7px;
+  background:
+    var(--im-corners),
+    var(--r4-paper) padding-box,
+    linear-gradient(var(--iv-panel), var(--iv-panel)) padding-box,
+    var(--im-gilt) border-box;
+  /* opaque paper under every layer, whatever a layer above does */
+  background-color: var(--iv-panel);
+  box-shadow:
+    var(--im-frame),
+    0 14px 34px rgba(40, 24, 8, 0.42),
+    0 2px 6px rgba(40, 24, 8, 0.3);
+}
+.panel {
+  border-width: 3px;
+}
+.hover-info .panel {
+  box-shadow:
+    var(--im-frame),
+    0 8px 18px rgba(40, 24, 8, 0.32);
+}
+.modal-back {
+  background: radial-gradient(120% 90% at 50% 45%, rgba(30, 18, 8, 0.28), rgba(20, 10, 4, 0.55));
+}
+
+/* ================================================================ the title band */
+.modal > header {
+  border-radius: 3px 3px 0 0;
+  background:
+    var(--im-corner-tl) left 4px top 4px / 24px 24px no-repeat,
+    var(--im-corner-tr) right 4px top 4px / 24px 24px no-repeat,
+    linear-gradient(180deg, rgba(255, 220, 180, 0.16), transparent 40%),
+    var(--im-damask),
+    var(--im-band);
+  border-bottom: 0;
+  color: var(--im-on-band-soft);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 214, 170, 0.35),
+    inset 0 -1px 0 #2e0b08,
+    inset 0 -3px 0 #c9a24f,
+    inset 0 -4px 0 #6e4c1c;
+}
+.modal > header h2 {
+  color: var(--im-on-band);
+  text-shadow:
+    0 1px 0 #2a0806,
+    0 0 6px rgba(0, 0, 0, 0.35);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+}
+.modal > header h2::before {
+  color: #e2bf6e;
+}
+.modal > header small,
+.modal > header .muted,
+.modal > header h2 small {
+  color: rgba(240, 225, 190, 0.86);
+}
+.modal > header .delta.good,
+.modal > header .good {
+  color: #bfe3a1;
+}
+.modal > header .delta.bad,
+.modal > header .bad {
+  color: #ffb4a1;
+}
+.modal > header b,
+.modal > header strong {
+  color: inherit;
+}
+/* icons and numbers in the band sit on small parchment plaques so the ink art still reads */
+.modal > header .chip {
+  padding: 1px 7px 1px 4px;
+  border-radius: 5px;
+  color: var(--iv-ink);
+  font-family: var(--iv-body);
+  font-variant: normal;
+  letter-spacing: 0;
+  font-size: 15px;
+  text-shadow: none;
+  background: linear-gradient(180deg, #fbf5e6, #ecdfc2);
+  border: 1px solid #c9a24f;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.modal > header .chip .delta.good {
+  color: var(--iv-good);
+}
+.modal > header .chip .delta.bad {
+  color: var(--iv-bad);
+}
+.modal > header h2 > img.art,
+.modal > header h2 > .ico,
+.modal > header h2 > svg.icon {
+  box-sizing: content-box;
+  padding: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #fffaf0, #e8d8b3);
+  box-shadow:
+    0 0 0 1.5px #c9a24f,
+    0 0 0 2.5px #4a1310;
+}
+.modal > header .info-i:has(img) {
+  background: radial-gradient(circle at 50% 35%, #fffaf0, #e8d8b3);
+  box-shadow: 0 0 0 1.5px #c9a24f;
+}
+/* the gold divider under the title */
+.modal > header::after {
+  left: 8%;
+  right: 8%;
+  width: auto;
+  height: 20px;
+  bottom: -11px;
+  transform: none;
+  border: 0;
+  box-shadow: none;
+  background:
+    var(--im-art-divider, var(--im-divider)) center / auto 20px no-repeat,
+    linear-gradient(90deg, transparent, #c9a24f 22%, #c9a24f 78%, transparent) center / 100% 1.4px
+      no-repeat;
+  filter: drop-shadow(0 1px 0 rgba(255, 250, 235, 0.8));
+}
+.modal > header + * {
+  margin-top: 6px;
+}
+/* a confirm with no band: the same divider under its question */
+.modal.confirm > h2 {
+  background:
+    var(--im-divider) center bottom / auto 14px no-repeat,
+    linear-gradient(90deg, transparent, var(--iv-gold) 18%, var(--iv-gold) 82%, transparent) center
+      bottom 6px / 100% 1px no-repeat;
+  padding-bottom: 18px;
+}
+
+/* the battle window keeps a parchment band: its outcome ribbon (r4-interact.css) is drawn for it */
+.modal.battle > header,
+:root[class*='ui-art-'] .modal.battle > header {
+  color: var(--iv-ink);
+  background:
+    var(--im-corner-tl) left 4px top 4px / 24px 24px no-repeat,
+    var(--im-corner-tr) right 4px top 4px / 24px 24px no-repeat,
+    radial-gradient(80% 140% at 50% 0%, rgba(255, 255, 255, 0.5), transparent 70%),
+    linear-gradient(180deg, #f6eedb 0%, #eadcbc 100%);
+  box-shadow:
+    inset 0 1px 0 #fffaf0,
+    inset 0 -2px 0 #c9a24f,
+    inset 0 -3px 0 #6e4c1c;
+}
+.modal.battle > header h2 {
+  color: #34250f;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+/* ================================================================ bookmark tabs */
+/* a realm's tabs stand up out of the band; the chosen one is the page and opens into it */
+.modal > header.has-hub {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 214, 170, 0.35),
+    inset 0 -1px 0 #c9a24f;
+}
+.modal > header > .hub-tabs {
+  border-bottom: 0;
+  background: none;
+  gap: 4px;
+}
+.modal > header > .hub-tabs button,
+.modal > header > .hub-tabs button:hover {
+  border: 1px solid #2e0b08;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  margin-bottom: 0;
+  color: var(--im-on-band-soft);
+  text-shadow: 0 1px 0 #000;
+  background:
+    linear-gradient(180deg, rgba(255, 220, 180, 0.14), transparent 50%),
+    linear-gradient(180deg, #5a1814, #3e0f0c);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 214, 170, 0.25),
+    inset 0 2px 0 rgba(201, 162, 79, 0.55);
+}
+.modal > header > .hub-tabs button:hover:not(.on) {
+  color: var(--im-on-band);
+  background:
+    linear-gradient(180deg, rgba(255, 220, 180, 0.22), transparent 55%),
+    linear-gradient(180deg, #6e211b, #4a1310);
+}
+.modal > header > .hub-tabs button.on,
+.modal > header > .hub-tabs button.on:hover,
+.modal > header > .hub-tabs button.on:focus {
+  color: #3a2810 !important;
+  text-shadow: 0 1px 0 #fff;
+  border-color: #c9a24f;
+  background: linear-gradient(180deg, #fffaf0 0%, var(--iv-panel) 100%) !important;
+  box-shadow:
+    inset 0 3px 0 #c9a24f,
+    inset 0 4px 0 #fff4d6,
+    0 -1px 0 #6e4c1c;
+}
+/* tabs in the page (ages, domains, districts): gilt-edged bookmarks with an oxblood top */
+.age-tabs,
+.domain-tabs,
+.district-tabs {
+  background: linear-gradient(90deg, #8c6326, #e9cd85 50%, #8c6326) left bottom / 100% 2px no-repeat;
+}
+.age-tabs button,
+.domain-tabs button,
+.district-tabs button {
+  border-color: #a8823c;
+  border-bottom-color: #b08332;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #ecdcb8 0%, #d9c193 100%);
+  color: #4a3518;
+}
+.age-tabs button.on,
+.domain-tabs button.on,
+.district-tabs button.on {
+  border-color: #b08332 !important;
+  box-shadow:
+    inset 0 4px 0 var(--im-oxblood),
+    inset 0 5px 0 #c9a24f,
+    0 -2px 6px rgba(70, 50, 20, 0.15) !important;
+}
+
+/* ================================================================ the top bar */
+.topbar {
+  background:
+    linear-gradient(180deg, rgba(255, 220, 170, 0.1), transparent 45%), var(--im-damask),
+    var(--im-leather-face);
+  border-bottom: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 170, 0.18),
+    inset 0 -1px 0 #120a05,
+    0 1px 0 #6e4c1c,
+    0 2px 0 #e9cd85,
+    0 3px 0 #b08332,
+    0 4px 0 #6e4c1c,
+    0 8px 18px rgba(20, 10, 4, 0.45);
+}
+.topbar .civ-name {
+  color: var(--im-on-leather);
+  font-variant: small-caps;
+  text-shadow:
+    0 1px 0 #000,
+    0 0 8px rgba(0, 0, 0, 0.5);
+}
+.topbar > .turn-count {
+  color: var(--im-on-band-soft);
+}
+.topbar > .turn-count b {
+  color: var(--im-on-leather);
+}
+.topbar > .turn-count .muted {
+  color: #c9b58a;
+}
+/* gold, research and culture: inset leather cells with gold numbers */
+.topbar .stat > span[tabindex],
+.topbar .stat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 3px 10px 3px 5px;
+  border-radius: 6px;
+  color: var(--im-on-leather);
+  text-shadow: 0 1px 0 #000;
+  background: linear-gradient(180deg, #1c1009 0%, #2e1c10 100%);
+  border: 1px solid #8c6326;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 220, 170, 0.16);
+}
+.topbar .stat-btn:hover:not(:disabled) {
+  border-color: #e9cd85;
+  background: linear-gradient(180deg, #24150c 0%, #3a2414 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    0 0 0 2px rgba(233, 205, 133, 0.25);
+}
+.topbar .stat .muted,
+.topbar .stat-btn .muted {
+  color: #cdb88e;
+}
+.topbar .stat .bad {
+  color: #ffab94;
+}
+.topbar .stat-btn svg.icon,
+.topbar .stat svg.icon {
+  color: #e2bf6e;
+}
+/* the ink icons in a leather cell sit on a small parchment disc */
+.topbar .stat > span[tabindex] > img.icon-art:first-child,
+.topbar .stat-btn > img.icon-art:first-child,
+.topbar .stat > span[tabindex] > svg.icon:first-child,
+.topbar .stat-btn > svg.icon:first-child {
+  box-sizing: content-box;
+  height: 20px;
+  width: 20px;
+  object-fit: contain;
+  padding: 2px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #fffaf0, #e6d4ab);
+  box-shadow:
+    0 0 0 1px #c9a24f,
+    0 0 0 2px #1c1009;
+}
+.topbar .stat > span[tabindex] > svg.icon:first-child,
+.topbar .stat-btn > svg.icon:first-child {
+  color: #6b4a22;
+}
+.topbar .stat-btn .war-pill {
+  box-shadow: 0 0 0 1px #e9cd85;
+}
+/* the crest hangs from the bar on a gilt rim */
+.crest {
+  border: 3px solid transparent;
+  border-top: 0;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.18)) padding-box,
+    linear-gradient(var(--civ, var(--iv-teal)), var(--civ, var(--iv-teal))) padding-box,
+    var(--im-gilt) border-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 3px rgba(255, 240, 200, 0.22),
+    0 0 0 1px #4a3210,
+    0 8px 16px rgba(20, 10, 4, 0.45);
+}
+
+/* ================================================================ medallions */
+.rail-btn {
+  border-width: 4px;
+  background:
+    var(--r4-medal) padding-box,
+    var(--im-gilt-ring) border-box;
+  box-shadow:
+    inset 0 0 0 1px #6e4c1c,
+    inset 0 0 0 2px rgba(255, 250, 235, 0.85),
+    inset 0 -8px 12px rgba(150, 112, 50, 0.2),
+    0 0 0 1px #3d2a0e,
+    0 0 0 3px rgba(59, 37, 23, 0.55),
+    0 5px 12px rgba(20, 10, 4, 0.45);
+}
+.rail-btn:hover:not(:disabled) {
+  background:
+    radial-gradient(circle at 50% 30%, #fffefb 0%, #faf3e3 55%, #e9dab6 100%) padding-box,
+    var(--im-gilt-ring) border-box;
+  box-shadow:
+    inset 0 0 0 1px #6e4c1c,
+    inset 0 0 0 2px rgba(255, 250, 235, 0.9),
+    0 0 0 1px #3d2a0e,
+    0 0 0 4px rgba(233, 205, 133, 0.45),
+    0 0 14px rgba(201, 160, 80, 0.6),
+    0 5px 12px rgba(20, 10, 4, 0.4);
+}
+.rail-btn:active:not(:disabled) {
+  background:
+    radial-gradient(circle at 50% 65%, #f3e8cf 0%, #dfcb9e 100%) padding-box,
+    var(--im-gilt-ring) border-box;
+}
+.rail-btn.on,
+.rail-btn.on:hover:not(:disabled) {
+  background:
+    radial-gradient(circle at 50% 30%, #8c342c 0%, var(--im-oxblood) 58%, var(--im-oxblood-lo) 100%)
+      padding-box,
+    var(--im-gilt-ring) border-box;
+  color: var(--im-on-band);
+  box-shadow:
+    inset 0 0 0 1px #2e0b08,
+    inset 0 0 0 2px rgba(243, 217, 143, 0.45),
+    0 0 0 1px #3d2a0e,
+    0 0 0 4px rgba(233, 205, 133, 0.6),
+    0 5px 14px rgba(20, 10, 4, 0.5);
+}
+.rail-btn.on svg.icon {
+  color: var(--im-on-band);
+}
+.rail-btn.on .rail-label {
+  color: var(--im-on-band);
+  text-shadow: 0 1px 0 #000;
+}
+.rail-btn .rail-label {
+  text-transform: none;
+  font-variant: small-caps;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  max-width: 56px;
+}
+.topbar .more-btn,
+.topbar button.round {
+  background:
+    var(--r4-medal) padding-box,
+    var(--im-gilt-ring) border-box;
+  box-shadow:
+    inset 0 0 0 1px #6e4c1c,
+    inset 0 0 0 2px rgba(255, 250, 235, 0.8),
+    inset 0 -4px 6px rgba(150, 112, 50, 0.16),
+    0 0 0 1px #120a05,
+    0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.topbar .more-btn:hover:not(:disabled),
+.topbar button.round:hover:not(:disabled) {
+  background:
+    radial-gradient(circle at 50% 30%, #fffefb 0%, #faf3e3 55%, #e9dab6 100%) padding-box,
+    var(--im-gilt-ring) border-box;
+}
+.topbar.menu-open .more-btn {
+  background:
+    radial-gradient(circle at 50% 30%, #8c342c, var(--im-oxblood) 60%, var(--im-oxblood-lo))
+      padding-box,
+    var(--im-gilt-ring) border-box;
+  color: var(--im-on-band);
+}
+button.x {
+  background:
+    radial-gradient(circle at 50% 32%, #fffdf6 0%, #f4ead3 62%, #e4d3ab 100%) padding-box,
+    var(--im-gilt-ring) border-box;
+  box-shadow:
+    inset 0 0 0 1px #6e4c1c,
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 1px #3d2a0e,
+    0 2px 4px rgba(20, 10, 4, 0.4);
+}
+button.x:hover:not(:disabled) {
+  background:
+    radial-gradient(circle at 50% 32%, #fffefb 0%, #f8f0de 62%, #eadcb8 100%) padding-box,
+    var(--im-gilt-ring) border-box;
+}
+/* portraits: framed medallions, the people's colour inside a gilt ring */
+.portrait,
+.rp-face,
+.people-head .leader-art {
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 250, 235, 0.7),
+    0 0 0 1px #3d2a0e,
+    0 0 0 3px #d9b665,
+    0 0 0 4px #8c6326,
+    0 0 0 5px #3d2a0e,
+    0 3px 8px rgba(20, 10, 4, 0.4);
+}
+.portrait.small {
+  box-shadow:
+    0 0 0 1px #3d2a0e,
+    0 0 0 2.5px #d9b665,
+    0 0 0 3.5px #6e4c1c,
+    0 2px 4px rgba(20, 10, 4, 0.35);
+}
+
+/* ================================================================ End turn */
+.turn-box button.end-turn {
+  border: 5px solid transparent !important;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.18), transparent 45%) padding-box,
+    radial-gradient(circle at 50% 35%, #3f857a, #245249 72%) padding-box,
+    var(--im-gilt-ring) border-box !important;
+  box-shadow:
+    inset 0 0 0 1px #0f2a25,
+    inset 0 0 0 3px rgba(243, 217, 143, 0.35),
+    0 0 0 1px #3d2a0e,
+    0 0 0 4px var(--im-leather),
+    0 0 0 5px #c9a24f,
+    0 0 0 6px #3d2a0e,
+    0 12px 28px rgba(20, 10, 4, 0.5);
+}
+.turn-box button.end-turn:hover:not(:disabled) {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.22), transparent 45%) padding-box,
+    radial-gradient(circle at 50% 35%, #4a9488, #2a5f55 72%) padding-box,
+    var(--im-gilt-ring) border-box !important;
+}
+.end-turn b {
+  color: var(--im-on-band);
+  text-shadow: 0 1px 0 #0b1f1b;
+}
+@media (max-width: 700px) {
+  .turn-box button.end-turn {
+    border-width: 3px !important;
+    box-shadow:
+      inset 0 0 0 1px #0f2a25,
+      0 0 0 1px #3d2a0e,
+      0 6px 16px rgba(20, 10, 4, 0.45);
+  }
+}
+.turn-box button.next {
+  border: 2px solid transparent;
+  background:
+    var(--bt-face) padding-box,
+    var(--im-gilt) border-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(110, 76, 28, 0.6),
+    inset 0 1px 0 #fff,
+    0 0 0 1px #3d2a0e,
+    0 6px 16px rgba(20, 10, 4, 0.35);
+}
+
+/* ================================================================ buttons */
+/* primary: teal enamel set in a gilt bezel */
+button.primary,
+.modal button.primary {
+  border: 2px solid transparent;
+  background:
+    var(--bt-teal) padding-box,
+    var(--im-gilt) border-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 42, 37, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 0 1px #3d2a0e,
+    0 2px 4px rgba(20, 10, 4, 0.35);
+  color: #fbf3dc;
+}
+button.primary:hover:not(:disabled) {
+  background:
+    var(--bt-teal-hover) padding-box,
+    var(--im-gilt) border-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 42, 37, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 0 1px #3d2a0e,
+    0 0 0 4px rgba(233, 205, 133, 0.35),
+    0 2px 8px rgba(184, 146, 74, 0.5);
+}
+button.primary:active:not(:disabled) {
+  background:
+    var(--bt-teal-down) padding-box,
+    var(--im-gilt) border-box;
+}
+button.primary:disabled {
+  border: 2px solid #9b8a66;
+}
+
+/* ================================================================ stat cells */
+/* leather cells with gold numbers; each ink icon on a parchment disc */
+.dc-stats > .chip,
+.stat-row > .chip,
+.hp-chips > .chip {
+  min-height: 28px;
+  padding: 2px 7px 2px 3px;
+  gap: 5px;
+  color: var(--im-on-leather);
+  background:
+    linear-gradient(180deg, rgba(255, 220, 170, 0.08), transparent 50%),
+    linear-gradient(180deg, #2a190e 0%, #3b2517 100%);
+  border: 1px solid #a8823c;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 250, 235, 0.9),
+    0 0 0 1px rgba(110, 76, 28, 0.25);
+}
+.dc-stats > .chip b,
+.stat-row > .chip b,
+.hp-chips > .chip b {
+  color: var(--im-on-leather);
+  font-weight: 700;
+  text-shadow: 0 1px 0 #000;
+}
+.dc-stats > .chip .delta.good,
+.stat-row > .chip .delta.good,
+.hp-chips > .chip .delta.good {
+  color: #bfe3a1;
+}
+.dc-stats > .chip .delta.bad,
+.stat-row > .chip .delta.bad,
+.hp-chips > .chip .delta.bad {
+  color: #ffb4a1;
+}
+.dc-stats > .chip > :first-child:is(img, svg),
+.stat-row > .chip > :first-child:is(img, svg),
+.hp-chips > .chip > :first-child:is(img, svg) {
+  box-sizing: content-box;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  padding: 2px;
+  border-radius: 50%;
+  color: #6b4a22;
+  background: radial-gradient(circle at 50% 35%, #fffaf0, #e6d4ab);
+  box-shadow:
+    0 0 0 1px #c9a24f,
+    0 0 0 2px #1c1009;
+}
+.dc-stats > .chip > .ico-glyph:first-child,
+.stat-row > .chip > .ico-glyph:first-child,
+.hp-chips > .chip > .ico-glyph:first-child {
+  color: var(--im-on-leather);
+}
+/* the yields of a city: lighter plaques with a gilt edge (their icons are coloured) */
+.dc-yields > .chip {
+  background: linear-gradient(180deg, #e6d6b3 0%, #f3ead6 100%);
+  border: 1px solid #a8823c;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 2px 3px rgba(70, 50, 20, 0.25),
+    0 1px 0 rgba(255, 255, 255, 0.85);
+}
+.dc-yields > .chip b {
+  color: #3b2a12;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(255, 236, 180, 0.9);
+}
+
+/* ================================================================ main menu and pickers */
+.menu h1 {
+  color: var(--im-oxblood);
+  text-shadow:
+    0 1px 0 #fff8e6,
+    0 2px 0 rgba(201, 162, 79, 0.55);
+}
+.menu h1::after {
+  width: 220px;
+  height: 18px;
+  margin: 8px auto -2px;
+  background: var(--im-divider) center / contain no-repeat;
+  -webkit-mask: none;
+  mask: none;
+}
+.menu-card {
+  border-width: 5px;
+}
+.map-type.on {
+  box-shadow:
+    0 0 0 1px var(--iv-gold),
+    inset 0 3px 0 var(--im-oxblood) !important;
+}
+
+/* ================================================================ culture Tomes */
+.tome-card,
+.major-card {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 235, 0.8),
+    0 0 0 1px rgba(168, 130, 60, 0.55);
+}
+:root.ui-art-banner .tome-pick-card[data-domain],
+:root.ui-art-banner .tome-card[data-domain] {
+  background-image:
+    linear-gradient(90deg, var(--iv-panel) 50%, rgba(247, 241, 227, 0.55)), var(--im-banner, none);
+  background-position:
+    0 0,
+    right 10px top 0;
+  background-size:
+    auto,
+    auto 92px;
+  background-repeat: no-repeat;
+}
+:root.ui-art-banner .tome-card[data-domain] {
+  background-size:
+    auto,
+    auto 100%;
+}
+
+/* ================================================================ painted art, when it exists */
+/* the gilded 9-slice frame replaces the CSS gilt on windows, cards and the menu */
+:root.ui-art-frame :is(.modal, .menu-card) {
+  border-image: var(--im-art-frame) 22% / 30px / 10px stretch;
+  border-radius: 0;
+  box-shadow: 0 14px 34px rgba(40, 24, 8, 0.42);
+  background:
+    var(--r4-paper) padding-box,
+    linear-gradient(var(--iv-panel), var(--iv-panel)) padding-box;
+}
+:root.ui-art-frame .modal > header {
+  background:
+    linear-gradient(180deg, rgba(255, 220, 180, 0.16), transparent 40%), var(--im-damask),
+    var(--im-band);
+}
+:root.ui-art-frame .panel {
+  border-image: var(--im-art-frame) 22% / 22px / 7px stretch;
+  border-radius: 0;
+  background:
+    var(--r4-paper) padding-box,
+    linear-gradient(var(--iv-panel), var(--iv-panel)) padding-box;
+  box-shadow: 0 8px 20px rgba(40, 24, 8, 0.35);
+}
+:root.ui-art-parchment :is(.modal, .menu-card, .panel) {
+  background:
+    linear-gradient(rgba(247, 241, 227, 0.35), rgba(247, 241, 227, 0.35)) padding-box,
+    var(--im-art-parchment) top left / 512px repeat padding-box,
+    linear-gradient(var(--iv-panel), var(--iv-panel)) padding-box,
+    var(--im-gilt) border-box;
+}
+:root.ui-art-parchment.ui-art-frame :is(.modal, .menu-card, .panel) {
+  background:
+    linear-gradient(rgba(247, 241, 227, 0.35), rgba(247, 241, 227, 0.35)) padding-box,
+    var(--im-art-parchment) top left / 512px repeat padding-box,
+    var(--iv-panel) padding-box;
+}
+:root.ui-art-oxblood .modal > header {
+  background:
+    var(--im-corner-tl) left 4px top 4px / 24px 24px no-repeat,
+    var(--im-corner-tr) right 4px top 4px / 24px 24px no-repeat,
+    linear-gradient(180deg, rgba(255, 220, 180, 0.12), rgba(40, 8, 6, 0.2)),
+    var(--im-art-oxblood) center / 384px repeat,
+    var(--im-oxblood);
+}
+:root.ui-art-oxblood.ui-art-frame .modal > header {
+  background:
+    linear-gradient(180deg, rgba(255, 220, 180, 0.12), rgba(40, 8, 6, 0.2)),
+    var(--im-art-oxblood) center / 384px repeat,
+    var(--im-oxblood);
+}
+:root.ui-art-leather .topbar {
+  background:
+    linear-gradient(180deg, rgba(255, 220, 170, 0.12), rgba(0, 0, 0, 0.2)),
+    var(--im-art-leather) center / 384px repeat,
+    var(--im-leather);
+}
+:root.ui-art-leather :is(.dc-stats, .stat-row, .hp-chips) > .chip {
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
+    var(--im-art-leather) center / 256px repeat,
+    var(--im-leather);
+}
+/* the medallion ring: drawn over the rail buttons and End turn */
+:root.ui-art-medal .rail-btn::after,
+:root.ui-art-medal .turn-box button.end-turn::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  background: var(--im-art-medal) center / contain no-repeat;
+  pointer-events: none;
+}
+:root.ui-art-medal .turn-box button.end-turn {
+  position: relative;
+}
+:root.ui-art-medal .turn-box button.end-turn::after {
+  inset: -14px;
+}
+/* button plates: the painted plaque behind ordinary buttons */
+:root.ui-art-plate
+  button:where(.secondary:not(.round), .wide:not(.primary), .small:not(.primary, .link, .x)):not(
+    :disabled
+  ) {
+  border-image: var(--im-art-plate) 30% fill / 10px / 0 stretch;
+  background: none;
+  box-shadow: none;
+}
+
+/* a window or card body is never see-through */
+:root[class*='ui-art-'] :is(.modal, .menu-card, .panel) {
+  background-color: var(--iv-panel);
+}
+
+/* ================================================================ phones */
+@media (max-width: 700px) {
+  .modal,
+  .menu-card {
+    border-width: 3px;
+  }
+  .modal > header h2 {
+    letter-spacing: 0.03em;
+  }
+  .topbar .stat > span[tabindex],
+  .topbar .stat-btn {
+    min-height: 32px;
+    padding: 2px 8px 2px 4px;
+  }
+  :root.ui-art-frame :is(.modal, .menu-card) {
+    border-image-width: 20px;
+    border-image-outset: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-btn,
+  .topbar .stat-btn,
+  button.primary {
+    transition: none;
+  }
+}
+
+/* ================================================================ the minimap: a gilt-framed plate */
+.minimap {
+  border: 4px solid transparent;
+  border-radius: 4px;
+  background:
+    linear-gradient(var(--iv-panel-2), var(--iv-panel-2)) padding-box,
+    var(--im-gilt) border-box;
+  box-shadow:
+    0 0 0 1px #3d2a0e,
+    inset 0 0 0 1px #3d2a0e,
+    0 8px 18px rgba(20, 10, 4, 0.4);
+}
+.minimap-bar {
+  border: 1px solid #a8823c;
+  background: linear-gradient(180deg, #fbf5e6, #ecdfc2);
+}

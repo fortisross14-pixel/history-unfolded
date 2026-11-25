@@ -6,23 +6,39 @@
 import { DOMAINS, TAGS } from '../data/culture.ts';
 import { MAJORS } from '../data/tomes.ts';
 import { TENETS } from '../data/faiths.ts';
-import { GOODS } from '../data/goods.ts';
+import { DEPOSITS, GOODS, isComfort } from '../data/goods.ts';
+import { goodChains, goodSources, goodUsers, whereBuilt, type ChainRef } from '../data/chains.ts';
+import { ITEM_LIST, SLOT_NAMES, NAVAL_SLOT_NAMES, type ItemInfo } from '../data/items.ts';
 import { PERSONALITIES } from '../data/leaders.ts';
 import { PATHS } from '../data/paths.ts';
 import { POLICY_LIST } from '../data/policies.ts';
-import { GROUPS, SLOT_TYPES } from '../data/slots.ts';
+import { GROUPS, LINES, SLOT_TYPES, type SlotType } from '../data/slots.ts';
 import { ERAS, TECH_LIST, TECHS } from '../data/techs.ts';
 import { TERRAIN } from '../data/terrain.ts';
 import { WONDER_LIST } from '../data/wonders.ts';
 import { CRISIS } from '../engine/crises.ts';
 import { DIFFICULTIES } from '../engine/difficulty.ts';
+import { BEASTS } from '../engine/wildlife.ts';
 import { VICTORIES } from '../engine/victory.ts';
 
+/** One line of an entry's section; `entry` links it to another entry. */
+export interface CodexItem {
+  text: string;
+  entry?: string;
+  /** a good's icon to show before it */
+  good?: string;
+}
+export interface CodexSection {
+  title: string;
+  items: CodexItem[];
+}
 export interface CodexEntry {
   id: string;
   title: string;
   group: string;
   text: string;
+  /** generated from the data: sources, users, chains, costs, stats */
+  sections?: CodexSection[];
 }
 
 const BASICS: [string, string][] = [
@@ -124,6 +140,166 @@ const BASICS: [string, string][] = [
   ],
 ];
 
+const KIND: Record<string, string> = {
+  food: 'Food',
+  raw: 'A raw good',
+  luxury: 'A luxury: a comfort and a trade good',
+  made: 'A made good',
+};
+const goodName = (g: string) => GOODS[g]?.name ?? g;
+const techItem = (t: string): CodexItem => ({
+  text: `${TECHS[t]?.name ?? t} (${ERAS[TECHS[t]?.era ?? 1]})`,
+  entry: `tech-${t}`,
+});
+const costItems = (o: Record<string, number> | undefined, unit = ''): CodexItem[] =>
+  Object.entries(o ?? {}).map(([g, n]) => ({
+    text: `${n} ${goodName(g)}${unit}`,
+    entry: `good-${g}`,
+    good: g,
+  }));
+const refItem = (r: ChainRef): CodexItem => ({
+  text: `${r.name} · ${r.how}`,
+  entry: r.entry,
+});
+
+/** A good: every way to get it, everything that uses it, the chains it is part of. */
+export function goodSections(g: string): CodexSection[] {
+  const src = goodSources(g);
+  const use = goodUsers(g);
+  const out: CodexSection[] = [
+    {
+      title: 'Get it from',
+      items: src.length ? src.map(refItem) : [{ text: 'Nothing makes it yet' }],
+    },
+    { title: 'Used by', items: use.length ? use.map(refItem) : [{ text: 'Trade only' }] },
+  ];
+  const hunts = Object.values(BEASTS).filter(b => b.goods[g]);
+  out.push({
+    title: 'Also',
+    items: [
+      ...hunts.map(b => ({ text: `${b.pack} slain: ${b.goods[g]} once, from ${b.lair}` })),
+      { text: 'Trade deals with other peoples', entry: 'basics-diplomacy-and-opinion' },
+    ],
+  });
+  const chains = goodChains(g);
+  if (chains.length) out.push({ title: 'Chain', items: chains.map(text => ({ text })) });
+  return out;
+}
+
+/** A building: what it needs, where it stands, what it takes and makes. */
+export function buildingSections(b: SlotType): CodexSection[] {
+  const builds: CodexItem[] = [];
+  if (b.tech) builds.push(techItem(b.tech));
+  if (!b.fixed) {
+    builds.push({ text: `${b.build.prod} production` });
+    builds.push(...costItems(b.build.goods));
+  }
+  if (b.labour) builds.push({ text: `${b.labour} workers` });
+  builds.push({ text: `Where: ${whereBuilt(b)}` });
+  const out: CodexSection[] = [{ title: b.fixed ? 'Stands' : 'Build', items: builds }];
+  const takes = [...costItems(b.inputs, ' a turn')];
+  if (b.alt) takes.push(...costItems(b.alt.inputs, ' a turn, burned first when the market has it'));
+  if (takes.length) out.push({ title: 'Takes', items: takes });
+  const makes: CodexItem[] = [];
+  const y = b.out;
+  for (const k of ['food', 'prod', 'science', 'gold', 'culture', 'housing'] as const)
+    if (y[k]) makes.push({ text: `${y[k]!.toLocaleString()} ${k === 'prod' ? 'production' : k}` });
+  makes.push(...costItems(y.goods, ' a turn'));
+  if (b.alt) makes.push(...costItems(b.alt.out.goods, ' a turn on the better fuel'));
+  for (const d of Object.values(DEPOSITS))
+    if (d.by === b.id) {
+      const gives = [
+        d.gives.food ? `+${d.gives.food} food` : '',
+        d.gives.gold ? `+${d.gives.gold} gold` : '',
+        ...Object.entries(d.gives.goods ?? {}).map(([g, n]) => `+${n} ${goodName(g)}`),
+      ].filter(Boolean);
+      const g = Object.keys(d.gives.goods ?? {})[0];
+      makes.push({
+        text: `By ${d.name.toLowerCase()}: ${gives.join(', ')}${d.special ? ' (3+ in the district, on the deposit)' : ''}${d.tech ? `, ${TECHS[d.tech]?.name}` : ''}${d.revealedBy ? `, seen with ${TECHS[d.revealedBy]?.name}` : ''}`,
+        entry: g ? `good-${g}` : undefined,
+        good: g,
+      });
+    }
+  if (makes.length) out.push({ title: 'Makes', items: makes });
+  if (b.line && b.role && b.role !== 'base') {
+    const bases = Object.values(SLOT_TYPES).filter(
+      t => t.line === b.line && t.role === 'base' && !t.fixed,
+    );
+    out.push({
+      title: `Boosts ${LINES[b.line].name.toLowerCase()}`,
+      items: bases.map(t => ({ text: t.name, entry: `building-${t.id}` })),
+    });
+  }
+  return out;
+}
+
+const STAT: [keyof ItemInfo, string][] = [
+  ['attack', 'Attack'],
+  ['charge', 'Charge'],
+  ['antiCharge', 'Against charges'],
+  ['meleeAdd', 'Melee +'],
+  ['antiChargeAdd', 'Against charges +'],
+  ['chargeAdd', 'Charge +'],
+  ['move', 'Moves'],
+  ['sight', 'Sight'],
+  ['morale', 'Morale %'],
+  ['capacity', 'Carries cohorts'],
+  ['weight', 'Weight'],
+  ['upkeep', 'Upkeep (gold a turn)'],
+];
+
+/** A gear piece: what it costs, when it opens, what it does. */
+export function gearSections(i: ItemInfo): CodexSection[] {
+  const out: CodexSection[] = [];
+  out.push({
+    title: i.naval ? 'Cost per ship' : 'Cost per cohort',
+    items: Object.keys(i.cost).length ? costItems(i.cost) : [{ text: 'Free' }],
+  });
+  out.push({
+    title: 'Opens with',
+    items: [i.tech ? techItem(i.tech) : { text: 'From the start' }],
+  });
+  const stats: CodexItem[] = [];
+  for (const [k, name] of STAT) {
+    const v = i[k];
+    if (typeof v === 'number' && v) stats.push({ text: `${name}: ${v}` });
+  }
+  if (i.damage) stats.push({ text: `Damage: ${i.damage}${i.ranged ? ', ranged' : ''}` });
+  for (const [d, n] of Object.entries(i.protection ?? {}))
+    if (n) stats.push({ text: `Protection against ${d}: ${n}` });
+  if (i.armourPierce)
+    stats.push({ text: `Ignores ${Math.round(i.armourPierce * 100)}% of armour` });
+  if (i.siege) stats.push({ text: `Ignores ${Math.round(i.siege * 100)}% of walls` });
+  if (i.powder)
+    stats.push({ text: `${i.powder} saltpeter a turn as powder`, entry: 'good-saltpeter' });
+  if (i.twoHanded) stats.push({ text: 'Two-handed' });
+  if (i.freeHands) stats.push({ text: 'Stands on the ground: fits two-handed weapons' });
+  if (i.rough) stats.push({ text: 'Rough ground costs a point less' });
+  if (i.ocean) stats.push({ text: 'Crosses open ocean' });
+  if (stats.length) out.push({ title: 'Does', items: stats });
+  return out;
+}
+
+/** A tech: what it opens. */
+function techSections(id: string): CodexSection[] {
+  const items: CodexItem[] = [
+    ...Object.values(SLOT_TYPES)
+      .filter(b => b.tech === id)
+      .map(b => ({ text: b.name, entry: `building-${b.id}` })),
+    ...ITEM_LIST.filter(i => i.tech === id && !i.empty).map(i => ({
+      text: i.name,
+      entry: `gear-${i.id}`,
+    })),
+    ...Object.values(DEPOSITS)
+      .filter(d => d.revealedBy === id || d.tech === id)
+      .map(d => ({
+        text: `${d.name} deposits${d.revealedBy === id ? ' (revealed)' : ' (worked)'}`,
+        entry: `building-${d.by}`,
+      })),
+  ];
+  return items.length ? [{ title: 'Opens', items }] : [];
+}
+
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
 let cache: CodexEntry[] | null = null;
@@ -157,14 +333,27 @@ export function codexEntries(): CodexEntry[] {
       title: t.name,
       group: `Techs: ${ERAS[t.era]}`,
       text: `${t.note}${t.requires.length ? ` Needs ${t.requires.map(r => TECHS[r]?.name ?? r).join(', ')}.` : ''}`,
+      sections: techSections(t.id),
     });
   for (const b of Object.values(SLOT_TYPES))
     out.push({
       id: `building-${b.id}`,
       title: b.name,
       group: `Buildings: ${GROUPS[b.group].name}`,
-      text: `${b.note ?? ''}${b.tech ? ` Needs ${TECHS[b.tech]?.name ?? b.tech}.` : ''} ${b.labour ? `Workers: ${b.labour}.` : ''}`.trim(),
+      text: b.note ?? '',
+      sections: buildingSections(b),
     });
+  for (const i of ITEM_LIST)
+    if (!i.empty)
+      out.push({
+        id: `gear-${i.id}`,
+        title: i.name,
+        group: i.naval
+          ? `Ship parts: ${NAVAL_SLOT_NAMES[i.slot] ?? SLOT_NAMES[i.slot]}`
+          : `Gear: ${SLOT_NAMES[i.slot]}`,
+        text: i.note,
+        sections: gearSections(i),
+      });
   for (const w of WONDER_LIST)
     out.push({
       id: `wonder-${w.id}`,
@@ -206,7 +395,8 @@ export function codexEntries(): CodexEntry[] {
       id: `good-${id}`,
       title: g.name,
       group: 'Goods',
-      text: `${g.name}: a ${g.kind} good.`,
+      text: `${g.note ?? g.name} ${KIND[g.kind]}${isComfort(id) && g.kind !== 'luxury' ? ', and a comfort' : ''}.`,
+      sections: goodSections(id),
     });
   for (const [id, t] of Object.entries(TERRAIN))
     out.push({
@@ -219,6 +409,10 @@ export function codexEntries(): CodexEntry[] {
   return out;
 }
 
+/** One entry by its id (links between entries). */
+export const codexEntry = (id: string): CodexEntry | undefined =>
+  codexEntries().find(e => e.id === id);
+
 /** Entries matching a search, best first: title matches before text matches. */
 export function searchCodex(q: string): CodexEntry[] {
   const all = codexEntries();
@@ -228,7 +422,9 @@ export function searchCodex(q: string): CodexEntry[] {
   return all
     .map(e => {
       const t = e.title.toLowerCase(),
-        x = `${e.text} ${e.group}`.toLowerCase();
+        x = `${e.text} ${e.group} ${(e.sections ?? [])
+          .flatMap(sc => sc.items.map(i => i.text))
+          .join(' ')}`.toLowerCase();
       let score = 0;
       for (const w of words) {
         if (t === w) score += 10;
@@ -237,6 +433,9 @@ export function searchCodex(q: string): CodexEntry[] {
         else if (x.includes(w)) score += 1;
         else return { e, score: -1 };
       }
+      // the whole phrase as the title (or its start) comes first
+      if (t === n) score += 20;
+      else if (t.startsWith(n)) score += 8;
       return { e, score: score + (e.group === 'Basics' ? 1 : 0) };
     })
     .filter(r => r.score > 0)

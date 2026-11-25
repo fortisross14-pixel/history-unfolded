@@ -1,7 +1,9 @@
 import { WONDERS } from '../data/wonders.ts';
 import { faithById } from '../engine/faith.ts';
 import { useState } from 'react';
-import { formationStrength, militaryPower, strengthText } from '../engine/game.ts';
+import { commanderOf, formationStrength, militaryPower, strengthText } from '../engine/game.ts';
+import { Badge, CivBadge } from './Badge.tsx';
+import './r4-health.css';
 import {
   formationArtKey,
   formationMoves,
@@ -11,18 +13,19 @@ import {
   isCivilian,
 } from '../engine/units.ts';
 import { cityEconomy, DISTRICT_CAP, TIER_NAME } from '../engine/economy.ts';
-import type { GameState } from '../engine/types.ts';
+import type { BattleRecord, GameState } from '../engine/types.ts';
 import { Chip, Delta, Ico, UnitPortrait } from './bits.tsx';
 import './declutter-city.css';
 import './r4-nav.css';
 
-export type EmpireTab = 'cities' | 'land' | 'sea' | 'find';
+export type EmpireTab = 'cities' | 'land' | 'sea' | 'battles' | 'find';
 type Tab = EmpireTab;
 
 const TITLE: Record<Tab, string> = {
   cities: 'Cities',
   land: 'Military',
   sea: 'Military',
+  battles: 'Military',
   find: 'Find',
 };
 
@@ -44,6 +47,7 @@ export function EmpireDialog({
   civId,
   onCity,
   onFormation,
+  onBattle,
   onClose,
   tab: startTab,
 }: {
@@ -52,6 +56,8 @@ export function EmpireDialog({
   tab?: Tab;
   onCity: (id: number) => void;
   onFormation: (id: number) => void;
+  /** open a battle from the Battles list */
+  onBattle?: (b: BattleRecord) => void;
   onClose: () => void;
 }) {
   const tab: Tab = startTab ?? 'cities';
@@ -77,6 +83,9 @@ export function EmpireDialog({
     }
     return [...n].map(([k, c]) => `${c} ${k}`).join(' · ');
   };
+  /** people now against full strength */
+  const hurt = (f: (typeof troops)[number]) =>
+    f.cohorts.reduce((a, c) => a + c.strength, 0) / Math.max(1, f.cohorts.length * 100);
   const districts = (id: number) => game.districts.filter(d => d.cityId === id).length;
   const where = (hex: number) => game.cities.find(c => c.hex === hex)?.name;
   const near = (hex: number) => {
@@ -126,7 +135,9 @@ export function EmpireDialog({
             <small className="chips">
               {tab === 'cities' ? (
                 <Chip icon="cities" n={mine.length} title="Settlements" />
-              ) : tab === 'find' ? null : (
+              ) : tab === 'find' ? null : tab === 'battles' ? (
+                <Chip icon="war" n={game.battles?.length ?? 0} title="Battles kept" />
+              ) : (
                 <>
                   <Chip icon="sword" n={militaryPower(game, civId)} title="Military strength" />
                   <Chip icon="army" n={land.length} title="Land formations" />
@@ -246,6 +257,19 @@ export function EmpireDialog({
                       />
                       <span>
                         <b>{f.name}</b>
+                        {(() => {
+                          const d = commanderOf(game, f);
+                          return d ? (
+                            <span className="troop-house">
+                              <Badge
+                                colour={d.color}
+                                name={d.name}
+                                size={16}
+                                title={`Led by House ${d.name}`}
+                              />
+                            </span>
+                          ) : null;
+                        })()}
                         <small className="muted">
                           {' '}
                           {f.kind === 'army' || f.kind === 'fleet' || f.name === KIND[f.kind]
@@ -256,7 +280,22 @@ export function EmpireDialog({
                       </span>
                     </td>
                     <td>
-                      <b>{isCivilian(f) ? '—' : strengthText(formationStrength(game, f))}</b>
+                      <span className="troop-hp">
+                        <b>{isCivilian(f) ? '—' : strengthText(formationStrength(game, f))}</b>
+                        {!isCivilian(f) && hurt(f) < 1 && (
+                          <span
+                            className="hp-bar"
+                            title={`People: ${Math.round(hurt(f) * 100)}% of full`}
+                          >
+                            <span
+                              className={
+                                hurt(f) >= 0.75 ? 'hp-ok' : hurt(f) >= 0.4 ? 'hp-mid' : 'hp-low'
+                              }
+                              style={{ width: `${hurt(f) * 100}%` }}
+                            />
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="troop-mix">{mix(f)}</td>
                     <td>
@@ -297,6 +336,8 @@ export function EmpireDialog({
           </div>
         )}
 
+        {tab === 'battles' && <BattleList game={game} civId={civId} onBattle={onBattle} />}
+
         {tab === 'find' && (
           <>
             <input
@@ -326,5 +367,67 @@ export function EmpireDialog({
         )}
       </div>
     </div>
+  );
+}
+
+/** The player's battles, newest first: won or lost, the two sides, losses, the place. */
+function BattleList({
+  game,
+  civId,
+  onBattle,
+}: {
+  game: GameState;
+  civId: number;
+  onBattle?: (b: BattleRecord) => void;
+}) {
+  const list = [...(game.battles ?? [])].reverse();
+  if (!list.length) return <p className="muted">No battles yet.</p>;
+  const house = (h?: { name: string; color: string }) =>
+    h ? <Badge colour={h.color} name={h.name} size={14} title={`Led by House ${h.name}`} /> : null;
+  return (
+    <ul className="battle-list">
+      {list.map(b => {
+        const mine = b.side === 'attacker' ? b.report.attacker : b.report.defender;
+        const theirs = b.side === 'attacker' ? b.report.defender : b.report.attacker;
+        const res = b.winner === null ? 'held' : b.winner === b.side ? 'won' : 'lost';
+        const side = (x: BattleRecord['att'], ours: boolean) => (
+          <span className="bl-side">
+            <CivBadge civ={game.civs[x.civId]} size={18} /> {house(x.house)}{' '}
+            {ours ? (
+              <b>{x.name.replace(`${game.civs[x.civId].name} `, '')}</b>
+            ) : (
+              x.name.replace(`${game.civs[x.civId].name} `, '')
+            )}
+          </span>
+        );
+        return (
+          <li key={b.id}>
+            <button className="battle-row" onClick={() => onBattle?.(b)} title="Battle report">
+              <span className={`bl-tag ${res}`}>
+                {res === 'won' ? 'Won' : res === 'lost' ? 'Lost' : 'Held'}
+              </span>
+              <span className="bl-sides">
+                {side(b.att, b.side === 'attacker')}
+                <span className="vs">vs</span>
+                {side(b.def, b.side === 'defender')}
+              </span>
+              <span className="bl-meta small">
+                <span className="muted">Turn {b.turn}</span>
+                <span className="bl-loss" title="Your losses / theirs">
+                  <b className="delta bad">−{mine.lost}</b> /{' '}
+                  <b className="delta good">−{theirs.lost}</b>
+                </span>
+                <span className="muted">{b.place}</span>
+                {!b.ordered && (
+                  <span className="muted" title="Not on your order">
+                    {b.side === 'defender' ? 'attacked' : 'automated'}
+                  </span>
+                )}
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

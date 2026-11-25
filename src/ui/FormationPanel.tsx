@@ -16,7 +16,12 @@ import {
   refitPreview,
   supplyingCity,
   territoryRadius,
+  commanderOf,
 } from '../engine/game.ts';
+import { levelOf } from '../engine/dynasty.ts';
+import { Badge } from './Badge.tsx';
+import { HEAL_RULES, healthOf, type Health } from './health.ts';
+import './r4-health.css';
 import type { Formation, GameState } from '../engine/types.ts';
 import type { RefitPreview } from '../engine/game.ts';
 import {
@@ -58,6 +63,8 @@ interface Props {
   onAuto?: (mode: 'crew' | 'explore' | 'settle' | null) => void;
   onSkip?: () => void;
   onSentry?: () => void;
+  /** put a house at the head of this army, or none */
+  onCommander?: (dynId: number | null) => void;
 }
 
 export function FormationPanel(p: Props) {
@@ -136,6 +143,7 @@ export function FormationPanel(p: Props) {
               <Chip icon="go-to" n={f.path.length} title="En route: hexes left" />
             )}
           </span>
+          {!isCivilian(f) && <HealthBar h={healthOf(game, f)} />}
           <div className="muted small">
             {TERRAIN[m.terrain[f.hex]].name}
             {m.relief[f.hex] !== 'flat' ? `, ${RELIEF[m.relief[f.hex]].name}` : ''}
@@ -180,6 +188,9 @@ export function FormationPanel(p: Props) {
           />
           <Chip icon="upkeep" n={stats.upkeep} title="Upkeep: gold a turn" />
         </div>
+      )}
+      {f.kind === 'army' && civ.dynasties?.length > 0 && (
+        <Commander game={game} f={f} mine={mine} onPick={p.onCommander} />
       )}
       {f.kind === 'army' && f.cohorts.length > 1 && (
         <div className="combo muted small">
@@ -243,6 +254,22 @@ export function FormationPanel(p: Props) {
                       : 'No gear'
                     : ''}
                 </div>
+                {f.kind !== 'settlers' && (
+                  <span
+                    className="hp-cohorts"
+                    title={`People: ${str} of ${g.cohorts.length * 100}`}
+                    aria-label={`People: ${str} of ${g.cohorts.length * 100}`}
+                  >
+                    {g.cohorts.map(c => (
+                      <span key={c.id} className="hp-bar small">
+                        <span
+                          className={hpClass(c.strength / 100)}
+                          style={{ width: `${Math.min(100, c.strength)}%` }}
+                        />
+                      </span>
+                    ))}
+                  </span>
+                )}
                 <span className="chips fp-group-stats small">
                   <Chip icon="people" n={str} title="People" />
                   {f.kind === 'army' && (
@@ -618,6 +645,106 @@ function AssignMix({
       ))}
       {!supplyingCity(game, f.civId, f.hex) && (
         <p className="muted small">Equip only near your cities.</p>
+      )}
+    </div>
+  );
+}
+
+const hpClass = (k: number) => (k >= 0.75 ? 'hp-ok' : k >= 0.4 ? 'hp-mid' : 'hp-low');
+
+/** People now against full strength, and what it gets back this turn (the engine's own plan). */
+function HealthBar({ h }: { h: Health }) {
+  const k = h.full ? h.now / h.full : 1;
+  const gain = h.full ? Math.min(h.full - h.now, h.perTurn) / h.full : 0;
+  return (
+    <div className="hp-row" title={h.text}>
+      <span
+        className="hp-bar"
+        role="meter"
+        aria-label="Health"
+        aria-valuemin={0}
+        aria-valuemax={h.full}
+        aria-valuenow={h.now}
+      >
+        <span className={hpClass(k)} style={{ width: `${k * 100}%` }} />
+        {gain > 0 && (
+          <span className="hp-gain" style={{ left: `${k * 100}%`, width: `${gain * 100}%` }} />
+        )}
+      </span>
+      <small className="hp-num">
+        {h.now.toLocaleString()}/{h.full.toLocaleString()}
+      </small>
+      {h.plan.kind !== 'full' && (
+        <small className={`hp-rate ${h.perTurn ? 'good' : 'bad'}`}>
+          {h.perTurn ? `+${h.perTurn}` : '+0'}
+        </small>
+      )}
+      <InfoButton label="Recovery" align="right">
+        <b>{h.text}</b>
+        {h.plan.parts.length > 0 && (
+          <span className="hp-parts">
+            {h.plan.parts.map(([l, n]) => (
+              <span key={l}>
+                {l} <b>+{n}</b>
+              </span>
+            ))}
+          </span>
+        )}
+        {h.turns !== null && <span>Full in {h.turns} turns</span>}
+        {HEAL_RULES.map(r => (
+          <span key={r} className="muted">
+            {r}
+          </span>
+        ))}
+      </InfoButton>
+    </div>
+  );
+}
+
+/** The house leading an army: its badge and War level; the owner can pick another or none. */
+function Commander({
+  game,
+  f,
+  mine,
+  onPick,
+}: {
+  game: GameState;
+  f: Formation;
+  mine: boolean;
+  onPick?: (dynId: number | null) => void;
+}) {
+  const civ = game.civs[f.civId];
+  const d = commanderOf(game, f);
+  return (
+    <div className="cmd-row small">
+      {d ? (
+        <Badge colour={d.color} name={d.name} size={18} title={`House ${d.name}`} />
+      ) : (
+        <span className="cmd-none" aria-hidden>
+          ⚑
+        </span>
+      )}
+      {mine && onPick ? (
+        <select
+          className="cmd-pick"
+          aria-label="Commanding house"
+          value={d?.id ?? ''}
+          onChange={e => onPick(e.target.value === '' ? null : Number(e.target.value))}
+        >
+          <option value="">No commander</option>
+          {civ.dynasties.map(x => (
+            <option key={x.id} value={x.id}>
+              House {x.name} · War {levelOf(x, 'military')}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span>{d ? `House ${d.name}` : 'No commander'}</span>
+      )}
+      {d && !(mine && onPick) && (
+        <span className="fp-tag good" title="War level: attack, morale and healing">
+          War {levelOf(d, 'military')}
+        </span>
       )}
     </div>
   );

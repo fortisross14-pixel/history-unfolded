@@ -7,7 +7,13 @@ import { RULER_BY_ID, RULERS, type RulerChoice } from '../data/rulers.ts';
 import { independentTurn } from './independents.ts';
 import { historyTurn } from './events.ts';
 import { DEPOSITS, GOODS } from '../data/goods.ts';
-import { isWater, type ReliefId, type TerrainId, type VegetationId } from '../data/terrain.ts';
+import {
+  isWater,
+  TERRAIN,
+  type ReliefId,
+  type TerrainId,
+  type VegetationId,
+} from '../data/terrain.ts';
 import { DEFAULT_LOADOUT, isNavalLoadout, ITEMS, SLOTS, type Loadout } from '../data/items.ts';
 import { AGE_GATE, ageOf, ageTechs, ERAS, TECHS, TECH_LIST } from '../data/techs.ts';
 import { distance, neighbors, within, type Grid } from './hex.ts';
@@ -15,10 +21,12 @@ import { generateMap, isPassableLand, MAP_SIZES } from './mapgen.ts';
 import { findPath } from './path.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
 import type {
+  BattleRecord,
   City,
   Civ,
   Cohort,
   Design,
+  Dynasty,
   Formation,
   GameSettings,
   GameState,
@@ -75,6 +83,7 @@ import {
   awardTrinket,
   dynastyTurn,
   foundingDynasty,
+  levelOf,
   levyXpFrom,
   maybeTrinket,
   settlementAreas,
@@ -998,7 +1007,7 @@ export const SUPPLY = {
   },
   army: {
     name: 'Army',
-    note: 'Iron, steel, powder and horses are kept for troops’ gear; buildings that need them limp.',
+    note: 'Iron, steel, leather, powder and horses are kept for troops’ gear; buildings that need them limp.',
   },
 } as const;
 
@@ -1206,7 +1215,7 @@ export function refit(s: GameState, fid: number, cohortIds: number[], to: Loadou
   if (p.problem !== null) return fail(p.problem);
   if (p.missing.length)
     return fail(
-      `${p.city.name} lacks ${p.missing.map(m => `${m.need - m.have} ${m.good}`).join(', ')}.`,
+      `${p.city.name} lacks ${p.missing.map(m => `${m.need - m.have} ${goodName(m.good)}`).join(', ')}.`,
     );
   const f = formation(s, fid)!;
   const ids = new Set(cohortIds);
@@ -1320,7 +1329,18 @@ export function setResearch(s: GameState, civId: number, techId: string): Result
 // ---------------------------------------------------------------- turns
 
 export function endTurn(s: GameState): string[] {
+  endingTurn = true;
+  try {
+    return endTurnInner(s);
+  } finally {
+    endingTurn = false;
+  }
+}
+
+function endTurnInner(s: GameState): string[] {
   const events: string[] = [];
+  // battles from here on were not ordered by the player: they go into the news
+  const firstBattleId = s.nextId;
   const me = player(s);
   // a civil war choice left open: the player stands with the throne; an event, its first answer
   events.push(...settlePending(s, me));
@@ -1355,9 +1375,11 @@ export function endTurn(s: GameState): string[] {
   events.push(...raidersTurn(s));
   // the player's sentries see what came near
   events.push(...wakeSentries(s, me.id));
-  // tell the player about anything the AI did to them
+  // tell the player about anything the AI did to them (battles come as one short line each)
   for (const e of s.log.slice(logStart))
-    if (e.civId !== me.id && e.text.includes(me.name)) events.push(e.text);
+    if (e.civId !== me.id && e.text.includes(me.name) && !e.text.startsWith('Battle:'))
+      events.push(e.text);
+  for (const r of s.battles ?? []) if (r.id >= firstBattleId) events.push(battleNews(s, r));
 
   const cultureOf = new Map<number, number>();
   for (const civ of s.civs) {
@@ -1531,32 +1553,182 @@ export function endTurn(s: GameState): string[] {
 }
 
 /**
- * Wounded cohorts recover: inside your territory they are topped up from the nearest city's
- * people (troops are population); outside it only field medics help.
+ * How fast wounded cohorts recover, people per cohort a turn. One table for the engine and the
+ * unit card, so what the card says is what happens.
+ * - In the people's lands (within reach of one of its settlements) a cohort is topped up with
+ *   recruits from the nearest settlement, which loses those people: back to full in about 3
+ *   turns. A settlement with no people to spare leaves it the field rate.
+ * - Outside, the wounded mend on the march: full in about 5–6 turns, a little faster resting.
+ * - Field medics, an infirmary or barracks in or next to one of your settlements, the people's
+ *   own healing bonus and a commanding house seasoned in war all add to either rate.
  */
+export const HEAL = {
+  /** in your lands: recruits from the nearest settlement */
+  home: 34,
+  /** outside your lands, every turn */
+  field: 18,
+  /** outside: extra when it neither moved nor fought this turn */
+  rest: 4,
+  /** outside: extra when fortified and resting (instead of rest) */
+  fortified: 7,
+  /** a cohort with field medics in the formation; half of the gain at home costs no recruits */
+  medics: 10,
+  /** in or next to one of your settlements with an infirmary */
+  infirmary: 10,
+  /** in or next to one of your settlements with barracks */
+  barracks: 5,
+  /** per War level of the commanding house */
+  perWarLevel: 2,
+} as const;
+
+/** What a commanding house adds to its formation, per War level. */
+export const COMMAND = {
+  /** % to melee, ranged and charge */
+  attackPct: 3,
+  /** morale (losses it takes before breaking) */
+  morale: 1,
+  /** War experience for the house per battle won under it (XP_PER_LEVEL is a level) */
+  winXp: 8,
+} as const;
+
+/** The house commanding a formation, if it still serves this people. */
+export function commanderOf(s: GameState, f: Formation): Dynasty | undefined {
+  if (f.commander === undefined) return undefined;
+  return s.civs[f.civId]?.dynasties?.find(d => d.id === f.commander);
+}
+/** The commanding house's War level (0 without one). */
+export const commandLevel = (s: GameState, f: Formation) => {
+  const d = commanderOf(s, f);
+  return d ? levelOf(d, 'military') : 0;
+};
+
+/** Put a house of the realm at the head of an army, or none (`dynId` null). */
+export function assignCommander(s: GameState, fid: number, dynId: number | null): Result {
+  const f = formation(s, fid);
+  if (!f || f.kind !== 'army') return fail('Only armies take a commander.');
+  if (dynId === null) {
+    f.commander = undefined;
+    return ok(`${f.name} has no commanding house.`);
+  }
+  const d = s.civs[f.civId].dynasties?.find(x => x.id === dynId);
+  if (!d) return fail('No such house.');
+  f.commander = d.id;
+  return ok(`House ${d.name} leads ${f.name}.`);
+}
+
+export interface HealPlan {
+  /** home: topped up from a settlement; field: mending outside; none: no recovery; full */
+  kind: 'home' | 'field' | 'none' | 'full';
+  /** people per wounded cohort this turn, before the cohort's room and the city's spare people */
+  rate: number;
+  /** what makes up the rate, biggest first: [label, people] */
+  parts: [string, number][];
+  /** people each cohort regains this turn, in cohort order */
+  gains: number[];
+  /** people regained this turn, all cohorts */
+  total: number;
+  /** people the supplying settlement gives this turn */
+  fromCity: number;
+  city?: City;
+  /** short: "From Rome", "Resting", "Fortified", "On the march", … */
+  why: string;
+}
+
+/** Has this formation stayed put this turn (no move, no battle, no standing orders)? */
+export const resting = (s: GameState, f: Formation) =>
+  f.fought !== s.turn && !f.path.length && f.moves >= fullMoves(s, f);
+
+/** What a formation recovers at the end of this turn if nothing else changes. */
+export function healPlan(s: GameState, f: Formation): HealPlan {
+  const none = (why: string, kind: HealPlan['kind'] = 'none'): HealPlan => ({
+    kind,
+    rate: 0,
+    parts: [],
+    gains: f.cohorts.map(() => 0),
+    total: 0,
+    fromCity: 0,
+    why,
+  });
+  if (isCivilian(f)) return none('Civilians');
+  if (!f.cohorts.some(c => c.strength < COHORT_SIZE)) return none('At full strength', 'full');
+  if (f.aboard !== undefined) return none('Aboard ship');
+  // raiders and beasts heal in their camps and lairs (raiders.ts, wildlife.ts)
+  if (s.civs[f.civId].raiders) return none('Wild');
+  const g = gridOf(s);
+  const medics = f.cohorts.some(c => c.loadout.kit === 'field-medics');
+  const near = s.cities.filter(c => c.civId === f.civId && distance(g, c.hex, f.hex) <= 1);
+  const home = supplyingCity(s, f.civId, f.hex);
+  const bonus: [string, number][] = [];
+  if (medics) bonus.push(['Field medics', HEAL.medics]);
+  if (near.some(c => hasSlot(s, c, 'infirmary'))) bonus.push(['Infirmary', HEAL.infirmary]);
+  if (near.some(c => hasSlot(s, c, 'barracks'))) bonus.push(['Barracks', HEAL.barracks]);
+  const lvl = commandLevel(s, f);
+  if (lvl) bonus.push([`House ${commanderOf(s, f)!.name}`, lvl * HEAL.perWarLevel]);
+  const mod = civMods(s, f.civId).heal;
+  if (mod) bonus.push(['Your people', mod]);
+  const extra = bonus.reduce((a, [, n]) => a + n, 0);
+  const room = (c: Cohort, rate: number) => Math.max(0, Math.min(COHORT_SIZE - c.strength, rate));
+  const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+  const field = (why: string, city?: City): HealPlan => {
+    const r = resting(s, f) ? (f.fortified ? HEAL.fortified : HEAL.rest) : 0;
+    const parts: [string, number][] = [
+      ['On the march', HEAL.field],
+      ...(r ? [[f.fortified ? 'Fortified' : 'Resting', r] as [string, number]] : []),
+      ...bonus,
+    ];
+    const rate = HEAL.field + r + extra;
+    const gains = f.cohorts.map(c => room(c, rate));
+    return { kind: 'field', rate, parts, gains, total: sum(gains), fromCity: 0, city, why };
+  };
+  if (home) {
+    const rate = HEAL.home + extra;
+    let spare = Math.max(0, home.pop - MIN_CITY_POP),
+      fromCity = 0;
+    const gains = f.cohorts.map(c => {
+      const want = room(c, rate);
+      // medics return wounded to the ranks before new recruits are needed
+      const free = medics ? Math.ceil(want / 2) : 0;
+      const take = Math.min(want - free, spare);
+      spare -= take;
+      fromCity += take;
+      return free + take;
+    });
+    const total = sum(gains);
+    const fieldPlan = field(`${home.name} has no people to spare`, home);
+    // a settlement that cannot spare recruits still leaves the wounded to mend
+    if (fieldPlan.total > total) return fieldPlan;
+    return {
+      kind: 'home',
+      rate,
+      parts: [[`Recruits from ${home.name}`, HEAL.home], ...bonus],
+      gains,
+      total,
+      fromCity,
+      city: home,
+      why: `From ${home.name}`,
+    };
+  }
+  const r = resting(s, f);
+  return field(
+    r
+      ? f.fortified
+        ? 'Fortified, outside your lands'
+        : 'Resting, outside your lands'
+      : 'On the march',
+  );
+}
+
+/** Wounded cohorts recover as healPlan says (troops are people: recruits come from a city). */
 function heal(s: GameState) {
   for (const f of s.formations) {
-    if (isCivilian(f) || f.aboard !== undefined) continue;
-    const medics = f.cohorts.some(c => c.loadout.kit === 'field-medics');
-    const home = supplyingCity(s, f.civId, f.hex);
-    for (const c of f.cohorts) {
-      if (c.strength >= COHORT_SIZE) continue;
-      if (home) {
-        const want = Math.min(
-          COHORT_SIZE - c.strength,
-          (medics ? 20 : 10) + civMods(s, f.civId).heal,
-        );
-        const take = Math.min(want, Math.max(0, home.pop - MIN_CITY_POP));
-        // medics return wounded to the ranks before new recruits are needed
-        const free = medics ? Math.ceil(want / 2) : 0;
-        c.strength += Math.min(want, free + take);
-        home.pop -= Math.max(0, Math.min(want, free + take) - free);
-      } else if (medics) {
-        c.strength = Math.min(COHORT_SIZE, c.strength + 5);
-      }
-    }
+    const p = healPlan(s, f);
+    if (!p.total) continue;
+    f.cohorts.forEach((c, i) => (c.strength += p.gains[i]));
+    if (p.city) p.city.pop -= p.fromCity;
   }
 }
+/** The end-of-turn recovery on its own, for the checks. */
+export const healTurn = heal;
 
 /** Gold per turn: equipment upkeep only, so plain levies cost nothing. */
 export function cohortUpkeep(c: Cohort): number {
@@ -1879,6 +2051,9 @@ export function endWar(s: GameState, a: number, b: number) {
  * and bigger formations; it stays proportional to fighting power, so a 25 most likely beats a 14.
  * The realm's military power is the sum. Not rounded: see `strengthText` for display.
  */
+/** a good's name as players read it (Leather, not leatherwork) */
+const goodName = (id: string) => (GOODS[id]?.name ?? id).toLowerCase();
+
 export function formationStrength(s: GameState, f: Formation): number {
   const base = powerOf(f);
   if (!base) return 0;
@@ -1886,7 +2061,8 @@ export function formationStrength(s: GameState, f: Formation): number {
   const xp = f.cohorts.length
     ? f.cohorts.reduce((a, c) => a + Math.min(5, c.xp), 0) / f.cohorts.length
     : 0;
-  return base * STRENGTH_SCALE * (1 + xp * 0.05) * pct(m.attackPct / 2 + m.morale / 2);
+  const led = commandLevel(s, f) * (COMMAND.attackPct + COMMAND.morale);
+  return base * STRENGTH_SCALE * (1 + xp * 0.05) * pct(m.attackPct / 2 + m.morale / 2 + led / 2);
 }
 /** strength points per unit of gear power */
 export const STRENGTH_SCALE = 0.45;
@@ -2124,14 +2300,18 @@ function battleInputs(s: GameState, f: Formation, hex: number) {
     att: {
       name: `${s.civs[f.civId].name} ${f.name}`,
       cohorts: f.cohorts,
-      morale: formationMorale(f) + am.morale,
-      boost: dryPowder(s, f, boost(am, true, attHome)),
+      morale: formationMorale(f) + am.morale + commandLevel(s, f) * COMMAND.morale,
+      boost: led(s, f, dryPowder(s, f, boost(am, true, attHome))),
     },
     def: {
       name: defName,
       cohorts: defCohorts,
-      morale: (df ? formationMorale(df) + (city ? 15 : 0) : 45) + dm.morale,
-      boost: df ? dryPowder(s, df, boost(dm, false, defHome)) : boost(dm, false, defHome),
+      morale:
+        (df ? formationMorale(df) + (city ? 15 : 0) + commandLevel(s, df) * COMMAND.morale : 45) +
+        dm.morale,
+      boost: df
+        ? led(s, df, dryPowder(s, df, boost(dm, false, defHome)))
+        : boost(dm, false, defHome),
     },
     ctx: {
       map: s.map,
@@ -2228,6 +2408,16 @@ export function siegeTurn(s: GameState): string[] {
 }
 
 const cohortSiege = (c: Cohort) => SLOTS.reduce((a, k) => a + (ITEMS[c.loadout[k]].siege ?? 0), 0);
+
+/** A commanding house seasoned in war: +COMMAND.attackPct% to melee, ranged and charge a level. */
+function led<T extends { melee: number; ranged: number; charge: number }>(
+  s: GameState,
+  f: Formation,
+  b: T,
+): T {
+  const k = 1 + (commandLevel(s, f) * COMMAND.attackPct) / 100;
+  return k === 1 ? b : { ...b, melee: b.melee * k, ranged: b.ranged * k, charge: b.charge * k };
+}
 
 /** Short of powder, a formation's firearms fire at half: its ranged strength drops by their share. */
 function dryPowder<T extends { ranged: number }>(s: GameState, f: Formation, b: T): T {
@@ -2463,6 +2653,16 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
           : null;
     if (won) {
       noteDeed(won, 'wins');
+      // the house that led the winners learns war
+      const victor = won === attCiv ? f : b.df;
+      const house = victor && commanderOf(s, victor);
+      if (house) {
+        const before = levelOf(house, 'military');
+        house.xp ??= {};
+        house.xp.military = (house.xp.military ?? 0) + COMMAND.winXp;
+        if (won.isPlayer && levelOf(house, 'military') > before)
+          log(s, won.id, `House ${house.name} grows in war: level ${levelOf(house, 'military')}.`);
+      }
       const lost = won === attCiv ? defCiv : attCiv;
       if (lost.raiders) noteDeed(won, 'beasts');
     }
@@ -2539,6 +2739,9 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
   }
   if (!attackerAlive) result += ` ${b.att.name} was destroyed.`;
   report.lines.push(result);
+  f.fought = s.turn;
+  if (b.df) b.df.fought = s.turn;
+  recordBattle(s, f, b, hex, report, result, attackerAlive, defenderAlive);
   log(
     s,
     f.civId,
@@ -2558,6 +2761,82 @@ export function attack(s: GameState, fid: number, hex: number): Result & { repor
   updateExplored(s, f.civId);
   updateExplored(s, b.defCivId);
   return { ok: true, msg: result, report };
+}
+
+/** Battles kept in the save for the Battles list. */
+export const BATTLE_LOG_CAP = 50;
+/** set while the turn ends: battles then were not fought on the player's own order */
+let endingTurn = false;
+
+/** "at Rome", "near Rome", or the ground's name. */
+export function battlePlace(s: GameState, hex: number): string {
+  const at = cityAt(s, hex);
+  if (at) return `at ${at.name}`;
+  const g = gridOf(s);
+  let best: City | undefined,
+    bd = 4;
+  for (const c of s.cities) {
+    const d = distance(g, c.hex, hex);
+    if (d < bd) {
+      bd = d;
+      best = c;
+    }
+  }
+  if (best) return `near ${best.name}`;
+  return isWaterHex(s, hex) ? 'at sea' : `in the ${TERRAIN[s.map.terrain[hex]].name.toLowerCase()}`;
+}
+
+/** Keep a battle the player fought, on either side, with its report. */
+function recordBattle(
+  s: GameState,
+  f: Formation,
+  b: ReturnType<typeof battleInputs>,
+  hex: number,
+  report: BattleReport,
+  result: string,
+  attackerAlive: boolean,
+  defenderAlive: boolean,
+) {
+  const attP = s.civs[f.civId].isPlayer,
+    defP = s.civs[b.defCivId].isPlayer;
+  if (!attP && !defP) return;
+  const winner: BattleRecord['winner'] =
+    report.outcome === 'defender-broke' || (!!b.df && !defenderAlive && attackerAlive)
+      ? 'attacker'
+      : report.outcome === 'attacker-broke' || (!attackerAlive && (!b.df || defenderAlive))
+        ? 'defender'
+        : null;
+  s.battles ??= [];
+  s.battles.push({
+    id: s.nextId++,
+    turn: s.turn,
+    hex,
+    place: battlePlace(s, hex),
+    side: attP ? 'attacker' : 'defender',
+    att: { civId: f.civId, name: b.att.name, house: houseTag(commanderOf(s, f)) },
+    def: { civId: b.defCivId, name: b.def.name, house: houseTag(b.df && commanderOf(s, b.df)) },
+    winner,
+    result,
+    ordered: attP && !endingTurn ? true : undefined,
+    report: { ...report, lines: [...report.lines], why: report.why && [...report.why] },
+  });
+  if (s.battles.length > BATTLE_LOG_CAP) s.battles.splice(0, s.battles.length - BATTLE_LOG_CAP);
+}
+
+const houseTag = (d: Dynasty | undefined) => (d ? { name: d.name, color: d.color } : undefined);
+
+/** A news line for a battle the player did not order. */
+export function battleNews(s: GameState, r: BattleRecord): string {
+  const mine = r.side === 'attacker' ? r.report.attacker : r.report.defender,
+    theirs = r.side === 'attacker' ? r.report.defender : r.report.attacker;
+  const won = r.winner === r.side ? 'victory' : r.winner ? 'defeat' : 'neither side gave way';
+  // "your 1st Levy", not "your Romans 1st Levy"
+  const own = (x: BattleRecord['att']) => x.name.replace(`${s.civs[x.civId].name} `, '');
+  const what =
+    r.side === 'attacker'
+      ? `your ${own(r.att)} attacked the ${r.def.name}`
+      : `the ${r.att.name} attacked your ${own(r.def)}`;
+  return `Battle ${r.place}: ${what}, ${won}; you lost ${mine.lost}, they lost ${theirs.lost}.`;
 }
 
 function captureCity(s: GameState, c: City, by: Formation): string {
@@ -2795,7 +3074,7 @@ export function upgradeInfo(s: GameState, c: City): UpgradeInfo {
     problem = `Needs ${need.pop.toLocaleString()} people (${c.pop.toLocaleString()} now).`;
   else if (civ.gold < need.gold) problem = `Needs ${need.gold} gold (${Math.floor(civ.gold)} now).`;
   else if (shortGoods.length)
-    problem = `The market lacks ${shortGoods.map(([k, n]) => `${Math.ceil(n - (stock[k] ?? 0))} ${k}`).join(', ')}.`;
+    problem = `The market lacks ${shortGoods.map(([k, n]) => `${Math.ceil(n - (stock[k] ?? 0))} ${goodName(k)}`).join(', ')}.`;
   return { to, pop: need.pop, gold: need.gold, goods: need.goods, problem, lost };
 }
 

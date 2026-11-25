@@ -3445,7 +3445,8 @@ input.rename {
 
 /* tablets: a finger, and room for the map but not for two rows of buttons. The top bar keeps
    the realm's numbers on one row and folds the rest into the More menu, as on a phone. */
-@media (pointer: coarse) and (min-width: 701px) and (max-width: 1180px) {
+@media (pointer: coarse) and (min-width: 701px) and (max-width: 1180px),
+  (min-width: 701px) and (max-width: 1320px) {
   .topbar {
     flex-wrap: nowrap;
     gap: 10px;

@@ -1327,6 +1327,29 @@ settlement is always a town. Founded further out, it is a **colony**:
   AI answers on its own turn, taking the mission choice when it is worth it; it never declares war
   on or signs a pact with the player through these events.
 
+## 12ab. Health, commanders, battles, goods chains (as built)
+
+- **Recovery** per cohort a turn (`HEAL` in game.ts, shared by the engine and the unit card):
+  +34 in your lands (recruits from the nearest settlement, kept above 1,000), so near 0 is full
+  in 3 turns; +18 outside, +4 more resting or +7 fortified (about 6 turns). Field medics +10,
+  infirmary +10 and barracks +5 in or next to the settlement, the commanding house +2 per War
+  level, the people's healing bonus. A health bar on the unit card, per cohort, in the Land list
+  and under each formation on the map.
+- **Commanding houses:** an army may be led by a house: +3% melee, ranged and charge and +1
+  morale per War level (in its strength number), faster healing; each win gives the house 8 War
+  xp. In a civil war armies follow their commander; unled ones follow the nearest settlement.
+- **Battle history:** every battle the player is in, on any turn and by anyone, is kept (last 50)
+  with its full report; Military › Battles lists them and opens each; battles the player didn't
+  order get one line in the turn news.
+- **Goods chains:** hides from hunting lodges (anywhere, more on game) and pastures; the Tannery
+  makes Leather (id `leatherwork`), which leather caps, armour, boots, field medics and horse
+  tack cost; the earliest hide gear stays on hides. One tannery puts a cohort in leather armour
+  every 2 turns. Tools feed siege ladders and field guns; iron and silver deposits also on flat
+  land. `src/data/chains.ts` derives every good's sources and users; the Codex is generated from
+  it (goods, buildings, gear, techs, all linked), and chaincheck guards it.
+- **Map:** a frame that throws rebuilds the renderer (2D after a second failure); a lost WebGL
+  context is rebuilt. An event whose subject is gone is dropped instead of stopping the turn.
+
 ## 13. Core screens and flows
 
 1. **Map view.** Hex map, unit counters (show cohort count and main loadout icon), city

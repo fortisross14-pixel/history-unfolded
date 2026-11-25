@@ -22,7 +22,7 @@ import {
   visibleHexes,
 } from '../engine/game.ts';
 import { lairsSeenBy, packOf } from '../engine/wildlife.ts';
-import { people } from '../engine/units.ts';
+import { COHORT_SIZE, people } from '../engine/units.ts';
 import { centerUnit, distance, hexAtUnit, neighbors, SQRT3, type Grid } from '../engine/hex.ts';
 import type { City, Civ, Formation, GameState } from '../engine/types.ts';
 import { emblemOf } from '../data/rulers.ts';
@@ -1450,7 +1450,7 @@ export class World3DRenderer {
       for (const [id, u] of this.units) {
         const f = byId.get(id);
         if (!f || f.kind !== 'army') continue;
-        const key = `${s.turn}|${f.cohorts.length}|${people(f)}|${troopLook(f)}|${f.cohorts.reduce((a, c) => a + c.xp, 0)}`;
+        const key = `${s.turn}|${f.cohorts.length}|${people(f)}|${troopLook(f)}|${f.cohorts.reduce((a, c) => a + c.xp, 0)}|${f.commander ?? ''}`;
         let st = this.strengths.get(id);
         if (!st || st.key !== key) {
           st = { key, n: formationStrength(s, f) };
@@ -1476,6 +1476,18 @@ export class World3DRenderer {
         ctx.strokeText(text, sx, sy + 0.5);
         ctx.fillStyle = '#fff';
         ctx.fillText(text, sx, sy + 0.5);
+        // a thin health bar under the pill while the formation is below full strength
+        const full = f.cohorts.length * COHORT_SIZE;
+        const k = full ? people(f) / full : 1;
+        if (k < 0.995) {
+          const bw = Math.max(w, fs * 2.2),
+            bh = Math.max(3, fs * 0.28),
+            by = sy + h / 2 + 2;
+          ctx.fillStyle = 'rgba(20,14,8,0.6)';
+          ctx.fillRect(sx - bw / 2 - 1, by - 1, bw + 2, bh + 2);
+          ctx.fillStyle = k >= 0.75 ? '#5fa257' : k >= 0.4 ? '#d9a531' : '#c8452e';
+          ctx.fillRect(sx - bw / 2, by, bw * Math.max(0, k), bh);
+        }
       }
     }
     // battle flashes and floating numbers

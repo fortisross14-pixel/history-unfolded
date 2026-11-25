@@ -1,7 +1,7 @@
 /** Goods and the map deposits that produce them. */
 import type { ReliefId, TerrainId, VegetationId } from './terrain.ts';
 
-/** made: manufactured in cities (cloth, tools…): traded, and cloth and leatherwork are comforts */
+/** made: manufactured in cities (cloth, tools, leather…): traded, and cloth and leather are comforts */
 export type GoodKind = 'food' | 'raw' | 'luxury' | 'made';
 
 export interface GoodInfo {
@@ -13,6 +13,8 @@ export interface GoodInfo {
   /** a pictogram for the badge when there is no art */
   emoji?: string;
   color: string;
+  /** what it is, in a line, for the Codex (where it comes from and what uses it are worked out from the data) */
+  note?: string;
 }
 
 export const GOODS: Record<string, GoodInfo> = {
@@ -63,13 +65,52 @@ export const GOODS: Record<string, GoodInfo> = {
   pearls: { name: 'Pearls', kind: 'luxury', emoji: '🦪', glyph: 'Pe', color: '#e9e4f0' },
   tools: { name: 'Tools', kind: 'made', emoji: '🔨', glyph: 'Tl', color: '#6b6f78' },
   cloth: { name: 'Cloth', kind: 'made', emoji: '🧶', glyph: 'Cl', color: '#b08f6a' },
-  leatherwork: { name: 'Leatherwork', kind: 'made', emoji: '👞', glyph: 'Lw', color: '#8a5a32' },
+  // the id stays `leatherwork` so older saves keep their stores
+  leatherwork: { name: 'Leather', kind: 'made', emoji: '👞', glyph: 'Le', color: '#8a5a32' },
   salt: { name: 'Salt', kind: 'raw', emoji: '🧂', glyph: 'Sa', color: '#e4e1da' },
   paper: { name: 'Paper', kind: 'made', emoji: '📜', glyph: 'Pa', color: '#efe6cf' },
   steel: { name: 'Steel', kind: 'made', emoji: '🔩', glyph: 'Sl', color: '#7d8a96' },
   oil: { name: 'Oil', kind: 'raw', emoji: '🛢️', glyph: 'Oi', color: '#262422' },
   electricity: { name: 'Electricity', kind: 'made', emoji: '⚡', glyph: 'El', color: '#e0c23a' },
 };
+
+/** What each good is, in a line (the Codex adds where it comes from and what uses it). */
+const NOTES: Record<string, string> = {
+  wood: 'Timber for building, burning and simple arms.',
+  stone: 'Cut stone for walls, temples and slings.',
+  hides: 'Raw animal skins from the hunt and the herds; tanned, they become leather.',
+  copper: 'The soft red metal of the first age; with tin it makes bronze.',
+  tin: 'Alloyed with copper into bronze.',
+  iron: 'The metal of the Classical age and after: swords, mail and plate.',
+  coal: 'Fuel for hearths, foundries, steam and power.',
+  saltpeter: 'Burned as powder by firearms and guns.',
+  horses: 'Mounts for riders and draught for guns.',
+  grain: 'Wheat and rice: counted as food, not stored as a good.',
+  fish: 'Counted as food, not stored as a good.',
+  meat: 'Counted as food, not stored as a good.',
+  ivory: 'A luxury, and the plates of ivory lamellar.',
+  furs: 'A luxury of the cold lands.',
+  gold: 'A luxury that also adds coin; a mint strikes it into more.',
+  silver: 'A luxury that also adds coin.',
+  spices: 'A luxury.',
+  silk: 'A luxury.',
+  dyes: 'A luxury.',
+  wine: 'A luxury.',
+  wool: 'Fleece from sheep, woven into cloth.',
+  sugar: 'A luxury.',
+  'whale-oil': 'A luxury of the coasts.',
+  pearls: 'A luxury of the coasts.',
+  tools: 'Worked bronze: kept for siege gear and guns, and worn out by factories.',
+  cloth: 'Woven wool: a comfort and a trade good.',
+  leatherwork:
+    'Tanned hides: the stuff of leather armour, caps, boots and horse tack; a comfort too.',
+  salt: 'A comfort, and what food packaging preserves with.',
+  paper: 'For libraries and printing houses.',
+  steel: 'Industrial metal for rifles, railways and factories.',
+  oil: 'The best fuel for power plants.',
+  electricity: 'Power for factories and research labs.',
+};
+for (const [k, n] of Object.entries(NOTES)) if (GOODS[k]) GOODS[k].note = n;
 
 /** Goods that serve as comforts: luxuries and the finer made goods. */
 export const isComfort = (g: string) =>
@@ -145,7 +186,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
   pigs: {
     emoji: '🐖',
     by: 'pasture',
-    gives: { food: 0.5 },
+    gives: { food: 0.5, goods: { hides: 0.5 } },
     name: 'Pigs',
     yields: { meat: 1 },
     terrain: LAND_OPEN,
@@ -166,7 +207,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
   sheep: {
     emoji: '🐑',
     by: 'pasture',
-    gives: { goods: { wool: 1 } },
+    gives: { goods: { wool: 1, hides: 0.5 } },
     name: 'Sheep',
     yields: { meat: 1, hides: 1 },
     terrain: ['plains', 'grassland', 'tundra'],
@@ -185,7 +226,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
   },
   horses: {
     by: 'pasture',
-    gives: { goods: { horses: 1 } },
+    gives: { goods: { horses: 1, hides: 0.5 } },
     tech: 'animal-husbandry',
     name: 'Horses',
     yields: { horses: 1 },
@@ -234,8 +275,9 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     name: 'Iron',
     yields: { iron: 1 },
     terrain: ['plains', 'grassland', 'desert', 'tundra', 'snow'],
-    relief: ['hills'],
-    weight: 3,
+    // bog iron on the flat too: hills alone left most maps with one seam or none
+    relief: ['hills', 'flat'],
+    weight: 2,
     revealedBy: 'iron-working',
   },
   coal: {
@@ -299,7 +341,7 @@ export const DEPOSITS: Record<string, DepositInfo> = {
     name: 'Silver',
     yields: { silver: 1 },
     terrain: ['tundra', 'plains', 'desert'],
-    relief: ['hills'],
+    relief: ['hills', 'flat'],
     weight: 1,
   },
   spices: {

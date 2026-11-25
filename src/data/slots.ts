@@ -152,7 +152,7 @@ const list: SlotType[] = [
     build: { prod: 6, goods: { wood: 1 } },
     out: { food: 0.5 },
     glyph: '🐄',
-    note: 'Animals: ½ food anywhere. Pigs on the land make it 1 food; cattle add leather, sheep wool, horses (Animal Husbandry) horses.',
+    note: 'Animals: ½ food anywhere. Pigs on the land make it 1 food and ½ hides; cattle give 1 hides, sheep wool and ½ hides, horses (Animal Husbandry) horses and ½ hides.',
   },
   {
     id: 'plantation',
@@ -243,9 +243,9 @@ const list: SlotType[] = [
     tech: 'archery',
     labour: 100,
     build: { prod: 6 },
-    out: { food: 0.5 },
+    out: { food: 0.5, goods: { hides: 0.5 } },
     glyph: '🏹',
-    note: '½ food. Game adds food and hides; with 3 or more in one district, furs and ivory on the land.',
+    note: '½ food and ½ hides anywhere. Game on the land adds ½ food and ½ hides; with 3 or more in one district, furs and ivory on the land.',
   },
   {
     id: 'lumber-mill',
@@ -314,7 +314,7 @@ const list: SlotType[] = [
     build: { prod: 10, goods: { hides: 1 } },
     out: {},
     glyph: '✚',
-    note: '+½ to each mine in the district: miners mended are miners working.',
+    note: '+½ to each mine in the district. Troops in or next to the settlement recover 10 people per cohort a turn.',
   },
   {
     id: 'school',
@@ -632,7 +632,7 @@ const list: SlotType[] = [
     out: { goods: { leatherwork: 1 } },
     inputs: { hides: 1 },
     glyph: '⛺',
-    note: 'Turns leather into leatherwork: comforts and trade.',
+    note: 'Tans a unit of hides into leather: leather armour, caps, boots, horse tack and field medics; a comfort too.',
   },
   {
     id: 'weaver',
@@ -700,7 +700,7 @@ const list: SlotType[] = [
     barracks: true,
     centreRow: true,
     glyph: '⚑',
-    note: "New levies start with a battle's experience.",
+    note: "New levies start with a battle's experience. Troops in or next to the settlement recover 5 people per cohort a turn.",
   },
   {
     id: 'shipyard',

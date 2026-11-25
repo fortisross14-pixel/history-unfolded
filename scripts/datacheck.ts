@@ -3,7 +3,7 @@ import { CULTURE, CULTURE_LIST, TAGS } from '../src/data/culture.ts';
 import { ITEM_LIST } from '../src/data/items.ts';
 import { SLOT_LIST } from '../src/data/slots.ts';
 import { TECHS, TECH_LIST } from '../src/data/techs.ts';
-import { DEPOSITS } from '../src/data/goods.ts';
+import { DEPOSITS, GOODS } from '../src/data/goods.ts';
 
 const errs: string[] = [];
 for (const c of CULTURE_LIST) {
@@ -28,6 +28,16 @@ for (const s of SLOT_LIST)
 for (const d of Object.values(DEPOSITS))
   if (d.revealedBy && !TECHS[d.revealedBy])
     errs.push(`deposit ${d.name}: unknown tech ${d.revealedBy}`);
+// every good named in a cost, an input, an output or a deposit exists
+for (const i of ITEM_LIST)
+  for (const g of Object.keys(i.cost)) if (!GOODS[g]) errs.push(`item ${i.id}: unknown good ${g}`);
+for (const t of SLOT_LIST)
+  for (const o of [t.build.goods, t.inputs, t.out.goods, t.alt?.inputs, t.alt?.out.goods])
+    for (const g of Object.keys(o ?? {}))
+      if (!GOODS[g]) errs.push(`slot ${t.id}: unknown good ${g}`);
+for (const [id, d] of Object.entries(DEPOSITS))
+  for (const g of Object.keys({ ...d.yields, ...d.gives.goods }))
+    if (!GOODS[g]) errs.push(`deposit ${id}: unknown good ${g}`);
 // every culture node reachable in principle (requirements not all inside its own fork)
 for (const c of CULTURE_LIST)
   if (c.fork && c.requires.some(r => CULTURE[r]?.fork === c.fork))

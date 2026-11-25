@@ -376,7 +376,7 @@ export function workable(
 
 /** Everything a city makes this turn, slot by slot. */
 /** goods held back for troops' gear when the realm puts the army first */
-export const ARMY_GOODS = ['iron', 'steel', 'powder', 'horses'];
+export const ARMY_GOODS = ['iron', 'steel', 'powder', 'horses', 'leatherwork'];
 
 export function cityEconomy(s: GameState, c: City): CityEconomy {
   const g = gridOf(s);

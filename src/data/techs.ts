@@ -44,7 +44,7 @@ export const TECH_LIST: TechInfo[] = [
     1,
     12,
     [],
-    'Leather armour, caps, marching boots, field medics, infirmaries.',
+    'Tanneries turn hides into leather: leather armour, caps, marching boots, field medics; infirmaries.',
   ),
   t('pottery', 'Pottery', 1, 12, [], 'Granaries.', { favoured: 'agrarian' }),
   t(
@@ -59,7 +59,7 @@ export const TECH_LIST: TechInfo[] = [
     favoured: 'agrarian',
     mods: { groupPct: { farming: 5 } },
   }),
-  t('archery', 'Archery', 1, 16, [], 'Bows.'),
+  t('archery', 'Archery', 1, 16, [], 'Bows; hunting lodges (food and hides); barracks.'),
   t('masonry', 'Masonry', 1, 18, [], 'Monuments and city walls.'),
   t('sailing', 'Sailing', 1, 18, [], 'Harbours.', { favoured: 'maritime' }),
   t('writing', 'Writing', 1, 22, [], 'Schools.', { favoured: 'rationalist' }),

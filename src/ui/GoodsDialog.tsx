@@ -9,6 +9,7 @@ import './declutter-city.css';
 import './r4-yields.css';
 import { WhyPop } from './WhyPop.tsx';
 import { whyRealmGood } from '../engine/breakdown.ts';
+import { CodexDialog } from './CodexDialog.tsx';
 
 interface Props {
   game: GameState;
@@ -29,6 +30,8 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
     c => c.alive && c.id !== civId && me.met.includes(c.id) && !atWar(game, civId, c.id),
   );
   const [selling, setSelling] = useState<string | null>(null);
+  // a good's Codex entry, opened from its name
+  const [codex, setCodex] = useState<string | null>(null);
   const [, setV] = useState(0);
   const [to, setTo] = useState<number>(partners[0]?.id ?? -1);
   const [n, setN] = useState(1);
@@ -131,7 +134,13 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
               return (
                 <tr key={g} className={l.net < 0 ? 'short' : ''}>
                   <td>
-                    <GoodIcon id={g} /> {GOODS[g]?.name ?? g}
+                    <button
+                      className="link gl-name"
+                      title="Open in the Codex"
+                      onClick={() => setCodex(g)}
+                    >
+                      <GoodIcon id={g} /> {GOODS[g]?.name ?? g}
+                    </button>
                   </td>
                   <td>{l.made || ''}</td>
                   <td>{l.used ? `\u2212${l.used}` : ''}</td>
@@ -273,6 +282,11 @@ export function GoodsDialog({ game, civId, onDeal, onClose }: Props) {
           <Chip icon="gold" n={Math.floor(me.gold)} title="Your gold" />
         </p>
       </div>
+      {codex && (
+        <div onClick={e => e.stopPropagation()}>
+          <CodexDialog entry={`good-${codex}`} onClose={() => setCodex(null)} />
+        </div>
+      )}
     </div>
   );
 }

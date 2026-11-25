@@ -111,6 +111,10 @@ export interface Formation {
   fortified: boolean;
   /** an army or settlers carried by this fleet */
   aboard?: number;
+  /** the last turn it fought a battle (attacker or defender): no rest that turn */
+  fought?: number;
+  /** the house that leads this army (a dynasty id of its people): bonuses, and its side in a civil war */
+  commander?: number;
 }
 
 /** Town: 2 districts, farms and mines allowed. City: 4, no rural buildings. Metropolis: 6, one per civ. */
@@ -517,6 +521,29 @@ export interface GameState {
   events: PendingEvent[];
   /** last turn each civ had a history event */
   lastEvent: Record<number, number>;
+  /** the player's battles, oldest first, the last BATTLE_LOG_CAP of them (game.ts) */
+  battles?: BattleRecord[];
+}
+
+/** A battle the player fought, as attacker or defender, kept for the Battles list. */
+export interface BattleRecord {
+  id: number;
+  turn: number;
+  /** the defender's hex */
+  hex: number;
+  /** "at Rome", "near Rome", "Grassland" */
+  place: string;
+  /** which side the player was on */
+  side: 'attacker' | 'defender';
+  /** house: the commanding house's name and colour, if one led */
+  att: { civId: number; name: string; house?: { name: string; color: string } };
+  def: { civId: number; name: string; house?: { name: string; color: string } };
+  winner: 'attacker' | 'defender' | null;
+  /** what came of it: "Goths 1st Host fell back." */
+  result: string;
+  /** fought on the player's own order (not by automation, the AI, raiders or beasts) */
+  ordered?: boolean;
+  report: import('./combat.ts').BattleReport;
 }
 
 /** A history event that has happened to a people and waits for a choice. */

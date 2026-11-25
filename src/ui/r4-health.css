@@ -1,0 +1,190 @@
+/* r4 health: formation health bars, commanding houses, the Battles list */
+.hp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+.hp-bar {
+  position: relative;
+  flex: 1;
+  min-width: 80px;
+  max-width: 180px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(120, 90, 50, 0.18);
+  border: 1px solid rgba(120, 90, 50, 0.35);
+  overflow: hidden;
+  display: inline-block;
+}
+.hp-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+.hp-bar.small {
+  height: 5px;
+  min-width: 0;
+  flex: 1;
+  max-width: 44px;
+  border-width: 0;
+}
+.hp-ok {
+  background: #4f8a4a;
+}
+.hp-mid {
+  background: #c99a2e;
+}
+.hp-low {
+  background: #b0412c;
+}
+.hp-bar > .hp-gain {
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(79, 138, 74, 0.55) 0 3px,
+    rgba(79, 138, 74, 0.2) 3px 6px
+  );
+}
+.hp-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hp-rate {
+  font-weight: 700;
+}
+.hp-rate.good {
+  color: var(--good, #2f6b2a);
+}
+.hp-rate.bad {
+  color: var(--bad, #9b2c1c);
+}
+.hp-row .info-card {
+  width: min(250px, 80vw);
+  max-width: min(250px, 80vw);
+}
+.hp-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+.hp-cohorts {
+  display: flex;
+  gap: 3px;
+  margin: 2px 0;
+  max-width: 200px;
+}
+.cmd-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+.cmd-none {
+  width: 18px;
+  text-align: center;
+  opacity: 0.5;
+}
+.cmd-pick {
+  min-width: 170px;
+  max-width: 240px;
+  font-size: 13px;
+  padding: 2px 4px;
+}
+.troop-house {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.troop-hp {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.troop-hp .hp-bar {
+  min-width: 44px;
+  max-width: 64px;
+  height: 6px;
+}
+
+/* the Battles list */
+.battle-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(64vh, 560px);
+  overflow-y: auto;
+}
+.battle-list li > button {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(120, 90, 50, 0.28);
+  background: rgba(255, 252, 244, 0.6);
+  cursor: pointer;
+  min-height: 0;
+  font: inherit;
+  color: inherit;
+}
+.battle-list li > button:hover {
+  background: #f3e9d2;
+}
+.bl-tag {
+  font-weight: 700;
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bl-tag.won {
+  background: #4f8a4a;
+}
+.bl-tag.lost {
+  background: #b0412c;
+}
+.bl-tag.held {
+  background: #8a7a5c;
+}
+.bl-sides {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.bl-sides .vs {
+  opacity: 0.6;
+  font-style: italic;
+}
+.bl-meta {
+  grid-column: 2 / 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.bl-loss {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.battle-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  margin: 0 0 6px;
+}
+@media (max-width: 520px) {
+  .bl-meta {
+    grid-column: 1 / 3;
+  }
+}

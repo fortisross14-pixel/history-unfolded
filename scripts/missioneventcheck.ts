@@ -457,11 +457,13 @@ function coast(s: GameState, me: Civ) {
 {
   const s = richGame(7);
   const me = player(s);
-  const node = install(s, me, 'win-battles');
+  let node = install(s, me, 'win-battles');
   const turns: number[] = [];
   let doubled = false;
   let saved = false;
   for (let k = 0; k < 60; k++) {
+    // a rival entering a new age closes every open Tome (by design): open the mission again
+    if (!me.culture.tome) node = install(s, me, 'win-battles');
     stall(me, node, s.turn);
     const p = s.realmEvents?.pending;
     if (p && p.id.startsWith('mission-')) {
@@ -482,8 +484,11 @@ function coast(s: GameState, me: Civ) {
     if (before && realmEventTurn(s, me) && s.realmEvents?.pending !== before) doubled = true;
     endTurn(s);
     // the mission stays unfinished for the test
-    me.culture.tome!.done = me.culture.tome!.done.filter(x => x !== node);
-    if (!me.culture.tome!.taken.includes(node)) me.culture.tome!.taken.push(node);
+    const tome = me.culture.tome;
+    if (tome) {
+      tome.done = tome.done.filter(x => x !== node);
+      if (!tome.taken.includes(node)) tome.taken.push(node);
+    }
   }
   const gaps = turns.slice(1).map((t, i) => t - turns[i]);
   console.log(`     mission events at turns ${turns.join(', ')}`);

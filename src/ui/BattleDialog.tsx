@@ -1,6 +1,8 @@
 import type { BattleReport } from '../engine/combat.ts';
+import type { BattleRecord } from '../engine/types.ts';
 import { Art, Chip, InfoButton } from './bits.tsx';
 import './declutter-map.css';
+import './r4-health.css';
 
 const OUTCOME: Record<BattleReport['outcome'], string> = {
   'defender-broke': 'Victory',
@@ -36,7 +38,35 @@ function whyTag(text: string): string {
   return text;
 }
 
-export function BattleDialog({ report, onClose }: { report: BattleReport; onClose: () => void }) {
+/** Defending, the outcome reads the other way round. */
+const OUTCOME_DEF: Record<BattleReport['outcome'], string> = {
+  'defender-broke': 'Defeat',
+  'attacker-broke': 'Held the line',
+  held: 'Indecisive',
+  skirmish: 'Skirmish',
+};
+
+export function BattleDialog({
+  report,
+  record,
+  onGo,
+  onClose,
+}: {
+  report: BattleReport;
+  /** from the Battles list: turn, place, and which side the player was on */
+  record?: BattleRecord;
+  /** show the place on the map */
+  onGo?: () => void;
+  onClose: () => void;
+}) {
+  const defending = record?.side === 'defender';
+  const title = record
+    ? record.winner === null
+      ? (defending ? OUTCOME_DEF : OUTCOME)[report.outcome]
+      : record.winner === record.side
+        ? 'Victory'
+        : 'Defeat'
+    : OUTCOME[report.outcome];
   const side = (s: BattleReport['attacker'], ours: boolean) => (
     <div className="battle-side">
       <b>{s.name}</b>
@@ -56,26 +86,39 @@ export function BattleDialog({ report, onClose }: { report: BattleReport; onClos
     <div className="modal-back" onClick={onClose}>
       <div className="modal battle" onClick={e => e.stopPropagation()}>
         <header>
-          <h2>{OUTCOME[report.outcome]}</h2>
+          <h2>{title}</h2>
           <button className="x" onClick={onClose}>
             ×
           </button>
         </header>
         <Art k={`battle/${report.scene ?? 'field'}`} className="battle-art" />
+        {record && (
+          <div className="battle-meta small muted">
+            <span>Turn {record.turn}</span>
+            <span>{record.place.replace(/^./, c => c.toUpperCase())}</span>
+            {record.att.house && <span>Attackers led by House {record.att.house.name}</span>}
+            {record.def.house && <span>Defenders led by House {record.def.house.name}</span>}
+            {onGo && (
+              <button className="link" onClick={onGo}>
+                Show on map ›
+              </button>
+            )}
+          </div>
+        )}
         <div className="battle-sides">
-          {side(report.attacker, true)}
+          {side(report.attacker, !defending)}
           <span className="vs">vs</span>
-          {side(report.defender, false)}
+          {side(report.defender, defending)}
         </div>
         {report.why && report.why.length > 0 && (
           <div className="battle-why-tags" aria-label="What decided it">
             {report.why.map((w, i) => (
               <span
                 key={i}
-                className={`fp-tag ${w.side === 'attacker' ? 'good' : 'bad'}`}
-                title={`${w.text} (for ${w.side === 'attacker' ? 'you' : 'them'})`}
+                className={`fp-tag ${(w.side === 'attacker') !== defending ? 'good' : 'bad'}`}
+                title={`${w.text} (for ${(w.side === 'attacker') !== defending ? 'you' : 'them'})`}
               >
-                {w.side === 'attacker' ? '▲' : '▼'} {whyTag(w.text)}
+                {(w.side === 'attacker') !== defending ? '▲' : '▼'} {whyTag(w.text)}
               </span>
             ))}
           </div>

@@ -14,6 +14,7 @@ import {
   armyStrength,
   assignGovernor,
   chooseSide,
+  splitArmies,
   giveTrinket,
   levelOf,
   xpProgress,
@@ -123,10 +124,10 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
               own, at war with you for {CIVIL_WAR_TURNS} turns.
             </InfoButton>
             <button className="primary" onClick={() => act(chooseSide(game, civId, ruler.id))}>
-              {ruler.name} (throne)
+              {ruler.name} (throne) <ArmiesLeave game={game} civId={civId} house={rebel.id} />
             </button>
             <button onClick={() => act(chooseSide(game, civId, rebel.id))}>
-              {rebel.name} (rebels)
+              {rebel.name} (rebels) <ArmiesLeave game={game} civId={civId} house={ruler.id} />
             </button>
           </div>
         )}
@@ -316,5 +317,18 @@ export function DynastiesDialog({ game, civId, report, onClose }: Props) {
         </table>
       </div>
     </div>
+  );
+}
+
+/** Armies that would leave with the other side if the player picks this one. */
+function ArmiesLeave({ game, civId, house }: { game: GameState; civId: number; house: number }) {
+  const n = splitArmies(game, civId, house).going.filter(f => f.kind === 'army').length;
+  return (
+    <small
+      className="muted"
+      title="Armies that go with the other side: those its house leads, and unled ones nearest its settlements"
+    >
+      · {n} {n === 1 ? 'army leaves' : 'armies leave'}
+    </small>
   );
 }

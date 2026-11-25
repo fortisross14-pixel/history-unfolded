@@ -1029,7 +1029,7 @@ button.toast {
 .topbar .more-btn {
   display: none;
 }
-@media (max-width: 700px), (pointer: coarse) and (max-width: 1180px) {
+@media (max-width: 700px), (pointer: coarse) and (max-width: 1180px), (max-width: 1320px) {
   .topbar .more-btn {
     display: inline-flex;
   }

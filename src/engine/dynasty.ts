@@ -40,7 +40,7 @@ import { ageOf } from '../data/techs.ts';
 import { invalidateMarkets } from './economy.ts';
 import { difficultyOf } from './difficulty.ts';
 import { hashSeed, mulberry32 } from './rng.ts';
-import type { City, Civ, Dynasty, GameState, Trinket } from './types.ts';
+import type { City, Civ, Dynasty, Formation, GameState, Trinket } from './types.ts';
 import { power as formationPower } from './units.ts';
 
 type Result = { ok: boolean; msg?: string };
@@ -276,6 +276,42 @@ export function armyStrength(s: GameState, civId: number): number {
 }
 
 /**
+ * Who goes with the house that leaves in a civil war: armies it commands go, armies led by any
+ * other house stay; the rest (ships too) follow the settlement nearest them. Shown before the
+ * player chooses a side.
+ */
+export function splitArmies(
+  s: GameState,
+  civId: number,
+  leaving: number,
+  lostIds?: Set<number>,
+): { going: Formation[]; staying: Formation[] } {
+  const civ = s.civs[civId];
+  const lost =
+    lostIds ??
+    new Set(
+      s.cities.filter(c => c.civId === civId && governorOf(s, c)?.id === leaving).map(c => c.id),
+    );
+  const all = s.cities.filter(c => c.civId === civId);
+  const g = { w: s.map.w, h: s.map.h };
+  const dist = (a: number, b: number) =>
+    Math.abs((a % g.w) - (b % g.w)) + Math.abs(Math.floor(a / g.w) - Math.floor(b / g.w));
+  const nearest = (hex: number) =>
+    all.reduce((best, c) => (dist(hex, c.hex) < dist(hex, best.hex) ? c : best), all[0]);
+  const going: Formation[] = [],
+    staying: Formation[] = [];
+  for (const f of s.formations) {
+    if (f.civId !== civId || f.aboard !== undefined) continue;
+    const led =
+      f.commander !== undefined &&
+      (f.commander === leaving || civ.dynasties.some(d => d.id === f.commander));
+    const goes = led ? f.commander === leaving : !!all.length && lost.has(nearest(f.hex).id);
+    (goes ? going : staying).push(f);
+  }
+  return { going, staying };
+}
+
+/**
  * The realm splits. `side` is the house the player (or the AI throne) stands with: it keeps its
  * settlements, all other houses and theirs, and the alliances. The other house's settlements,
  * with the armies and ships nearest them, become a realm of their own, at war.
@@ -298,7 +334,6 @@ export function chooseSide(s: GameState, civId: number, side: number): Result {
     for (const d of civ.dynasties) d.unrest = 0;
     return ok(`House ${other.name} holds no settlement and bows to House ${kept.name}.`);
   }
-  const g = { w: s.map.w, h: s.map.h };
   const id = s.civs.length;
   const pop = (cs: City[]) => cs.reduce((a, c) => a + c.pop, 0);
   const all = s.cities.filter(c => c.civId === civ.id);
@@ -342,15 +377,7 @@ export function chooseSide(s: GameState, civId: number, side: number): Result {
   for (const o of s.civs) if (o !== rival && o !== civ && o.met.includes(civ.id)) o.met.push(id);
   // the breakaway settlements, and the troops nearest them
   const lostIds = new Set(lost.map(c => c.id));
-  const dist = (a: number, b: number) =>
-    Math.abs((a % g.w) - (b % g.w)) + Math.abs(Math.floor(a / g.w) - Math.floor(b / g.w));
-  const nearest = (hex: number) =>
-    all.reduce((best, c) => (dist(hex, c.hex) < dist(hex, best.hex) ? c : best), all[0]);
-  const moving = new Set<number>();
-  for (const f of s.formations) {
-    if (f.civId !== civ.id || f.aboard !== undefined) continue;
-    if (lostIds.has(nearest(f.hex).id)) moving.add(f.id);
-  }
+  const moving = new Set(splitArmies(s, civ.id, other.id, lostIds).going.map(f => f.id));
   for (const f of s.formations)
     if (
       f.civId === civ.id &&
@@ -528,8 +555,9 @@ export function dynastyTurn(s: GameState, civ: Civ): string[] {
       );
     if (!civ.civilWar && d.unrest >= REVOLT_AT) {
       civ.civilWar = { rebel: d.id, since: s.turn, pending: true };
+      const led = splitArmies(s, civ.id, d.id).going.filter(f => f.kind === 'army').length;
       out.push(
-        `Civil war! House ${d.name} rises against House ${ruler.name} for the throne. Choose your side: the realm will split.`,
+        `Civil war! House ${d.name} rises against House ${ruler.name} for the throne. Choose your side: the realm will split${led ? ` (${led} of your armies go with House ${d.name})` : ''}.`,
       );
       // an AI throne stands with itself at once
       if (!civ.isPlayer) chooseSide(s, civ.id, ruler.id);

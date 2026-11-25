@@ -982,8 +982,20 @@ export function realmEventTurn(s: GameState, civ: Civ): string | null {
   if (s.lastEvent) s.lastEvent[civ.id] = s.turn;
   st.pending = { id, turn: s.turn, subject, variant: Math.floor(r() * e.text.length) };
   st.lastKind = e.kind;
-  const c = ctxOf(s, civ, subject)!;
-  return e.title(c);
+  const c = ctxOf(s, civ, subject);
+  // its subject is gone already (a settlement lost, a people vanished): no event after all
+  if (!c) {
+    st.pending = undefined;
+    return null;
+  }
+  try {
+    return e.title(c);
+  } catch (err) {
+    // an event that cannot describe itself must never stop the turn
+    console.error(`event ${id} dropped`, err);
+    st.pending = undefined;
+    return null;
+  }
 }
 
 /** The event waiting for the player, ready to show. */

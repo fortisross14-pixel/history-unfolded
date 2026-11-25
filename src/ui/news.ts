@@ -22,11 +22,12 @@ export type NewsTarget =
         | 'crisis'
         | 'dynasties'
         | 'culture'
-        | 'victory';
+        | 'victory'
+        | 'battles';
     };
 
 const URGENT =
-  /declared war on|captured .* from|pillaged|massing troops|besieged|is starving|strikes the|lost the race|rides toward|Warning:|wakes:|cede |civil war|rises against|joined their allies against/i;
+  /attacked your .*, defeat|declared war on|captured .* from|pillaged|massing troops|besieged|is starving|strikes the|lost the race|rides toward|Warning:|wakes:|cede |civil war|rises against|joined their allies against/i;
 const ACT =
   /finished|Research complete|A new age|choose|Give it to a house|is complete in|takes up a new tenet|Found a faith|offer|ask for peace|can now|trinket|Smoke in the hills/i;
 
@@ -38,6 +39,8 @@ export function classify(text: string): NewsGroup {
 
 /** What a line of news is about, if anything the player can go to. */
 export function locate(s: GameState, civId: number, text: string): NewsTarget | null {
+  // a battle the player did not order: the Battles list has its report
+  if (/^Battle (at|near|in) /.test(text)) return { kind: 'dialog', dialog: 'battles' };
   // the player's own units first, by name (longest first so "1st Levy Guard" beats "1st Levy")
   const units = s.formations
     .filter(f => f.civId === civId && f.name.length > 3 && text.includes(f.name))

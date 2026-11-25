@@ -524,6 +524,9 @@ function planFor(s: GameState, civ: Civ, hex: number): { slots: (string | null)[
     const b = BOOST[specials[0].t];
     if (b) want.push(b);
   }
+  // hides for the tanneries (leather gear): two hunting lodges while the realm is short of them
+  if (civ.techs.includes('tanning') && (ledger.hides?.net ?? 0) < 2)
+    want.push('hunting-lodge', 'hunting-lodge');
   // the realm's priority: growth wants more farms, war wants more mines
   if (civ.priority === 'growth') want.push('farm', 'farm', 'granary');
   if (civ.priority === 'war' && ok('mine')) want.push('mine', 'mine');

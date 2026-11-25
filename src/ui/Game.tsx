@@ -31,6 +31,7 @@ import {
   formationStrength,
   strengthText,
   fortify,
+  assignCommander,
   sentry,
   foundCity,
   levy,
@@ -54,7 +55,7 @@ import {
   type Result,
   territoryRadius,
 } from '../engine/game.ts';
-import type { GameState } from '../engine/types.ts';
+import type { BattleRecord, GameState } from '../engine/types.ts';
 import type { Assets } from '../render/assets.ts';
 import type { Insets, Overlay } from '../render/mapRenderer.ts';
 import { BattleDialog } from './BattleDialog.tsx';
@@ -128,7 +129,7 @@ type Dialog =
   | { kind: 'wonders'; cityId?: number }
   | { kind: 'dynasties' }
   | { kind: 'realm-event' }
-  | { kind: 'battle'; report: BattleReport }
+  | { kind: 'battle'; report: BattleReport; record?: BattleRecord }
   | { kind: 'war'; civId: number; then?: () => void }
   | null;
 
@@ -360,6 +361,9 @@ export function Game({
     } else if (t.kind === 'formation') {
       setSel({ kind: 'formation', id: t.id });
       focus(t.hex);
+    } else if (t.dialog === 'battles') {
+      setHub('military');
+      setDialog({ kind: 'empire', tab: 'battles' });
     } else setDialog({ kind: t.dialog } as Dialog);
   };
   /** The next unit waiting for orders, after the one selected. */
@@ -1158,6 +1162,7 @@ export function Game({
               }
             }}
             onFortify={() => report(fortify(game, selF.id))}
+            onCommander={d => report(assignCommander(game, selF.id, d))}
             onSentry={() => {
               report(sentry(game, selF.id));
               selectNext();
@@ -1603,6 +1608,7 @@ export function Game({
             setDialog(null);
             focus(c.hex);
           }}
+          onBattle={b => setDialog({ kind: 'battle', report: b.report, record: b })}
           onFormation={id => {
             const f = game.formations.find(x => x.id === id)!;
             setDialog(null);
@@ -1725,7 +1731,23 @@ export function Game({
         />
       )}
       {dialog?.kind === 'battle' && (
-        <BattleDialog report={dialog.report} onClose={() => setDialog(null)} />
+        <BattleDialog
+          report={dialog.report}
+          record={dialog.record}
+          onGo={
+            dialog.record
+              ? () => {
+                  const hex = dialog.record!.hex;
+                  setDialog(null);
+                  focus(hex);
+                }
+              : undefined
+          }
+          onClose={() =>
+            // from the Battles list: back to it
+            setDialog(dialog.record ? { kind: 'empire', tab: 'battles' } : null)
+          }
+        />
       )}
     </div>
   );
@@ -1779,6 +1801,7 @@ const HUB_TABS: Record<HubId, { label: string; dialog: Dialog }[]> = {
   military: [
     { label: 'Land', dialog: { kind: 'empire', tab: 'land' } },
     { label: 'Sea', dialog: { kind: 'empire', tab: 'sea' } },
+    { label: 'Battles', dialog: { kind: 'empire', tab: 'battles' } },
     { label: 'Designs', dialog: { kind: 'designs' } },
   ],
   cities: [

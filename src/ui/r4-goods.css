@@ -1,0 +1,33 @@
+/* the Codex: generated sections (sources, users, chains, costs, stats) */
+.codex-entry .cx-sec h4 {
+  margin: 10px 0 2px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft, #6b5a44);
+}
+.codex-entry .cx-sec ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.codex-entry .cx-sec li {
+  padding: 1px 0;
+  line-height: 1.35;
+}
+.codex-entry .cx-sec li .good-icon,
+.codex-entry .cx-sec li .good-badge {
+  vertical-align: -3px;
+}
+.codex-entry .cx-sec button.link {
+  text-align: left;
+  white-space: normal;
+  padding: 0;
+}
+.codex-entry .cx-back {
+  margin-right: 6px;
+}
+.goods-ledger .gl-name {
+  padding: 0;
+  white-space: nowrap;
+}

@@ -20,6 +20,8 @@ export interface DistrictView {
   slots: { type: string | null; built: boolean; group?: string }[] | null;
   /** where it stands around the centre (its real hex direction), in scene units */
   pos?: [number, number];
+  /** the deposits it reaches: the good's colour, its state, the plots working it */
+  deposits?: { color: string; state: 'worked' | 'workable' | 'not-yet'; slots: number[] }[];
 }
 export interface CityView {
   key: string;
@@ -1269,6 +1271,34 @@ export class CityScene3D {
       this.tops.push(t);
     }
     if (d.slots && d.slots.length > 9) centreRow(g, d.slots.slice(9), seed);
+    // its deposits: a cairn with a crystal of the good's colour by the plinth (bright when
+    // worked, grey while not yet), and a small crystal over each plot working one
+    (d.deposits ?? []).forEach((dep, j) => {
+      const x = 1.5 * PITCH + 0.32,
+        z = -1.5 * PITCH + 0.3 + j * 0.62;
+      const lit = dep.state === 'worked';
+      const col = dep.state === 'not-yet' ? '#9a948a' : dep.color;
+      cyl(g, 0.2, 0.26, 0.12, C.stone2, x, -0.2, z, 6);
+      rock(g, x - 0.12, z + 0.1, 0.07);
+      const gem = add(g, new THREE.OctahedronGeometry(0.17, 0), col, x, 0.12, z, {
+        emissive: lit ? dep.color : '#000000',
+        emissiveIntensity: lit ? 0.45 : 0,
+        transparent: dep.state === 'not-yet',
+        opacity: dep.state === 'not-yet' ? 0.6 : 1,
+      });
+      gem.scale.y = 1.4;
+      if (dep.state === 'workable') cyl(g, 0.012, 0.012, 0.5, C.timber, x + 0.16, -0.14, z, 4);
+      for (const k of dep.slots) {
+        const px = ((k % 3) - 1) * PITCH + 0.36,
+          pz = (Math.floor(k / 3) - 1) * PITCH - 0.36;
+        const m = add(g, new THREE.OctahedronGeometry(0.09, 0), dep.color, px, 0.78, pz, {
+          emissive: dep.color,
+          emissiveIntensity: 0.5,
+        });
+        m.scale.y = 1.4;
+        cyl(g, 0.008, 0.008, 0.66, C.timber, px, 0.02, pz, 4);
+      }
+    });
     g.userData.index = i;
     this.world.add(g);
   }

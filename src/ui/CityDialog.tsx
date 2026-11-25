@@ -11,7 +11,10 @@ import {
   centreRow,
   cityDistricts,
   cityEconomy,
+  depositGain,
+  districtDeposits,
   DISTRICT_CAP,
+  hexDeposit,
   districtKind,
   isCentre,
   landOf,
@@ -33,8 +36,8 @@ import {
 import { WONDER_SHARE } from '../engine/wonders.ts';
 import {
   applyBlueprint,
+  bestDistrictHex,
   deleteBlueprint,
-  depositVisible,
   districtHexProblem,
   growthCost,
   placeDistrict,
@@ -54,6 +57,14 @@ import './r4-city.css';
 import { GoodNets, ProductionView, YieldWhy } from './YieldBits.tsx';
 import { WhyPop } from './WhyPop.tsx';
 import { whyCityYield } from '../engine/breakdown.ts';
+import { CodexDialog } from './CodexDialog.tsx';
+import {
+  DepositCardView,
+  DepositIcon,
+  depositArt,
+  DistrictDeposits,
+  STATE_NAME,
+} from './DepositBits.tsx';
 
 interface Props {
   game: GameState;
@@ -66,6 +77,17 @@ interface Props {
 }
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
+/** "+1 iron, +½ hides" */
+const gainText = (g: { food?: number; gold?: number; goods?: Record<string, number> }) =>
+  [
+    g.food ? `+${r1(g.food)} food` : '',
+    g.gold ? `+${r1(g.gold)} gold` : '',
+    ...Object.entries(g.goods ?? {})
+      .filter(([, n]) => n)
+      .map(([k, n]) => `+${r1(n)} ${(GOODS[k]?.name ?? k).toLowerCase()}`),
+  ]
+    .filter(Boolean)
+    .join(', ');
 
 /** Each good as its icon and a number, the name on hover. */
 function GoodChips({
@@ -115,6 +137,9 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
   const [newName, setNewName] = useState('');
   const [bpName, setBpName] = useState('');
   const [bpPick, setBpPick] = useState<number | ''>('');
+  // the deposit whose card is open (by the hex it lies on), and a Codex entry opened from it
+  const [depHex, setDepHex] = useState<number | null>(null);
+  const [codex, setCodex] = useState<string | null>(null);
   const civ = game.civs[c.civId];
   const g = { w: game.map.w, h: game.map.h };
   const land = useMemo(() => new Set(landOf(game, c)), [game.cities.length, c.id]);
@@ -161,27 +186,100 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
   const sel = cell !== null ? cellState(cell) : null;
   const freeHex = hex !== c.hex && !districtHexProblem(game, c, hex);
 
+  const room = districts.length < cap;
+  // each hex of the land map: what stands there, whether a district may go there, its deposit
+  const hexInfo = (h: number) => {
+    const known = !!civ.explored[h];
+    const dist = districts.find(d => d.hex === h);
+    const why = h === c.hex || dist ? null : districtHexProblem(game, c, h);
+    const dep = known ? hexDeposit(game, c, h, e) : null;
+    return { known, dist, free: land.has(h) && !dist && h !== c.hex && !why, why, dep };
+  };
+  const at = hexInfo(hex);
+  /** a line under a deposit's card: why no district reaches it, or what to do */
+  const depNote = (h: number) => {
+    const x = hexInfo(h);
+    if (!land.has(h)) return `Outside ${c.name}'s land.`;
+    if (x.dep?.by.some(b => b.d)) return undefined;
+    if (m.terrain[h] === 'coast' || m.terrain[h] === 'lake' || TERRAIN[m.terrain[h]].water)
+      return 'On the water: worked from a district on the shore next to it.';
+    if (x.free) return room ? undefined : `${c.name} has no room for another district yet.`;
+    return x.why ?? undefined;
+  };
+  /** open the district tab on the first free plot, with this building picked */
+  const pickFor = (d: District, typeId: string) => {
+    const i = d.slots.findIndex((x, k) => k < 9 && !x.type);
+    setTab('districts');
+    setDSel(d.id);
+    setDepHex(null);
+    if (i < 0) return report({ ok: false, msg: `No free plot in ${d.name}.` });
+    setCell(i);
+    setTipT(typeId);
+  };
+  const startHere = (h: number) => {
+    setHex(h);
+    setTab('districts');
+    setDSel('new');
+    setCell(null);
+  };
+
   const landMap = (
-    <section className="city-land">
-      <h3>{c.name}'s land</h3>
-      <svg viewBox={`${-S * 4.6} ${-S * 3.8} ${S * 9.2} ${S * 7.6}`} className="hexmap">
+    <section className="city-land r4d-land">
+      <h3>
+        {c.name}'s land
+        <InfoButton label="About the land map" align="right">
+          <span>Each hex: its land, its deposit, its district.</span>
+          <span>
+            <b>+</b> a free hex: tap it, then lay out a district there.
+          </span>
+          <span>
+            Ores, crops and furs: worked by a district on their own hex. Animals, grain and fish:
+            from next door too.
+          </span>
+        </InfoButton>
+      </h3>
+      <svg
+        viewBox={`${-S * 4.6} ${-S * 3.8} ${S * 9.2} ${S * 7.6}`}
+        className="hexmap r4d-hexmap"
+        role="group"
+        aria-label={`${c.name}'s land`}
+      >
         {ring.map(h => {
           const [x, y] = centerUnit(g, h);
           const px = (x - ox) * S,
             py = (y - oy) * S;
           const ok = land.has(h);
-          const known = civ.explored[h];
-          const dep = known && depositVisible(game, c.civId, h) ? m.deposit[h] : null;
+          const info = hexInfo(h);
+          const dep = info.dep;
+          const state = dep?.by[0]?.st.state ?? 'outside';
+          const art = dep ? depositArt(dep.kind) : null;
           return (
             <g
               key={h}
-              className={`hx ${ok ? '' : 'off'} ${h === hex ? 'on' : ''}`}
+              className={`hx ${ok ? '' : 'off'} ${h === hex ? 'on' : ''} ${info.free ? 'r4d-free' : ''}`}
+              data-hex={h}
               onClick={() => setHex(h)}
             >
+              <title>
+                {[
+                  info.known ? hexLabel(h) : 'Unexplored',
+                  dep ? DEPOSITS[dep.kind].name : '',
+                  info.dist
+                    ? info.dist.name
+                    : h === c.hex
+                      ? 'Centre'
+                      : info.free
+                        ? 'Free'
+                        : info.why,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </title>
               <polygon
                 points={hexPts(px, py, S * 0.97)}
-                fill={known ? TERRAIN[m.terrain[h]].wash : '#e8dcc0'}
+                fill={info.known ? TERRAIN[m.terrain[h]].wash : '#e8dcc0'}
               />
+              {info.free && <polygon points={hexPts(px, py, S * 0.78)} className="r4d-free-ring" />}
               {m.relief[h] === 'mountains' && (
                 <text x={px} y={py + 4} className="hx-glyph">
                   ▲
@@ -197,48 +295,157 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                   ♣
                 </text>
               )}
-              {dep && (
-                <g>
-                  <title>{DEPOSITS[dep.kind].name}</title>
-                  <circle
-                    cx={px + S * 0.42}
-                    cy={py - S * 0.4}
-                    r={S * 0.24}
-                    fill={GOODS[Object.keys(DEPOSITS[dep.kind].yields)[0]]?.color ?? '#888'}
-                  />
-                  <text x={px + S * 0.42} y={py - S * 0.4 + 4} className="hx-dep">
-                    {DEPOSITS[dep.kind].name.slice(0, 2)}
-                  </text>
-                </g>
-              )}
               {h === c.hex && (
                 <text x={px} y={py + 5} className="hx-name">
                   {['⌂', '⌂', '⌂', '♜', '♜', '♛'][rankOf(c.tier)]}
                 </text>
               )}
-              {h !== c.hex && districts.some(d => d.hex === h) && (
-                <text x={px} y={py + 5} className="hx-name">
-                  ▦
+              {info.dist && h !== c.hex && (
+                <>
+                  <text x={px} y={py + 3} className="hx-name">
+                    ▦
+                  </text>
+                  <text x={px} y={py + S * 0.58} className="r4d-hx-label">
+                    {info.dist.name.length > 9 ? `${info.dist.name.slice(0, 8)}…` : info.dist.name}
+                  </text>
+                </>
+              )}
+              {info.free && (
+                <text x={px} y={py + 6} className="r4d-plus">
+                  +
                 </text>
+              )}
+              {dep && art && (
+                <g
+                  className={`r4d-dep ${state}`}
+                  role="button"
+                  aria-label={`${DEPOSITS[dep.kind].name} deposit`}
+                  onClick={ev => {
+                    ev.stopPropagation();
+                    setHex(h);
+                    setDepHex(h);
+                  }}
+                >
+                  <circle cx={px + S * 0.36} cy={py - S * 0.36} r={S * 0.3} />
+                  {art.url ? (
+                    <image
+                      href={art.url}
+                      x={px + S * 0.36 - S * 0.22}
+                      y={py - S * 0.36 - S * 0.22}
+                      width={S * 0.44}
+                      height={S * 0.44}
+                    />
+                  ) : (
+                    <text x={px + S * 0.36} y={py - S * 0.36 + S * 0.12} className="r4d-dep-txt">
+                      {art.text}
+                    </text>
+                  )}
+                </g>
               )}
             </g>
           );
         })}
       </svg>
-      <p className="muted small">
-        {hexLabel(hex)}
-        {!land.has(hex)
-          ? ' · outside'
-          : hex === c.hex
-            ? ' · centre'
-            : districts.find(d => d.hex === hex)
-              ? ` · ${districts.find(d => d.hex === hex)!.name}`
-              : districtHexProblem(game, c, hex)
-                ? ` · ${districtHexProblem(game, c, hex)}`
-                : ' · free'}
-      </p>
+      <div className="r4d-legend small muted" aria-hidden="true">
+        <span>
+          <b className="r4d-plus-k">+</b> free
+        </span>
+        <span>▦ district</span>
+        {(['worked', 'workable', 'not-yet'] as const).map(k => (
+          <span key={k}>
+            <i className={`r4d-dot ${k}`} /> {STATE_NAME[k].toLowerCase()}
+          </span>
+        ))}
+      </div>
+      <div className="r4d-hexinfo">
+        <p className="muted small">
+          {at.known ? hexLabel(hex) : 'Unexplored'}
+          {!land.has(hex)
+            ? ' · outside'
+            : hex === c.hex
+              ? ' · centre'
+              : at.dist
+                ? ` · ${at.dist.name}`
+                : at.why
+                  ? ` · ${at.why}`
+                  : ' · free'}
+        </p>
+        {at.dep && (
+          <button
+            className={`r4d-badge ${at.dep.by[0]?.st.state ?? 'outside'}`}
+            onClick={() => setDepHex(hex)}
+          >
+            <DepositIcon kind={at.dep.kind} size={20} />
+            <b>{DEPOSITS[at.dep.kind].name}</b>
+            <small className="r4d-state">
+              {at.dep.by[0]
+                ? `${STATE_NAME[at.dep.by[0].st.state]}${at.dep.by[0].st.why ? ` · ${at.dep.by[0].st.why}` : ''}`
+                : 'Outside'}
+            </small>
+          </button>
+        )}
+        {at.free && !(tab === 'districts' && dSel === 'new') && (
+          <button
+            className="primary r4d-here"
+            disabled={!room}
+            title={room ? undefined : `${c.name} has no room for another district yet`}
+            onClick={() => startHere(hex)}
+          >
+            <Icon name="plus" size={14} /> District here
+          </button>
+        )}
+        {at.dist && tab !== 'districts' && (
+          <button
+            className="r4d-here"
+            onClick={() => {
+              setTab('districts');
+              setDSel(at.dist!.id);
+              setCell(null);
+            }}
+          >
+            {at.dist.name}
+          </button>
+        )}
+      </div>
     </section>
   );
+
+  const depCard =
+    depHex !== null
+      ? (() => {
+          const dep = hexDeposit(game, c, depHex, e);
+          if (!dep) return null;
+          return (
+            <DepositCardView
+              game={game}
+              c={c}
+              kind={dep.kind}
+              where={dep.by}
+              note={depNote(depHex)}
+              onClose={() => setDepHex(null)}
+              onCodex={id => {
+                setDepHex(null);
+                setCodex(id);
+              }}
+              onPick={pickFor}
+              extra={
+                hexInfo(depHex).free && room ? (
+                  <button
+                    className="primary r4d-here"
+                    onClick={() => {
+                      setDepHex(null);
+                      startHere(depHex);
+                    }}
+                  >
+                    <Icon name="plus" size={14} /> District here
+                  </button>
+                ) : null
+              }
+            />
+          );
+        })()
+      : null;
+  const depList = mineD ? districtDeposits(game, c, mineD, e) : [];
 
   return (
     <div className="modal-back" onClick={onClose}>
@@ -477,6 +684,11 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                     onClick={() => {
                       setDSel('new');
                       setCell(null);
+                      // the land map opens on a free hex: the best one unless one is picked
+                      if (!hexInfo(hex).free) {
+                        const best = bestDistrictHex(game, c, []);
+                        if (best >= 0) setHex(best);
+                      }
                     }}
                   >
                     <b>+ New</b>
@@ -499,6 +711,16 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                 ))}
               </div>
               {mineD && (
+                <DistrictDeposits
+                  list={depList}
+                  onOpen={kind => {
+                    const st = depList.find(x => x.kind === kind);
+                    if (st) setDepHex(st.hex);
+                  }}
+                  onPick={typeId => pickFor(mineD, typeId)}
+                />
+              )}
+              {mineD && (
                 <CityScene
                   game={game}
                   c={c}
@@ -520,6 +742,19 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                             ? `${sel.t.name}${sel.st.built ? '' : ` · ${Math.round(Math.min(1, sel.st.progress / Math.max(1, sel.t.build.prod)) * 100)}%`}`
                             : 'Empty'}
                         </span>
+                        {sel.rep?.works && (
+                          <button
+                            className="r4d-badge worked r4d-plot-dep"
+                            onClick={() => {
+                              const st = depList.find(x => x.kind === sel.rep!.works);
+                              if (st) setDepHex(st.hex);
+                            }}
+                            title={`Works the ${DEPOSITS[sel.rep.works].name.toLowerCase()}`}
+                          >
+                            <DepositIcon kind={sel.rep.works} size={16} />
+                            {sel.rep.worksOut && gainText(sel.rep.worksOut)}
+                          </button>
+                        )}
                         <button className="x" onClick={() => setCell(null)} aria-label="Close">
                           ×
                         </button>
@@ -540,38 +775,65 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                               t =>
                                 t.id !== sel.st.type &&
                                 !slotProblem(game, c.civId, mineD.hex, centre, t.id, mineD.id),
-                            ).map(t => (
-                              <button
-                                key={t.id}
-                                className="plot-opt"
-                                aria-pressed={tipT === t.id}
-                                onPointerDown={e => (touchTap.current = e.pointerType !== 'mouse')}
-                                onMouseEnter={() => !touchTap.current && setTipT(t.id)}
-                                onFocus={() => !touchTap.current && setTipT(t.id)}
-                                onMouseLeave={() =>
-                                  !touchTap.current && setTipT(x => (x === t.id ? null : x))
-                                }
-                                onClick={() => {
-                                  // by touch the first tap shows what it would make; the second builds
-                                  if (touchTap.current && tipT !== t.id) return setTipT(t.id);
-                                  act(setSlot(game, mineD.id, cell, t.id));
-                                }}
-                              >
-                                <Art
-                                  k={`building/${t.id}`}
-                                  size={30}
-                                  fallback={
-                                    <span
-                                      className="cell-glyph"
-                                      style={{ background: GROUPS[t.group].color }}
-                                    >
-                                      {t.glyph}
-                                    </span>
+                            )
+                              .map(t => ({ t, gain: depositGain(game, c, mineD, t.id) }))
+                              .sort((a, b) => Number(b.gain.length > 0) - Number(a.gain.length > 0))
+                              .map(({ t, gain }) => (
+                                <button
+                                  key={t.id}
+                                  className={`plot-opt ${gain.length ? 'r4d-works' : ''}`}
+                                  title={
+                                    gain.length
+                                      ? gain
+                                          .map(
+                                            x =>
+                                              `Works the ${DEPOSITS[x.kind].name.toLowerCase()} here: ${gainText(x.gives)}${x.need > 1 ? ` each, with ${x.need} in the district (${x.count} with this one)` : ''}`,
+                                          )
+                                          .join('; ')
+                                      : undefined
                                   }
-                                />
-                                <span>{t.name}</span>
-                              </button>
-                            ))}
+                                  aria-pressed={tipT === t.id}
+                                  onPointerDown={e =>
+                                    (touchTap.current = e.pointerType !== 'mouse')
+                                  }
+                                  onMouseEnter={() => !touchTap.current && setTipT(t.id)}
+                                  onFocus={() => !touchTap.current && setTipT(t.id)}
+                                  onMouseLeave={() =>
+                                    !touchTap.current && setTipT(x => (x === t.id ? null : x))
+                                  }
+                                  onClick={() => {
+                                    // by touch the first tap shows what it would make; the second builds
+                                    if (touchTap.current && tipT !== t.id) return setTipT(t.id);
+                                    act(setSlot(game, mineD.id, cell, t.id));
+                                  }}
+                                >
+                                  <Art
+                                    k={`building/${t.id}`}
+                                    size={30}
+                                    fallback={
+                                      <span
+                                        className="cell-glyph"
+                                        style={{ background: GROUPS[t.group].color }}
+                                      >
+                                        {t.glyph}
+                                      </span>
+                                    }
+                                  />
+                                  <span>{t.name}</span>
+                                  {gain.map(x => (
+                                    <small key={x.kind} className="r4d-opt-dep">
+                                      <DepositIcon kind={x.kind} size={14} />
+                                      {gainText(x.gives)}
+                                      {x.need > 1 && (
+                                        <span className={x.count >= x.need ? '' : 'muted'}>
+                                          {' '}
+                                          {Math.min(x.count, x.need)}/{x.need}
+                                        </span>
+                                      )}
+                                    </small>
+                                  ))}
+                                </button>
+                              ))}
                           </div>
                           <div className="build-tip-slot">
                             {tipT && SLOT_TYPES[tipT] ? (
@@ -710,8 +972,20 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
                       {isUrban(c) && <span>A city farms and mines in outer districts only.</span>}
                     </InfoButton>
                   </h3>
-                  <p className="muted small">
-                    <Icon name="district" size={16} /> {freeHex ? hexLabel(hex) : 'Best free hex'}
+                  <p className="muted small r4d-newhex">
+                    <Icon name="district" size={16} />{' '}
+                    {freeHex
+                      ? hexLabel(hex)
+                      : 'Tap a free hex (+) on the land map, or the best one'}
+                    {freeHex && at.dep && (
+                      <button
+                        className="r4d-badge mini"
+                        onClick={() => setDepHex(hex)}
+                        title={DEPOSITS[at.dep.kind].name}
+                      >
+                        <DepositIcon kind={at.dep.kind} size={16} /> {DEPOSITS[at.dep.kind].name}
+                      </button>
+                    )}
                   </p>
                   <input
                     className="design-name"
@@ -759,6 +1033,8 @@ export function CityDialog({ game, c, startHex, startTab, report, onClose }: Pro
             {(dSel === 'new' || dSel === 'locked') && landMap}
           </div>
         )}
+        {depCard}
+        {codex && <CodexDialog entry={codex} onClose={() => setCodex(null)} />}
       </div>
     </div>
   );

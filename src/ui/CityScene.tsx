@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SLOT_TYPES } from '../data/slots.ts';
-import { cityDistricts, DISTRICT_CAP, isCentre } from '../engine/economy.ts';
+import { DEPOSITS, GOODS } from '../data/goods.ts';
+import {
+  cityDistricts,
+  cityEconomy,
+  DISTRICT_CAP,
+  districtDeposits,
+  isCentre,
+} from '../engine/economy.ts';
 import { freeDistrictHexes } from '../engine/game.ts';
 import { centerUnit } from '../engine/hex.ts';
 import type { City, District, GameState } from '../engine/types.ts';
@@ -49,14 +56,30 @@ export function CityScene({
     0,
     Math.max(0, DISTRICT_CAP[c.tier] - ordered.length),
   );
+  // the deposits each district reaches, and their state (worked, workable, not yet)
+  const e = cityEconomy(game, c);
+  const deps = new Map(
+    ordered.map(d => [
+      d.id,
+      districtDeposits(game, c, d, e).map(st => ({
+        color: GOODS[Object.keys(DEPOSITS[st.kind].yields)[0]]?.color ?? '#888888',
+        state: st.state,
+        slots: st.slots,
+      })),
+    ]),
+  );
+  const depKey = [...deps.values()]
+    .map(l => l.map(x => `${x.color}${x.state}${x.slots.join('.')}`).join(','))
+    .join(';');
   const view: CityView = {
-    key: `${c.id}|${c.tier}|${open.join(',')}|${ordered.map(d => d.id + ':' + d.slots.map(x => (x.type ?? '-') + (x.built ? '+' : '')).join(',')).join(';')}`,
+    key: `${c.id}|${c.tier}|${open.join(',')}|${ordered.map(d => d.id + ':' + d.slots.map(x => (x.type ?? '-') + (x.built ? '+' : '')).join(',')).join(';')}|${depKey}`,
     seed: c.id * 7919 + 13,
     districts: [
       ...ordered.map(d => ({
         id: d.id,
         name: d.name,
         pos: at(d.hex),
+        deposits: deps.get(d.id),
         slots: d.slots.map(x => ({
           type: x.type,
           built: x.built,

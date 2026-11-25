@@ -37,6 +37,36 @@ import { GOODS } from '../data/goods.ts';
 import './declutter-city.css';
 import { CivBadge } from './Badge.tsx';
 import { GoodNets } from './YieldBits.tsx';
+import { DepositIcon, STATE_NAME } from './DepositBits.tsx';
+import { cityEconomy, hexDeposit, landOf } from '../engine/economy.ts';
+import { DEPOSITS } from '../data/goods.ts';
+
+/** The deposits on the settlement's land: each one's icon and state; a tap opens the city. */
+function DepositsRow({ game, c, onOpen }: { game: GameState; c: City; onOpen: () => void }) {
+  const e = cityEconomy(game, c);
+  const list = landOf(game, c)
+    .map(h => hexDeposit(game, c, h, e))
+    .filter(x => !!x);
+  if (!list.length) return null;
+  return (
+    <div className="dc-line r4d-panel-row">
+      {list.map((x, i) => {
+        const st = x.by[0]?.st;
+        return (
+          <button
+            key={i}
+            className={`r4d-badge mini ${st?.state ?? 'outside'}`}
+            onClick={onOpen}
+            title={`${DEPOSITS[x.kind].name}: ${st ? `${STATE_NAME[st.state].toLowerCase()}${st.why ? `, ${st.why}` : ''}` : 'no district reaches it'}`}
+          >
+            <DepositIcon kind={x.kind} size={16} />
+            <span className={`r4d-dot ${st?.state ?? ''}`} aria-hidden="true" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function CityPanel({
   game,
@@ -155,6 +185,7 @@ export function CityPanel({
           <div className="dc-line cp-goods">
             <GoodNets game={game} c={c} />
           </div>
+          <DepositsRow game={game} c={c} onOpen={onOpen} />
           <BuildersRow game={game} c={c} prod={y.prod} />
           {(() => {
             const civ2 = game.civs[c.civId];

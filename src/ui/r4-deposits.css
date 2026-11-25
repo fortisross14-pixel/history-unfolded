@@ -1,0 +1,388 @@
+/* round 4, deposits group: the land map, a district's deposit badges, the deposit card */
+.r4d-land h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.r4d-hexmap {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+.r4d-hexmap .hx {
+  cursor: pointer;
+}
+.r4d-free-ring {
+  fill: none;
+  stroke: var(--iv-gold, #a8802f);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 3;
+  opacity: 0.75;
+  pointer-events: none;
+}
+.r4d-plus {
+  font-size: 18px;
+  font-weight: 700;
+  text-anchor: middle;
+  fill: var(--iv-gold, #8a6420);
+  pointer-events: none;
+}
+.r4d-hx-label {
+  font-size: 8px;
+  text-anchor: middle;
+  fill: var(--iv-ink, #3b2f22);
+  pointer-events: none;
+}
+.r4d-dep {
+  cursor: pointer;
+}
+.r4d-dep circle {
+  fill: #fbf7ee;
+  stroke-width: 2.4;
+  stroke: #8a8478;
+}
+.r4d-dep.worked circle {
+  stroke: #3f7d3a;
+}
+.r4d-dep.workable circle {
+  stroke: #c08a22;
+}
+.r4d-dep.not-yet circle {
+  stroke: #8a8478;
+  stroke-dasharray: 3 2;
+}
+.r4d-dep.outside circle {
+  stroke: #b9ad94;
+  opacity: 0.8;
+}
+.r4d-dep:hover circle {
+  fill: #fff;
+  stroke-width: 3.2;
+}
+.r4d-dep-txt {
+  font-size: 12px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.r4d-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  justify-content: center;
+  margin: 4px 0;
+}
+.r4d-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.r4d-plus-k {
+  color: var(--iv-gold, #8a6420);
+}
+.r4d-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #8a8478;
+  background: #fbf7ee;
+  flex: none;
+}
+.r4d-dot.worked {
+  border-color: #3f7d3a;
+  background: #3f7d3a;
+}
+.r4d-dot.workable {
+  border-color: #c08a22;
+}
+.r4d-dot.not-yet {
+  border-style: dashed;
+}
+.r4d-hexinfo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.r4d-hexinfo p {
+  margin: 0;
+  flex: 1 1 100%;
+}
+.r4d-here {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* a deposit as a badge: icon, name, state */
+.r4d-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+.r4d-badge-wrap {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  max-width: 100%;
+}
+.r4d-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 3px 10px 3px 6px;
+  border: 1.5px solid #b9ad94;
+  border-radius: 17px;
+  background: var(--iv-btn, #fbf7ee);
+  font: inherit;
+  font-size: 14px;
+  color: inherit;
+  cursor: pointer;
+  max-width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+.r4d-badge b {
+  white-space: nowrap;
+}
+.r4d-badge .r4d-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.r4d-badge .chip {
+  font-size: 13px;
+  padding: 0 4px;
+  min-height: 0;
+}
+.r4d-badge.worked {
+  border-color: #3f7d3a;
+  background: #eef4e4;
+}
+.r4d-badge.worked .r4d-state {
+  color: #2f6a2b;
+}
+.r4d-badge.workable {
+  border-color: #c08a22;
+  background: #fbf1da;
+}
+.r4d-badge.not-yet {
+  border-style: dashed;
+  color: #6b6255;
+}
+.r4d-badge.mini {
+  min-height: 26px;
+  padding: 1px 8px 1px 4px;
+  margin-left: 6px;
+  font-size: 13px;
+}
+.r4d-badge-wrap .r4d-badge:has(+ .r4d-pick) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.r4d-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 2px 10px 2px 6px;
+  border: 1.5px solid #c08a22;
+  border-left: none;
+  border-radius: 0 17px 17px 0;
+  background: #c08a22;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.city-screen .r4d-pick:hover,
+.city-screen .r4d-pick:focus-visible {
+  background: #a8761a;
+  border-color: #a8761a;
+  color: #fff;
+}
+.city-screen .r4d-pick {
+  color: #fff;
+  text-shadow: none;
+}
+.r4d-where .r4d-pick {
+  border-left: 1.5px solid #c08a22;
+  border-radius: 17px;
+  margin-left: auto;
+}
+.r4d-plot-dep {
+  min-height: 26px;
+  padding: 1px 8px 1px 4px;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+/* the build picker: the building that works the deposit here, first and marked */
+.plot-opt.r4d-works {
+  border-color: #c08a22;
+  box-shadow: inset 0 0 0 1px #c08a22;
+  background: #fbf1da;
+}
+.r4d-opt-dep {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: #7a5414;
+  white-space: nowrap;
+}
+
+/* the deposit card */
+.r4d-back {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(40, 30, 15, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.r4d-card {
+  width: min(380px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--iv-paper, #fbf7ee);
+  border: 1px solid var(--iv-line, #cdb88c);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(40, 30, 15, 0.3);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+}
+.r4d-card header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+}
+.r4d-card header .x {
+  margin-left: auto;
+}
+.r4d-tag {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid #c08a22;
+  color: #7a5414;
+  border-radius: 8px;
+  padding: 0 6px;
+}
+.r4d-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.r4d-k {
+  width: 44px;
+  flex: none;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7a6a50;
+}
+.r4d-techs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.r4d-techs .chip {
+  gap: 4px;
+  font-size: 13px;
+}
+.r4d-known {
+  color: #2f6a2b;
+}
+.r4d-missing {
+  color: #8a3b24;
+  border-style: dashed;
+}
+.r4d-where {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.r4d-where li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #e0d2b4;
+  font-size: 14px;
+}
+.r4d-where li.worked {
+  background: #eef4e4;
+}
+.r4d-where li.workable {
+  background: #fbf1da;
+}
+.r4d-why {
+  color: #5d5242;
+}
+.r4d-codex {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.r4d-newhex {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+/* the districts tab never grows wider than the screen (its tabs scroll instead) */
+.city-body > .district {
+  min-width: 0;
+}
+.r4d-badge-wrap .r4d-badge {
+  flex: 0 1 auto;
+}
+
+@media (max-width: 600px) {
+  .r4d-badge {
+    font-size: 13px;
+  }
+  .r4d-badge .r4d-state {
+    max-width: 46vw;
+  }
+}
+
+/* the settlement panel on the map: its deposits in a row */
+.r4d-panel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.r4d-panel-row .r4d-badge.mini {
+  margin-left: 0;
+  gap: 4px;
+  padding: 1px 6px 1px 4px;
+}
+.r4d-hexinfo .r4d-badge .r4d-state {
+  white-space: normal;
+}

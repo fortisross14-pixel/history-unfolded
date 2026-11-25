@@ -154,15 +154,17 @@ function landAt(s: GameState, hex: number): number[] {
 
 /**
  * Deposits a district can work, visible to the civ: special ones (ores, plantation crops,
- * furs, whales…) only on the district's own hex, plain ones (animals, grain, fish) on the hexes
- * next to it too. Where a district stands decides what it can gather.
+ * furs…) only on the district's own hex, plain ones (animals, grain, fish) on the hexes next to
+ * it too. Where a district stands decides what it can gather. Whales and pearls lie on the
+ * water, where no district can stand: boats go out to them from a district on the shore next to
+ * them (before, they could never be worked).
  */
 function reachDeposits(s: GameState, civId: number, hex: number) {
   const out: { kind: string; richness: number; hex: number }[] = [];
   for (const k of landAt(s, hex)) {
     const d = s.map.deposit[k];
     if (!d) continue;
-    if (DEPOSITS[d.kind].special && k !== hex) continue;
+    if (DEPOSITS[d.kind].special && k !== hex && !isWater(s.map.terrain[k])) continue;
     const by = DEPOSITS[d.kind].revealedBy;
     if (by && !s.civs[civId].techs.includes(by)) continue;
     out.push({ kind: d.kind, richness: d.richness, hex: k });
@@ -303,6 +305,9 @@ export interface SlotReport {
   note?: string;
   /** the goods it took from the store this turn (report only) */
   uses?: Record<string, number>;
+  /** the deposit it works (a DEPOSITS key), and what that deposit added to it this turn */
+  works?: string;
+  worksOut?: { food: number; gold: number; goods: Record<string, number> };
 }
 
 /** A settlement-wide change after the buildings are summed: what it added to each yield. */
@@ -444,6 +449,8 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
         if (isHousing(x.type)) housing++;
       }
     const lived = housing >= MIN_HOUSING;
+    // each plot's output before supports and bonuses, where it works a deposit (report only)
+    const rawOut: (Totals | undefined)[] = [];
     // 1. producers: staffing, inputs, base yield, what the land adds
     for (let i = 0; i < d.slots.length; i++) {
       const st = d.slots[i];
@@ -498,12 +505,22 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       addYield(out, useAlt ? t.alt!.out : t.out, rate);
       // what lies on the land: one deposit per building, in turn
       let note: string | undefined;
+      let works: string | undefined;
+      let worksOut: SlotReport['worksOut'];
       const w = workable(s, c.civId, d.hex, t.id, typeCount[t.id] ?? 0);
       if (w.open.length) {
         const k = nth[t.id] ?? 0;
         nth[t.id] = k + 1;
-        const dep = DEPOSITS[w.open[k % w.open.length]];
+        works = w.open[k % w.open.length];
+        const dep = DEPOSITS[works];
         addYield(out, { food: dep.gives.food, gold: dep.gives.gold, goods: dep.gives.goods }, rate);
+        worksOut = {
+          food: (dep.gives.food ?? 0) * rate,
+          gold: (dep.gives.gold ?? 0) * rate,
+          goods: Object.fromEntries(
+            Object.entries(dep.gives.goods ?? {}).map(([gd, n]) => [gd, n * rate]),
+          ),
+        };
         note = `Works the ${dep.name.toLowerCase()}`;
       }
       if (w.waiting.length)
@@ -511,7 +528,8 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       if (t.id === 'woodlot' && forest) out.goods.wood = (out.goods.wood ?? 0) + 0.5 * rate;
       if (short.length)
         note = `Short of ${short.map(([gd]) => gd).join(', ')}: a third of its output`;
-      reports.push({ problem: null, staffed: true, rate, out, note, uses });
+      if (worksOut) rawOut[i] = copyTotals(out);
+      reports.push({ problem: null, staffed: true, rate, out, note, uses, works, worksOut });
     }
     // 2. supports add ½ to every yield of each base of their line (and the market to each house);
     // 3. the district's multiplier doubles its line, a great building triples it
@@ -580,6 +598,17 @@ export function cityEconomy(s: GameState, c: City): CityEconomy {
       up += mods.groupPct[t.group] ?? 0;
       if (up) scaleTotals(r.out, pct(up), true);
       addYield(total, r.out);
+      // the deposit's share of the plot's final output, in proportion to what it added (report)
+      const w = r.worksOut;
+      if (w) {
+        const raw = rawOut[i]!;
+        const share = (now: number, was: number, part: number) =>
+          was > 0 ? (now * part) / was : 0;
+        w.food = share(r.out.food, raw.food, w.food);
+        w.gold = share(r.out.gold, raw.gold, w.gold);
+        for (const gd of Object.keys(w.goods))
+          w.goods[gd] = share(r.out.goods[gd] ?? 0, raw.goods[gd] ?? 0, w.goods[gd]);
+      }
     }
     slots.set(d.id, reports);
   }
@@ -1483,4 +1512,223 @@ export function industryStatus(s: GameState, c: City) {
     power: e.inputs.electricity ?? 0,
     makesPower: e.total.goods.electricity ?? 0,
   };
+}
+
+// ---------------------------------------------------------------- deposits (report only)
+
+/** A deposit's facts for its info card: what it gives, what gathers it, the techs it takes. */
+export interface DepositCard {
+  kind: string;
+  name: string;
+  /** the good it stands for (icon, Codex entry) */
+  good: string;
+  emoji?: string;
+  /** what each building working it gains */
+  gives: { food: number; gold: number; goods: Record<string, number> };
+  /** the building that works it */
+  by: string;
+  byName: string;
+  /** a special good: it takes `need` of the building in the district on (or by) the deposit */
+  special: boolean;
+  need: number;
+  /** see: shows it on the map; work: the deposit's own tech; build: the building's */
+  techs: { id: string; name: string; known: boolean; for: 'see' | 'work' | 'build' }[];
+  codex: string;
+}
+
+export function depositCard(s: GameState, civId: number, kind: string): DepositCard {
+  const info = DEPOSITS[kind];
+  const civ = s.civs[civId];
+  const bt = SLOT_TYPES[info.by];
+  const techs: DepositCard['techs'] = [];
+  const addTech = (id: string | undefined, why: 'see' | 'work' | 'build') => {
+    if (id && !techs.some(t => t.id === id))
+      techs.push({ id, name: TECHS[id]?.name ?? id, known: civ.techs.includes(id), for: why });
+  };
+  addTech(info.revealedBy, 'see');
+  addTech(bt?.tech, 'build');
+  addTech(info.tech, 'work');
+  const good = Object.keys(info.yields)[0];
+  return {
+    kind,
+    name: info.name,
+    good,
+    emoji: info.emoji,
+    gives: {
+      food: info.gives.food ?? 0,
+      gold: info.gives.gold ?? 0,
+      goods: { ...(info.gives.goods ?? {}) },
+    },
+    by: info.by,
+    byName: bt?.name ?? info.by,
+    special: !!info.special,
+    need: info.special ? SPECIAL_MIN : 1,
+    techs,
+    codex: `good-${good}`,
+  };
+}
+
+export type DepositState = 'worked' | 'workable' | 'not-yet';
+
+/** A deposit as one district sees it: worked, workable now, or not yet (and why). */
+export interface DepositStatus {
+  kind: string;
+  /** where the deposit lies */
+  hex: number;
+  /** on the district's own hex (else next to it) */
+  onHex: boolean;
+  state: DepositState;
+  /** short: "3 mines", "Build a mine", "Needs Mining", "Needs 3 mines (1 now)" */
+  why: string;
+  /** techs still missing to work it (names) */
+  needTech: string[];
+  /** the building that works it: built in the district, planned, and how many it takes */
+  by: string;
+  count: number;
+  planned: number;
+  need: number;
+  /** the plots working it now, and what it adds there this turn */
+  slots: number[];
+  out: { food: number; gold: number; goods: Record<string, number> };
+}
+
+const plural = (n: number, w: string) =>
+  `${n} ${w.toLowerCase()}${n === 1 || w.endsWith('s') ? '' : 's'}`;
+
+function depositStatus(
+  s: GameState,
+  c: City,
+  d: District | null,
+  hex: number,
+  kind: string,
+  at: number,
+  reports?: SlotReport[],
+): DepositStatus {
+  const card = depositCard(s, c.civId, kind);
+  const info = DEPOSITS[kind];
+  const centre = d ? isCentre(d) : hex === c.hex;
+  const missing = card.techs.filter(t => !t.known && t.for !== 'see').map(t => t.name);
+  const count = d ? d.slots.filter(x => x.built && x.type === info.by).length : 0;
+  const planned = d ? d.slots.filter(x => !x.built && x.type === info.by).length : 0;
+  const out = { food: 0, gold: 0, goods: {} as Record<string, number> };
+  const slots: number[] = [];
+  (reports ?? []).forEach((r, i) => {
+    if (r.works !== kind || !r.worksOut) return;
+    slots.push(i);
+    out.food += r.worksOut.food;
+    out.gold += r.worksOut.gold;
+    for (const [g, n] of Object.entries(r.worksOut.goods)) out.goods[g] = (out.goods[g] ?? 0) + n;
+  });
+  const base = {
+    kind,
+    hex: at,
+    onHex: at === hex,
+    needTech: missing,
+    by: info.by,
+    count,
+    planned,
+    need: card.need,
+    slots,
+    out,
+  };
+  if (slots.length) return { ...base, state: 'worked', why: plural(slots.length, card.byName) };
+  if (missing.length) return { ...base, state: 'not-yet', why: `Needs ${missing.join(', ')}` };
+  // the building cannot go here at all (a city's centre, no water, a colony's limits…)
+  const problem = slotProblem(s, c.civId, hex, centre, info.by, d?.id ?? Infinity);
+  if (problem) return { ...base, state: 'not-yet', why: problem };
+  if (!d)
+    return {
+      ...base,
+      state: 'workable',
+      why: `Lay out a district, then ${card.need > 1 ? plural(card.need, card.byName) : `build ${card.byName.endsWith('s') ? '' : 'a '}${card.byName.toLowerCase()}`}`,
+    };
+  if (count + planned < card.need)
+    return {
+      ...base,
+      state: 'workable',
+      why:
+        card.need > 1
+          ? `Needs ${plural(card.need, card.byName)} (${count + planned} now)`
+          : `Build ${card.byName.endsWith('s') ? '' : 'a '}${card.byName.toLowerCase()}`,
+    };
+  if (count < card.need) return { ...base, state: 'workable', why: `${card.byName} being built` };
+  // the buildings stand but do not work it: idle, or busy with another deposit
+  const idle = d
+    ? reports?.find((r, i) => d.slots[i].type === info.by && d.slots[i].built && !r.staffed)
+    : undefined;
+  return {
+    ...base,
+    state: 'workable',
+    why: idle?.idle ?? idle?.problem ?? `One more ${card.byName.toLowerCase()} to work it too`,
+  };
+}
+
+/**
+ * The deposits a district can reach (visible to its people), each with its state: worked (by
+ * which plots, adding what), workable now (what to build), or not yet (the tech or rule missing).
+ */
+export function districtDeposits(
+  s: GameState,
+  c: City,
+  d: District,
+  e: CityEconomy = cityEconomy(s, c),
+): DepositStatus[] {
+  const reports = e.slots.get(d.id);
+  const seen = new Set<string>();
+  const out: DepositStatus[] = [];
+  for (const r of reachDeposits(s, c.civId, d.hex)) {
+    if (seen.has(r.kind)) continue;
+    seen.add(r.kind);
+    out.push(depositStatus(s, c, d, d.hex, r.kind, r.hex, reports));
+  }
+  const rank = { worked: 0, workable: 1, 'not-yet': 2 };
+  return out.sort((a, b) => rank[a.state] - rank[b.state] || Number(b.onHex) - Number(a.onHex));
+}
+
+/**
+ * A deposit on the settlement's land as the land map shows it: the districts that reach it and
+ * its state in each, or (none reaching it) what a district on the hex would make of it.
+ */
+export function hexDeposit(
+  s: GameState,
+  c: City,
+  hex: number,
+  e: CityEconomy = cityEconomy(s, c),
+): { kind: string; card: DepositCard; by: { d: District | null; st: DepositStatus }[] } | null {
+  const dep = s.map.deposit[hex];
+  if (!dep) return null;
+  const by = DEPOSITS[dep.kind].revealedBy;
+  if (by && !s.civs[c.civId].techs.includes(by)) return null;
+  const card = depositCard(s, c.civId, dep.kind);
+  const list: { d: District | null; st: DepositStatus }[] = [];
+  for (const d of cityDistricts(s, c))
+    if (reachDeposits(s, c.civId, d.hex).some(r => r.hex === hex))
+      list.push({ d, st: depositStatus(s, c, d, d.hex, dep.kind, hex, e.slots.get(d.id)) });
+  const rank = { worked: 0, workable: 1, 'not-yet': 2 };
+  list.sort((a, b) => rank[a.st.state] - rank[b.st.state]);
+  if (!list.length && landOf(s, c).includes(hex) && !isWater(s.map.terrain[hex]))
+    list.push({ d: null, st: depositStatus(s, c, null, hex, dep.kind, hex) });
+  return { kind: dep.kind, card, by: list };
+}
+
+/** What a building would gain from the deposits of this district if put on one more plot. */
+export function depositGain(
+  s: GameState,
+  c: City,
+  d: District,
+  typeId: string,
+): { kind: string; gives: DepositCard['gives']; count: number; need: number }[] {
+  const out: { kind: string; gives: DepositCard['gives']; count: number; need: number }[] = [];
+  const civ = s.civs[c.civId];
+  const n = d.slots.filter(x => x.type === typeId).length + 1;
+  const seen = new Set<string>();
+  for (const r of reachDeposits(s, c.civId, d.hex)) {
+    const info = DEPOSITS[r.kind];
+    if (info.by !== typeId || seen.has(r.kind)) continue;
+    if (info.tech && !civ.techs.includes(info.tech)) continue;
+    seen.add(r.kind);
+    const card = depositCard(s, c.civId, r.kind);
+    out.push({ kind: r.kind, gives: card.gives, count: n, need: card.need });
+  }
+  return out;
 }

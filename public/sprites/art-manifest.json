@@ -24,6 +24,51 @@
   "w": 96,
   "h": 63
  },
+ "banner/arts": {
+  "path": "art/banner/arts.webp",
+  "w": 205,
+  "h": 384
+ },
+ "banner/cosmology": {
+  "path": "art/banner/cosmology.webp",
+  "w": 205,
+  "h": 384
+ },
+ "banner/economy": {
+  "path": "art/banner/economy.webp",
+  "w": 204,
+  "h": 384
+ },
+ "banner/knowledge": {
+  "path": "art/banner/knowledge.webp",
+  "w": 204,
+  "h": 384
+ },
+ "banner/politics": {
+  "path": "art/banner/politics.webp",
+  "w": 205,
+  "h": 384
+ },
+ "banner/religion": {
+  "path": "art/banner/religion.webp",
+  "w": 205,
+  "h": 384
+ },
+ "banner/seafaring": {
+  "path": "art/banner/seafaring.webp",
+  "w": 204,
+  "h": 384
+ },
+ "banner/society": {
+  "path": "art/banner/society.webp",
+  "w": 204,
+  "h": 384
+ },
+ "banner/war": {
+  "path": "art/banner/war.webp",
+  "w": 205,
+  "h": 384
+ },
  "building/academy": {
   "path": "art/building/academy.webp",
   "w": 96,
@@ -3258,6 +3303,41 @@
   "path": "art/troop/workers.webp",
   "w": 96,
   "h": 84
+ },
+ "ui/divider": {
+  "path": "art/ui/divider.webp",
+  "w": 512,
+  "h": 85
+ },
+ "ui/frame": {
+  "path": "art/ui/frame.webp",
+  "w": 512,
+  "h": 507
+ },
+ "ui/leather": {
+  "path": "art/ui/leather.webp",
+  "w": 512,
+  "h": 512
+ },
+ "ui/medal": {
+  "path": "art/ui/medal.webp",
+  "w": 512,
+  "h": 512
+ },
+ "ui/oxblood": {
+  "path": "art/ui/oxblood.webp",
+  "w": 512,
+  "h": 512
+ },
+ "ui/parchment": {
+  "path": "art/ui/parchment.webp",
+  "w": 512,
+  "h": 512
+ },
+ "ui/plate": {
+  "path": "art/ui/plate.webp",
+  "w": 512,
+  "h": 242
  },
  "unit/archer": {
   "path": "art/unit/archer.webp",

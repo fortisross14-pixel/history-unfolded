@@ -81,6 +81,7 @@ import { WonderDialog } from './WonderDialog.tsx';
 import { foundProblem, tenetDue } from '../engine/faith.ts';
 import { promoteColony } from '../engine/colonies.ts';
 import { PeoplesDialog, SettlementPeople } from './PeoplesDialog.tsx';
+import { TouchNav } from './TouchNav.tsx';
 import { GoodsDialog } from './GoodsDialog.tsx';
 import { DynastiesDialog } from './DynastiesDialog.tsx';
 import { RealmEventDialog } from './RealmEventDialog.tsx';
@@ -1170,6 +1171,98 @@ export function Game({
           </button>
         ))}
       </nav>
+
+      <TouchNav
+        realm={HUBS.map(h => ({
+          key: h.id,
+          label: h.name,
+          icon: h.icon,
+          on: hub === h.id && !!dialog,
+          pill: railPill(h.id),
+          onClick: () => openHub(h.id),
+        }))}
+        ledger={[
+          {
+            key: 'victory',
+            label: 'Victory',
+            icon: 'target',
+            pill: rivalHold ? `${rivalHold} close` : '',
+            onClick: () => setDialog({ kind: 'victory' }),
+          },
+          {
+            key: 'goods',
+            label: 'Goods',
+            icon: 'goods',
+            pill: goodsShort ? `${goodsShort} short` : '',
+            onClick: () => setDialog({ kind: 'goods' }),
+          },
+          {
+            key: 'chronicle',
+            label: 'Chronicle',
+            icon: 'scroll',
+            onClick: () => setDialog({ kind: 'stats', tab: 'chronicle' }),
+          },
+          {
+            key: 'stats',
+            label: 'Statistics',
+            icon: 'layers',
+            onClick: () => setDialog({ kind: 'stats', tab: 'chart' }),
+          },
+          {
+            key: 'codex',
+            label: 'Codex',
+            icon: 'book',
+            onClick: () => setDialog({ kind: 'codex' }),
+          },
+          {
+            key: 'report',
+            label: 'Last turn',
+            icon: 'report',
+            disabled: !lastReport.length,
+            onClick: () => setDialog({ kind: 'report' }),
+          },
+          {
+            key: 'map',
+            label: map3d ? '2D map' : '3D map',
+            icon: 'compass',
+            onClick: () => {
+              const next = map3d ? '2d' : '3d';
+              setMapMode(next);
+              setMap3d(next === '3d');
+            },
+          },
+          {
+            key: 'sound',
+            label: muted ? 'Sound off' : 'Sound on',
+            icon: muted ? 'mute' : 'sound',
+            onClick: () => {
+              setMuted(!muted);
+              setMute(!muted);
+            },
+          },
+          {
+            key: 'settings',
+            label: 'Settings',
+            icon: 'settings',
+            onClick: () => setDialog({ kind: 'settings' }),
+          },
+          {
+            key: 'saves',
+            label: 'Save',
+            icon: 'save',
+            onClick: () => setDialog({ kind: 'saves' }),
+          },
+          {
+            key: 'menu',
+            label: 'Menu',
+            icon: 'door',
+            onClick: () => {
+              saveGame(game);
+              onQuit();
+            },
+          },
+        ]}
+      />
 
       <aside className={`side ${sheetOpen ? '' : 'peek'} ${sel ? 'has-sel' : ''}`} ref={sideRef}>
         {sel && (

@@ -53,16 +53,20 @@ await page.screenshot({ path: `${out}/m4-moved.png` });
 // shrink the sheet, open the menu, open research
 await page.tap('.sheet-handle');
 await page.waitForTimeout(150);
-await page.tap('.more-btn');
-await page.waitForTimeout(150);
+await page.tap('.tn-ledger');
+await page.waitForSelector('.tn-ledger-menu');
 await page.screenshot({ path: `${out}/m5-menu-open.png` });
+await page.tap('.tn-ledger');
 await page.tap('[data-k="research"]');
 await page.waitForSelector('.modal.research');
 await page.screenshot({ path: `${out}/m6-research.png` });
 console.log(armed ? 'first tap armed the move' : 'NO ARMED BAR after first tap');
 // the Military screen: its Land / Sea / Designs tabs sit in the dialog's header
 await page.tap('.modal.research .x');
-await page.tap('.rail-btn[aria-label="Military"]');
+await page.tap('.tn-realm');
+await page.waitForSelector('.tn-realm-menu');
+await page.screenshot({ path: `${out}/m6b-realm.png` });
+await page.tap('.tn-item:has-text("Military")');
 await page.waitForSelector('.modal.empire > header .hub-tabs button.on:has-text("Land")');
 await page.tap('.modal.empire > header .hub-tabs button:has-text("Sea")');
 await page.waitForSelector('.modal.empire > header .hub-tabs button.on:has-text("Sea")');
@@ -94,12 +98,12 @@ const oneRow = await tp.evaluate(() => {
   const doc = (globalThis as unknown as { document: any }).document;
   return doc.querySelector('.topbar').getBoundingClientRect().height < 90;
 });
-await tp.tap('.more-btn');
-await tp.waitForTimeout(150);
+await tp.tap('.tn-ledger');
+await tp.waitForSelector('.tn-ledger-menu');
 await tp.screenshot({ path: `${out}/t1-tablet-menu.png` });
-await tp.tap('.topbar .secondary:has-text("Goods")');
+await tp.tap('.tn-item:has-text("Goods")');
 await tp.waitForSelector('.modal.goods-ledger');
-const folded = !(await tp.$('.topbar.menu-open'));
+const folded = !(await tp.$('.tn-menu'));
 // the minimap sits at the bottom left, clear of the turn box
 await tp.tap('.modal.goods-ledger .x');
 await tp.waitForTimeout(150);
@@ -108,13 +112,18 @@ const miniOk = await tp.evaluate(() => {
   const vh = (globalThis as unknown as { innerHeight: number }).innerHeight;
   const m = doc.querySelector('.minimap-dock')?.getBoundingClientRect();
   const t = doc.querySelector('.turn-box')?.getBoundingClientRect();
-  if (!m || !t) return false;
-  return m.left < 40 && vh - m.bottom < 40 && m.right < t.left;
+  const r = doc.querySelector('.tn-realm')?.getBoundingClientRect();
+  if (!m || !t || !r) return false;
+  return m.left < 120 && vh - m.bottom < 40 && m.right < t.left && r.right <= m.left;
 });
 await tp.screenshot({ path: `${out}/t2-tablet-minimap.png` });
-console.log(miniOk ? 'tablet minimap at the bottom left' : 'TABLET MINIMAP NOT AT THE BOTTOM LEFT');
+console.log(
+  miniOk
+    ? 'tablet minimap at the bottom left, beside the realm bubble'
+    : 'TABLET MINIMAP NOT AT THE BOTTOM LEFT',
+);
 console.log(oneRow ? 'tablet top bar is one row' : 'TABLET TOP BAR WRAPS');
-console.log(folded ? 'tablet menu folds away for a screen' : 'TABLET MENU STAYS OPEN');
+console.log(folded ? 'tablet ledger folds away for a screen' : 'TABLET LEDGER STAYS OPEN');
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no page errors');
 await browser.close();
 process.exit(errors.length || !once || !armed || !oneRow || !folded || !miniOk ? 1 : 0);

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GameState } from '../engine/types.ts';
 import type { Assets } from '../render/assets.ts';
 import { MapRenderer, type Insets, type Overlay } from '../render/mapRenderer.ts';
@@ -71,6 +71,8 @@ export function MapView({
   const rr = useRef<Renderer | null>(null);
   const frame = useRef(0);
   const failures = useRef(0);
+  /** bumped to replace the canvas when its GPU context is gone for good */
+  const [canvasGen, setCanvasGen] = useState(0);
   /** start the renderer again (after a failed frame or a lost GPU context); true = 2D */
   const rebuild = useRef<((flat: boolean) => void) | null>(null);
   const props = useRef({ game, civId, overlay, onClick, onMove, onHover, onView, insets });
@@ -154,8 +156,17 @@ export function MapView({
     };
     void start(false);
     // the GPU can drop the map's context (a tablet asleep, a driver reset): keep it, then rebuild
-    const lost = (e: Event) => e.preventDefault();
-    const restored = () => rebuild.current?.(false);
+    // a context the browser killed (too many on the page, a driver reset) may never come back:
+    // if it isn't restored soon, start over on a fresh canvas
+    let lostTimer = 0;
+    const lost = (e: Event) => {
+      e.preventDefault();
+      lostTimer = window.setTimeout(() => setCanvasGen(g => g + 1), 800);
+    };
+    const restored = () => {
+      clearTimeout(lostTimer);
+      rebuild.current?.(false);
+    };
     canvas.addEventListener('webglcontextlost', lost);
     canvas.addEventListener('webglcontextrestored', restored);
     const ro = new ResizeObserver(() => {
@@ -328,6 +339,7 @@ export function MapView({
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('webglcontextlost', lost);
       canvas.removeEventListener('webglcontextrestored', restored);
+      clearTimeout(lostTimer);
       canvas.removeEventListener('pointermove', onPtrMove);
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointercancel', onCancel);
@@ -335,7 +347,7 @@ export function MapView({
       canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('contextmenu', noMenu);
     };
-  }, [assets]);
+  }, [assets, canvasGen]);
 
   const centerRef = useRef(centerOn);
   centerRef.current = centerOn;
@@ -349,5 +361,5 @@ export function MapView({
 
   useEffect(redraw, [version, overlay]);
 
-  return <canvas ref={ref} className="map-canvas" />;
+  return <canvas key={canvasGen} ref={ref} className="map-canvas" />;
 }

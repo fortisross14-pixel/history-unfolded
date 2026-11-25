@@ -1046,6 +1046,18 @@ const RING: [number, number][] = [
 ];
 const TURN = [0, 0.18, -0.12, 0.1, -0.2, 0.15];
 
+/** One WebGL renderer for every city screen, made on first use and kept. */
+let shared: THREE.WebGLRenderer | null = null;
+function sharedRenderer(): THREE.WebGLRenderer {
+  if (shared && !shared.getContext().isContextLost()) return shared;
+  shared = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  shared.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  shared.shadowMap.enabled = true;
+  shared.shadowMap.type = THREE.PCFSoftShadowMap;
+  shared.outputColorSpace = THREE.SRGBColorSpace;
+  return shared;
+}
+
 export class CityScene3D {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -1070,11 +1082,7 @@ export class CityScene3D {
   constructor(host: HTMLElement, onPick: (p: Pick) => void) {
     this.host = host;
     this.onPick = onPick;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer = sharedRenderer();
     host.appendChild(this.renderer.domElement);
     this.scene.add(new THREE.HemisphereLight(0xfff6e2, 0x8a7a5a, 1.15));
     const sun = new THREE.DirectionalLight(0xfff1d6, 2.1);
@@ -1157,7 +1165,9 @@ export class CityScene3D {
     this.ro.disconnect();
     cancelAnimationFrame(this.pending);
     this.world.traverse(o => (o as THREE.Mesh).geometry?.dispose());
-    this.renderer.dispose();
+    // the renderer (and its GPU context) is shared by every city screen: keep it for the next.
+    // A new context each visit would pile up until the browser kills the oldest one, the map's.
+    this.renderer.renderLists.dispose();
     this.renderer.domElement.remove();
   }
 

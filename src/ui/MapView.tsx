@@ -70,6 +70,9 @@ export function MapView({
   const ref = useRef<HTMLCanvasElement>(null);
   const rr = useRef<Renderer | null>(null);
   const frame = useRef(0);
+  const failures = useRef(0);
+  /** start the renderer again (after a failed frame or a lost GPU context); true = 2D */
+  const rebuild = useRef<((flat: boolean) => void) | null>(null);
   const props = useRef({ game, civId, overlay, onClick, onMove, onHover, onView, insets });
   props.current = { game, civId, overlay, onClick, onMove, onHover, onView, insets };
 
@@ -80,7 +83,17 @@ export function MapView({
       const r = rr.current;
       if (!r) return;
       const t0 = performance.now();
-      r.draw(props.current.game, props.current.civId, props.current.overlay);
+      try {
+        r.draw(props.current.game, props.current.civId, props.current.overlay);
+        failures.current = 0;
+      } catch (err) {
+        // a frame that throws must not leave the map blank: rebuild the renderer, and after a
+        // second failure in a row fall back to the 2D map
+        console.error('map draw failed', err);
+        failures.current++;
+        rebuild.current?.(failures.current > 1);
+        return;
+      }
       props.current.onView?.(r.viewRect());
       // frame timings for the perf check (scripts/perf-smoke.ts)
       const w = window as unknown as { __drawMs?: number[] };
@@ -119,8 +132,8 @@ export function MapView({
       real.clamp(props.current.game, props.current.insets);
       redraw();
     };
-    (async () => {
-      if (mapMode() === '3d')
+    const start = async (flat: boolean) => {
+      if (!flat && mapMode() === '3d')
         try {
           const m = await import('../render/world3d.ts');
           if (m.webglAvailable()) return ready(new m.World3DRenderer(canvas, assets));
@@ -128,7 +141,23 @@ export function MapView({
           /* no 3D here: the 2D map */
         }
       ready(new MapRenderer(canvas, assets));
-    })();
+    };
+    rebuild.current = flat => {
+      const old = rr.current;
+      rr.current = null;
+      try {
+        old?.dispose?.();
+      } catch {
+        /* already gone */
+      }
+      void start(flat);
+    };
+    void start(false);
+    // the GPU can drop the map's context (a tablet asleep, a driver reset): keep it, then rebuild
+    const lost = (e: Event) => e.preventDefault();
+    const restored = () => rebuild.current?.(false);
+    canvas.addEventListener('webglcontextlost', lost);
+    canvas.addEventListener('webglcontextrestored', restored);
     const ro = new ResizeObserver(() => {
       if (!rr.current) return;
       r.resize(parent.clientWidth, parent.clientHeight);
@@ -297,6 +326,8 @@ export function MapView({
       window.removeEventListener('blur', onBlur);
       cancelAnimationFrame(panFrame);
       canvas.removeEventListener('pointerdown', onDown);
+      canvas.removeEventListener('webglcontextlost', lost);
+      canvas.removeEventListener('webglcontextrestored', restored);
       canvas.removeEventListener('pointermove', onPtrMove);
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointercancel', onCancel);

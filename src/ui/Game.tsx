@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { fx } from '../render/fx.ts';
+import { fx, reducedMotion } from '../render/fx.ts';
 import { isMuted, setMuted, sound } from './sound.ts';
 import { difficultyOf } from '../engine/difficulty.ts';
 import { VICTORY } from '../engine/victory.ts';
@@ -94,6 +94,7 @@ import { absorb, giveGift } from '../engine/independents.ts';
 import { EventDialog } from './EventDialog.tsx';
 import { Icon } from './icons.tsx';
 import './r4-nav.css';
+import './r4-interact.css';
 import { CultureDialog, TagChip } from './CultureDialog.tsx';
 import { buyMajor, buyMission, pickTome } from '../engine/culture.ts';
 import { cityEconomy, constructionQueue } from '../engine/economy.ts';
@@ -245,6 +246,13 @@ export function Game({
   }, [dialog]);
   const [muted, setMute] = useState(isMuted());
   const [turnBanner, setTurnBanner] = useState(0);
+  // the gold sheen across the top bar when a new turn begins (0: none playing)
+  const [sheen, setSheen] = useState(0);
+  // no transitions at all with reduced motion (the player's setting or the system's)
+  const calm = reducedMotion();
+  useEffect(() => {
+    document.documentElement.classList.toggle('hu-calm', calm);
+  }, [calm]);
   const [sheetOpen, setSheetOpen] = useState(true);
   const topRef = useRef<HTMLElement>(null);
   const sideRef = useRef<HTMLElement>(null);
@@ -304,6 +312,8 @@ export function Game({
   const selF = sel?.kind === 'formation' ? formation(game, sel.id) : undefined;
   const mySelF = selF && selF.civId === me.id ? selF : undefined;
   const selCity = sel?.kind === 'city' ? game.cities.find(c => c.id === sel.id) : undefined;
+  // my troops standing in the selected settlement: selectable from its card
+  const garrison = selCity ? formationsAt(game, selCity.hex).filter(f => f.civId === me.id) : [];
 
   const idle = () =>
     game.formations.filter(
@@ -499,7 +509,9 @@ export function Game({
       focus,
       bump,
       select: (id: number) => setSel({ kind: 'formation', id }),
+      /** select a settlement without opening its screen */
       selectCity: (id: number) => setSel({ kind: 'city', id }),
+      deselect: () => setSel(null),
       fx,
       /** click-to-act on a hex for the selected formation: move or attack */
       act: (hex: number) => moveTo(hex),
@@ -510,8 +522,17 @@ export function Game({
 
   const [busy, setBusy] = useState(false);
   const [lastReport, setLastReport] = useState<string[]>([]);
+  /**
+   * One end of turn per press: held from the click until the new turn has been painted and a
+   * moment after, so a double click, a double tap or Enter pressed twice ends one turn only.
+   * A ref, not state: a second click in the same frame sees it at once.
+   */
+  const endLock = useRef(false);
+  const [endLocked, setEndLocked] = useState(false);
   const doEndTurn = () => {
-    if (busy) return;
+    if (busy || endLock.current) return;
+    endLock.current = true;
+    setEndLocked(true);
     setBusy(true);
     setArmed(-1);
     // let the "peoples move" banner paint before the AI thinks
@@ -520,13 +541,24 @@ export function Game({
         runEndTurn();
       } finally {
         setBusy(false);
+        // the new turn is on screen after the next frame; the lock lifts 600 ms later
+        const lift = () => {
+          endLock.current = false;
+          setEndLocked(false);
+        };
+        requestAnimationFrame(() => setTimeout(lift, 600));
+        // a hidden tab paints no frames: never leave the button locked for good
+        setTimeout(lift, 2500);
       }
     }, 30);
   };
   const runEndTurn = () => {
     const events = endTurn(game);
     setLastReport(events);
-    setTurnBanner(game.turn);
+    if (!reducedMotion()) {
+      setTurnBanner(game.turn);
+      setSheen(game.turn);
+    }
     sound.turn();
     const every = settings().autosave;
     if (every && game.turn % every === 0) {
@@ -621,9 +653,15 @@ export function Game({
     setArmed(-1);
     act();
   };
+  /** One of my settlements: its card on the side and its screen open at once. */
+  const openCity = (id: number) => {
+    setSel({ kind: 'city', id });
+    setDialog({ kind: 'city', cityId: id });
+  };
   const onClick = (hex: number, touch = false) => {
     const mineHere = formationsAt(game, hex).filter(f => f.civId === me.id);
     const cityHere = cityAt(game, hex);
+    const known = !!game.civs[me.id].explored[hex];
     if (armed >= 0 && armed !== hex) setArmed(-1);
     // troops board an own ship next to them; ships sail into own ports
     if (mySelF && hex !== mySelF.hex && !enemyAt(hex)) {
@@ -632,30 +670,36 @@ export function Game({
       if (mySelF.kind === 'fleet' && isPort(game, me.id, hex))
         return confirmTap(hex, touch, () => moveTo(hex));
     }
-    // with a unit selected, clicking an adjacent enemy attacks; clicking open ground moves
-    if (mySelF && hex !== mySelF.hex) {
+    // with a unit selected, clicking an adjacent enemy attacks; clicking open ground moves;
+    // a settlement of mine is a destination like any other hex (the garrison there joins up)
+    if (mySelF && hex !== mySelF.hex && known) {
       if (enemyAt(hex) && canAttack(game, mySelF.id, hex).target)
         return confirmTap(hex, touch, () => doAttack(hex));
-      if (
-        !mineHere.length &&
-        !(cityHere && cityHere.civId === me.id) &&
-        !enemyAt(hex) &&
-        game.civs[me.id].explored[hex]
-      )
+      if (cityHere?.civId === me.id && mySelF.kind !== 'fleet')
+        return confirmTap(hex, touch, () => moveTo(hex));
+      if (!mineHere.length && !cityHere && !enemyAt(hex))
         return confirmTap(hex, touch, () => moveTo(hex));
     }
     const here = formationsAt(game, hex).filter(f => f.civId === me.id || vis[hex]);
-    if (here.length) {
-      const ids = here.map(f => f.id);
-      const cur = selF ? ids.indexOf(selF.id) : -1;
-      if (cur >= 0 && cur === ids.length - 1 && cityHere) {
-        setSel({ kind: 'city', id: cityHere.id });
+    const ids = here.map(f => f.id);
+    const cur = selF ? ids.indexOf(selF.id) : -1;
+    // clicking the selected unit's hex again: the next unit there, then the settlement
+    if (cur >= 0) {
+      if (cur === ids.length - 1 && cityHere) {
+        if (cityHere.civId === me.id) openCity(cityHere.id);
+        else setSel({ kind: 'city', id: cityHere.id });
         return;
       }
       setSel({ kind: 'formation', id: ids[(cur + 1) % ids.length] });
       return;
     }
-    if (cityHere && game.civs[me.id].explored[hex]) {
+    // nothing of mine selected: my settlement opens at once (its garrison is listed on its card)
+    if (cityHere && known && cityHere.civId === me.id) return openCity(cityHere.id);
+    if (here.length) {
+      setSel({ kind: 'formation', id: ids[0] });
+      return;
+    }
+    if (cityHere && known) {
       setSel({ kind: 'city', id: cityHere.id });
       return;
     }
@@ -676,7 +720,7 @@ export function Game({
         (e.target as HTMLElement).isContentEditable
       )
         return;
-      if (dialog || proposal || busy) return;
+      if (dialog || proposal || busy || endLock.current) return;
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       if (key === 'Enter') {
         e.preventDefault();
@@ -894,8 +938,16 @@ export function Game({
           )}
         </span>
         <span className="civ-name">{me.name}</span>
+        {sheen > 0 && (
+          <span className="topbar-sheen" aria-hidden>
+            <span key={sheen} onAnimationEnd={() => setSheen(0)} />
+          </span>
+        )}
         <span className="turn-count">
-          Turn <b>{game.turn}</b>
+          Turn{' '}
+          <b key={game.turn} className="turn-roll">
+            {game.turn}
+          </b>
           <small className="muted">/{game.settings.turnLimit ?? 400}</small>
         </span>
         <WhyPop
@@ -1181,6 +1233,24 @@ export function Game({
             onAuto={mode => report(automate(game, selF.id, mode))}
           />
         )}
+        {selCity && selCity.civId === me.id && garrison.length > 0 && (
+          <div className="garrison-strip" aria-label="In the settlement">
+            {garrison.map(f => (
+              <button
+                key={f.id}
+                className="garrison-btn"
+                onClick={() => setSel({ kind: 'formation', id: f.id })}
+                title={`Select ${f.name}`}
+              >
+                <Icon name={f.kind === 'army' || f.kind === 'fleet' ? 'army' : 'people'} />
+                <span className="garrison-name">{f.name}</span>
+                {(f.kind === 'army' || f.kind === 'fleet') && (
+                  <small className="muted">{strengthText(formationStrength(game, f))}</small>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
         {selCity && (
           <CityPanel
             game={game}
@@ -1342,10 +1412,10 @@ export function Game({
 
       {turnBanner > 0 && !busy && (
         <div
-          className="turn-banner"
+          className="turn-banner hu-banner"
           key={turnBanner}
           aria-hidden
-          onAnimationEnd={() => setTurnBanner(0)}
+          onAnimationEnd={e => e.animationName === 'hu-banner' && setTurnBanner(0)}
         >
           Turn {turnBanner}
         </div>
@@ -1364,7 +1434,13 @@ export function Game({
         >
           {todos.length ? nextLabel(todos, lastTodo.current, sel) : 'All done'}
         </button>
-        <button className="end-turn" onClick={doEndTurn} disabled={busy} title="End turn">
+        <button
+          className={`end-turn ${endLocked ? 'locked' : ''}`}
+          onClick={doEndTurn}
+          disabled={busy || endLocked}
+          aria-busy={endLocked}
+          title="End turn"
+        >
           <Icon name="end-turn" className="end-ico" line />
           <b>End turn</b>
           {todos.length ? <small>{todos.length} to do</small> : <small>All done</small>}

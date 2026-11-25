@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Plays the start of a game on an emulated phone with touch: menu, map, bottom sheet, the
  * tap-twice rule for moves, a dialog, and the compact top bar; then a tablet's top bar and its
@@ -67,6 +68,19 @@ await page.tap('.modal.empire > header .hub-tabs button:has-text("Sea")');
 await page.waitForSelector('.modal.empire > header .hub-tabs button.on:has-text("Sea")');
 await page.screenshot({ path: `${out}/m7-military.png` });
 await page.tap('.modal.empire .x');
+// a double tap on End turn ends one turn only
+const turn0 = await page.evaluate(() => (globalThis as any).__hu.game.turn as number);
+const end = (await (await page.$('button.end-turn'))!.boundingBox())!;
+await page.touchscreen.tap(end.x + end.width / 2, end.y + end.height / 2);
+await page.waitForTimeout(350);
+await page.touchscreen.tap(end.x + end.width / 2, end.y + end.height / 2);
+await page.waitForTimeout(1500);
+const turn1 = await page.evaluate(() => (globalThis as any).__hu.game.turn as number);
+const once = turn1 === turn0 + 1;
+console.log(
+  once ? 'a double tap on End turn ends one turn' : `DOUBLE TAP WENT ${turn0} -> ${turn1}`,
+);
+await page.screenshot({ path: `${out}/m8-next-turn.png` });
 // a tablet in portrait: one row of numbers, the rest behind More, which folds away for a screen
 const tab = await browser.newContext({ ...devices['iPad (gen 7)'] });
 const tp = await tab.newPage();
@@ -103,4 +117,4 @@ console.log(oneRow ? 'tablet top bar is one row' : 'TABLET TOP BAR WRAPS');
 console.log(folded ? 'tablet menu folds away for a screen' : 'TABLET MENU STAYS OPEN');
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no page errors');
 await browser.close();
-process.exit(errors.length || !armed || !oneRow || !folded || !miniOk ? 1 : 0);
+process.exit(errors.length || !once || !armed || !oneRow || !folded || !miniOk ? 1 : 0);

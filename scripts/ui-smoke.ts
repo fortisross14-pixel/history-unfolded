@@ -17,6 +17,33 @@ page.on('pageerror', (e: Error) => errors.push(e.message));
 page.on('console', (m: { type: () => string; text: () => string }) => {
   if (m.type() === 'error') errors.push(m.text());
 });
+/** Where a hex sits on screen, on the map itself (not under a panel); null if not in view. */
+const hexPoint = (hex: number) =>
+  page.evaluate((hex: number) => {
+    const w = globalThis as any;
+    const m = w.__map,
+      g = w.__hu.game,
+      doc = w.document;
+    const canvas = doc.querySelector('.map-canvas');
+    const cv = canvas.getBoundingClientRect();
+    let sx = 0,
+      sy = 0,
+      n = 0;
+    for (let y = 0; y < cv.height; y += 6)
+      for (let x = 0; x < cv.width; x += 6)
+        if (
+          Math.abs(x - cv.width / 2) < 420 &&
+          Math.abs(y - cv.height / 2) < 320 &&
+          m.hexAtScreen(g, x, y) === hex
+        ) {
+          sx += x;
+          sy += y;
+          n++;
+        }
+    if (!n) return null;
+    const p = { x: cv.left + sx / n, y: cv.top + sy / n };
+    return doc.elementFromPoint(p.x, p.y) === canvas ? p : null;
+  }, hex);
 await page.goto(url);
 await page.evaluate(() => localStorage.clear());
 await page.reload();
@@ -79,24 +106,23 @@ if (await page.$('.district-tabs button.add'))
   throw new Error('a new settlement offered a second district');
 // grow it to a town (by hand: the upgrade itself is covered by rulescheck), then add a district
 await page.keyboard.press('Escape');
-await page.evaluate(() => {
-  const h = (
-    globalThis as unknown as {
-      __hu: {
-        game: { cities: { id: number; civId: number; tier: string }[] };
-        bump: () => void;
-        selectCity: (id: number) => void;
-      };
-    }
-  ).__hu;
-  const c = h.game.cities.find(x => x.civId === 0)!;
+const homeHex = await page.evaluate(() => {
+  const h = (globalThis as any).__hu;
+  const c = h.game.cities.find((x: any) => x.civId === 0)!;
   c.tier = 'town';
-  h.selectCity(c.id);
+  h.deselect();
+  h.focus(c.hex);
   h.bump();
+  return c.hex as number;
 });
-await page.waitForTimeout(300);
-await page.click('button:has-text("City & districts")');
-await page.waitForSelector('.modal.city-screen');
+await page.waitForTimeout(400);
+// with nothing selected, clicking my settlement on the map opens its screen at once
+const homeAt = await hexPoint(homeHex);
+if (!homeAt) throw new Error('the home settlement is not on screen');
+await page.mouse.click(homeAt.x, homeAt.y);
+await page.waitForSelector('.modal.city-screen', { timeout: 3000 }).catch(() => {
+  throw new Error('clicking my settlement did not open its screen');
+});
 // the overview first; districts and the 3D scene on their own tab
 await page.screenshot({ path: `${out}/3a-city-overview.png` });
 await page.click('.city-tabs button:has-text("Districts")');
@@ -280,30 +306,119 @@ const target = await page.evaluate(() => {
   hu.select(f.id);
   hu.focus(city.hex);
   hu.bump();
-  return city.name;
+  return { name: city.name as string, hex: city.hex as number };
 });
 await page.waitForTimeout(300);
-await page.mouse.move(720, 470);
-await page.mouse.move(720, 471);
+const foe = (await hexPoint(target.hex)) ?? { x: 720, y: 471 };
+await page.mouse.move(foe.x, foe.y - 1);
+await page.mouse.move(foe.x, foe.y);
 await page.waitForTimeout(200);
 await page.screenshot({ path: `${out}/6-attack-preview.png` });
 if ((await page.$('.preview-box')) && !(await page.$('.preview-box .gm-strength')))
   throw new Error('the attack preview shows no strengths');
-await page.mouse.click(720, 471);
+await page.mouse.click(foe.x, foe.y);
 await page.waitForTimeout(200);
 if (await page.$('.modal.confirm')) await page.click('.modal.confirm button.primary');
 await page.waitForTimeout(300);
-await page.screenshot({ path: `${out}/7-battle-${target}.png` });
+await page.screenshot({ path: `${out}/7-battle-${target.name}.png` });
 if (await page.$('.modal.battle')) await page.click('.modal.battle button.primary');
+
+// a selected army clicked onto my own settlement marches into it (no city screen)
+const march = await page.evaluate(() => {
+  const hu = (globalThis as any).__hu;
+  const g = hu.game;
+  const c = g.cities.find((x: any) => x.civId === 0);
+  const f = g.formations.find((x: any) => x.civId === 0 && x.kind === 'army' && x.hex !== c.hex);
+  if (!f) return null;
+  const w = g.map.w;
+  const r = Math.floor(c.hex / w),
+    col = c.hex % w;
+  const off =
+    r & 1
+      ? [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [1, 1],
+          [0, -1],
+          [1, -1],
+        ]
+      : [
+          [1, 0],
+          [-1, 0],
+          [-1, 1],
+          [0, 1],
+          [-1, -1],
+          [0, -1],
+        ];
+  const spot = off
+    .map(([dc, dr]) => (r + dr) * w + col + dc)
+    .find(
+      (h: number) =>
+        ['grassland', 'plains', 'desert', 'tundra'].includes(g.map.terrain[h]) &&
+        g.map.relief[h] !== 'mountains' &&
+        !g.formations.some((x: any) => x.hex === h) &&
+        !g.cities.some((x: any) => x.hex === h),
+    );
+  if (spot === undefined) return null;
+  f.hex = spot;
+  f.path = [];
+  f.moves = 2;
+  hu.select(f.id);
+  hu.focus(c.hex);
+  hu.bump();
+  return { id: f.id, hex: c.hex };
+});
+if (!march) throw new Error('no army to march into the settlement');
+await page.waitForTimeout(400);
+const cityAt = await hexPoint(march.hex);
+if (!cityAt) throw new Error('the settlement is not on screen for the march');
+await page.mouse.click(cityAt.x, cityAt.y);
+await page.waitForTimeout(250);
+if (await page.$('.modal.city-screen'))
+  throw new Error('clicking my settlement with an army selected opened the city screen');
+const marched = await page.evaluate((m: { id: number; hex: number }) => {
+  const g = (globalThis as any).__hu.game;
+  const f = g.formations.find((x: any) => x.id === m.id);
+  // it stands in the settlement, or merged with the garrison there
+  return f ? f.hex === m.hex : g.formations.some((x: any) => x.civId === 0 && x.hex === m.hex);
+}, march);
+if (!marched) throw new Error('the selected army did not march into my settlement');
+await page.screenshot({ path: `${out}/7b-marched-in.png` });
+
+// a double click on End turn ends one turn only
+for (let i = 0; i < 3 && (await page.$('.modal-back .modal .x')); i++) {
+  await page.click('.modal-back .modal .x');
+  await page.waitForTimeout(150);
+}
+const turnBefore = await page.evaluate(() => (globalThis as any).__hu.game.turn as number);
+// a quick double click, then a slow one: the second press lands once the new turn is shown
+const endBox = (await (await page.$('button.end-turn'))!.boundingBox())!;
+const endX = endBox.x + endBox.width / 2,
+  endY = endBox.y + endBox.height / 2;
+await page.mouse.dblclick(endX, endY);
+await page.waitForTimeout(300);
+await page.mouse.click(endX, endY);
+await page.waitForTimeout(100);
+await page.screenshot({ path: `${out}/7c-end-turn-locked.png` });
+await page.waitForTimeout(1500);
+const turnAfter = await page.evaluate(() => (globalThis as any).__hu.game.turn as number);
+if (turnAfter !== turnBefore + 1)
+  throw new Error(`a double click on End turn went from turn ${turnBefore} to ${turnAfter}`);
+for (let i = 0; i < 3 && (await page.$('.modal-back .modal .x')); i++) {
+  await page.click('.modal-back .modal .x');
+  await page.waitForTimeout(150);
+}
 
 // pick the next idle unit and send it east by clicking a hex on the map
 await page.click('button.next');
 await page.mouse.click(560 + 200, 470);
 await page.waitForTimeout(150);
 await page.screenshot({ path: `${out}/8-moved.png` });
+// Enter asks once while units wait, then ends the turn; each new turn holds the lock briefly
 for (let i = 0; i < 5; i++) {
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(80);
+  await page.waitForTimeout(i % 2 ? 900 : 80);
 }
 await page.screenshot({ path: `${out}/9-turns.png` });
 // zoom out

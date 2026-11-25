@@ -1,0 +1,278 @@
+/* Round 4, interaction: new-turn sheen, battle ribbons, windows and notes easing in, the end-turn
+   lock, a settlement's garrison on its card. Transforms and opacity only; none of it with
+   reduced motion (the player's setting puts .hu-calm on the root, or the system's preference). */
+
+/* ---------------------------------------------------------------- new turn */
+.topbar-sheen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+.topbar-sheen > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 28%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 236, 170, 0.5) 40%,
+    rgba(255, 250, 225, 0.75) 50%,
+    rgba(255, 236, 170, 0.5) 60%,
+    transparent
+  );
+  transform: translateX(-110%);
+  animation: hu-sheen 0.7s cubic-bezier(0.45, 0.05, 0.35, 1) forwards;
+  will-change: transform;
+}
+@keyframes hu-sheen {
+  to {
+    transform: translateX(380%);
+  }
+}
+.turn-roll {
+  display: inline-block;
+  animation: hu-roll 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+@keyframes hu-roll {
+  from {
+    opacity: 0;
+    transform: translateY(-75%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* the "Turn N" ribbon: in, a light across it, out; about a second */
+.turn-banner.hu-banner {
+  overflow: hidden;
+  animation: hu-banner 1.15s ease-out forwards;
+}
+.turn-banner.hu-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 244, 205, 0.85) 50%, transparent);
+  transform: translateX(-120%);
+  animation: hu-banner-light 0.7s 0.12s ease-in-out forwards;
+}
+@keyframes hu-banner {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.97);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -6px) scale(1);
+  }
+}
+@keyframes hu-banner-light {
+  to {
+    transform: translateX(260%);
+  }
+}
+
+/* ---------------------------------------------------------------- end turn: one press, one turn */
+.turn-box button.end-turn.locked {
+  opacity: 0.72;
+  transform: translateY(1px);
+  filter: saturate(0.6);
+  cursor: progress;
+}
+
+/* ---------------------------------------------------------------- windows and notes */
+.modal-back {
+  animation: hu-fade 0.14s ease-out;
+}
+.modal-back > .modal {
+  animation: hu-pop 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+@keyframes hu-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes hu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.toasts > .toast {
+  animation: hu-toast 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+@keyframes hu-toast {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------- battle outcome */
+.modal.battle .battle-ribbon {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  padding: 2px 22px;
+  border-radius: 4px;
+}
+.modal.battle .battle-ribbon > span {
+  position: relative;
+  z-index: 1;
+}
+.modal.battle.battle-won .battle-ribbon {
+  color: #6a4306;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(226, 184, 84, 0.55) 14%,
+    rgba(236, 200, 110, 0.6) 50%,
+    rgba(226, 184, 84, 0.55) 86%,
+    transparent
+  );
+  box-shadow:
+    0 -1px 0 rgba(190, 140, 40, 0.5) inset,
+    0 1px 0 rgba(190, 140, 40, 0.5) inset;
+}
+/* a warm light rims the window as it opens, then settles */
+.modal.battle.battle-won {
+  position: relative;
+}
+.modal.battle.battle-won::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 2px rgba(222, 176, 70, 0.9),
+    inset 0 0 42px rgba(240, 196, 90, 0.55);
+  opacity: 0;
+  animation: hu-glow 1.6s 0.05s ease-out forwards;
+}
+.modal.battle.battle-won .battle-ribbon::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 250, 225, 0.95) 50%, transparent);
+  transform: translateX(-120%);
+  animation: hu-ribbon-light 0.9s 0.2s ease-in-out forwards;
+}
+.modal.battle.battle-won .battle-ribbon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(255, 214, 120, 0.7), transparent 72%);
+  opacity: 0;
+  animation: hu-glow 1.6s 0.1s ease-out forwards;
+}
+.modal.battle.battle-lost .battle-ribbon {
+  color: #5a4a40;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(120, 105, 95, 0.18) 18%,
+    rgba(120, 105, 95, 0.18) 82%,
+    transparent
+  );
+}
+.modal.battle.battle-lost .battle-art {
+  animation: hu-dim 0.9s ease-out forwards;
+}
+@keyframes hu-ribbon-light {
+  to {
+    transform: translateX(260%);
+  }
+}
+@keyframes hu-glow {
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+@keyframes hu-dim {
+  to {
+    filter: saturate(0.55) brightness(0.92);
+  }
+}
+
+/* ---------------------------------------------------------------- garrison on a settlement's card */
+.garrison-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.garrison-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  border-radius: 999px;
+  max-width: 100%;
+}
+.garrison-btn .garrison-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 14em;
+}
+
+/* ---------------------------------------------------------------- reduced motion: none of it */
+.hu-calm .topbar-sheen,
+.hu-calm .modal.battle.battle-won .battle-ribbon::after,
+.hu-calm .modal.battle.battle-won .battle-ribbon::before,
+.hu-calm .modal.battle.battle-won::after {
+  display: none;
+}
+.hu-calm .turn-roll,
+.hu-calm .turn-banner.hu-banner,
+.hu-calm .modal-back,
+.hu-calm .modal-back > .modal,
+.hu-calm .toasts > .toast,
+.hu-calm .modal.battle.battle-lost .battle-art {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .topbar-sheen,
+  .modal.battle.battle-won .battle-ribbon::after,
+  .modal.battle.battle-won .battle-ribbon::before,
+  .modal.battle.battle-won::after {
+    display: none;
+  }
+  .turn-roll,
+  .turn-banner.hu-banner,
+  .modal-back,
+  .modal-back > .modal,
+  .toasts > .toast,
+  .modal.battle.battle-lost .battle-art {
+    animation: none;
+  }
+}

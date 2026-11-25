@@ -3,6 +3,7 @@ import type { BattleRecord } from '../engine/types.ts';
 import { Art, Chip, InfoButton } from './bits.tsx';
 import './declutter-map.css';
 import './r4-health.css';
+import './r4-interact.css';
 
 const OUTCOME: Record<BattleReport['outcome'], string> = {
   'defender-broke': 'Victory',
@@ -67,6 +68,12 @@ export function BattleDialog({
         ? 'Victory'
         : 'Defeat'
     : OUTCOME[report.outcome];
+  // the window greets a win with a light sweeping its ribbon; a loss gets a muted ribbon
+  const mood = ['Victory', 'Held the line'].includes(title)
+    ? 'won'
+    : ['Defeat', 'Repulsed'].includes(title)
+      ? 'lost'
+      : 'even';
   const side = (s: BattleReport['attacker'], ours: boolean) => (
     <div className="battle-side">
       <b>{s.name}</b>
@@ -84,9 +91,11 @@ export function BattleDialog({
   );
   return (
     <div className="modal-back" onClick={onClose}>
-      <div className="modal battle" onClick={e => e.stopPropagation()}>
+      <div className={`modal battle battle-${mood}`} onClick={e => e.stopPropagation()}>
         <header>
-          <h2>{title}</h2>
+          <h2 className="battle-ribbon">
+            <span>{title}</span>
+          </h2>
           <button className="x" onClick={onClose}>
             ×
           </button>
